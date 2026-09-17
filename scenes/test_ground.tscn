@@ -15,6 +15,7 @@ albedo_color = Color(0.42, 0.44, 0.46, 1)
 
 [sub_resource type="Environment" id="Env_sky"]
 background_mode = 1
+background_color = Color(0.55, 0.72, 0.90, 1)
 ambient_light_source = 2
 ambient_light_color = Color(0.6, 0.68, 0.78, 1)
 ambient_light_energy = 0.6
