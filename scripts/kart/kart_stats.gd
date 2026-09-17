@@ -25,6 +25,7 @@ extends Resource
 @export var drift_tiers: PackedFloat32Array = PackedFloat32Array([0.6, 1.5, 2.6])
 @export var boost_durations: PackedFloat32Array = PackedFloat32Array([0.5, 1.0, 1.8])
 @export var boost_speed_multiplier: float = 1.35
+@export var boost_decay_rate: float = 12.0      ## retour au plafond, u/s²
 
 @export_group("Pénalités")
 @export var offroad_speed_multiplier: float = 0.6

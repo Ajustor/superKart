@@ -231,3 +231,68 @@ func test_la_charge_demarre_a_zero_a_l_atterrissage() -> void:
 	_run(stats.hop_duration + 1.0 / 60.0)
 	assert_lt(motor.drift_charge, 0.05,
 		"la charge part de zéro : le temps passé en saut ne compte pas")
+
+
+func test_le_palier_se_deduit_du_temps_de_glisse() -> void:
+	assert_eq(motor.tier_for_charge(0.0), 0)
+	assert_eq(motor.tier_for_charge(0.5), 0, "sous le premier seuil, aucune charge")
+	assert_eq(motor.tier_for_charge(0.7), 1)
+	assert_eq(motor.tier_for_charge(1.6), 2)
+	assert_eq(motor.tier_for_charge(3.0), 3)
+
+
+func test_relacher_au_palier_2_declenche_un_turbo_de_palier_2() -> void:
+	_enter_drift(1)
+	motor.drift_charge = stats.drift_tiers[1] + 0.1
+	cmd.drift = false
+	motor.step(cmd, 1.0 / 60.0)
+	assert_almost_eq(motor.boost_timer, stats.boost_durations[1], 0.05)
+	assert_eq(motor.state, KartMotor.State.GRIP, "relâcher rend l'adhérence")
+
+
+func test_relacher_trop_tot_ne_donne_aucun_turbo() -> void:
+	_enter_drift(1)
+	motor.drift_charge = 0.0
+	cmd.drift = false
+	motor.step(cmd, 1.0 / 60.0)
+	assert_eq(motor.boost_timer, 0.0, "sous le premier seuil, pas de récompense")
+
+
+func test_le_turbo_pousse_au_dela_de_la_vitesse_max() -> void:
+	cmd.throttle = 1.0
+	_run(10.0)
+	motor.boost_timer = 1.0
+	motor.step(cmd, 1.0 / 60.0)
+	assert_gt(motor.speed, stats.max_speed,
+		"le turbo doit franchir le plafond normal, sinon il ne se sent pas")
+
+
+func test_le_turbo_s_epuise_et_la_vitesse_redescend() -> void:
+	cmd.throttle = 1.0
+	_run(10.0)
+	motor.boost_timer = 0.3
+	_run(3.0)
+	assert_eq(motor.boost_timer, 0.0)
+	assert_almost_eq(motor.speed, stats.max_speed, 0.2,
+		"une fois le turbo fini, la vitesse revient au plafond normal")
+
+
+func test_on_peut_encore_deraper_pendant_un_turbo() -> void:
+	cmd.throttle = 1.0
+	_run(5.0)
+	motor.boost_timer = 2.0
+	cmd.steer = 1.0
+	cmd.drift = true
+	_run(stats.hop_duration + 0.2)
+	assert_eq(motor.state, KartMotor.State.DRIFT,
+		"le turbo est un modificateur, il ne doit pas bloquer le dérapage")
+
+
+func test_le_derapage_a_gauche_est_le_miroir_du_droit() -> void:
+	_enter_drift(-1)
+	var depart := motor.velocity_dir
+	_run(0.5)
+	assert_lt(motor.velocity_dir, depart,
+		"une glisse à gauche courbe la trajectoire à gauche")
+	assert_almost_eq(motor.heading, motor.velocity_dir - motor.drift_angle, 0.001,
+		"à gauche, la caisse se décale du côté opposé")

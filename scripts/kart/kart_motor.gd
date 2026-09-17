@@ -29,6 +29,7 @@ func _init(kart_stats: KartStats) -> void:
 
 
 func step(cmd: KartCommand, delta: float) -> void:
+	boost_timer = maxf(boost_timer - delta, 0.0)
 	_update_speed(cmd, delta)
 
 	match state:
@@ -55,7 +56,10 @@ func _current_max_speed() -> float:
 func _update_speed(cmd: KartCommand, delta: float) -> void:
 	var ceiling := _current_max_speed()
 
-	if cmd.brake > 0.0:
+	if boost_timer > 0.0:
+		# Le turbo pousse instantanément : c'est ce coup de pied qui se sent.
+		speed = maxf(speed, ceiling)
+	elif cmd.brake > 0.0:
 		speed = move_toward(speed, 0.0, stats.brake_force * cmd.brake * delta)
 	elif cmd.throttle > 0.0:
 		speed = move_toward(speed, ceiling, stats.acceleration * cmd.throttle * delta)
@@ -63,7 +67,7 @@ func _update_speed(cmd: KartCommand, delta: float) -> void:
 		speed = move_toward(speed, 0.0, stats.coast_friction * delta)
 
 	if speed > ceiling:
-		speed = move_toward(speed, ceiling, stats.coast_friction * 2.0 * delta)
+		speed = move_toward(speed, ceiling, stats.boost_decay_rate * delta)
 
 
 ## Le braquage perd son autorité à basse vitesse : un kart à l'arrêt
@@ -127,3 +131,22 @@ func _update_drift(cmd: KartCommand, delta: float) -> void:
 	heading = velocity_dir + float(drift_dir) * drift_angle
 
 	drift_charge += delta
+
+	if not cmd.drift:
+		_release_drift()
+
+
+## Nombre de paliers franchis pour une charge donnée. 0 = aucun turbo.
+func tier_for_charge(charge: float) -> int:
+	var tier := 0
+	for i in stats.drift_tiers.size():
+		if charge >= stats.drift_tiers[i]:
+			tier = i + 1
+	return tier
+
+
+func _release_drift() -> void:
+	var tier := tier_for_charge(drift_charge)
+	if tier > 0:
+		boost_timer = stats.boost_durations[tier - 1]
+	_end_drift()
