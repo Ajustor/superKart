@@ -274,7 +274,7 @@ func before_each() -> void:
 	motor = KartMotor.new(stats)
 ```
 
-Ajoute ce helper et ces trois tests à la fin du fichier :
+Ajoute ce helper et ces quatre tests à la fin du fichier :
 
 ```gdscript
 ## Fait tourner le moteur pendant `seconds` à 60 Hz avec la commande courante.
