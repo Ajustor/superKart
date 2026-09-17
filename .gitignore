@@ -1,0 +1,15 @@
+# Godot
+.godot/
+/android/
+export_presets.cfg
+
+# Exports
+/build/
+/export/
+
+# Compagnon visuel de brainstorming
+.superpowers/
+
+# OS
+.DS_Store
+Thumbs.db
