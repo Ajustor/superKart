@@ -994,6 +994,12 @@ func test_le_turbo_efface_la_penalite_hors_piste() -> void:
 	motor.step(cmd, 1.0 / 60.0)
 	assert_gt(motor.speed, stats.max_speed,
 		"foncer dans l'herbe sous turbo doit rester payant")
+
+
+func test_un_palier_sans_duree_de_turbo_n_en_est_pas_un() -> void:
+	stats.drift_tiers = PackedFloat32Array([0.6, 1.5, 2.6, 4.0])
+	assert_eq(motor.tier_for_charge(5.0), 3,
+		"un palier sans durée associée ne doit pas être atteignable")
 ```
 
 - [ ] **Step 2 : Lancer les tests pour vérifier qu'ils échouent**
@@ -1006,7 +1012,22 @@ Attendu : ÉCHEC sur les deux tests d'annulation — l'état reste `DRIFT`.
 
 - [ ] **Step 3 : Écrire l'implémentation**
 
-Dans `_update_drift()`, remplace le bloc final par :
+D'abord, un correctif relevé en revue. `_release_drift()` indexe `boost_durations[tier - 1]` sans garde : si `drift_tiers` gagne un palier que `boost_durations` n'a pas — ce qui arrivera dès qu'on éditera des `KartStats` par kart — un dérapage assez long plante. On borne à la source : un palier sans durée de turbo associée n'est pas un palier. Remplace `tier_for_charge` par :
+
+```gdscript
+## Nombre de paliers franchis pour une charge donnée. 0 = aucun turbo.
+## Borné par le plus court des deux tableaux : un palier sans durée de
+## turbo associée n'en est pas un, et indexer à l'aveugle planterait.
+func tier_for_charge(charge: float) -> int:
+	var count := mini(stats.drift_tiers.size(), stats.boost_durations.size())
+	var tier := 0
+	for i in count:
+		if charge >= stats.drift_tiers[i]:
+			tier = i + 1
+	return tier
+```
+
+Puis, dans `_update_drift()`, remplace le bloc final par :
 
 ```gdscript
 	drift_charge += delta
@@ -1026,7 +1047,7 @@ Dans `_update_drift()`, remplace le bloc final par :
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `36 passing`.
+Attendu : `37 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -1161,7 +1182,7 @@ Attendu : `input map écrite`.
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `38 passing`.
+Attendu : `39 passing`.
 
 - [ ] **Step 6 : Commit**
 
@@ -1731,7 +1752,7 @@ Attendu : aucune ligne contenant `ERROR` ni `SCRIPT ERROR`.
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `38 passing`, `0 failing`.
+Attendu : `39 passing`, `0 failing`.
 
 - [ ] **Step 6 : Commit**
 
@@ -1762,6 +1783,7 @@ C'est le jalon 3 du spec, et le seul qui puisse remettre en cause le reste du de
 - Les trois couleurs d'étincelles sont distinguables d'un coup d'œil, sans quitter la route des yeux.
 - Le mini-turbo se **sent** au déclenchement — si le coup de pied est discret, augmente `boost_speed_multiplier`.
 - Enchaîner les dérapages en zigzag sur une ligne droite est plaisant et rentable.
+- **Le frein est inopérant pendant tout un turbo**, soit jusqu'à 1,8 s au palier 3. Arrive-t-il de subir un turbo max à l'approche d'un virage serré, sans recours ? Si oui, il faudra soit laisser le frein écourter le turbo, soit raccourcir le palier 3.
 - La vitesse se perçoit en passant près des repères.
 
 **À trancher en priorité — le sens de la réponse au contre-braquage.** Dans la formule actuelle, la courbure de trajectoire est proportionnelle à l'angle de glisse, et contre-braquer ouvre cet angle. Contre-braquer fait donc tourner le kart *plus* fort (courbure 1,0) que braquer vers l'intérieur (courbure 0,55) — l'inverse de la convention du genre, où le contre-braquage sert à se redresser.
@@ -1791,11 +1813,12 @@ rtk git add resources/karts/default_kart.tres && rtk git commit -m "tune: régla
 Relevée en revue, sciemment non traitée — à reconsidérer à la passe de réglage du jalon 15, pas avant.
 
 - `_steering_authority()` divise par `stats.max_speed * 0.5` sans garde. Si `max_speed` valait 0, `velocity_dir` serait empoisonné par un NaN de façon irrécupérable. Rien ne met cette valeur à 0 aujourd'hui, et se prémunir contre un état qu'aucun chemin de code ne produit coûterait plus en bruit qu'il ne rapporte.
+- Le « coup de pied » du turbo s'applique une image après le relâchement : `_update_speed()` a déjà tourné quand `_release_drift()` pose `boost_timer`. À 60 Hz cela fait 16 ms, sous le seuil de perception ; à revoir seulement si la session de validation trouve le déclenchement mou.
 - Le facteur `0.5` — la vitesse à laquelle le braquage atteint sa pleine autorité — est un littéral en dur, alors que c'est un paramètre de ressenti et que le principe affiché est que les réglages vivent dans `KartStats`. À déplacer le jour où quelqu'un voudra réellement le régler.
 
 ## Périmètre de ce plan
 
-**Livré :** un kart pilotable sur un plan nu, dérapage à trois paliers et mini-turbo, caméra dynamique, étincelles colorées, 36 tests unitaires sur la physique.
+**Livré :** un kart pilotable sur un plan nu, dérapage à trois paliers et mini-turbo, caméra dynamique, étincelles colorées, 37 tests unitaires sur la physique.
 
 **Reporté au plan 2 :** suspension par quatre raycasts et alignement sur la pente, circuit réel, checkpoints, tours, chrono, IA.
 
