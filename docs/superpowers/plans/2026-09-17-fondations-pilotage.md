@@ -769,8 +769,11 @@ func _update_drift(cmd: KartCommand, delta: float) -> void:
 	var target := deg_to_rad(lerpf(stats.drift_angle_max_deg, stats.drift_angle_min_deg, t))
 	drift_angle = move_toward(drift_angle, target, deg_to_rad(stats.drift_angle_rate_deg) * delta)
 
-	var max_angle := deg_to_rad(stats.drift_angle_max_deg)
-	var courbure := drift_angle / max_angle
+	# La courbure suit le braquage, pas l'angle de glisse. Les dériver l'un de
+	# l'autre inversait la commande : braquer vers l'intérieur ouvrait le rayon
+	# et contre-braquer le resserrait, et l'entrée en glisse sous-virait le temps
+	# que l'angle monte depuis zéro.
+	var courbure := lerpf(0.5, 1.0, t)
 	velocity_dir += float(drift_dir) * stats.drift_turn_rate * courbure * delta
 	heading = velocity_dir + float(drift_dir) * drift_angle
 
@@ -909,7 +912,9 @@ func tier_for_charge(charge: float) -> int:
 func _release_drift() -> void:
 	var tier := tier_for_charge(drift_charge)
 	if tier > 0:
-		boost_timer = stats.boost_durations[tier - 1]
+		# Un turbo plus long déjà en cours ne doit pas être amputé par un
+		# palier inférieur : enchaîner doit récompenser, pas punir.
+		boost_timer = maxf(boost_timer, stats.boost_durations[tier - 1])
 	_end_drift()
 ```
 
@@ -1898,6 +1903,8 @@ Relevée en revue, sciemment non traitée — à reconsidérer à la passe de r�
 - Le facteur `0.5` — la vitesse à laquelle le braquage atteint sa pleine autorité — est un littéral en dur, alors que c'est un paramètre de ressenti et que le principe affiché est que les réglages vivent dans `KartStats`. À déplacer le jour où quelqu'un voudra réellement le régler.
 
 ## Périmètre de ce plan
+
+**Rayons de virage mesurés à 22 u/s**, après correction : 7,86 m en glisse braquage intérieur, 9,17 m en adhérence, 10,48 m en glisse braquage neutre, 13,66 m en contre-braquage à −0,7. Déraper vers l'intérieur est donc le moyen le plus serré de tourner, et contre-braquer redresse — l'ordre que le mécanisme doit avoir. À −1,0 le contre-braquage franchit le seuil de rupture et annule la glisse, ce qui est le comportement voulu.
 
 **Livré :** un kart pilotable sur un plan nu, dérapage à trois paliers et mini-turbo, caméra dynamique, étincelles colorées, 39 tests unitaires sur la physique.
 
