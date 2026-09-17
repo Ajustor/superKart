@@ -1853,7 +1853,9 @@ C'est le jalon 3 du spec, et le seul qui puisse remettre en cause le reste du de
 - **Le frein est inopérant pendant tout un turbo**, soit jusqu'à 1,8 s au palier 3. Arrive-t-il de subir un turbo max à l'approche d'un virage serré, sans recours ? Si oui, il faudra soit laisser le frein écourter le turbo, soit raccourcir le palier 3.
 - La vitesse se perçoit en passant près des repères.
 
-**La hauteur du saut.** Avec l'impulsion calée pour atterrir pile au début de la glisse, l'apex n'est qu'à 8 cm environ. Si le saut ne se voit pas à l'écran, deux leviers : allonger `hop_duration` (au prix d'un dérapage qui s'engage plus tard), ou découpler le saut visuel de la physique en l'animant sur le maillage seul.
+**La hauteur du saut.** Avec l'impulsion calée pour atterrir pile au début de la glisse, l'apex est à 8,4 cm — soit un dixième de la hauteur du châssis — pendant 9 images. Attends-toi à le sentir plus qu'à le voir.
+
+S'il faut le rendre lisible, trois leviers par ordre de coût croissant : allonger `hop_duration`, ce qui rehausse l'impulsion par la même formule mais retarde l'engagement de la glisse ; ajouter de l'écrasement et des particules à l'atterrissage, qui vendent un saut bien mieux que sa hauteur réelle ; ou découpler complètement le saut visuel de la physique en l'animant sur le maillage seul, ce que font la plupart des jeux du genre.
 
 **À trancher en priorité — le sens de la réponse au contre-braquage.** Dans la formule actuelle, la courbure de trajectoire est proportionnelle à l'angle de glisse, et contre-braquer ouvre cet angle. Contre-braquer fait donc tourner le kart *plus* fort (courbure 1,0) que braquer vers l'intérieur (courbure 0,55) — l'inverse de la convention du genre, où le contre-braquage sert à se redresser.
 
