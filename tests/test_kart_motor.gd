@@ -395,3 +395,13 @@ func test_deraper_vers_l_interieur_tourne_plus_court_qu_en_adherence() -> void:
 
 	assert_gt(lacet_glisse, lacet_grip,
 		"déraper vers l'intérieur doit tourner plus court que rester en adhérence")
+
+
+func test_un_petit_turbo_ne_raccourcit_pas_un_grand_deja_en_cours() -> void:
+	_enter_drift(1)
+	motor.boost_timer = stats.boost_durations[2]      # gros turbo en cours
+	motor.drift_charge = stats.drift_tiers[0] + 0.01  # glisse chargée au palier 1
+	cmd.drift = false
+	motor.step(cmd, 1.0 / 60.0)
+	assert_gt(motor.boost_timer, stats.boost_durations[0],
+		"enchaîner une petite glisse ne doit pas amputer un turbo plus long en cours")

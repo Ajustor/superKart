@@ -170,5 +170,7 @@ func tier_for_charge(charge: float) -> int:
 func _release_drift() -> void:
 	var tier := tier_for_charge(drift_charge)
 	if tier > 0:
-		boost_timer = stats.boost_durations[tier - 1]
+		# Un turbo plus long déjà en cours ne doit pas être amputé par un
+		# palier inférieur : enchaîner doit récompenser, pas punir.
+		boost_timer = maxf(boost_timer, stats.boost_durations[tier - 1])
 	_end_drift()
