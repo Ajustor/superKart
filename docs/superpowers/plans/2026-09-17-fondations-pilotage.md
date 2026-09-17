@@ -1881,6 +1881,12 @@ C'est le jalon 3 du spec, et le seul qui puisse remettre en cause le reste du de
 
 S'il faut le rendre lisible, trois leviers par ordre de coût croissant : allonger `hop_duration`, ce qui rehausse l'impulsion par la même formule mais retarde l'engagement de la glisse ; ajouter de l'écrasement et des particules à l'atterrissage, qui vendent un saut bien mieux que sa hauteur réelle ; ou découpler complètement le saut visuel de la physique en l'animant sur le maillage seul, ce que font la plupart des jeux du genre.
 
+**La pose de la caisse lit à l'envers de la trajectoire.** En remettant le virage à l'endroit, le correctif a laissé l'angle de caisse pointer dans l'autre sens : braquer vers l'intérieur donne le rayon le plus serré (7,86 m) mais la caisse la moins en travers (30°), et contre-braquer donne l'inverse (13,66 m, 51°). Le kart a donc l'air le plus spectaculaire quand il tourne le plus mal, alors que le joueur lit « plus en travers = mieux ». C'est physiquement défendable mais ce n'est pas la convention du genre. Si ça te gêne, le correctif est d'inverser l'ordre des arguments à la ligne 131 de `kart_motor.gd` (`lerpf(min, max, t)` au lieu de `lerpf(max, min, t)`) — et d'inverser `test_braquer_vers_l_interieur_resserre_la_glisse` avec.
+
+**Au pad, déraper sous 43 % de manche vers l'intérieur pénalise encore.** C'est le seuil où la glisse égale l'adhérence ; en deçà elle tourne plus large. « Il faut s'engager » est une bonne règle arcade, mais rien ne l'indique au joueur. Au clavier, sans objet.
+
+**Si le dérapage manque de mordant**, le bouton est `drift_turn_rate`, pas la formule : à 3,2 au lieu de 2,8 le rayon tombe à 6,88 m, soit 25 % de mieux que l'adhérence au lieu de 17 % — là, ça se sent.
+
 **Le frein reste inopérant pendant un turbo**, jusqu'à 1,8 s au palier 3. C'est délibéré mais non tranché : sur un plan nu ça ne se voit pas, au plan 2 avec des virages et des murs ça se paiera. Dis-moi si ça t'a gêné.
 
 **Au pad, l'entrée en glisse demande environ 36 % de débattement du stick** — la zone morte de l'action (0,2) et `STEER_DEADZONE` (0,2) se composent. Au clavier, sans objet. Si ça paraît mou, c'est l'une des deux qu'il faut baisser.
@@ -1890,6 +1896,14 @@ S'il faut le rendre lisible, trois leviers par ordre de coût croissant : allong
 **Si la conduite n'est pas agréable ici, ne passe pas au plan 2.** Aucune piste, aucune IA et aucun shader ne rattraperont un pilotage médiocre — et c'est précisément pour le découvrir maintenant que ce jalon existe.
 
 ---
+
+## À faire avant d'ouvrir le plan 2
+
+Trois points que la revue finale place avant le plan suivant plutôt qu'après.
+
+- **Un test d'indépendance au delta.** Le moteur est *défini* comme `f(état, commande, delta)` — c'est la thèse de l'architecture — et les 43 tests tournent tous à exactement 1/60. C'est la seule propriété que le design revendique et que la suite ne vérifie jamais. Le correctif de courbure vient justement de démontrer que cette fonction peut héberger une erreur de couplage qui survit à quinze tâches.
+- **Trancher la convention de signe de la marche arrière.** L'invariant non écrit `speed >= 0` est supposé par quatre fonctions. Le plan 2 écrira la réconciliation de vitesse après collision, et ce code encodera forcément une hypothèse sur ce signe. Décider maintenant coûte cinq minutes, le lever après coûte une réécriture.
+- **`KartMotor.reset()` plutôt qu'un `KartMotor.new()` dans `respawn_at()`.** Aujourd'hui ça marche parce que la caméra et les visuels relisent `_kart.motor` à chaque frame. La première présentation qui mettra le moteur en cache dans son `_ready()` se détachera en silence, sans erreur et sans test pour l'attraper.
 
 ## Dette acceptée
 
