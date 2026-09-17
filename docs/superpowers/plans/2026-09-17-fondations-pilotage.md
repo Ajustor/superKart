@@ -1483,6 +1483,7 @@ extends Camera3D
 @export var fov_min: float = 70.0
 @export var fov_max: float = 85.0
 @export var drift_roll_deg: float = 6.0
+@export var roll_stiffness: float = 6.0
 
 var _kart: Kart
 var _roll: float = 0.0
@@ -1500,11 +1501,14 @@ func _physics_process(delta: float) -> void:
 
 	var desired := _kart.global_position - forward * distance + Vector3.UP * height
 	# Un suivi à ressort : la caméra se laisse distancer à l'accélération.
-	global_position = global_position.lerp(desired, clampf(follow_stiffness * delta, 0.0, 1.0))
+	global_position = global_position.lerp(desired, 1.0 - exp(-follow_stiffness * delta))
 
 	look_at(_kart.global_position + forward * look_ahead + Vector3.UP * 0.8, Vector3.UP)
 
-	var ratio := clampf(motor.speed / _kart.stats.max_speed, 0.0, 1.0)
+	# Le plafond de référence inclut le turbo, sinon le FOV sature dès la
+	# vitesse de pointe normale et le mini-turbo ne se voit plus du tout.
+	var ceiling := _kart.stats.max_speed * _kart.stats.boost_speed_multiplier
+	var ratio := clampf(motor.speed / ceiling, 0.0, 1.0)
 	fov = lerpf(fov_min, fov_max, ratio)
 
 	# Léger roulis dans la glisse, qui accentue la lecture du dérapage.
@@ -1513,7 +1517,7 @@ func _physics_process(delta: float) -> void:
 	var target_roll := 0.0
 	if motor.state == KartMotor.State.DRIFT:
 		target_roll = deg_to_rad(drift_roll_deg) * float(motor.drift_dir)
-	_roll = lerpf(_roll, target_roll, clampf(6.0 * delta, 0.0, 1.0))
+	_roll = lerpf(_roll, target_roll, 1.0 - exp(-roll_stiffness * delta))
 	rotation.z = _roll
 ```
 
@@ -1857,6 +1861,8 @@ C'est le jalon 3 du spec, et le seul qui puisse remettre en cause le reste du de
 - Enchaîner les dérapages en zigzag sur une ligne droite est plaisant et rentable.
 - **Le frein est inopérant pendant tout un turbo**, soit jusqu'à 1,8 s au palier 3. Arrive-t-il de subir un turbo max à l'approche d'un virage serré, sans recours ? Si oui, il faudra soit laisser le frein écourter le turbo, soit raccourcir le palier 3.
 - La vitesse se perçoit en passant près des repères.
+
+**Le sens du roulis de caméra.** Le roulis en glisse est arithmétiquement cohérent, mais qu'il penche vers l'intérieur du virage plutôt que vers l'extérieur dépend d'une convention de signe que seul l'œil tranche. Si la caméra bascule du mauvais côté, inverse le signe de `target_roll`.
 
 **La hauteur du saut.** Avec l'impulsion calée pour atterrir pile au début de la glisse, l'apex est à 8,4 cm — soit un dixième de la hauteur du châssis — pendant 9 images. Attends-toi à le sentir plus qu'à le voir.
 
