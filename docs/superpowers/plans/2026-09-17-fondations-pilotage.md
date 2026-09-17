@@ -14,11 +14,13 @@
 
 ## Écarts assumés par rapport au spec
 
-Deux points à connaître avant de commencer — ils sont délibérés, pas des oublis.
+Trois points à connaître avant de commencer — ils sont délibérés, pas des oublis.
 
 **Le turbo est un modificateur, pas un état.** La machine à états du spec (§4.2) présente `TURBO` comme un état à part. À l'implémentation c'est faux : on doit pouvoir continuer à déraper pendant un turbo, et enchaîner un second dérapage sans attendre la fin du premier boost. Les états réels sont donc `ADHÉRENCE`, `SAUT`, `DÉRAPAGE`, `SONNÉ`, et `boost_timer` tourne en parallèle en modifiant la vitesse maximale.
 
 **Le sol est plat dans ce plan.** La suspension par quatre raycasts et l'alignement sur la pente décrits au spec arrivent avec le circuit réel, dans le plan 2. Ici, `is_on_floor()` et une gravité simple suffisent, et l'état `SONNÉ` n'est pas encore déclenché par quoi que ce soit — il sera câblé aux objets dans le plan 3. Le champ existe dès maintenant pour ne pas avoir à rouvrir le moteur.
+
+**Les scènes sont écrites à la main.** Les fichiers `.tscn` sont du texte et sont donnés en entier dans les tâches, de sorte que tout le plan s'exécute sans ouvrir l'éditeur. Le format est stable en Godot 4, mais si un chargement se plaint d'un `load_steps` incorrect, la valeur attendue est le total des `ext_resource` et `sub_resource` plus un. Même logique pour les actions d'entrée : plutôt que de sérialiser des `InputEvent` à la main, on les fait écrire par le moteur (Task 9).
 
 ## Structure des fichiers
 
@@ -45,14 +47,14 @@ Deux points à connaître avant de commencer — ils sont délibérés, pas des 
 
 - [ ] **Step 1 : Créer le projet Godot**
 
-Crée `project.godot` à la racine. Remplace `4.4` par la version majeure.mineure de ton Godot installé (visible dans *Aide → À propos*) ; une valeur qui ne correspond pas déclenchera une invite de migration au premier lancement.
+Crée `project.godot` à la racine. La version installée sur cette machine est **Godot 4.7.2**, d'où le `4.7`.
 
 ```ini
 config_version=5
 
 [application]
 config/name="Karting"
-config/features=PackedStringArray("4.4", "GL Compatibility")
+config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [rendering]
 renderer/rendering_method="gl_compatibility"
@@ -68,7 +70,9 @@ cp -r /tmp/gut/addons/gut addons/gut
 rm -rf /tmp/gut
 ```
 
-Ouvre ensuite le projet dans l'éditeur Godot, puis *Projet → Paramètres du projet → Extensions*, et active **GUT**. Ferme l'éditeur.
+Si GUT refuse de se charger sous Godot 4.7, prends la release taguée la plus récente du dépôt plutôt que `main` — c'est le seul point du plan où une incompatibilité de version est plausible, et il se manifeste immédiatement au Step 4.
+
+Le runner en ligne de commande (`gut_cmdln.gd`) fonctionne sans activer l'extension : le panneau dans l'éditeur n'est utile que pour lancer les tests à la souris. Aucune étape de ce plan n'en a besoin.
 
 - [ ] **Step 3 : Écrire un test de fumée**
 
@@ -87,7 +91,7 @@ func test_le_harnais_de_test_fonctionne() -> void:
 Définis d'abord un raccourci vers ton binaire Godot — les commandes de tout le plan s'en servent :
 
 ```bash
-export GODOT="/c/Program Files/Godot/Godot_v4.4-stable_win64.exe"   # adapte le chemin
+export GODOT="/c/Users/alexa/AppData/Local/Microsoft/WinGet/Packages/GodotEngine.GodotEngine_Microsoft.Winget.Source_8wekyb3d8bbwe/Godot_v4.7.2-stable_win64.exe"
 ```
 
 Puis :
@@ -976,35 +980,134 @@ rtk git add scripts/kart/kart_motor.gd tests/test_kart_motor.gd && rtk git commi
 ### Task 9 : Les actions d'entrée
 
 **Files:**
+- Create: `tools/setup_input_map.gd`
+- Create: `tests/test_input_map.gd`
 - Modify: `project.godot`
 
-- [ ] **Step 1 : Déclarer les actions**
+La sérialisation des `InputEvent` dans `project.godot` change d'une version mineure de Godot à l'autre. Plutôt que d'écrire ce bloc à la main, on le fait générer par le moteur lui-même : le format est alors juste par construction.
 
-Le bloc `[input]` de `project.godot` sérialise des objets `InputEvent` dont les propriétés varient d'une version mineure de Godot à l'autre ; l'écrire à la main produit un fichier fragile. Passe par l'éditeur : *Projet → Paramètres du projet → Contrôles*, et crée ces six actions avec exactement ces noms.
+- [ ] **Step 1 : Écrire le script de configuration**
+
+`tools/setup_input_map.gd` :
+
+```gdscript
+extends SceneTree
+
+## Écrit le bloc [input] de project.godot via l'API du moteur.
+## Lancer une seule fois :
+##   godot --headless --script tools/setup_input_map.gd
+## `use_item` ne sert qu'à partir du plan 3, mais on le déclare maintenant
+## pour ne pas rouvrir ce fichier.
+
+const DEADZONE := 0.2
+
+
+func _init() -> void:
+	_axis_action("steer_left", KEY_LEFT, JOY_AXIS_LEFT_X, -1.0)
+	_axis_action("steer_right", KEY_RIGHT, JOY_AXIS_LEFT_X, 1.0)
+	_axis_action("throttle", KEY_UP, JOY_AXIS_TRIGGER_RIGHT, 1.0)
+	_axis_action("brake", KEY_DOWN, JOY_AXIS_TRIGGER_LEFT, 1.0)
+	_button_action("drift", KEY_SPACE, JOY_BUTTON_A)
+	_button_action("use_item", KEY_CTRL, JOY_BUTTON_X)
+
+	var err := ProjectSettings.save()
+	if err != OK:
+		printerr("échec de l'écriture de project.godot : %d" % err)
+		quit(1)
+		return
+	print("input map écrite")
+	quit()
+
+
+func _key(keycode: Key) -> InputEventKey:
+	var event := InputEventKey.new()
+	event.physical_keycode = keycode
+	return event
+
+
+func _axis_action(action: String, keycode: Key, axis: JoyAxis, value: float) -> void:
+	var motion := InputEventJoypadMotion.new()
+	motion.axis = axis
+	motion.axis_value = value
+	ProjectSettings.set_setting("input/" + action, {
+		"deadzone": DEADZONE,
+		"events": [_key(keycode), motion],
+	})
+
+
+func _button_action(action: String, keycode: Key, button: JoyButton) -> void:
+	var press := InputEventJoypadButton.new()
+	press.button_index = button
+	ProjectSettings.set_setting("input/" + action, {
+		"deadzone": DEADZONE,
+		"events": [_key(keycode), press],
+	})
+```
+
+Les liaisons produites :
 
 | Action | Clavier | Manette |
 |---|---|---|
 | `steer_left` | Flèche gauche | Stick gauche, axe X négatif |
 | `steer_right` | Flèche droite | Stick gauche, axe X positif |
-| `throttle` | Flèche haut | Gâchette droite (R2) |
-| `brake` | Flèche bas | Gâchette gauche (L2) |
-| `drift` | Espace | Bouton droit de la croix (A / croix) |
-| `use_item` | Ctrl gauche | Bouton gauche de la croix (X / carré) |
+| `throttle` | Flèche haut | Gâchette droite |
+| `brake` | Flèche bas | Gâchette gauche |
+| `drift` | Espace | Bouton A / croix |
+| `use_item` | Ctrl gauche | Bouton X / carré |
 
-`use_item` ne sert à rien avant le plan 3 ; on le déclare maintenant pour ne pas rouvrir ce fichier.
+- [ ] **Step 2 : Écrire le test qui échoue**
 
-- [ ] **Step 2 : Vérifier**
+`tests/test_input_map.gd` :
 
-```bash
-grep -c "steer_left\|steer_right\|throttle\|brake\|drift\|use_item" project.godot
+```gdscript
+extends GutTest
+
+const ACTIONS := [
+	"steer_left", "steer_right", "throttle", "brake", "drift", "use_item",
+]
+
+
+func test_toutes_les_actions_de_pilotage_sont_declarees() -> void:
+	for action in ACTIONS:
+		assert_true(InputMap.has_action(action), "action manquante : %s" % action)
+
+
+func test_chaque_action_a_au_moins_une_liaison() -> void:
+	for action in ACTIONS:
+		if not InputMap.has_action(action):
+			continue
+		assert_gt(InputMap.action_get_events(action).size(), 0,
+			"l'action %s n'a aucune liaison" % action)
 ```
 
-Attendu : `6` ou davantage.
-
-- [ ] **Step 3 : Commit**
+- [ ] **Step 3 : Lancer les tests pour vérifier qu'ils échouent**
 
 ```bash
-rtk git add project.godot && rtk git commit -m "chore: actions d'entrée clavier et manette"
+"$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
+```
+
+Attendu : ÉCHEC — les six actions sont absentes de l'`InputMap`.
+
+- [ ] **Step 4 : Générer l'input map**
+
+```bash
+"$GODOT" --headless --script tools/setup_input_map.gd
+```
+
+Attendu : `input map écrite`.
+
+- [ ] **Step 5 : Lancer les tests pour vérifier qu'ils passent**
+
+```bash
+"$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
+```
+
+Attendu : `35 passing`.
+
+- [ ] **Step 6 : Commit**
+
+```bash
+rtk git add tools/setup_input_map.gd tests/test_input_map.gd project.godot && rtk git commit -m "chore: actions d'entrée clavier et manette générées par le moteur"
 ```
 
 ---
@@ -1057,7 +1160,7 @@ func poll(_delta: float) -> KartCommand:
 	return command
 ```
 
-- [ ] **Step 3 : Vérifier que le projet charge sans erreur**
+- [ ] **Step 3 : Vérifier que les scripts compilent**
 
 ```bash
 "$GODOT" --headless --check-only --script scripts/kart/player_input.gd
@@ -1073,7 +1176,7 @@ rtk git add scripts/kart/kart_input.gd scripts/kart/player_input.gd && rtk git c
 
 ---
 
-### Task 11 : Le nœud Kart
+### Task 11 : Le nœud Kart et sa scène
 
 **Files:**
 - Create: `scripts/kart/kart.gd`
@@ -1138,33 +1241,54 @@ func _physics_process(delta: float) -> void:
 
 - [ ] **Step 2 : Créer la ressource de réglage**
 
-`resources/karts/default_kart.tres` :
+`resources/karts/default_kart.tres`. Les champs non listés prennent les valeurs par défaut de `KartStats` ; c'est ce fichier qu'on éditera pendant les sessions de réglage.
 
 ```
 [gd_resource type="Resource" script_class="KartStats" load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://scripts/kart/kart_stats.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/kart/kart_stats.gd" id="1_stats"]
 
 [resource]
-script = ExtResource("1")
+script = ExtResource("1_stats")
 ```
 
-Les champs non listés prennent les valeurs par défaut de `KartStats`.
+- [ ] **Step 3 : Écrire la scène du kart**
 
-- [ ] **Step 3 : Construire la scène du kart**
-
-Dans l'éditeur Godot, crée `scenes/kart/kart.tscn` avec cet arbre :
+`scenes/kart/kart.tscn`. Version minimale : les particules et les visuels arrivent en Task 13.
 
 ```
-Kart                  CharacterBody3D, script scripts/kart/kart.gd
-├─ CollisionShape3D   BoxShape3D, taille (1.2, 0.8, 1.8)
-├─ Body               MeshInstance3D, BoxMesh de taille (1.2, 0.8, 1.8)
-└─ PlayerInput        Node, script scripts/kart/player_input.gd
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/kart/kart.gd" id="1_kart"]
+[ext_resource type="Script" path="res://scripts/kart/player_input.gd" id="2_input"]
+[ext_resource type="Resource" path="res://resources/karts/default_kart.tres" id="3_stats"]
+
+[sub_resource type="BoxShape3D" id="Shape_body"]
+size = Vector3(1.2, 0.8, 1.8)
+
+[sub_resource type="BoxMesh" id="Mesh_body"]
+size = Vector3(1.2, 0.8, 1.8)
+
+[sub_resource type="StandardMaterial3D" id="Mat_body"]
+albedo_color = Color(0.55, 0.55, 0.58, 1)
+
+[node name="Kart" type="CharacterBody3D"]
+script = ExtResource("1_kart")
+stats = ExtResource("3_stats")
+input_path = NodePath("PlayerInput")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+shape = SubResource("Shape_body")
+
+[node name="Body" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+mesh = SubResource("Mesh_body")
+surface_material_override/0 = SubResource("Mat_body")
+
+[node name="PlayerInput" type="Node" parent="."]
+script = ExtResource("2_input")
 ```
-
-Sur le nœud `Kart` : `stats` → `res://resources/karts/default_kart.tres`, et `input_path` → `PlayerInput`.
-
-Sur `Body`, décale la position en Y de `0.4` pour poser le cube sur le sol, et donne-lui un `StandardMaterial3D` gris.
 
 - [ ] **Step 4 : Vérifier que la scène charge**
 
@@ -1172,7 +1296,9 @@ Sur `Body`, décale la position en Y de `0.4` pour poser le cube sur le sol, et 
 "$GODOT" --headless --quit-after 60 scenes/kart/kart.tscn
 ```
 
-Attendu : aucune erreur dans la sortie. Un avertissement sur l'absence de caméra est normal.
+Attendu : aucune ligne contenant `ERROR` ni `SCRIPT ERROR` dans la sortie. Un avertissement sur l'absence de caméra est normal.
+
+Si Godot signale un `load_steps` incorrect, corrige le nombre : c'est le total des `ext_resource` et `sub_resource`, plus un.
 
 - [ ] **Step 5 : Commit**
 
@@ -1330,26 +1456,75 @@ func _update_sparks(motor: KartMotor) -> void:
 		return
 
 	_sparks.emitting = true
-	var color := TIER_COLORS[mini(tier, TIER_COLORS.size()) - 1]
-	_spark_material.albedo_color = color
+	_spark_material.albedo_color = TIER_COLORS[mini(tier, TIER_COLORS.size()) - 1]
 ```
 
-- [ ] **Step 2 : Compléter la scène du kart**
+- [ ] **Step 2 : Remplacer la scène du kart**
 
-Dans l'éditeur, ajoute à `scenes/kart/kart.tscn` :
+Réécris entièrement `scenes/kart/kart.tscn` :
 
 ```
-Kart
-├─ CollisionShape3D
-├─ Body
-│  └─ Sparks          GPUParticles3D, position (0, 0.2, 0.9)
-├─ PlayerInput
-└─ Visuals            Node3D, script scripts/kart/kart_visuals.gd
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/kart/kart.gd" id="1_kart"]
+[ext_resource type="Script" path="res://scripts/kart/player_input.gd" id="2_input"]
+[ext_resource type="Resource" path="res://resources/karts/default_kart.tres" id="3_stats"]
+[ext_resource type="Script" path="res://scripts/kart/kart_visuals.gd" id="4_visuals"]
+
+[sub_resource type="BoxShape3D" id="Shape_body"]
+size = Vector3(1.2, 0.8, 1.8)
+
+[sub_resource type="BoxMesh" id="Mesh_body"]
+size = Vector3(1.2, 0.8, 1.8)
+
+[sub_resource type="StandardMaterial3D" id="Mat_body"]
+albedo_color = Color(0.55, 0.55, 0.58, 1)
+
+[sub_resource type="ParticleProcessMaterial" id="Proc_sparks"]
+emission_shape = 1
+emission_sphere_radius = 0.25
+direction = Vector3(0, 1, 0)
+spread = 45.0
+initial_velocity_min = 1.5
+initial_velocity_max = 3.0
+gravity = Vector3(0, -2, 0)
+scale_min = 0.05
+scale_max = 0.12
+
+[sub_resource type="QuadMesh" id="Mesh_spark"]
+size = Vector2(0.1, 0.1)
+
+[node name="Kart" type="CharacterBody3D"]
+script = ExtResource("1_kart")
+stats = ExtResource("3_stats")
+input_path = NodePath("PlayerInput")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+shape = SubResource("Shape_body")
+
+[node name="Body" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+mesh = SubResource("Mesh_body")
+surface_material_override/0 = SubResource("Mat_body")
+
+[node name="Sparks" type="GPUParticles3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.2, 0.9)
+emitting = false
+amount = 24
+lifetime = 0.35
+process_material = SubResource("Proc_sparks")
+draw_pass_1 = SubResource("Mesh_spark")
+
+[node name="PlayerInput" type="Node" parent="."]
+script = ExtResource("2_input")
+
+[node name="Visuals" type="Node3D" parent="."]
+script = ExtResource("4_visuals")
+kart_path = NodePath("..")
+body_path = NodePath("../Body")
+sparks_path = NodePath("../Body/Sparks")
 ```
-
-Sur `Sparks`, crée un `ParticleProcessMaterial` avec : émission sphérique de rayon `0.25`, `Gravity` à `(0, -2, 0)`, `Initial Velocity` entre `1.5` et `3.0`, `Scale` entre `0.05` et `0.12`, `Lifetime` à `0.35`, `Amount` à `24`. Donne-lui un `QuadMesh` de `0.1 × 0.1` comme `Draw Pass 1`.
-
-Sur `Visuals`, renseigne `kart_path` → `..`, `body_path` → `../Body`, `sparks_path` → `../Body/Sparks`.
 
 - [ ] **Step 3 : Vérifier**
 
@@ -1357,7 +1532,7 @@ Sur `Visuals`, renseigne `kart_path` → `..`, `body_path` → `../Body`, `spark
 "$GODOT" --headless --quit-after 60 scenes/kart/kart.tscn
 ```
 
-Attendu : aucune erreur.
+Attendu : aucune ligne contenant `ERROR` ni `SCRIPT ERROR`.
 
 - [ ] **Step 4 : Commit**
 
@@ -1367,32 +1542,115 @@ rtk git add scripts/kart/kart_visuals.gd scenes/kart/kart.tscn && rtk git commit
 
 ---
 
-### Task 14 : Le terrain d'essai et le point de validation
+### Task 14 : Le terrain d'essai
 
 **Files:**
+- Create: `scripts/world/marker_field.gd`
 - Create: `scenes/test_ground.tscn`
 - Modify: `project.godot`
 
-- [ ] **Step 1 : Construire le terrain**
+- [ ] **Step 1 : Écrire le champ de repères**
 
-Dans l'éditeur, crée `scenes/test_ground.tscn` :
+`scripts/world/marker_field.gd`. Sur un plan uniforme, aucune sensation de vitesse n'est perceptible et le point de validation serait invalidable. Un `MultiMesh` place quarante repères pour un seul draw call — la discipline de perf du spec commence ici.
+
+```gdscript
+class_name MarkerField
+extends MultiMeshInstance3D
+
+## Repères verticaux dispersés, pour donner une référence de vitesse
+## et de distance sur un sol nu.
+
+@export var count: int = 40
+@export var field_radius: float = 90.0
+@export var inner_radius: float = 12.0
+@export var random_seed: int = 1
+
+
+func _ready() -> void:
+	var box := BoxMesh.new()
+	box.size = Vector3(1.0, 4.0, 1.0)
+
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color(0.92, 0.52, 0.22)
+	box.material = material
+
+	var mesh := MultiMesh.new()
+	mesh.transform_format = MultiMesh.TRANSFORM_3D
+	mesh.mesh = box
+	mesh.instance_count = count
+
+	var rng := RandomNumberGenerator.new()
+	rng.seed = random_seed
+	for i in count:
+		var angle := rng.randf() * TAU
+		# La racine carrée répartit uniformément sur le disque plutôt que
+		# de tout tasser au centre.
+		var span := field_radius - inner_radius
+		var dist := inner_radius + sqrt(rng.randf()) * span
+		var pos := Vector3(cos(angle) * dist, 2.0, sin(angle) * dist)
+		mesh.set_instance_transform(i, Transform3D(Basis.IDENTITY, pos))
+
+	multimesh = mesh
+```
+
+- [ ] **Step 2 : Écrire le terrain**
+
+`scenes/test_ground.tscn` :
 
 ```
-TestGround                Node3D
-├─ Ground                 StaticBody3D
-│  ├─ CollisionShape3D    BoxShape3D, taille (400, 1, 400), position Y = -0.5
-│  └─ MeshInstance3D      PlaneMesh 400 × 400, matériau gris moyen
-├─ Markers                Node3D — une douzaine de BoxMesh de 1 × 4 × 1
-│                         dispersés, pour percevoir la vitesse et les distances
-├─ Kart                   instance de scenes/kart/kart.tscn, position (0, 1, 0)
-├─ ChaseCamera            Camera3D, script scripts/camera/chase_camera.gd,
-│                         target_path → ../Kart
-└─ DirectionalLight3D     rotation X = -50°, Y = -40°
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/kart/kart.tscn" id="1_kart"]
+[ext_resource type="Script" path="res://scripts/camera/chase_camera.gd" id="2_camera"]
+[ext_resource type="Script" path="res://scripts/world/marker_field.gd" id="3_markers"]
+
+[sub_resource type="BoxShape3D" id="Shape_ground"]
+size = Vector3(400, 1, 400)
+
+[sub_resource type="PlaneMesh" id="Mesh_ground"]
+size = Vector2(400, 400)
+
+[sub_resource type="StandardMaterial3D" id="Mat_ground"]
+albedo_color = Color(0.42, 0.44, 0.46, 1)
+
+[sub_resource type="Environment" id="Env_sky"]
+background_mode = 1
+ambient_light_source = 2
+ambient_light_color = Color(0.6, 0.68, 0.78, 1)
+ambient_light_energy = 0.6
+
+[node name="TestGround" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_sky")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.766, -0.492, 0.414, 0, 0.643, 0.766, -0.643, -0.587, 0.492, 0, 20, 0)
+shadow_enabled = true
+
+[node name="Ground" type="StaticBody3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+shape = SubResource("Shape_ground")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Ground"]
+mesh = SubResource("Mesh_ground")
+surface_material_override/0 = SubResource("Mat_ground")
+
+[node name="Markers" type="MultiMeshInstance3D" parent="."]
+script = ExtResource("3_markers")
+
+[node name="Kart" parent="." instance=ExtResource("1_kart")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+
+[node name="ChaseCamera" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, 6)
+script = ExtResource("2_camera")
+target_path = NodePath("../Kart")
 ```
 
-Les repères verticaux ne sont pas décoratifs : sur un plan uniforme, aucune sensation de vitesse n'est perceptible, et le jalon serait invalidable.
-
-- [ ] **Step 2 : Définir la scène principale**
+- [ ] **Step 3 : Définir la scène principale**
 
 Dans `project.godot`, section `[application]`, ajoute :
 
@@ -1400,38 +1658,60 @@ Dans `project.godot`, section `[application]`, ajoute :
 run/main_scene="res://scenes/test_ground.tscn"
 ```
 
-- [ ] **Step 3 : Lancer la suite de tests complète**
+- [ ] **Step 4 : Vérifier que la scène charge**
+
+```bash
+"$GODOT" --headless --quit-after 120 scenes/test_ground.tscn
+```
+
+Attendu : aucune ligne contenant `ERROR` ni `SCRIPT ERROR`.
+
+- [ ] **Step 5 : Lancer la suite de tests complète**
 
 ```bash
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `33 passing`, `0 failing`.
+Attendu : `35 passing`, `0 failing`.
 
-- [ ] **Step 4 : Commit**
+- [ ] **Step 6 : Commit**
 
 ```bash
-rtk git add scenes/test_ground.tscn project.godot && rtk git commit -m "feat: terrain d'essai pour le point de validation du pilotage"
+rtk git add scripts/world/marker_field.gd scenes/test_ground.tscn project.godot && rtk git commit -m "feat: terrain d'essai pour le point de validation du pilotage"
 ```
 
-- [ ] **Step 5 : Le point de validation — jouer**
+---
+
+### Task 15 : Le point de validation
+
+**Files:** aucun — c'est une session de jeu, pas une tâche de code.
+
+Cette tâche ne peut pas être exécutée par un agent. Elle demande une manette, un écran et dix minutes.
+
+- [ ] **Step 1 : Lancer le jeu**
 
 ```bash
 "$GODOT" scenes/test_ground.tscn
 ```
 
-C'est le jalon 3 du spec, et le seul qui peut remettre en cause le reste du design. Il ne se valide pas en lisant du code : prends la manette et roule au moins dix minutes.
+- [ ] **Step 2 : Jouer au moins dix minutes**
 
-À vérifier :
+C'est le jalon 3 du spec, et le seul qui puisse remettre en cause le reste du design. À vérifier :
 
 - Le kart répond immédiatement, sans sensation de latence.
 - Le dérapage s'enclenche de façon fiable et se tient sans lutter.
 - Les trois couleurs d'étincelles sont distinguables d'un coup d'œil, sans quitter la route des yeux.
-- Le mini-turbo se **sent** au moment du déclenchement — si le coup de pied est discret, augmente `boost_speed_multiplier`.
+- Le mini-turbo se **sent** au déclenchement — si le coup de pied est discret, augmente `boost_speed_multiplier`.
 - Enchaîner les dérapages en zigzag sur une ligne droite est plaisant et rentable.
 - La vitesse se perçoit en passant près des repères.
 
-Les réglages se font dans `resources/karts/default_kart.tres`, moteur tournant : l'inspecteur de Godot applique les changements en direct. Commite les valeurs retenues.
+- [ ] **Step 3 : Régler et commiter les valeurs retenues**
+
+Les réglages se font dans `resources/karts/default_kart.tres`, moteur tournant : l'inspecteur applique les changements en direct.
+
+```bash
+rtk git add resources/karts/default_kart.tres && rtk git commit -m "tune: réglages de pilotage retenus après la session de validation"
+```
 
 **Si la conduite n'est pas agréable ici, ne passe pas au plan 2.** Aucune piste, aucune IA et aucun shader ne rattraperont un pilotage médiocre — et c'est précisément pour le découvrir maintenant que ce jalon existe.
 
