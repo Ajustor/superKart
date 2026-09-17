@@ -371,3 +371,27 @@ func test_tenir_le_bouton_avant_d_etre_assez_rapide_n_empeche_pas_la_glisse() ->
 	_run(stats.hop_duration + 0.2)
 	assert_eq(motor.state, KartMotor.State.DRIFT,
 		"tenir le bouton en attendant d'être assez rapide doit fonctionner")
+
+
+func test_deraper_vers_l_interieur_tourne_plus_court_qu_en_adherence() -> void:
+	_enter_drift(1)
+	cmd.steer = 1.0
+	_run(0.5)
+	var avant := motor.velocity_dir
+	_run(1.0)
+	var lacet_glisse := motor.velocity_dir - avant
+
+	# Même vitesse, même durée, mais en adhérence.
+	var grip := KartMotor.new(stats)
+	var c := KartCommand.new()
+	c.throttle = 1.0
+	for i in 300:
+		grip.step(c, 1.0 / 60.0)
+	c.steer = 1.0
+	var avant_grip := grip.velocity_dir
+	for i in 60:
+		grip.step(c, 1.0 / 60.0)
+	var lacet_grip := grip.velocity_dir - avant_grip
+
+	assert_gt(lacet_glisse, lacet_grip,
+		"déraper vers l'intérieur doit tourner plus court que rester en adhérence")

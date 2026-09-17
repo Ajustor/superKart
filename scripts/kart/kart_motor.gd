@@ -131,8 +131,11 @@ func _update_drift(cmd: KartCommand, delta: float) -> void:
 	var target := deg_to_rad(lerpf(stats.drift_angle_max_deg, stats.drift_angle_min_deg, t))
 	drift_angle = move_toward(drift_angle, target, deg_to_rad(stats.drift_angle_rate_deg) * delta)
 
-	var max_angle := deg_to_rad(stats.drift_angle_max_deg)
-	var courbure := drift_angle / max_angle
+	# La courbure suit le braquage, pas l'angle de glisse. Les dériver l'un de
+	# l'autre inversait la commande : braquer vers l'intérieur ouvrait le rayon
+	# et contre-braquer le resserrait, et l'entrée en glisse sous-virait le temps
+	# que l'angle monte depuis zéro.
+	var courbure := lerpf(0.5, 1.0, t)
 	velocity_dir += float(drift_dir) * stats.drift_turn_rate * courbure * delta
 	heading = velocity_dir + float(drift_dir) * drift_angle
 
