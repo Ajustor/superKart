@@ -22,6 +22,7 @@ var drift_dir: int = 0          ## -1 gauche, +1 droite, 0 hors dérapage
 var drift_charge: float = 0.0
 var drift_angle: float = 0.0    ## écart caisse / trajectoire, en radians
 var hop_timer: float = 0.0
+var _drift_was_held: bool = false
 
 
 func _init(kart_stats: KartStats) -> void:
@@ -41,6 +42,8 @@ func step(cmd: KartCommand, delta: float) -> void:
 			_update_hop(cmd, delta)
 		State.DRIFT:
 			_update_drift(cmd, delta)
+
+	_drift_was_held = cmd.drift
 
 
 ## Vitesse maximale effective. Le turbo écrase la pénalité hors-piste :
@@ -84,6 +87,8 @@ func _update_grip_steering(cmd: KartCommand, delta: float) -> void:
 func _try_enter_drift(cmd: KartCommand) -> void:
 	if not cmd.drift:
 		return
+	if _drift_was_held:
+		return   # déjà tenu : une glisse cassée le reste jusqu'au relâchement
 	if absf(cmd.steer) < STEER_DEADZONE:
 		return
 	if speed < stats.min_drift_speed:
@@ -134,12 +139,24 @@ func _update_drift(cmd: KartCommand, delta: float) -> void:
 
 	if not cmd.drift:
 		_release_drift()
+		return
+
+	if _drift_is_broken(inward):
+		_end_drift()
+
+
+## Une glisse cassée ne rapporte rien, quel que soit son niveau de charge.
+func _drift_is_broken(inward: float) -> bool:
+	return speed < stats.min_drift_speed or inward < -0.8
 
 
 ## Nombre de paliers franchis pour une charge donnée. 0 = aucun turbo.
+## Borné par le plus court des deux tableaux : un palier sans durée de
+## turbo associée n'en est pas un, et indexer à l'aveugle planterait.
 func tier_for_charge(charge: float) -> int:
+	var count := mini(stats.drift_tiers.size(), stats.boost_durations.size())
 	var tier := 0
-	for i in stats.drift_tiers.size():
+	for i in count:
 		if charge >= stats.drift_tiers[i]:
 			tier = i + 1
 	return tier

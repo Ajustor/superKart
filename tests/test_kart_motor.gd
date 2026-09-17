@@ -135,7 +135,7 @@ func test_le_sens_de_glisse_est_verrouille_a_l_entree() -> void:
 	cmd.drift = true
 	_run(stats.hop_duration + 0.1)
 	assert_eq(motor.drift_dir, -1, "braquer à gauche verrouille une glisse à gauche")
-	cmd.steer = 1.0
+	cmd.steer = 0.5          # contre-braquage partiel, sous le seuil d'annulation
 	_run(0.5)
 	assert_eq(motor.drift_dir, -1, "le sens ne change pas en cours de glisse")
 
@@ -296,3 +296,67 @@ func test_le_derapage_a_gauche_est_le_miroir_du_droit() -> void:
 		"une glisse à gauche courbe la trajectoire à gauche")
 	assert_almost_eq(motor.heading, motor.velocity_dir - motor.drift_angle, 0.001,
 		"à gauche, la caisse se décale du côté opposé")
+
+
+func test_le_contre_braquage_annule_le_derapage_sans_turbo() -> void:
+	_enter_drift(1)
+	_run(stats.drift_tiers[2] + 0.5)
+	cmd.steer = -1.0
+	_run(0.2)
+	assert_eq(motor.state, KartMotor.State.GRIP, "contre-braquer casse la glisse")
+	assert_eq(motor.boost_timer, 0.0, "une glisse cassée ne rapporte rien, même chargée à fond")
+
+
+func test_tomber_sous_la_vitesse_minimale_annule_le_derapage() -> void:
+	_enter_drift(1)
+	cmd.throttle = 0.0
+	cmd.brake = 1.0
+	_run(3.0)
+	assert_eq(motor.state, KartMotor.State.GRIP)
+
+
+func test_le_hors_piste_plafonne_la_vitesse() -> void:
+	motor.on_offroad = true
+	cmd.throttle = 1.0
+	_run(20.0)
+	assert_almost_eq(motor.speed, stats.max_speed * stats.offroad_speed_multiplier, 0.1)
+
+
+func test_revenir_sur_la_piste_rend_la_vitesse() -> void:
+	motor.on_offroad = true
+	cmd.throttle = 1.0
+	_run(20.0)
+	motor.on_offroad = false
+	_run(10.0)
+	assert_almost_eq(motor.speed, stats.max_speed, 0.1)
+
+
+func test_le_turbo_efface_la_penalite_hors_piste() -> void:
+	motor.on_offroad = true
+	cmd.throttle = 1.0
+	_run(10.0)
+	motor.boost_timer = 1.0
+	motor.step(cmd, 1.0 / 60.0)
+	assert_gt(motor.speed, stats.max_speed,
+		"foncer dans l'herbe sous turbo doit rester payant")
+
+
+func test_un_palier_sans_duree_de_turbo_n_en_est_pas_un() -> void:
+	stats.drift_tiers = PackedFloat32Array([0.6, 1.5, 2.6, 4.0])
+	assert_eq(motor.tier_for_charge(5.0), 3,
+		"un palier sans durée associée ne doit pas être atteignable")
+
+
+func test_une_glisse_cassee_exige_de_relacher_avant_d_en_relancer_une() -> void:
+	_enter_drift(1)
+	cmd.steer = -1.0
+	_run(0.5)
+	assert_eq(motor.state, KartMotor.State.GRIP,
+		"bouton toujours tenu : la glisse cassée ne se relance pas")
+	cmd.drift = false
+	_run(0.1)
+	cmd.steer = 1.0
+	cmd.drift = true
+	_run(stats.hop_duration + 0.1)
+	assert_eq(motor.state, KartMotor.State.DRIFT,
+		"après avoir relâché, on peut en relancer une")
