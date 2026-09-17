@@ -1861,7 +1861,7 @@ C'est le jalon 3 du spec, et le seul qui puisse remettre en cause le reste du de
 
 - Le kart répond immédiatement, sans sensation de latence.
 - Le dérapage s'enclenche de façon fiable et se tient sans lutter.
-- Les trois couleurs d'étincelles sont distinguables d'un coup d'œil, sans quitter la route des yeux. **Teste spécifiquement le palier 1 contre le palier 3 en regardant la piste, pas les étincelles** : c'est la paire la plus fragile, et c'est en périphérie qu'elle doit fonctionner.
+- Les trois couleurs d'étincelles sont distinguables d'un coup d'œil, sans quitter la route des yeux. **Teste spécifiquement le palier 1 contre le palier 3 en regardant la piste, pas les étincelles.** Après le passage du violet au magenta, ces deux-là ne se distinguent plus que par la teinte — 96° d'écart, mais une luminance quasi identique. Or la vision périphérique lit bien mieux la luminosité que la couleur. Si la confusion persiste, assombris le bleu du palier 1 plutôt que de retoucher le magenta : ça rétablit un écart de luminance sans rapprocher les teintes.
 - Le mini-turbo se **sent** au déclenchement — si le coup de pied est discret, augmente `boost_speed_multiplier`.
 - Enchaîner les dérapages en zigzag sur une ligne droite est plaisant et rentable.
 - **Le frein est inopérant pendant tout un turbo**, soit jusqu'à 1,8 s au palier 3. Arrive-t-il de subir un turbo max à l'approche d'un virage serré, sans recours ? Si oui, il faudra soit laisser le frein écourter le turbo, soit raccourcir le palier 3.
