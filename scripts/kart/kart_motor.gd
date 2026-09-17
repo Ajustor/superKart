@@ -1,0 +1,49 @@
+class_name KartMotor
+extends RefCounted
+
+## Toute la physique arcade du kart. Ne connaît ni la scène, ni les nœuds,
+## ni le temps réel : il transforme (état, commande, delta) en nouvel état.
+## C'est ce qui le rend testable sans lancer le jeu.
+
+enum State { GRIP, HOP, DRIFT, STUNNED }
+
+var stats: KartStats
+
+var state: int = State.GRIP
+var speed: float = 0.0
+var velocity_dir: float = 0.0   ## yaw du vecteur vitesse, en radians
+var heading: float = 0.0        ## yaw de la caisse, en radians
+var boost_timer: float = 0.0
+var on_offroad: bool = false
+
+
+func _init(kart_stats: KartStats) -> void:
+	stats = kart_stats
+
+
+func step(cmd: KartCommand, delta: float) -> void:
+	_update_speed(cmd, delta)
+
+
+## Vitesse maximale effective. Le turbo écrase la pénalité hors-piste :
+## foncer dans l'herbe sous champignon doit rester payant.
+func _current_max_speed() -> float:
+	if boost_timer > 0.0:
+		return stats.max_speed * stats.boost_speed_multiplier
+	if on_offroad:
+		return stats.max_speed * stats.offroad_speed_multiplier
+	return stats.max_speed
+
+
+func _update_speed(cmd: KartCommand, delta: float) -> void:
+	var ceiling := _current_max_speed()
+
+	if cmd.brake > 0.0:
+		speed = move_toward(speed, 0.0, stats.brake_force * cmd.brake * delta)
+	elif cmd.throttle > 0.0:
+		speed = move_toward(speed, ceiling, stats.acceleration * cmd.throttle * delta)
+	else:
+		speed = move_toward(speed, 0.0, stats.coast_friction * delta)
+
+	if speed > ceiling:
+		speed = move_toward(speed, ceiling, stats.coast_friction * 2.0 * delta)
