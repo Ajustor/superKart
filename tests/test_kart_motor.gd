@@ -108,3 +108,59 @@ func test_le_frein_est_prioritaire_sur_les_gaz() -> void:
 	_run(0.5)
 	assert_lt(motor.speed, lancee,
 		"frein et gaz ensemble : le frein doit gagner, pas se mélanger aux gaz")
+
+
+func test_le_bouton_de_derapage_declenche_un_saut() -> void:
+	cmd.throttle = 1.0
+	_run(5.0)
+	cmd.steer = 1.0
+	cmd.drift = true
+	motor.step(cmd, 1.0 / 60.0)
+	assert_eq(motor.state, KartMotor.State.HOP, "le dérapage commence par un saut")
+
+
+func test_le_saut_debouche_sur_le_derapage() -> void:
+	cmd.throttle = 1.0
+	_run(5.0)
+	cmd.steer = 1.0
+	cmd.drift = true
+	_run(stats.hop_duration + 0.1)
+	assert_eq(motor.state, KartMotor.State.DRIFT, "après le saut, le kart glisse")
+
+
+func test_le_sens_de_glisse_est_verrouille_a_l_entree() -> void:
+	cmd.throttle = 1.0
+	_run(5.0)
+	cmd.steer = -1.0
+	cmd.drift = true
+	_run(stats.hop_duration + 0.1)
+	assert_eq(motor.drift_dir, -1, "braquer à gauche verrouille une glisse à gauche")
+	cmd.steer = 1.0
+	_run(0.5)
+	assert_eq(motor.drift_dir, -1, "le sens ne change pas en cours de glisse")
+
+
+func test_pas_de_derapage_sans_braquage() -> void:
+	cmd.throttle = 1.0
+	_run(5.0)
+	cmd.drift = true
+	_run(0.5)
+	assert_eq(motor.state, KartMotor.State.GRIP, "le dérapage exige un braquage")
+
+
+func test_pas_de_derapage_sous_la_vitesse_minimale() -> void:
+	cmd.steer = 1.0
+	cmd.drift = true
+	_run(0.5)
+	assert_eq(motor.state, KartMotor.State.GRIP, "trop lent pour déraper")
+
+
+func test_relacher_le_bouton_pendant_le_saut_annule_le_derapage() -> void:
+	cmd.throttle = 1.0
+	_run(5.0)
+	cmd.steer = 1.0
+	cmd.drift = true
+	_run(stats.hop_duration * 0.5)
+	cmd.drift = false
+	_run(stats.hop_duration)
+	assert_eq(motor.state, KartMotor.State.GRIP)
