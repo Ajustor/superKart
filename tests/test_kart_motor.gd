@@ -74,3 +74,37 @@ func test_le_frein_arrete_le_kart() -> void:
 	cmd.brake = 1.0
 	_run(3.0)
 	assert_almost_eq(motor.speed, 0.0, 0.01, "trois secondes de frein doivent immobiliser le kart")
+
+
+func test_braquer_a_droite_fait_tourner_le_cap_a_droite() -> void:
+	cmd.throttle = 1.0
+	_run(5.0)
+	var depart := motor.velocity_dir
+	cmd.steer = 1.0
+	_run(1.0)
+	assert_gt(motor.velocity_dir, depart, "braquer à droite doit augmenter le yaw")
+
+
+func test_a_l_arret_le_kart_ne_tourne_pas() -> void:
+	cmd.steer = 1.0
+	_run(1.0)
+	assert_almost_eq(motor.velocity_dir, 0.0, 0.001,
+		"un kart immobile ne doit pas pouvoir pivoter sur place")
+
+
+func test_en_adherence_la_caisse_suit_le_vecteur_vitesse() -> void:
+	cmd.throttle = 1.0
+	cmd.steer = 1.0
+	_run(3.0)
+	assert_almost_eq(motor.heading, motor.velocity_dir, 0.001,
+		"hors dérapage, caisse et trajectoire sont alignées")
+
+
+func test_le_frein_est_prioritaire_sur_les_gaz() -> void:
+	cmd.throttle = 1.0
+	_run(10.0)
+	var lancee := motor.speed
+	cmd.brake = 1.0          # les deux enfoncés en même temps
+	_run(0.5)
+	assert_lt(motor.speed, lancee,
+		"frein et gaz ensemble : le frein doit gagner, pas se mélanger aux gaz")

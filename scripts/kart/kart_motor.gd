@@ -23,6 +23,7 @@ func _init(kart_stats: KartStats) -> void:
 
 func step(cmd: KartCommand, delta: float) -> void:
 	_update_speed(cmd, delta)
+	_update_grip_steering(cmd, delta)
 
 
 ## Vitesse maximale effective. Le turbo écrase la pénalité hors-piste :
@@ -47,3 +48,14 @@ func _update_speed(cmd: KartCommand, delta: float) -> void:
 
 	if speed > ceiling:
 		speed = move_toward(speed, ceiling, stats.coast_friction * 2.0 * delta)
+
+
+## Le braquage perd son autorité à basse vitesse : un kart à l'arrêt
+## ne pivote pas sur place, et l'effet monte progressivement.
+func _steering_authority() -> float:
+	return clampf(speed / (stats.max_speed * 0.5), 0.0, 1.0)
+
+
+func _update_grip_steering(cmd: KartCommand, delta: float) -> void:
+	velocity_dir += cmd.steer * stats.turn_rate * _steering_authority() * delta
+	heading = velocity_dir
