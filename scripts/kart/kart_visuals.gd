@@ -4,10 +4,14 @@ extends Node3D
 ## Inclinaison de la caisse et étincelles dont la couleur annonce le palier
 ## de mini-turbo chargé. Purement cosmétique : ne modifie jamais le moteur.
 
+## Les trois couleurs se lisent en vision périphérique, sans quitter la route
+## des yeux : il leur faut donc à la fois de l'écart de teinte et de l'écart de
+## luminosité. Le palier 3 tire vers le magenta plutôt que vers le violet, qui
+## était trop proche du bleu du palier 1 et plus sombre que lui.
 const TIER_COLORS := [
-	Color(0.35, 0.60, 1.00),   # palier 1 — bleu
-	Color(1.00, 0.65, 0.14),   # palier 2 — orange
-	Color(0.66, 0.33, 0.97),   # palier 3 — violet
+	Color(0.35, 0.60, 1.00),   # palier 1 — bleu      (teinte 217°, luma 0.58)
+	Color(1.00, 0.65, 0.14),   # palier 2 — orange    (teinte  33°, luma 0.69)
+	Color(1.00, 0.45, 0.88),   # palier 3 — magenta   (teinte 313°, luma 0.60)
 ]
 
 @export var kart_path: NodePath
@@ -52,15 +56,21 @@ func _update_lean(motor: KartMotor, delta: float) -> void:
 	_body.rotation.z = lerpf(_body.rotation.z, lean, 1.0 - exp(-lean_stiffness * delta))
 
 
+## La recoloration est globale et instantanée : toutes les particules vivantes
+## changent de couleur d'un coup. C'est volontaire — un dégradé par particule
+## ferait cohabiter deux couleurs pendant une fraction de seconde à chaque
+## changement de palier, soit exactement l'ambiguïté que ce signal doit éviter.
 func _update_sparks(motor: KartMotor) -> void:
-	if motor.state != KartMotor.State.DRIFT:
-		_sparks.emitting = false
+	var tier := 0
+	if motor.state == KartMotor.State.DRIFT:
+		tier = motor.tier_for_charge(motor.drift_charge)
+
+	var should_emit := tier > 0
+	if _sparks.emitting != should_emit:
+		_sparks.emitting = should_emit
+	if not should_emit:
 		return
 
-	var tier := motor.tier_for_charge(motor.drift_charge)
-	if tier == 0:
-		_sparks.emitting = false
-		return
-
-	_sparks.emitting = true
-	_spark_material.albedo_color = TIER_COLORS[mini(tier, TIER_COLORS.size()) - 1]
+	var color: Color = TIER_COLORS[mini(tier, TIER_COLORS.size()) - 1]
+	if _spark_material.albedo_color != color:
+		_spark_material.albedo_color = color
