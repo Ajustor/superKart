@@ -1564,6 +1564,7 @@ const TIER_COLORS := [
 @export var body_path: NodePath
 @export var sparks_path: NodePath
 @export var max_lean_deg: float = 14.0
+@export var lean_stiffness: float = 10.0
 
 var _kart: Kart
 var _body: Node3D
@@ -1598,7 +1599,7 @@ func _update_lean(motor: KartMotor, delta: float) -> void:
 	var lean := 0.0
 	if motor.state == KartMotor.State.DRIFT:
 		lean = -deg_to_rad(max_lean_deg) * float(motor.drift_dir)
-	_body.rotation.z = lerpf(_body.rotation.z, lean, clampf(10.0 * delta, 0.0, 1.0))
+	_body.rotation.z = lerpf(_body.rotation.z, lean, 1.0 - exp(-lean_stiffness * delta))
 
 
 func _update_sparks(motor: KartMotor) -> void:
@@ -1896,6 +1897,7 @@ Relevée en revue, sciemment non traitée — à reconsidérer à la passe de r�
 
 - `_steering_authority()` divise par `stats.max_speed * 0.5` sans garde. Si `max_speed` valait 0, `velocity_dir` serait empoisonné par un NaN de façon irrécupérable. Rien ne met cette valeur à 0 aujourd'hui, et se prémunir contre un état qu'aucun chemin de code ne produit coûterait plus en bruit qu'il ne rapporte.
 - `move_and_slide()` corrige la vitesse en cas de collision, mais `motor.speed` ne l'apprend jamais : la frame suivante, le nœud l'écrase depuis le moteur. Sans effet sur un plan vide, mais dès que le plan 2 ajoutera des murs, le kart les longera sans ralentir. La forme du correctif est connue et suit le précédent d'`on_offroad` : c'est au nœud d'observer le résultat de `move_and_slide()` et de l'injecter dans le moteur, jamais au moteur d'aller lire la scène.
+- Les raideurs de lissage (`follow_stiffness`, `roll_stiffness`, `lean_stiffness`) ne sont pas bornées à zéro. Sous la forme exponentielle, une valeur négative ferait diverger l'interpolation au lieu d'être neutralisée comme l'ancien `clampf` le faisait. Une raideur négative n'a aucun sens, et un échec bruyant vaut mieux qu'une caméra silencieusement figée — un `@export_range(0.0, ...)` fermerait le sujet si l'occasion se présente.
 - La caméra tourne en `_physics_process`, donc à 60 Hz. C'est le bon choix tant que la cible est 60 fps : le kart lui-même ne bouge qu'à la tick physique, donc passer la caméra en `_process` ne lisserait rien et ajouterait seulement des lectures décalées d'une tick. Le jour où le jeu viserait des écrans à 120 ou 144 Hz, le levier serait l'interpolation physique de Godot — un réglage projet à part entière, pas un changement de callback.
 - Le « coup de pied » du turbo s'applique une image après le relâchement : `_update_speed()` a déjà tourné quand `_release_drift()` pose `boost_timer`. À 60 Hz cela fait 16 ms, sous le seuil de perception ; à revoir seulement si la session de validation trouve le déclenchement mou.
 - Le facteur `0.5` — la vitesse à laquelle le braquage atteint sa pleine autorité — est un littéral en dur, alors que c'est un paramètre de ressenti et que le principe affiché est que les réglages vivent dans `KartStats`. À déplacer le jour où quelqu'un voudra réellement le régler.
