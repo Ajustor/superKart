@@ -20,7 +20,7 @@ Trois points à connaître avant de commencer — ils sont délibérés, pas des
 
 **Le sol est plat dans ce plan.** La suspension par quatre raycasts et l'alignement sur la pente décrits au spec arrivent avec le circuit réel, dans le plan 2. Ici, `is_on_floor()` et une gravité simple suffisent, et l'état `SONNÉ` n'est pas encore déclenché par quoi que ce soit — il sera câblé aux objets dans le plan 3. Le champ existe dès maintenant pour ne pas avoir à rouvrir le moteur.
 
-**Les scènes sont écrites à la main.** Les fichiers `.tscn` sont du texte et sont donnés en entier dans les tâches, de sorte que tout le plan s'exécute sans ouvrir l'éditeur. Le format est stable en Godot 4, mais si un chargement se plaint d'un `load_steps` incorrect, la valeur attendue est le total des `ext_resource` et `sub_resource` plus un. Même logique pour les actions d'entrée : plutôt que de sérialiser des `InputEvent` à la main, on les fait écrire par le moteur (Task 9).
+**Les scènes sont écrites à la main.** Les fichiers `.tscn` sont du texte et sont donnés en entier dans les tâches, de sorte que tout le plan s'exécute sans ouvrir l'éditeur. Le format est stable en Godot 4. Attention cependant : **un `load_steps` faux ne produit aucune erreur en headless** — le moteur le tolère en silence hors de l'éditeur. Il faut donc que le compte soit juste à l'écriture : c'est le total des `ext_resource` et `sub_resource`, plus un. Aucune commande ne le vérifiera à ta place. Même logique pour les actions d'entrée : plutôt que de sérialiser des `InputEvent` à la main, on les fait écrire par le moteur (Task 9).
 
 ## Convention de commit
 
@@ -1444,7 +1444,7 @@ script = ExtResource("2_input")
 
 Attendu : aucune ligne contenant `ERROR` ni `SCRIPT ERROR` dans la sortie. Un avertissement sur l'absence de caméra est normal.
 
-Si Godot signale un `load_steps` incorrect, corrige le nombre : c'est le total des `ext_resource` et `sub_resource`, plus un.
+Ne compte pas sur Godot pour signaler un `load_steps` faux : il le tolère en silence en headless. Vérifie le compte toi-même — total des `ext_resource` et `sub_resource`, plus un.
 
 - [ ] **Step 5 : Commit**
 
