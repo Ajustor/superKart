@@ -224,11 +224,15 @@ func test_les_paliers_sont_strictement_croissants() -> void:
 func test_une_commande_effacee_est_neutre() -> void:
 	cmd.steer = 1.0
 	cmd.throttle = 1.0
+	cmd.brake = 1.0
 	cmd.drift = true
+	cmd.use_item = true
 	cmd.clear()
 	assert_eq(cmd.steer, 0.0)
 	assert_eq(cmd.throttle, 0.0)
+	assert_eq(cmd.brake, 0.0)
 	assert_false(cmd.drift)
+	assert_false(cmd.use_item)
 ```
 
 - [ ] **Step 4 : Lancer les tests**
