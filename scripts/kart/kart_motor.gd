@@ -16,13 +16,13 @@ var speed: float = 0.0
 var velocity_dir: float = 0.0   ## yaw du vecteur vitesse, en radians
 var heading: float = 0.0        ## yaw de la caisse, en radians
 var boost_timer: float = 0.0
-var on_offroad: bool = false
+var on_offroad: bool = false    ## piloté de l'extérieur par la détection de terrain
 
 var drift_dir: int = 0          ## -1 gauche, +1 droite, 0 hors dérapage
 var drift_charge: float = 0.0
 var drift_angle: float = 0.0    ## écart caisse / trajectoire, en radians
 var hop_timer: float = 0.0
-var _drift_was_held: bool = false
+var _drift_locked_out: bool = false   ## une glisse cassée bloque jusqu'au relâchement
 
 
 func _init(kart_stats: KartStats) -> void:
@@ -43,7 +43,8 @@ func step(cmd: KartCommand, delta: float) -> void:
 		State.DRIFT:
 			_update_drift(cmd, delta)
 
-	_drift_was_held = cmd.drift
+	if not cmd.drift:
+		_drift_locked_out = false
 
 
 ## Vitesse maximale effective. Le turbo écrase la pénalité hors-piste :
@@ -87,8 +88,8 @@ func _update_grip_steering(cmd: KartCommand, delta: float) -> void:
 func _try_enter_drift(cmd: KartCommand) -> void:
 	if not cmd.drift:
 		return
-	if _drift_was_held:
-		return   # déjà tenu : une glisse cassée le reste jusqu'au relâchement
+	if _drift_locked_out:
+		return
 	if absf(cmd.steer) < STEER_DEADZONE:
 		return
 	if speed < stats.min_drift_speed:
@@ -142,6 +143,7 @@ func _update_drift(cmd: KartCommand, delta: float) -> void:
 		return
 
 	if _drift_is_broken(inward):
+		_drift_locked_out = true
 		_end_drift()
 
 

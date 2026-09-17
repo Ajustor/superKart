@@ -313,6 +313,7 @@ func test_tomber_sous_la_vitesse_minimale_annule_le_derapage() -> void:
 	cmd.brake = 1.0
 	_run(3.0)
 	assert_eq(motor.state, KartMotor.State.GRIP)
+	assert_eq(motor.boost_timer, 0.0, "une glisse cassée par la vitesse ne rapporte rien non plus")
 
 
 func test_le_hors_piste_plafonne_la_vitesse() -> void:
@@ -360,3 +361,13 @@ func test_une_glisse_cassee_exige_de_relacher_avant_d_en_relancer_une() -> void:
 	_run(stats.hop_duration + 0.1)
 	assert_eq(motor.state, KartMotor.State.DRIFT,
 		"après avoir relâché, on peut en relancer une")
+
+
+func test_tenir_le_bouton_avant_d_etre_assez_rapide_n_empeche_pas_la_glisse() -> void:
+	cmd.drift = true          # tenu dès le départ, avant d'avoir la vitesse
+	cmd.throttle = 1.0
+	_run(5.0)
+	cmd.steer = 1.0           # on braque une fois lancé, sans jamais relâcher
+	_run(stats.hop_duration + 0.2)
+	assert_eq(motor.state, KartMotor.State.DRIFT,
+		"tenir le bouton en attendant d'être assez rapide doit fonctionner")
