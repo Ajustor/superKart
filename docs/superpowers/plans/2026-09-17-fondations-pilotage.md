@@ -1751,6 +1751,13 @@ rtk git add resources/karts/default_kart.tres && rtk git commit -m "tune: régla
 
 ---
 
+## Dette acceptée
+
+Relevée en revue, sciemment non traitée — à reconsidérer à la passe de réglage du jalon 15, pas avant.
+
+- `_steering_authority()` divise par `stats.max_speed * 0.5` sans garde. Si `max_speed` valait 0, `velocity_dir` serait empoisonné par un NaN de façon irrécupérable. Rien ne met cette valeur à 0 aujourd'hui, et se prémunir contre un état qu'aucun chemin de code ne produit coûterait plus en bruit qu'il ne rapporte.
+- Le facteur `0.5` — la vitesse à laquelle le braquage atteint sa pleine autorité — est un littéral en dur, alors que c'est un paramètre de ressenti et que le principe affiché est que les réglages vivent dans `KartStats`. À déplacer le jour où quelqu'un voudra réellement le régler.
+
 ## Périmètre de ce plan
 
 **Livré :** un kart pilotable sur un plan nu, dérapage à trois paliers et mini-turbo, caméra dynamique, étincelles colorées, 34 tests unitaires sur la physique.
