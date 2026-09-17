@@ -189,6 +189,10 @@ extends Resource
 @export var boost_durations: PackedFloat32Array = PackedFloat32Array([0.5, 1.0, 1.8])
 @export var boost_speed_multiplier: float = 1.35
 
+@export_group("Saut")
+@export var gravity: float = 30.0
+@export var hop_impulse: float = 2.25   ## gravity * hop_duration / 2 : on atterrit quand la glisse commence
+
 @export_group("Pénalités")
 @export var offroad_speed_multiplier: float = 0.6
 @export var stun_duration: float = 1.2
@@ -1340,9 +1344,6 @@ extends CharacterBody3D
 ## Relie la source de commande, le moteur et le déplacement réel.
 ## Ne contient aucune règle de pilotage : tout est dans KartMotor.
 
-const GRAVITY := 30.0
-const HOP_IMPULSE := 4.5
-
 @export var stats: KartStats
 @export var input_path: NodePath
 
@@ -1369,13 +1370,13 @@ func _physics_process(delta: float) -> void:
 	# Le saut d'entrée en dérapage, purement vertical.
 	var hopping := motor.state == KartMotor.State.HOP
 	if hopping and not _was_hopping:
-		_vertical = HOP_IMPULSE
+		_vertical = stats.hop_impulse
 	_was_hopping = hopping
 
 	if is_on_floor() and _vertical <= 0.0:
 		_vertical = 0.0
 	else:
-		_vertical -= GRAVITY * delta
+		_vertical -= stats.gravity * delta
 
 	# En Godot, l'avant d'un nœud 3D est -Z.
 	var forward := Vector3(-sin(motor.velocity_dir), 0.0, -cos(motor.velocity_dir))
@@ -1852,6 +1853,8 @@ C'est le jalon 3 du spec, et le seul qui puisse remettre en cause le reste du de
 - **Le frein est inopérant pendant tout un turbo**, soit jusqu'à 1,8 s au palier 3. Arrive-t-il de subir un turbo max à l'approche d'un virage serré, sans recours ? Si oui, il faudra soit laisser le frein écourter le turbo, soit raccourcir le palier 3.
 - La vitesse se perçoit en passant près des repères.
 
+**La hauteur du saut.** Avec l'impulsion calée pour atterrir pile au début de la glisse, l'apex n'est qu'à 8 cm environ. Si le saut ne se voit pas à l'écran, deux leviers : allonger `hop_duration` (au prix d'un dérapage qui s'engage plus tard), ou découpler le saut visuel de la physique en l'animant sur le maillage seul.
+
 **À trancher en priorité — le sens de la réponse au contre-braquage.** Dans la formule actuelle, la courbure de trajectoire est proportionnelle à l'angle de glisse, et contre-braquer ouvre cet angle. Contre-braquer fait donc tourner le kart *plus* fort (courbure 1,0) que braquer vers l'intérieur (courbure 0,55) — l'inverse de la convention du genre, où le contre-braquage sert à se redresser.
 
 Teste-le explicitement : engage une glisse, puis contre-braque. Si le kart se resserre au lieu de se redresser, c'est le bug, et le correctif est de découpler la courbure de l'angle dans `_update_drift` :
@@ -1879,6 +1882,7 @@ rtk git add resources/karts/default_kart.tres && rtk git commit -m "tune: régla
 Relevée en revue, sciemment non traitée — à reconsidérer à la passe de réglage du jalon 15, pas avant.
 
 - `_steering_authority()` divise par `stats.max_speed * 0.5` sans garde. Si `max_speed` valait 0, `velocity_dir` serait empoisonné par un NaN de façon irrécupérable. Rien ne met cette valeur à 0 aujourd'hui, et se prémunir contre un état qu'aucun chemin de code ne produit coûterait plus en bruit qu'il ne rapporte.
+- `move_and_slide()` corrige la vitesse en cas de collision, mais `motor.speed` ne l'apprend jamais : la frame suivante, le nœud l'écrase depuis le moteur. Sans effet sur un plan vide, mais dès que le plan 2 ajoutera des murs, le kart les longera sans ralentir. La forme du correctif est connue et suit le précédent d'`on_offroad` : c'est au nœud d'observer le résultat de `move_and_slide()` et de l'injecter dans le moteur, jamais au moteur d'aller lire la scène.
 - Le « coup de pied » du turbo s'applique une image après le relâchement : `_update_speed()` a déjà tourné quand `_release_drift()` pose `boost_timer`. À 60 Hz cela fait 16 ms, sous le seuil de perception ; à revoir seulement si la session de validation trouve le déclenchement mou.
 - Le facteur `0.5` — la vitesse à laquelle le braquage atteint sa pleine autorité — est un littéral en dur, alors que c'est un paramètre de ressenti et que le principe affiché est que les réglages vivent dans `KartStats`. À déplacer le jour où quelqu'un voudra réellement le régler.
 
