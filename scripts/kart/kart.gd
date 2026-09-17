@@ -2,7 +2,10 @@ class_name Kart
 extends CharacterBody3D
 
 ## Relie la source de commande, le moteur et le déplacement réel.
-## Ne contient aucune règle de pilotage : tout est dans KartMotor.
+## Toute la physique horizontale vit dans KartMotor. L'axe vertical
+## (saut, gravité, contact au sol) reste ici parce qu'il est couplé à
+## move_and_slide() et is_on_floor() — c'est la seule physique non
+## couverte par les tests, et elle grossira au plan 2 avec les pentes.
 
 @export var stats: KartStats
 @export var input_path: NodePath
@@ -44,3 +47,15 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 	rotation.y = motor.heading
+
+
+## Remet le kart à un état neutre à la position donnée. Le terrain d'essai
+## s'en sert ; le plan 2 s'en servira pour les remises en piste.
+func respawn_at(where: Transform3D) -> void:
+	global_transform = where
+	velocity = Vector3.ZERO
+	_vertical = 0.0
+	_was_hopping = false
+	motor = KartMotor.new(stats)
+	motor.velocity_dir = where.basis.get_euler().y
+	motor.heading = motor.velocity_dir

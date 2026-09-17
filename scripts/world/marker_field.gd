@@ -4,6 +4,10 @@ extends MultiMeshInstance3D
 ## Repères verticaux dispersés, pour donner une référence de vitesse
 ## et de distance sur un sol nu.
 
+## Sans collision, délibérément : des murs déclencheraient la dette connue
+## (motor.speed n'est pas réconciliée après move_and_slide), donc le kart les
+## traverserait en gardant sa vitesse — pire que pas de collision du tout.
+
 @export var count: int = 40
 @export var field_radius: float = 90.0
 @export var inner_radius: float = 12.0

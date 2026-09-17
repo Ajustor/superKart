@@ -39,6 +39,7 @@ func _ready() -> void:
 	_spark_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_spark_material.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
 	_spark_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_spark_material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	_sparks.material_override = _spark_material
 	_sparks.emitting = false
 
