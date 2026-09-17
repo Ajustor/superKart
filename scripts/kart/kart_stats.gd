@@ -30,3 +30,7 @@ extends Resource
 @export_group("Pénalités")
 @export var offroad_speed_multiplier: float = 0.6
 @export var stun_duration: float = 1.2
+
+@export_group("Saut")
+@export var gravity: float = 30.0
+@export var hop_impulse: float = 2.25   ## gravity * hop_duration / 2 : on atterrit quand la glisse commence

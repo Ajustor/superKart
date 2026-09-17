@@ -4,9 +4,6 @@ extends CharacterBody3D
 ## Relie la source de commande, le moteur et le déplacement réel.
 ## Ne contient aucune règle de pilotage : tout est dans KartMotor.
 
-const GRAVITY := 30.0
-const HOP_IMPULSE := 4.5
-
 @export var stats: KartStats
 @export var input_path: NodePath
 
@@ -33,13 +30,13 @@ func _physics_process(delta: float) -> void:
 	# Le saut d'entrée en dérapage, purement vertical.
 	var hopping := motor.state == KartMotor.State.HOP
 	if hopping and not _was_hopping:
-		_vertical = HOP_IMPULSE
+		_vertical = stats.hop_impulse
 	_was_hopping = hopping
 
 	if is_on_floor() and _vertical <= 0.0:
 		_vertical = 0.0
 	else:
-		_vertical -= GRAVITY * delta
+		_vertical -= stats.gravity * delta
 
 	# En Godot, l'avant d'un nœud 3D est -Z.
 	var forward := Vector3(-sin(motor.velocity_dir), 0.0, -cos(motor.velocity_dir))
