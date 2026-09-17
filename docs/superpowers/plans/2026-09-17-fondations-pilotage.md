@@ -968,6 +968,7 @@ func test_tomber_sous_la_vitesse_minimale_annule_le_derapage() -> void:
 	cmd.brake = 1.0
 	_run(3.0)
 	assert_eq(motor.state, KartMotor.State.GRIP)
+	assert_eq(motor.boost_timer, 0.0, "une glisse cassée par la vitesse ne rapporte rien non plus")
 
 
 func test_le_hors_piste_plafonne_la_vitesse() -> void:
@@ -1015,7 +1016,19 @@ func test_une_glisse_cassee_exige_de_relacher_avant_d_en_relancer_une() -> void:
 	_run(stats.hop_duration + 0.1)
 	assert_eq(motor.state, KartMotor.State.DRIFT,
 		"après avoir relâché, on peut en relancer une")
+
+
+func test_tenir_le_bouton_avant_d_etre_assez_rapide_n_empeche_pas_la_glisse() -> void:
+	cmd.drift = true          # tenu dès le départ, avant d'avoir la vitesse
+	cmd.throttle = 1.0
+	_run(5.0)
+	cmd.steer = 1.0           # on braque une fois lancé, sans jamais relâcher
+	_run(stats.hop_duration + 0.2)
+	assert_eq(motor.state, KartMotor.State.DRIFT,
+		"tenir le bouton en attendant d'être assez rapide doit fonctionner")
 ```
+
+Ce dernier test couvre le geste manette le plus naturel qui soit — tenir la gâchette en accélérant, puis braquer — et c'est exactement celui qu'un verrou mal nommé casserait.
 
 - [ ] **Step 2 : Lancer les tests pour vérifier qu'ils échouent**
 
@@ -1044,23 +1057,24 @@ func tier_for_charge(charge: float) -> int:
 
 Ensuite, le saut doit se déclencher à l'**appui** et non au maintien. Sans ça, une glisse annulée par contre-braquage se relance à la frame suivante dans le sens opposé, et l'annulation ne punit plus rien. C'est aussi le modèle du genre : on presse pour sauter, on maintient pour glisser, on relâche pour le turbo.
 
-Ajoute la mémoire du bouton sous `hop_timer` :
+Le verrou ne doit pas dire « le bouton était tenu à la frame précédente » — sinon un joueur qui tient la gâchette avant d'avoir la vitesse requise s'auto-verrouille et n'obtiendra plus jamais de saut sans relâcher. Il doit dire « cette glisse a été cassée, bouton toujours tenu ». Ajoute-le sous `hop_timer` :
 
 ```gdscript
-var _drift_was_held: bool = false
+var _drift_locked_out: bool = false   ## une glisse cassée bloque jusqu'au relâchement
 ```
 
 Ajoute la garde en tête de `_try_enter_drift`, juste après le test `if not cmd.drift` :
 
 ```gdscript
-	if _drift_was_held:
-		return   # déjà tenu : une glisse cassée le reste jusqu'au relâchement
+	if _drift_locked_out:
+		return
 ```
 
-et mets la mémoire à jour à la toute fin de `step()`, après le `match` :
+et libère le verrou dès que le bouton remonte, à la toute fin de `step()`, après le `match` :
 
 ```gdscript
-	_drift_was_held = cmd.drift
+	if not cmd.drift:
+		_drift_locked_out = false
 ```
 
 Puis, dans `_update_drift()`, remplace le bloc final par :
@@ -1073,6 +1087,7 @@ Puis, dans `_update_drift()`, remplace le bloc final par :
 		return
 
 	if _drift_is_broken(inward):
+		_drift_locked_out = true
 		_end_drift()
 ```
 
@@ -1098,7 +1113,7 @@ Enfin, `test_le_sens_de_glisse_est_verrouille_a_l_entree` (écrit en tâche 5) v
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `38 passing`.
+Attendu : `39 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -1233,7 +1248,7 @@ Attendu : `input map écrite`.
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `40 passing`.
+Attendu : `41 passing`.
 
 - [ ] **Step 6 : Commit**
 
@@ -1803,7 +1818,7 @@ Attendu : aucune ligne contenant `ERROR` ni `SCRIPT ERROR`.
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `40 passing`, `0 failing`.
+Attendu : `41 passing`, `0 failing`.
 
 - [ ] **Step 6 : Commit**
 
@@ -1869,7 +1884,7 @@ Relevée en revue, sciemment non traitée — à reconsidérer à la passe de r�
 
 ## Périmètre de ce plan
 
-**Livré :** un kart pilotable sur un plan nu, dérapage à trois paliers et mini-turbo, caméra dynamique, étincelles colorées, 38 tests unitaires sur la physique.
+**Livré :** un kart pilotable sur un plan nu, dérapage à trois paliers et mini-turbo, caméra dynamique, étincelles colorées, 39 tests unitaires sur la physique.
 
 **Reporté au plan 2 :** suspension par quatre raycasts et alignement sur la pente, circuit réel, checkpoints, tours, chrono, IA.
 
