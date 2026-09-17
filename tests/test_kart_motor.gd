@@ -405,3 +405,5 @@ func test_un_petit_turbo_ne_raccourcit_pas_un_grand_deja_en_cours() -> void:
 	motor.step(cmd, 1.0 / 60.0)
 	assert_gt(motor.boost_timer, stats.boost_durations[0],
 		"enchaîner une petite glisse ne doit pas amputer un turbo plus long en cours")
+	assert_lte(motor.boost_timer, stats.boost_durations[2],
+		"et il ne doit pas non plus s'accumuler au-delà du palier le plus long")

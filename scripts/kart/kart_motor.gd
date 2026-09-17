@@ -122,9 +122,11 @@ func _end_drift() -> void:
 	heading = velocity_dir
 
 
-## Pendant la glisse, le braquage ne fait plus tourner le kart : il module
-## l'angle entre la caisse et la trajectoire. Braquer vers l'intérieur de la
-## courbe resserre l'angle, contre-braquer l'ouvre.
+## Pendant la glisse, le braquage pilote deux choses distinctes : la courbure
+## de la trajectoire, directement et proportionnellement, et l'angle de la
+## caisse par rapport à cette trajectoire. Braquer vers l'intérieur resserre
+## le virage et réduit l'angle de caisse ; contre-braquer élargit le virage
+## et met la caisse plus en travers.
 func _update_drift(cmd: KartCommand, delta: float) -> void:
 	var inward := clampf(cmd.steer * float(drift_dir), -1.0, 1.0)
 	var t := (inward + 1.0) * 0.5

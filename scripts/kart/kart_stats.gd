@@ -13,13 +13,17 @@ extends Resource
 @export_group("Braquage")
 @export var turn_rate: float = 2.4              ## rad/s à pleine vitesse
 
-@export_group("Dérapage")
+@export_group("Dérapage — tenue de route")
 @export var min_drift_speed: float = 8.0
+@export var drift_turn_rate: float = 2.8        ## rad/s pendant la glisse
+@export var hop_duration: float = 0.15
+
+@export_group("Dérapage — apparence")
+## Ces trois-là ne touchent que l'angle affiché de la caisse, pas la
+## trajectoire : c'est drift_turn_rate qui pilote le virage.
 @export var drift_angle_min_deg: float = 30.0
 @export var drift_angle_max_deg: float = 55.0
 @export var drift_angle_rate_deg: float = 220.0 ## convergence de l'angle, deg/s
-@export var drift_turn_rate: float = 2.8        ## rad/s pendant la glisse
-@export var hop_duration: float = 0.15
 
 @export_group("Mini-turbo")
 @export var drift_tiers: PackedFloat32Array = PackedFloat32Array([0.6, 1.5, 2.6])
