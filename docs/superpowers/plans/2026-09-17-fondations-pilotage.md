@@ -22,6 +22,10 @@ Trois points à connaître avant de commencer — ils sont délibérés, pas des
 
 **Les scènes sont écrites à la main.** Les fichiers `.tscn` sont du texte et sont donnés en entier dans les tâches, de sorte que tout le plan s'exécute sans ouvrir l'éditeur. Le format est stable en Godot 4, mais si un chargement se plaint d'un `load_steps` incorrect, la valeur attendue est le total des `ext_resource` et `sub_resource` plus un. Même logique pour les actions d'entrée : plutôt que de sérialiser des `InputEvent` à la main, on les fait écrire par le moteur (Task 9).
 
+## Convention de commit
+
+Depuis la 4.4, Godot génère un fichier `.uid` à côté de chaque script au premier scan. **Ces fichiers se commitent**, systématiquement et avec le script qu'ils accompagnent. Ils portent l'identifiant stable de la ressource, utilisé pour les références entre fichiers : les laisser hors du dépôt fait diverger les UID d'un clone à l'autre et casse la résolution des références. Les lignes `git add` des tâches ne les listent pas une par une ; ajoute-les sans le demander.
+
 ## Structure des fichiers
 
 | Fichier | Responsabilité |
@@ -93,6 +97,14 @@ Définis d'abord un raccourci vers ton binaire Godot — les commandes de tout l
 ```bash
 export GODOT="/c/Users/alexa/AppData/Local/Microsoft/WinGet/Packages/GodotEngine.GodotEngine_Microsoft.Winget.Source_8wekyb3d8bbwe/Godot_v4.7.2-stable_win64.exe"
 ```
+
+Amorce ensuite le cache d'import, une seule fois :
+
+```bash
+"$GODOT" --headless --import
+```
+
+Sans cela, le tout premier lancement échoue sur `Some GUT class_names have not been imported` : un projet neuf n'a jamais eu son système de fichiers scanné, donc le `class_name GutTest` dont hérite le test n'est pas encore enregistré. Le piège est que la commande sort malgré tout en code 0 alors qu'aucun test n'a tourné — vérifie toujours le décompte, pas seulement le code de retour. Le cache vit dans `.godot/`, qui est ignoré par git : après un clone frais, il faut refaire cet import.
 
 Puis :
 
