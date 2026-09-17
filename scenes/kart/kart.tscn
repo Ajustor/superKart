@@ -1,0 +1,31 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/kart/kart.gd" id="1_kart"]
+[ext_resource type="Script" path="res://scripts/kart/player_input.gd" id="2_input"]
+[ext_resource type="Resource" path="res://resources/karts/default_kart.tres" id="3_stats"]
+
+[sub_resource type="BoxShape3D" id="Shape_body"]
+size = Vector3(1.2, 0.8, 1.8)
+
+[sub_resource type="BoxMesh" id="Mesh_body"]
+size = Vector3(1.2, 0.8, 1.8)
+
+[sub_resource type="StandardMaterial3D" id="Mat_body"]
+albedo_color = Color(0.55, 0.55, 0.58, 1)
+
+[node name="Kart" type="CharacterBody3D"]
+script = ExtResource("1_kart")
+stats = ExtResource("3_stats")
+input_path = NodePath("PlayerInput")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+shape = SubResource("Shape_body")
+
+[node name="Body" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+mesh = SubResource("Mesh_body")
+surface_material_override/0 = SubResource("Mat_body")
+
+[node name="PlayerInput" type="Node" parent="."]
+script = ExtResource("2_input")
