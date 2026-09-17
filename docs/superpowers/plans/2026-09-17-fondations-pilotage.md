@@ -618,6 +618,7 @@ func _update_hop(cmd: KartCommand, delta: float) -> void:
 		return
 	if cmd.drift:
 		state = State.DRIFT
+		hop_timer = 0.0
 		drift_charge = 0.0
 		drift_angle = 0.0
 	else:
@@ -714,7 +715,19 @@ func test_deraper_ne_coute_presque_pas_de_vitesse() -> void:
 	_run(2.0)
 	assert_gt(motor.speed, lancee * 0.9,
 		"le dérapage doit rester rentable, sinon le joueur l'évite")
+
+
+func test_la_charge_demarre_a_zero_a_l_atterrissage() -> void:
+	cmd.throttle = 1.0
+	_run(5.0)
+	cmd.steer = 1.0
+	cmd.drift = true
+	_run(stats.hop_duration + 1.0 / 60.0)
+	assert_lt(motor.drift_charge, 0.05,
+		"la charge part de zéro : le temps passé en saut ne compte pas")
 ```
+
+Ce dernier test est load-bearing pour la tâche 7 : si la charge héritait du temps de saut, tous les seuils de palier seraient décalés de 0,15 s sans que rien ne le signale.
 
 - [ ] **Step 2 : Lancer les tests pour vérifier qu'ils échouent**
 
@@ -759,7 +772,7 @@ func _update_drift(cmd: KartCommand, delta: float) -> void:
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `23 passing`.
+Attendu : `24 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -909,7 +922,7 @@ func _update_speed(cmd: KartCommand, delta: float) -> void:
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `29 passing`.
+Attendu : `30 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -1001,7 +1014,7 @@ Dans `_update_drift()`, remplace le bloc final par :
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `34 passing`.
+Attendu : `35 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -1136,7 +1149,7 @@ Attendu : `input map écrite`.
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `36 passing`.
+Attendu : `37 passing`.
 
 - [ ] **Step 6 : Commit**
 
@@ -1706,7 +1719,7 @@ Attendu : aucune ligne contenant `ERROR` ni `SCRIPT ERROR`.
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `36 passing`, `0 failing`.
+Attendu : `37 passing`, `0 failing`.
 
 - [ ] **Step 6 : Commit**
 
@@ -1760,7 +1773,7 @@ Relevée en revue, sciemment non traitée — à reconsidérer à la passe de r�
 
 ## Périmètre de ce plan
 
-**Livré :** un kart pilotable sur un plan nu, dérapage à trois paliers et mini-turbo, caméra dynamique, étincelles colorées, 34 tests unitaires sur la physique.
+**Livré :** un kart pilotable sur un plan nu, dérapage à trois paliers et mini-turbo, caméra dynamique, étincelles colorées, 35 tests unitaires sur la physique.
 
 **Reporté au plan 2 :** suspension par quatre raycasts et alignement sur la pente, circuit réel, checkpoints, tours, chrono, IA.
 
