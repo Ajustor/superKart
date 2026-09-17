@@ -1876,23 +1876,11 @@ C'est le jalon 3 du spec, et le seul qui puisse remettre en cause le reste du de
 
 S'il faut le rendre lisible, trois leviers par ordre de coût croissant : allonger `hop_duration`, ce qui rehausse l'impulsion par la même formule mais retarde l'engagement de la glisse ; ajouter de l'écrasement et des particules à l'atterrissage, qui vendent un saut bien mieux que sa hauteur réelle ; ou découpler complètement le saut visuel de la physique en l'animant sur le maillage seul, ce que font la plupart des jeux du genre.
 
-**À trancher en priorité — le sens de la réponse au contre-braquage.** Dans la formule actuelle, la courbure de trajectoire est proportionnelle à l'angle de glisse, et contre-braquer ouvre cet angle. Contre-braquer fait donc tourner le kart *plus* fort (courbure 1,0) que braquer vers l'intérieur (courbure 0,55) — l'inverse de la convention du genre, où le contre-braquage sert à se redresser.
+**Le frein reste inopérant pendant un turbo**, jusqu'à 1,8 s au palier 3. C'est délibéré mais non tranché : sur un plan nu ça ne se voit pas, au plan 2 avec des virages et des murs ça se paiera. Dis-moi si ça t'a gêné.
 
-Teste-le explicitement : engage une glisse, puis contre-braque. Si le kart se resserre au lieu de se redresser, c'est le bug, et le correctif est de découpler la courbure de l'angle dans `_update_drift` :
+**Au pad, l'entrée en glisse demande environ 36 % de débattement du stick** — la zone morte de l'action (0,2) et `STEER_DEADZONE` (0,2) se composent. Au clavier, sans objet. Si ça paraît mou, c'est l'une des deux qu'il faut baisser.
 
-```gdscript
-	var courbure := lerpf(0.5, 1.0, t)   # au lieu de drift_angle / max_angle
-```
-
-L'angle de glisse reste alors purement visuel, et le braquage pilote la trajectoire dans le sens attendu. Je n'ai pas appliqué ce changement à l'aveugle : le sens d'une réponse au braquage se juge à la manette, pas sur le papier.
-
-- [ ] **Step 3 : Régler et commiter les valeurs retenues**
-
-Les réglages se font dans `resources/karts/default_kart.tres`, moteur tournant : l'inspecteur applique les changements en direct.
-
-```bash
-rtk git add resources/karts/default_kart.tres && rtk git commit -m "tune: réglages de pilotage retenus après la session de validation"
-```
+**Échappatoire** : Échap remet le kart au départ, et il est rattrapé automatiquement au-delà de 180 m.
 
 **Si la conduite n'est pas agréable ici, ne passe pas au plan 2.** Aucune piste, aucune IA et aucun shader ne rattraperont un pilotage médiocre — et c'est précisément pour le découvrir maintenant que ce jalon existe.
 
