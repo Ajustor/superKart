@@ -16,3 +16,6 @@ export_presets.cfg
 # OS
 .DS_Store
 Thumbs.db
+
+# Sorties de test laissées par les agents
+test_output.txt
