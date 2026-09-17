@@ -164,3 +164,70 @@ func test_relacher_le_bouton_pendant_le_saut_annule_le_derapage() -> void:
 	cmd.drift = false
 	_run(stats.hop_duration)
 	assert_eq(motor.state, KartMotor.State.GRIP)
+
+
+## Amène le moteur en dérapage établi, dans le sens donné.
+func _enter_drift(direction: int) -> void:
+	cmd.throttle = 1.0
+	_run(5.0)
+	cmd.steer = float(direction)
+	cmd.drift = true
+	_run(stats.hop_duration + 0.5)
+
+
+func test_en_derapage_la_caisse_se_decale_du_vecteur_vitesse() -> void:
+	_enter_drift(1)
+	var ecart := absf(motor.heading - motor.velocity_dir)
+	assert_gt(ecart, deg_to_rad(stats.drift_angle_min_deg) * 0.5,
+		"la caisse doit pointer nettement à côté de la trajectoire")
+
+
+func test_l_angle_de_glisse_reste_dans_la_fourchette() -> void:
+	_enter_drift(1)
+	# On reste au-dessus de -0.8 : au-delà, le contre-braquage annule la glisse
+	# et l'angle retombe à zéro (cf. Task 8).
+	for braquage in [-0.7, -0.3, 0.0, 0.5, 1.0]:
+		cmd.steer = braquage
+		_run(0.5)
+		var degres := rad_to_deg(motor.drift_angle)
+		assert_between(degres, stats.drift_angle_min_deg - 0.5, stats.drift_angle_max_deg + 0.5,
+			"angle hors fourchette pour un braquage de %f" % braquage)
+
+
+func test_braquer_vers_l_interieur_resserre_la_glisse() -> void:
+	_enter_drift(1)
+	cmd.steer = 1.0
+	_run(1.0)
+	var serre := motor.drift_angle
+	cmd.steer = 0.0
+	_run(1.0)
+	assert_gt(motor.drift_angle, serre,
+		"relâcher le braquage vers l'intérieur ouvre l'angle de glisse")
+
+
+func test_le_derapage_fait_tourner_la_trajectoire() -> void:
+	_enter_drift(1)
+	var depart := motor.velocity_dir
+	_run(0.5)
+	assert_gt(motor.velocity_dir, depart, "une glisse à droite courbe la trajectoire à droite")
+
+
+func test_deraper_ne_coute_presque_pas_de_vitesse() -> void:
+	cmd.throttle = 1.0
+	_run(10.0)
+	var lancee := motor.speed
+	cmd.steer = 1.0
+	cmd.drift = true
+	_run(2.0)
+	assert_gt(motor.speed, lancee * 0.9,
+		"le dérapage doit rester rentable, sinon le joueur l'évite")
+
+
+func test_la_charge_demarre_a_zero_a_l_atterrissage() -> void:
+	cmd.throttle = 1.0
+	_run(5.0)
+	cmd.steer = 1.0
+	cmd.drift = true
+	_run(stats.hop_duration + 1.0 / 60.0)
+	assert_lt(motor.drift_charge, 0.05,
+		"la charge part de zéro : le temps passé en saut ne compte pas")

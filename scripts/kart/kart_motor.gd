@@ -38,6 +38,8 @@ func step(cmd: KartCommand, delta: float) -> void:
 		State.HOP:
 			_update_grip_steering(cmd, delta)
 			_update_hop(cmd, delta)
+		State.DRIFT:
+			_update_drift(cmd, delta)
 
 
 ## Vitesse maximale effective. Le turbo écrase la pénalité hors-piste :
@@ -93,6 +95,7 @@ func _update_hop(cmd: KartCommand, delta: float) -> void:
 		return
 	if cmd.drift:
 		state = State.DRIFT
+		hop_timer = 0.0
 		drift_charge = 0.0
 		drift_angle = 0.0
 	else:
@@ -107,3 +110,20 @@ func _end_drift() -> void:
 	drift_angle = 0.0
 	hop_timer = 0.0
 	heading = velocity_dir
+
+
+## Pendant la glisse, le braquage ne fait plus tourner le kart : il module
+## l'angle entre la caisse et la trajectoire. Braquer vers l'intérieur de la
+## courbe resserre l'angle, contre-braquer l'ouvre.
+func _update_drift(cmd: KartCommand, delta: float) -> void:
+	var inward := clampf(cmd.steer * float(drift_dir), -1.0, 1.0)
+	var t := (inward + 1.0) * 0.5
+	var target := deg_to_rad(lerpf(stats.drift_angle_max_deg, stats.drift_angle_min_deg, t))
+	drift_angle = move_toward(drift_angle, target, deg_to_rad(stats.drift_angle_rate_deg) * delta)
+
+	var max_angle := deg_to_rad(stats.drift_angle_max_deg)
+	var courbure := drift_angle / max_angle
+	velocity_dir += float(drift_dir) * stats.drift_turn_rate * courbure * delta
+	heading = velocity_dir + float(drift_dir) * drift_angle
+
+	drift_charge += delta
