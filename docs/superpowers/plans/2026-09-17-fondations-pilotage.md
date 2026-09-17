@@ -191,7 +191,12 @@ extends Resource
 
 @export_group("Saut")
 @export var gravity: float = 30.0
-@export var hop_impulse: float = 2.25   ## gravity * hop_duration / 2 : on atterrit quand la glisse commence
+
+## Calé pour que l'atterrissage coïncide avec le début de la glisse.
+## Dérivé plutôt qu'exporté : régler hop_duration sans réajuster cette
+## valeur à la main recréerait un kart qui retombe en pleine glisse.
+var hop_impulse: float:
+	get: return gravity * hop_duration / 2.0
 
 @export_group("Pénalités")
 @export var offroad_speed_multiplier: float = 0.6
