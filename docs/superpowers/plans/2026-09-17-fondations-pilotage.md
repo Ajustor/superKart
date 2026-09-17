@@ -844,7 +844,19 @@ func test_on_peut_encore_deraper_pendant_un_turbo() -> void:
 	_run(stats.hop_duration + 0.2)
 	assert_eq(motor.state, KartMotor.State.DRIFT,
 		"le turbo est un modificateur, il ne doit pas bloquer le dérapage")
+
+
+func test_le_derapage_a_gauche_est_le_miroir_du_droit() -> void:
+	_enter_drift(-1)
+	var depart := motor.velocity_dir
+	_run(0.5)
+	assert_lt(motor.velocity_dir, depart,
+		"une glisse à gauche courbe la trajectoire à gauche")
+	assert_almost_eq(motor.heading, motor.velocity_dir - motor.drift_angle, 0.001,
+		"à gauche, la caisse se décale du côté opposé")
 ```
+
+Ce dernier test comble un trou relevé en revue : jusqu'ici tous les tests de glisse entraient à droite, donc un `+1` codé en dur à la place de `drift_dir` aurait cassé tout le dérapage à gauche sans faire échouer quoi que ce soit.
 
 - [ ] **Step 2 : Lancer les tests pour vérifier qu'ils échouent**
 
@@ -922,7 +934,7 @@ func _update_speed(cmd: KartCommand, delta: float) -> void:
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `30 passing`.
+Attendu : `31 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -1014,7 +1026,7 @@ Dans `_update_drift()`, remplace le bloc final par :
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `35 passing`.
+Attendu : `36 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -1149,7 +1161,7 @@ Attendu : `input map écrite`.
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `37 passing`.
+Attendu : `38 passing`.
 
 - [ ] **Step 6 : Commit**
 
@@ -1719,7 +1731,7 @@ Attendu : aucune ligne contenant `ERROR` ni `SCRIPT ERROR`.
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `37 passing`, `0 failing`.
+Attendu : `38 passing`, `0 failing`.
 
 - [ ] **Step 6 : Commit**
 
@@ -1752,6 +1764,16 @@ C'est le jalon 3 du spec, et le seul qui puisse remettre en cause le reste du de
 - Enchaîner les dérapages en zigzag sur une ligne droite est plaisant et rentable.
 - La vitesse se perçoit en passant près des repères.
 
+**À trancher en priorité — le sens de la réponse au contre-braquage.** Dans la formule actuelle, la courbure de trajectoire est proportionnelle à l'angle de glisse, et contre-braquer ouvre cet angle. Contre-braquer fait donc tourner le kart *plus* fort (courbure 1,0) que braquer vers l'intérieur (courbure 0,55) — l'inverse de la convention du genre, où le contre-braquage sert à se redresser.
+
+Teste-le explicitement : engage une glisse, puis contre-braque. Si le kart se resserre au lieu de se redresser, c'est le bug, et le correctif est de découpler la courbure de l'angle dans `_update_drift` :
+
+```gdscript
+	var courbure := lerpf(0.5, 1.0, t)   # au lieu de drift_angle / max_angle
+```
+
+L'angle de glisse reste alors purement visuel, et le braquage pilote la trajectoire dans le sens attendu. Je n'ai pas appliqué ce changement à l'aveugle : le sens d'une réponse au braquage se juge à la manette, pas sur le papier.
+
 - [ ] **Step 3 : Régler et commiter les valeurs retenues**
 
 Les réglages se font dans `resources/karts/default_kart.tres`, moteur tournant : l'inspecteur applique les changements en direct.
@@ -1773,7 +1795,7 @@ Relevée en revue, sciemment non traitée — à reconsidérer à la passe de r�
 
 ## Périmètre de ce plan
 
-**Livré :** un kart pilotable sur un plan nu, dérapage à trois paliers et mini-turbo, caméra dynamique, étincelles colorées, 35 tests unitaires sur la physique.
+**Livré :** un kart pilotable sur un plan nu, dérapage à trois paliers et mini-turbo, caméra dynamique, étincelles colorées, 36 tests unitaires sur la physique.
 
 **Reporté au plan 2 :** suspension par quatre raycasts et alignement sur la pente, circuit réel, checkpoints, tours, chrono, IA.
 
