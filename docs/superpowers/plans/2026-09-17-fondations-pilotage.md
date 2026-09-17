@@ -1554,10 +1554,14 @@ extends Node3D
 ## Inclinaison de la caisse et étincelles dont la couleur annonce le palier
 ## de mini-turbo chargé. Purement cosmétique : ne modifie jamais le moteur.
 
+## Les trois couleurs se lisent en vision périphérique, sans quitter la route
+## des yeux : il leur faut donc à la fois de l'écart de teinte et de l'écart de
+## luminosité. Le palier 3 tire vers le magenta plutôt que vers le violet, qui
+## était trop proche du bleu du palier 1 et plus sombre que lui.
 const TIER_COLORS := [
-	Color(0.35, 0.60, 1.00),   # palier 1 — bleu
-	Color(1.00, 0.65, 0.14),   # palier 2 — orange
-	Color(0.66, 0.33, 0.97),   # palier 3 — violet
+	Color(0.35, 0.60, 1.00),   # palier 1 — bleu      (teinte 217°, luma 0.58)
+	Color(1.00, 0.65, 0.14),   # palier 2 — orange    (teinte  33°, luma 0.69)
+	Color(1.00, 0.45, 0.88),   # palier 3 — magenta   (teinte 313°, luma 0.60)
 ]
 
 @export var kart_path: NodePath
@@ -1857,7 +1861,7 @@ C'est le jalon 3 du spec, et le seul qui puisse remettre en cause le reste du de
 
 - Le kart répond immédiatement, sans sensation de latence.
 - Le dérapage s'enclenche de façon fiable et se tient sans lutter.
-- Les trois couleurs d'étincelles sont distinguables d'un coup d'œil, sans quitter la route des yeux.
+- Les trois couleurs d'étincelles sont distinguables d'un coup d'œil, sans quitter la route des yeux. **Teste spécifiquement le palier 1 contre le palier 3 en regardant la piste, pas les étincelles** : c'est la paire la plus fragile, et c'est en périphérie qu'elle doit fonctionner.
 - Le mini-turbo se **sent** au déclenchement — si le coup de pied est discret, augmente `boost_speed_multiplier`.
 - Enchaîner les dérapages en zigzag sur une ligne droite est plaisant et rentable.
 - **Le frein est inopérant pendant tout un turbo**, soit jusqu'à 1,8 s au palier 3. Arrive-t-il de subir un turbo max à l'approche d'un virage serré, sans recours ? Si oui, il faudra soit laisser le frein écourter le turbo, soit raccourcir le palier 3.
