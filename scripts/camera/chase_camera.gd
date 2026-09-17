@@ -11,6 +11,7 @@ extends Camera3D
 @export var fov_min: float = 70.0
 @export var fov_max: float = 85.0
 @export var drift_roll_deg: float = 6.0
+@export var roll_stiffness: float = 6.0
 
 var _kart: Kart
 var _roll: float = 0.0
@@ -28,11 +29,14 @@ func _physics_process(delta: float) -> void:
 
 	var desired := _kart.global_position - forward * distance + Vector3.UP * height
 	# Un suivi à ressort : la caméra se laisse distancer à l'accélération.
-	global_position = global_position.lerp(desired, clampf(follow_stiffness * delta, 0.0, 1.0))
+	global_position = global_position.lerp(desired, 1.0 - exp(-follow_stiffness * delta))
 
 	look_at(_kart.global_position + forward * look_ahead + Vector3.UP * 0.8, Vector3.UP)
 
-	var ratio := clampf(motor.speed / _kart.stats.max_speed, 0.0, 1.0)
+	# Le plafond de référence inclut le turbo, sinon le FOV sature dès la
+	# vitesse de pointe normale et le mini-turbo ne se voit plus du tout.
+	var ceiling := _kart.stats.max_speed * _kart.stats.boost_speed_multiplier
+	var ratio := clampf(motor.speed / ceiling, 0.0, 1.0)
 	fov = lerpf(fov_min, fov_max, ratio)
 
 	# Léger roulis dans la glisse, qui accentue la lecture du dérapage.
@@ -41,5 +45,5 @@ func _physics_process(delta: float) -> void:
 	var target_roll := 0.0
 	if motor.state == KartMotor.State.DRIFT:
 		target_roll = deg_to_rad(drift_roll_deg) * float(motor.drift_dir)
-	_roll = lerpf(_roll, target_roll, clampf(6.0 * delta, 0.0, 1.0))
+	_roll = lerpf(_roll, target_roll, 1.0 - exp(-roll_stiffness * delta))
 	rotation.z = _roll
