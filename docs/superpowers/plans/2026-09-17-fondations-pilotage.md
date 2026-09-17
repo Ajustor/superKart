@@ -1000,6 +1000,21 @@ func test_un_palier_sans_duree_de_turbo_n_en_est_pas_un() -> void:
 	stats.drift_tiers = PackedFloat32Array([0.6, 1.5, 2.6, 4.0])
 	assert_eq(motor.tier_for_charge(5.0), 3,
 		"un palier sans durée associée ne doit pas être atteignable")
+
+
+func test_une_glisse_cassee_exige_de_relacher_avant_d_en_relancer_une() -> void:
+	_enter_drift(1)
+	cmd.steer = -1.0
+	_run(0.5)
+	assert_eq(motor.state, KartMotor.State.GRIP,
+		"bouton toujours tenu : la glisse cassée ne se relance pas")
+	cmd.drift = false
+	_run(0.1)
+	cmd.steer = 1.0
+	cmd.drift = true
+	_run(stats.hop_duration + 0.1)
+	assert_eq(motor.state, KartMotor.State.DRIFT,
+		"après avoir relâché, on peut en relancer une")
 ```
 
 - [ ] **Step 2 : Lancer les tests pour vérifier qu'ils échouent**
@@ -1027,6 +1042,27 @@ func tier_for_charge(charge: float) -> int:
 	return tier
 ```
 
+Ensuite, le saut doit se déclencher à l'**appui** et non au maintien. Sans ça, une glisse annulée par contre-braquage se relance à la frame suivante dans le sens opposé, et l'annulation ne punit plus rien. C'est aussi le modèle du genre : on presse pour sauter, on maintient pour glisser, on relâche pour le turbo.
+
+Ajoute la mémoire du bouton sous `hop_timer` :
+
+```gdscript
+var _drift_was_held: bool = false
+```
+
+Ajoute la garde en tête de `_try_enter_drift`, juste après le test `if not cmd.drift` :
+
+```gdscript
+	if _drift_was_held:
+		return   # déjà tenu : une glisse cassée le reste jusqu'au relâchement
+```
+
+et mets la mémoire à jour à la toute fin de `step()`, après le `match` :
+
+```gdscript
+	_drift_was_held = cmd.drift
+```
+
 Puis, dans `_update_drift()`, remplace le bloc final par :
 
 ```gdscript
@@ -1036,9 +1072,24 @@ Puis, dans `_update_drift()`, remplace le bloc final par :
 		_release_drift()
 		return
 
-	# Une glisse cassée ne rapporte rien, quel que soit son niveau de charge.
-	if speed < stats.min_drift_speed or inward < -0.8:
+	if _drift_is_broken(inward):
 		_end_drift()
+```
+
+et ajoute la fonction qui nomme la condition, pour que les prochaines causes de rupture s'y ajoutent sans faire enfler `_update_drift` :
+
+```gdscript
+## Une glisse cassée ne rapporte rien, quel que soit son niveau de charge.
+func _drift_is_broken(inward: float) -> bool:
+	return speed < stats.min_drift_speed or inward < -0.8
+```
+
+Enfin, `test_le_sens_de_glisse_est_verrouille_a_l_entree` (écrit en tâche 5) vérifiait le verrouillage en braquant à fond dans l'autre sens — ce qui déclenche désormais l'annulation. Un contre-braquage partiel teste la même intention sans tomber dans le nouveau cas. Remplace sa deuxième moitié :
+
+```gdscript
+	cmd.steer = 0.5          # contre-braquage partiel, sous le seuil d'annulation
+	_run(0.5)
+	assert_eq(motor.drift_dir, -1, "le sens ne change pas en cours de glisse")
 ```
 
 - [ ] **Step 4 : Lancer les tests pour vérifier qu'ils passent**
@@ -1047,7 +1098,7 @@ Puis, dans `_update_drift()`, remplace le bloc final par :
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `37 passing`.
+Attendu : `38 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -1182,7 +1233,7 @@ Attendu : `input map écrite`.
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `39 passing`.
+Attendu : `40 passing`.
 
 - [ ] **Step 6 : Commit**
 
@@ -1752,7 +1803,7 @@ Attendu : aucune ligne contenant `ERROR` ni `SCRIPT ERROR`.
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `39 passing`, `0 failing`.
+Attendu : `40 passing`, `0 failing`.
 
 - [ ] **Step 6 : Commit**
 
@@ -1818,7 +1869,7 @@ Relevée en revue, sciemment non traitée — à reconsidérer à la passe de r�
 
 ## Périmètre de ce plan
 
-**Livré :** un kart pilotable sur un plan nu, dérapage à trois paliers et mini-turbo, caméra dynamique, étincelles colorées, 37 tests unitaires sur la physique.
+**Livré :** un kart pilotable sur un plan nu, dérapage à trois paliers et mini-turbo, caméra dynamique, étincelles colorées, 38 tests unitaires sur la physique.
 
 **Reporté au plan 2 :** suspension par quatre raycasts et alignement sur la pente, circuit réel, checkpoints, tours, chrono, IA.
 
