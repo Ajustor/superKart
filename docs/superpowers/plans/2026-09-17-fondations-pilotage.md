@@ -430,7 +430,19 @@ func test_en_adherence_la_caisse_suit_le_vecteur_vitesse() -> void:
 	_run(3.0)
 	assert_almost_eq(motor.heading, motor.velocity_dir, 0.001,
 		"hors dérapage, caisse et trajectoire sont alignées")
+
+
+func test_le_frein_est_prioritaire_sur_les_gaz() -> void:
+	cmd.throttle = 1.0
+	_run(10.0)
+	var lancee := motor.speed
+	cmd.brake = 1.0          # les deux enfoncés en même temps
+	_run(0.5)
+	assert_lt(motor.speed, lancee,
+		"frein et gaz ensemble : le frein doit gagner, pas se mélanger aux gaz")
 ```
+
+Ce dernier test fige une décision d'ordre des branches que la tâche 7 réécrira entièrement. Sans lui, un réordonnancement la casserait en silence.
 
 - [ ] **Step 2 : Lancer les tests pour vérifier qu'ils échouent**
 
@@ -470,7 +482,7 @@ func _update_grip_steering(cmd: KartCommand, delta: float) -> void:
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `11 passing`.
+Attendu : `12 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -628,7 +640,7 @@ func _end_drift() -> void:
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `17 passing`.
+Attendu : `18 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -747,7 +759,7 @@ func _update_drift(cmd: KartCommand, delta: float) -> void:
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `22 passing`.
+Attendu : `23 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -865,6 +877,12 @@ func _release_drift() -> void:
 	_end_drift()
 ```
 
+Le retour au plafond après un turbo a son propre ressenti, distinct de la décélération en roue libre. Ajoute donc un réglage dédié à `scripts/kart/kart_stats.gd`, dans le groupe Mini-turbo :
+
+```gdscript
+@export var boost_decay_rate: float = 12.0      ## retour au plafond, u/s²
+```
+
 Enfin, dans `_update_speed()`, le turbo doit pousser la vitesse et pas seulement lever le plafond. Remplace la méthode entière par :
 
 ```gdscript
@@ -882,7 +900,7 @@ func _update_speed(cmd: KartCommand, delta: float) -> void:
 		speed = move_toward(speed, 0.0, stats.coast_friction * delta)
 
 	if speed > ceiling:
-		speed = move_toward(speed, ceiling, stats.coast_friction * 2.0 * delta)
+		speed = move_toward(speed, ceiling, stats.boost_decay_rate * delta)
 ```
 
 - [ ] **Step 4 : Lancer les tests pour vérifier qu'ils passent**
@@ -891,12 +909,12 @@ func _update_speed(cmd: KartCommand, delta: float) -> void:
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `28 passing`.
+Attendu : `29 passing`.
 
 - [ ] **Step 5 : Commit**
 
 ```bash
-rtk git add scripts/kart/kart_motor.gd tests/test_kart_motor.gd && rtk git commit -m "feat: charge de dérapage, paliers et mini-turbo"
+rtk git add scripts/kart/kart_motor.gd scripts/kart/kart_stats.gd tests/test_kart_motor.gd && rtk git commit -m "feat: charge de dérapage, paliers et mini-turbo"
 ```
 
 ---
@@ -983,7 +1001,7 @@ Dans `_update_drift()`, remplace le bloc final par :
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `33 passing`.
+Attendu : `34 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -1118,7 +1136,7 @@ Attendu : `input map écrite`.
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `35 passing`.
+Attendu : `36 passing`.
 
 - [ ] **Step 6 : Commit**
 
@@ -1688,7 +1706,7 @@ Attendu : aucune ligne contenant `ERROR` ni `SCRIPT ERROR`.
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `35 passing`, `0 failing`.
+Attendu : `36 passing`, `0 failing`.
 
 - [ ] **Step 6 : Commit**
 
@@ -1735,7 +1753,7 @@ rtk git add resources/karts/default_kart.tres && rtk git commit -m "tune: régla
 
 ## Périmètre de ce plan
 
-**Livré :** un kart pilotable sur un plan nu, dérapage à trois paliers et mini-turbo, caméra dynamique, étincelles colorées, 33 tests unitaires sur la physique.
+**Livré :** un kart pilotable sur un plan nu, dérapage à trois paliers et mini-turbo, caméra dynamique, étincelles colorées, 34 tests unitaires sur la physique.
 
 **Reporté au plan 2 :** suspension par quatre raycasts et alignement sur la pente, circuit réel, checkpoints, tours, chrono, IA.
 
