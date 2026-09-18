@@ -22,8 +22,8 @@ func _ready() -> void:
 	motor = KartMotor.new(stats)
 	_input = get_node(input_path) as KartInput
 	assert(_input != null, "input_path doit pointer vers un KartInput")
-	motor.velocity_dir = rotation.y
-	motor.heading = rotation.y
+	motor.velocity_dir = -rotation.y
+	motor.heading = -rotation.y
 
 
 func _physics_process(delta: float) -> void:
@@ -41,12 +41,15 @@ func _physics_process(delta: float) -> void:
 	else:
 		_vertical -= stats.gravity * delta
 
-	# En Godot, l'avant d'un nœud 3D est -Z.
-	var forward := Vector3(-sin(motor.velocity_dir), 0.0, -cos(motor.velocity_dir))
+	# Le moteur compte ses angles comme une boussole : lacet positif = vers la
+	# droite. Godot compte l'inverse — une rotation positive autour de +Y tourne
+	# vers la gauche. La conversion se fait ici, au seul endroit où les deux
+	# repères se rencontrent, plutôt que d'éparpiller des signes dans la physique.
+	var forward := Vector3(sin(motor.velocity_dir), 0.0, -cos(motor.velocity_dir))
 	velocity = forward * motor.speed + Vector3.UP * _vertical
 	move_and_slide()
 
-	rotation.y = motor.heading
+	rotation.y = -motor.heading
 
 
 ## Remet le kart à un état neutre à la position donnée. Le terrain d'essai
@@ -57,5 +60,5 @@ func respawn_at(where: Transform3D) -> void:
 	_vertical = 0.0
 	_was_hopping = false
 	motor = KartMotor.new(stats)
-	motor.velocity_dir = where.basis.get_euler().y
+	motor.velocity_dir = -where.basis.get_euler().y
 	motor.heading = motor.velocity_dir

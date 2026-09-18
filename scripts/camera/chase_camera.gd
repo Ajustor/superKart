@@ -25,7 +25,7 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	var motor := _kart.motor
-	var forward := Vector3(-sin(motor.velocity_dir), 0.0, -cos(motor.velocity_dir))
+	var forward := Vector3(sin(motor.velocity_dir), 0.0, -cos(motor.velocity_dir))
 
 	var desired := _kart.global_position - forward * distance + Vector3.UP * height
 	# Un suivi à ressort : la caméra se laisse distancer à l'accélération.
