@@ -11,11 +11,19 @@ extends Resource
 @export var coast_friction: float = 6.0
 
 @export_group("Braquage")
-@export var turn_rate: float = 2.4              ## rad/s à pleine vitesse
+## Mesuré à pleine vitesse, plein braquage : 1,8 rad/s donne un rayon de
+## 12,3 m, contre 9,3 m à 2,4. Baissé après une session de conduite — le kart
+## tournait trop sec. L'épingle du circuit 1 a un rayon d'axe de 13,3 m : elle
+## reste franchissable pied au plancher, mais de justesse.
+@export var turn_rate: float = 1.8              ## rad/s à pleine vitesse
 
 @export_group("Dérapage — tenue de route")
 @export var min_drift_speed: float = 8.0
-@export var drift_turn_rate: float = 2.8        ## rad/s pendant la glisse
+## Baissé dans la même proportion que turn_rate, pour que le dérapage garde
+## l'avantage qu'il avait sur l'adhérence : 10,5 m de rayon contre 12,3 m.
+## Le descendre seul rendrait la glisse inutile, le laisser seul la rendrait
+## indispensable partout.
+@export var drift_turn_rate: float = 2.1        ## rad/s pendant la glisse
 @export var hop_duration: float = 0.15
 
 @export_group("Dérapage — apparence")
