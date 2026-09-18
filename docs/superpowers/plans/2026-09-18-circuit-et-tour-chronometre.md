@@ -179,6 +179,8 @@ func test_le_moteur_ne_depend_pas_du_pas_de_temps() -> void:
 
 Attendu : `51 passing`.
 
+Mesures obtenues : écart maximal de 0,053 rad sur `dir` entre 30 et 60 Hz, pour une tolérance de 0,15 — trois fois de marge. À savoir : le champ `speed` ne contribue rien au garde-fou, car `move_toward` à taux constant est exactement intégrable et la vitesse sature de toute façon au plafond. Les dents du test sont dans `dir` et `charge`.
+
 **Si ce test échoue, ne l'ajuste pas.** Rapporte les trois valeurs obtenues pour chaque champ. Un écart réel signifierait que le moteur dépend du pas de temps quelque part, ce qui est un défaut d'architecture et non un problème de tolérance.
 
 - [ ] **Step 3 : Commit**
