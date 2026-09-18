@@ -527,7 +527,7 @@ func is_off_track(point: Vector3) -> bool:
 
 - [ ] **Step 4 : Lancer les tests pour vérifier qu'ils passent**
 
-Attendu : `65 passing`.
+Attendu : **cinq tests de plus** qu'avant cette tâche. Aucun test existant ne doit disparaître : c'est le décompte qui le vérifie, pas la couleur.
 
 - [ ] **Step 5 : Commit**
 
@@ -609,7 +609,7 @@ func racing_line_at(distance: float) -> Vector3:
 
 - [ ] **Step 4 : Lancer les tests pour vérifier qu'ils passent**
 
-Attendu : `68 passing`.
+Attendu : **trois tests de plus** qu'avant cette tâche. Aucun test existant ne doit disparaître : c'est le décompte qui le vérifie, pas la couleur.
 
 - [ ] **Step 5 : Commit**
 
@@ -827,7 +827,7 @@ curve = ExtResource("2_curve")
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : chargement sans ligne `ERROR`, et `68 passing` — inchangé.
+Attendu : chargement sans ligne `ERROR`, et **le même nombre de tests qu'avant** — cette tâche n'en ajoute aucun.
 
 - [ ] **Step 6 : Commit**
 
@@ -982,7 +982,7 @@ func update(point: Vector3) -> void:
 
 - [ ] **Step 4 : Lancer les tests pour vérifier qu'ils passent**
 
-Attendu : `74 passing`.
+Attendu : **six tests de plus** qu'avant cette tâche. Aucun test existant ne doit disparaître : c'est le décompte qui le vérifie, pas la couleur.
 
 - [ ] **Step 5 : Commit**
 
@@ -1089,7 +1089,7 @@ static func format(seconds: float) -> String:
 
 - [ ] **Step 4 : Lancer les tests pour vérifier qu'ils passent**
 
-Attendu : `79 passing`.
+Attendu : **cinq tests de plus** qu'avant cette tâche. Aucun test existant ne doit disparaître : c'est le décompte qui le vérifie, pas la couleur.
 
 Si `format` ne produit pas exactement `0:00.000`, rapporte la chaîne obtenue plutôt que d'ajuster le test : le gabarit `%06.3f` réserve six caractères dont le point et trois décimales, ce qui doit donner `00.000`.
 
@@ -1191,7 +1191,7 @@ func _is_lost() -> bool:
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : compilation propre et `79 passing`.
+Attendu : compilation propre et **le même nombre de tests qu'avant** — cette tâche n'en ajoute aucun.
 
 - [ ] **Step 4 : Commit**
 
@@ -1318,7 +1318,7 @@ Le terrain d'essai du plan 1 reste dans le dépôt : il sert encore à régler l
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : chargement sans ligne `ERROR`, `79 passing`.
+Attendu : chargement sans ligne `ERROR`, et **le même nombre de tests qu'avant** — cette tâche n'en ajoute aucun.
 
 - [ ] **Step 5 : Commit**
 
