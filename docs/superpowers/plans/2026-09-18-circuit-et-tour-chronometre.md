@@ -10,6 +10,8 @@
 
 **Spec de référence :** `docs/superpowers/specs/2026-09-17-karting-3d-design.md`, §5.
 
+**Un fichier de test qui ne compile pas est silencieusement ignoré par GUT** — observé à la tâche 7 : la suite a annoncé « 70/70, all tests passed » alors qu'un fichier entier venait d'être écarté pour erreur de parsing. C'est exactement pourquoi les attentes de ce plan sont exprimées en nombre de tests gagnés et non en couleur : un vert ne prouve rien, un décompte si.
+
 **Ce que fait vraiment `assert()` ici**, vérifié à la tâche 4 : il journalise une erreur et fait échouer le test GUT qui le déclenche, mais **il n'interrompt pas l'exécution**. En jeu, l'objet fautif est tout de même construit et rendu à l'appelant. C'est une protection de développement, pas une garantie d'exécution — à ne pas confondre avec un arrêt net si un invariant doit vraiment tenir en production.
 
 **Mesuré à la tâche 4**, et utile pour la suite : l'intervalle de bake par défaut d'un `Curve3D` donne 0,27 mm d'erreur de longueur sur un anneau de 314 m — inutile de le baisser. Et `TANGENT_EPSILON = 0.25` ne coûte que 0,006° d'erreur de tangente sur un virage de 5 m de rayon, parce qu'une différence centrée est d'ordre deux. Il ne fond une direction que sur un angle vif véritable, c'est-à-dire un point de contrôle aux poignées de longueur nulle — ce que le générateur de la tâche 8 ne produit pas.
