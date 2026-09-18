@@ -22,6 +22,7 @@ func _ready() -> void:
 	motor = KartMotor.new(stats)
 	_input = get_node(input_path) as KartInput
 	assert(_input != null, "input_path doit pointer vers un KartInput")
+	_input.kart = self
 	motor.velocity_dir = -rotation.y
 	motor.heading = -rotation.y
 
