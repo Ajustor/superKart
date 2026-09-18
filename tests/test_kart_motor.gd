@@ -456,3 +456,35 @@ func test_reset_remet_le_moteur_a_neuf() -> void:
 	assert_false(motor.on_offroad, "on repart sur la piste")
 	assert_almost_eq(motor.velocity_dir, 1.5, 0.001, "le cap demandé est appliqué")
 	assert_almost_eq(motor.heading, 1.5, 0.001)
+
+
+## Rejoue la même séquence de pilotage à trois pas de temps différents et
+## renvoie l'état final. Un moteur correctement écrit doit converger vers
+## le même résultat, à la précision d'intégration près.
+func _simuler(pas: float) -> Dictionary:
+	var m := KartMotor.new(KartStats.new())
+	var c := KartCommand.new()
+	c.throttle = 1.0
+	var t := 0.0
+	while t < 4.0:
+		m.step(c, pas)
+		t += pas
+	c.steer = 1.0
+	c.drift = true
+	t = 0.0
+	while t < 2.0:
+		m.step(c, pas)
+		t += pas
+	return {"speed": m.speed, "dir": m.velocity_dir, "charge": m.drift_charge}
+
+
+func test_le_moteur_ne_depend_pas_du_pas_de_temps() -> void:
+	var lent := _simuler(1.0 / 30.0)
+	var normal := _simuler(1.0 / 60.0)
+	var rapide := _simuler(1.0 / 120.0)
+
+	for champ in ["speed", "dir", "charge"]:
+		assert_almost_eq(lent[champ], normal[champ], 0.15,
+			"%s doit être stable entre 30 et 60 Hz" % champ)
+		assert_almost_eq(rapide[champ], normal[champ], 0.15,
+			"%s doit être stable entre 120 et 60 Hz" % champ)
