@@ -197,6 +197,11 @@ d'objets de gameplay à aligner, seulement une courbe.
 Le classement ne compare jamais les karts entre eux : chacun connaît sa distance cumulée, et trier
 huit karts sur un seul nombre reste juste quelle que soit la forme du circuit.
 
+**Trier sur ce nombre-là et sur aucun autre.** Reconstituer un couple (numéro de tour, position sur
+l'axe) pour trier donnerait un classement faux : un kart ayant reculé sous la ligne a une position
+d'axe proche de la fin du tour, donc paraîtrait devant ceux qui le précèdent réellement. La distance
+cumulée porte le signe que ce couple perd.
+
 ### 5.3 Pipeline de fabrication
 
 Aucun outil externe. On trace un `Curve3D` dans l'éditeur Godot, un générateur produit le maillage
