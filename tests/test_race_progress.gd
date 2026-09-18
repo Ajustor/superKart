@@ -19,7 +19,7 @@ func _anneau(rayon: float = 50.0, points: int = 16) -> Curve3D:
 
 func before_each() -> void:
 	track = TrackCurve.new(_anneau(), 8.0)
-	progress = RaceProgress.new(track)
+	progress = RaceProgress.new(track, 0.0)
 
 
 ## Déplace le kart le long de l'axe par petits pas, comme le ferait un vrai
@@ -91,3 +91,26 @@ func test_reculer_avant_le_depart_ne_donne_pas_de_tour_negatif() -> void:
 	assert_eq(progress.lap, 0, "on ne descend pas sous le tour zéro")
 	assert_lt(progress.total, 0.0,
 		"la distance cumulée, elle, a le droit d'être négative")
+
+
+func test_naitre_juste_avant_la_ligne_ne_donne_pas_un_tour() -> void:
+	# Le kart est posé un millimètre avant la ligne — ce que fait spawn_at dès
+	# que la ligne de course est décalée par rapport à l'axe. Avancer de cinq
+	# centimètres ne boucle pas un tour de 314 m.
+	var p := RaceProgress.new(track, 0.0)
+	p.update(track.position_at(track.length - 0.001))
+	assert_eq(p.lap, 0, "naître derrière la ligne ne compte pas un tour")
+	p.update(track.position_at(0.05))
+	assert_eq(p.lap, 0, "franchir la ligne au premier centimètre non plus")
+
+
+func test_le_vrai_circuit_ne_boucle_pas_au_depart() -> void:
+	# Le cas réel, sur la géométrie livrée : l'anneau des autres tests projette
+	# trop proprement pour reproduire la couture.
+	var courbe: Curve3D = load("res://resources/tracks/track_01_curve.tres")
+	var piste := TrackCurve.new(courbe, 9.0)
+	var p := RaceProgress.new(piste, 0.0)
+	p.update(piste.racing_line_at(0.0) + Vector3.UP * 0.1)
+	p.update(piste.racing_line_at(0.5) + Vector3.UP * 0.1)
+	assert_eq(p.lap, 0, "un demi-mètre depuis la grille ne boucle pas 768 m")
+	assert_almost_eq(p.total, 0.5, 0.2, "et la distance parcourue vaut ce qu'on a roulé")

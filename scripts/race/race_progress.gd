@@ -13,23 +13,20 @@ var track: TrackCurve
 
 var lap: int = 0
 var distance: float = 0.0   ## position le long de l'axe, dans [0, length)
-var total: float = 0.0      ## distance cumulée depuis le départ, signée
-
-var _demarre: bool = false
+var total: float = 0.0      ## distance parcourue depuis le départ, signée
 
 
-func _init(track_curve: TrackCurve) -> void:
+## La distance de départ est donnée, jamais devinée : celui qui pose le kart
+## la connaît. La redériver par projection revenait à interroger la courbe à
+## l'endroit précis où elle est ambiguë — la couture — et un point posé un
+## millimètre du mauvais côté offrait un tour complet.
+func _init(track_curve: TrackCurve, start_distance: float) -> void:
 	track = track_curve
+	distance = track.wrap(start_distance)
 
 
 func update(point: Vector3) -> void:
 	var d := track.distance_of(point)
-
-	if not _demarre:
-		_demarre = true
-		distance = d
-		total = d
-		return
 
 	# Le déplacement réel sur une boucle est le chemin le plus court, pas la
 	# différence brute des coordonnées : sans ça, deux centimètres de
@@ -38,6 +35,10 @@ func update(point: Vector3) -> void:
 	total += wrapf(d - distance, -track.length * 0.5, track.length * 0.5)
 	distance = d
 
+	# total part de zéro : le tour se compte sur ce qui a été roulé, pas sur la
+	# position absolue. Deux karts sur une grille décalée doivent parcourir la
+	# même distance pour boucler le même nombre de tours.
+	#
 	# Un kart qui recule avant même d'être parti reste au tour zéro : la
-	# distance cumulée peut devenir négative, le numéro de tour non.
+	# distance parcourue peut devenir négative, le numéro de tour non.
 	lap = maxi(floori(total / track.length), 0)
