@@ -1496,7 +1496,7 @@ func _process(_delta: float) -> void:
 `scenes/race.tscn` :
 
 ```
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/tracks/track_01.tscn" id="1_track"]
 [ext_resource type="PackedScene" path="res://scenes/kart/kart.tscn" id="2_kart"]
@@ -1540,7 +1540,7 @@ script = ExtResource("5_hud")
 session_path = NodePath("../../Session")
 ```
 
-`load_steps` vaut 6 : cinq `ext_resource` et une `sub_resource`, plus un. Godot ne signale pas un compte faux en headless, donc vérifie-le toi-même.
+`load_steps` vaut 7 : six ressources déclarées — cinq `ext_resource` et une `sub_resource` — plus un, comme dans `test_ground.tscn` (huit ressources, `load_steps=9`). Godot ne signale pas un compte faux en headless, donc recompte-le toi-même.
 
 - [ ] **Step 3 : Faire de la course la scène principale**
 
