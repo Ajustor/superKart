@@ -42,3 +42,14 @@ func test_le_formatage_est_lisible() -> void:
 	assert_eq(RaceTimer.format(0.0), "0:00.000")
 	assert_eq(RaceTimer.format(42.5), "0:42.500")
 	assert_eq(RaceTimer.format(83.25), "1:23.250")
+
+
+func test_le_formatage_bascule_bien_a_la_minute() -> void:
+	assert_eq(RaceTimer.format(59.9996), "1:00.000",
+		"figer les minutes avant d'arrondir le reste afficherait 0:60.000")
+	assert_eq(RaceTimer.format(119.9999), "2:00.000")
+
+
+func test_le_formatage_ne_montre_jamais_de_temps_negatif() -> void:
+	assert_eq(RaceTimer.format(-5.0), "0:00.000",
+		"un chrono n'affiche pas un temps négatif")
