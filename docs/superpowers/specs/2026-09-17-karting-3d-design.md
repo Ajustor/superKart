@@ -180,6 +180,8 @@ découle par le calcul**, sans rien à placer à la main :
 Déplacer un point de contrôle redéfinit donc le circuit entier, sa collision, la trajectoire de
 l'IA et la logique de course d'un seul geste. Un troisième circuit coûte une courbe.
 
+**Une limite à lever avant le circuit de montagne.** La projection d'un kart sur l'axe mesure en 3D, altitude comprise, alors que l'écart latéral est calculé à plat. Sur un circuit plat c'est équivalent. Dès qu'il y aura du dénivelé, un kart en vol au-dessus d'une portion qui passe sous lui pourra se projeter sur le mauvais tronçon, et le hors-piste comme la progression suivront la mauvaise route. Le correctif — projeter sur une copie horizontalement aplatie de la courbe — appartient au plan qui introduira le dénivelé : c'est le premier où un test pourra échouer sans lui.
+
 ### 5.2 Progression continue plutôt que checkpoints
 
 Une version précédente de ce spec prévoyait des `Area3D` numérotés à franchir dans l'ordre, pour
