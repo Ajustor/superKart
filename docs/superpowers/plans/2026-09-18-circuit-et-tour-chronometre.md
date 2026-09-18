@@ -136,7 +136,7 @@ rtk git add scripts/kart/kart_motor.gd scripts/kart/kart.gd tests/test_kart_moto
 **Files:**
 - Modify: `tests/test_kart_motor.gd`
 
-`KartMotor` est *défini* comme `f(état, commande, delta)` — c'est la thèse de toute l'architecture — et les 47 tests tournent tous à exactement 1/60. C'est la seule propriété que le design revendique et que la suite ne vérifie nulle part. Le correctif de courbure du plan 1 a justement démontré que cette fonction peut héberger une erreur de couplage qui survit à quinze tâches.
+`KartMotor` est *défini* comme `f(état, commande, delta)` — c'est la thèse de toute l'architecture — et les 50 tests tournent tous à exactement 1/60. C'est la seule propriété que le design revendique et que la suite ne vérifie nulle part. Le correctif de courbure du plan 1 a justement démontré que cette fonction peut héberger une erreur de couplage qui survit à quinze tâches.
 
 - [ ] **Step 1 : Écrire le test qui échoue**
 
@@ -177,7 +177,7 @@ func test_le_moteur_ne_depend_pas_du_pas_de_temps() -> void:
 
 - [ ] **Step 2 : Lancer les tests**
 
-Attendu : `48 passing`.
+Attendu : `51 passing`.
 
 **Si ce test échoue, ne l'ajuste pas.** Rapporte les trois valeurs obtenues pour chaque champ. Un écart réel signifierait que le moteur dépend du pas de temps quelque part, ce qui est un défaut d'architecture et non un problème de tolérance.
 
@@ -268,7 +268,7 @@ Dans `scripts/kart/kart.gd`, `_ready()` gagne une ligne après la récupération
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : chargement propre, `48 passing` — inchangé, aucun test ne touche à l'input.
+Attendu : chargement propre, `51 passing` — inchangé, aucun test ne touche à l'input.
 
 - [ ] **Step 5 : Commit**
 
@@ -428,7 +428,7 @@ func right_at(distance: float) -> Vector3:
 
 - [ ] **Step 4 : Lancer les tests pour vérifier qu'ils passent**
 
-Attendu : `55 passing`.
+Attendu : `58 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -518,7 +518,7 @@ func is_off_track(point: Vector3) -> bool:
 
 - [ ] **Step 4 : Lancer les tests pour vérifier qu'ils passent**
 
-Attendu : `60 passing`.
+Attendu : `66 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -600,7 +600,7 @@ func racing_line_at(distance: float) -> Vector3:
 
 - [ ] **Step 4 : Lancer les tests pour vérifier qu'ils passent**
 
-Attendu : `63 passing`.
+Attendu : `66 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -818,7 +818,7 @@ curve = ExtResource("2_curve")
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : chargement sans ligne `ERROR`, et `63 passing` — inchangé.
+Attendu : chargement sans ligne `ERROR`, et `66 passing` — inchangé.
 
 - [ ] **Step 6 : Commit**
 
@@ -973,7 +973,7 @@ func update(point: Vector3) -> void:
 
 - [ ] **Step 4 : Lancer les tests pour vérifier qu'ils passent**
 
-Attendu : `69 passing`.
+Attendu : `72 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -1080,7 +1080,7 @@ static func format(seconds: float) -> String:
 
 - [ ] **Step 4 : Lancer les tests pour vérifier qu'ils passent**
 
-Attendu : `74 passing`.
+Attendu : `77 passing`.
 
 Si `format` ne produit pas exactement `0:00.000`, rapporte la chaîne obtenue plutôt que d'ajuster le test : le gabarit `%06.3f` réserve six caractères dont le point et trois décimales, ce qui doit donner `00.000`.
 
@@ -1182,7 +1182,7 @@ func _is_lost() -> bool:
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : compilation propre et `74 passing`.
+Attendu : compilation propre et `77 passing`.
 
 - [ ] **Step 4 : Commit**
 
@@ -1309,7 +1309,7 @@ Le terrain d'essai du plan 1 reste dans le dépôt : il sert encore à régler l
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : chargement sans ligne `ERROR`, `74 passing`.
+Attendu : chargement sans ligne `ERROR`, `77 passing`.
 
 - [ ] **Step 5 : Commit**
 
