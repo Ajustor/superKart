@@ -270,7 +270,7 @@ Dans `scripts/kart/kart.gd`, `_ready()` gagne une ligne après la récupération
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : chargement propre, `51 passing` — inchangé, aucun test ne touche à l'input.
+Attendu : chargement propre, `53 passing` — inchangé, aucun test ne touche à l'input.
 
 - [ ] **Step 5 : Commit**
 
@@ -430,7 +430,7 @@ func right_at(distance: float) -> Vector3:
 
 - [ ] **Step 4 : Lancer les tests pour vérifier qu'ils passent**
 
-Attendu : `58 passing`.
+Attendu : `60 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -520,7 +520,7 @@ func is_off_track(point: Vector3) -> bool:
 
 - [ ] **Step 4 : Lancer les tests pour vérifier qu'ils passent**
 
-Attendu : `66 passing`.
+Attendu : `65 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -602,7 +602,7 @@ func racing_line_at(distance: float) -> Vector3:
 
 - [ ] **Step 4 : Lancer les tests pour vérifier qu'ils passent**
 
-Attendu : `66 passing`.
+Attendu : `68 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -820,7 +820,7 @@ curve = ExtResource("2_curve")
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : chargement sans ligne `ERROR`, et `66 passing` — inchangé.
+Attendu : chargement sans ligne `ERROR`, et `68 passing` — inchangé.
 
 - [ ] **Step 6 : Commit**
 
@@ -975,7 +975,7 @@ func update(point: Vector3) -> void:
 
 - [ ] **Step 4 : Lancer les tests pour vérifier qu'ils passent**
 
-Attendu : `72 passing`.
+Attendu : `74 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -1082,7 +1082,7 @@ static func format(seconds: float) -> String:
 
 - [ ] **Step 4 : Lancer les tests pour vérifier qu'ils passent**
 
-Attendu : `77 passing`.
+Attendu : `79 passing`.
 
 Si `format` ne produit pas exactement `0:00.000`, rapporte la chaîne obtenue plutôt que d'ajuster le test : le gabarit `%06.3f` réserve six caractères dont le point et trois décimales, ce qui doit donner `00.000`.
 
@@ -1184,7 +1184,7 @@ func _is_lost() -> bool:
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : compilation propre et `77 passing`.
+Attendu : compilation propre et `79 passing`.
 
 - [ ] **Step 4 : Commit**
 
@@ -1311,7 +1311,7 @@ Le terrain d'essai du plan 1 reste dans le dépôt : il sert encore à régler l
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : chargement sans ligne `ERROR`, `77 passing`.
+Attendu : chargement sans ligne `ERROR`, `79 passing`.
 
 - [ ] **Step 5 : Commit**
 
