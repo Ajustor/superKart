@@ -117,3 +117,28 @@ func test_la_hauteur_n_influence_pas_le_hors_piste() -> void:
 	var haut := track.position_at(20.0) + Vector3.UP * 30.0
 	assert_false(track.is_off_track(haut),
 		"sauter ne doit pas compter comme une sortie de piste")
+
+
+func test_la_ligne_de_course_mord_l_interieur_d_un_virage() -> void:
+	# L'anneau tourne à droite en permanence, donc l'intérieur est à droite
+	# partout, et la ligne doit s'y décaler sur tout le tour.
+	for d in [0.0, 80.0, 160.0, 240.0]:
+		var ecart := track.lateral_offset(track.racing_line_at(d))
+		assert_gt(ecart, 1.0, "la ligne se décale vers l'intérieur à %f" % d)
+
+
+func test_la_ligne_de_course_reste_sur_la_piste() -> void:
+	for i in 40:
+		var d := track.length * float(i) / 40.0
+		assert_false(track.is_off_track(track.racing_line_at(d)),
+			"la ligne de course ne doit jamais sortir de la piste")
+
+
+func test_la_ligne_de_course_suit_une_ligne_droite() -> void:
+	var droite := Curve3D.new()
+	droite.add_point(Vector3(0, 0, 0))
+	droite.add_point(Vector3(0, 0, -100))
+	droite.add_point(Vector3(0, 0, -200))
+	var plate := TrackCurve.new(droite, 8.0)
+	assert_almost_eq(plate.lateral_offset(plate.racing_line_at(100.0)), 0.0, 0.5,
+		"sans courbure, la ligne de course reste sur l'axe")

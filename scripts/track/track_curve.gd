@@ -16,6 +16,13 @@ extends RefCounted
 ## Écart utilisé pour dériver la tangente par différence finie, en mètres.
 const TANGENT_EPSILON := 0.25
 
+## Distance de part et d'autre du point courant pour mesurer la courbure.
+const CURVATURE_SAMPLE := 10.0
+
+## Fraction de la demi-largeur que la ligne de course peut mordre. En deçà
+## de 1.0 pour qu'elle reste sur le bitume et non sur le bord.
+const RACING_LINE_BITE := 0.7
+
 var curve: Curve3D
 var half_width: float
 var length: float
@@ -75,3 +82,14 @@ func lateral_offset(point: Vector3) -> float:
 
 func is_off_track(point: Vector3) -> bool:
 	return absf(lateral_offset(point)) > half_width
+
+## L'axe décalé vers l'intérieur du virage, proportionnellement à la courbure
+## locale. Dérivée plutôt que tracée à la main : déplacer un point de contrôle
+## déplace la ligne de course avec lui, sans rien à remettre à jour.
+func racing_line_at(distance: float) -> Vector3:
+	var avant := yaw_at(distance + CURVATURE_SAMPLE)
+	var arriere := yaw_at(distance - CURVATURE_SAMPLE)
+	# Positif = le circuit tourne à droite ici, donc l'intérieur est à droite.
+	var virage := wrapf(avant - arriere, -PI, PI)
+	var mordant := clampf(virage / (PI * 0.25), -1.0, 1.0)
+	return position_at(distance) + right_at(distance) * mordant * half_width * RACING_LINE_BITE
