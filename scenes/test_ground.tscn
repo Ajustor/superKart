@@ -1,0 +1,56 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/kart/kart.tscn" id="1_kart"]
+[ext_resource type="Script" path="res://scripts/camera/chase_camera.gd" id="2_camera"]
+[ext_resource type="Script" path="res://scripts/world/marker_field.gd" id="3_markers"]
+[ext_resource type="Script" path="res://scripts/world/test_ground.gd" id="4_ground"]
+
+[sub_resource type="BoxShape3D" id="Shape_ground"]
+size = Vector3(400, 1, 400)
+
+[sub_resource type="PlaneMesh" id="Mesh_ground"]
+size = Vector2(400, 400)
+
+[sub_resource type="StandardMaterial3D" id="Mat_ground"]
+albedo_color = Color(0.42, 0.44, 0.46, 1)
+
+[sub_resource type="Environment" id="Env_sky"]
+background_mode = 1
+background_color = Color(0.55, 0.72, 0.90, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.6, 0.68, 0.78, 1)
+ambient_light_energy = 0.6
+
+[node name="TestGround" type="Node3D"]
+script = ExtResource("4_ground")
+kart_path = NodePath("Kart")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_sky")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.766, -0.492, 0.414, 0, 0.643, 0.766, -0.643, -0.587, 0.492, 0, 20, 0)
+shadow_enabled = true
+
+[node name="Ground" type="StaticBody3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+shape = SubResource("Shape_ground")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Ground"]
+mesh = SubResource("Mesh_ground")
+surface_material_override/0 = SubResource("Mat_ground")
+
+[node name="Markers" type="MultiMeshInstance3D" parent="."]
+script = ExtResource("3_markers")
+count = 160
+field_radius = 175.0
+
+[node name="Kart" parent="." instance=ExtResource("1_kart")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+
+[node name="ChaseCamera" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, 6)
+script = ExtResource("2_camera")
+target_path = NodePath("../Kart")

@@ -20,7 +20,13 @@ Trois points à connaître avant de commencer — ils sont délibérés, pas des
 
 **Le sol est plat dans ce plan.** La suspension par quatre raycasts et l'alignement sur la pente décrits au spec arrivent avec le circuit réel, dans le plan 2. Ici, `is_on_floor()` et une gravité simple suffisent, et l'état `SONNÉ` n'est pas encore déclenché par quoi que ce soit — il sera câblé aux objets dans le plan 3. Le champ existe dès maintenant pour ne pas avoir à rouvrir le moteur.
 
-**Les scènes sont écrites à la main.** Les fichiers `.tscn` sont du texte et sont donnés en entier dans les tâches, de sorte que tout le plan s'exécute sans ouvrir l'éditeur. Le format est stable en Godot 4, mais si un chargement se plaint d'un `load_steps` incorrect, la valeur attendue est le total des `ext_resource` et `sub_resource` plus un. Même logique pour les actions d'entrée : plutôt que de sérialiser des `InputEvent` à la main, on les fait écrire par le moteur (Task 9).
+**Les scènes sont écrites à la main.** Les fichiers `.tscn` sont du texte et sont donnés en entier dans les tâches, de sorte que tout le plan s'exécute sans ouvrir l'éditeur. Une limite de vérification à connaître : **le contenu d'un `MultiMesh` est impossible à relire en headless.** Godot y utilise un backend de rendu factice qui ne conserve aucun buffer d'instances, donc `get_instance_transform()` renvoie zéro pour n'importe quel script, même correct. Pour valider un placement, rejoue l'algorithme isolément plutôt que d'interroger le `MultiMesh` — sans quoi tu conclurais à un bug qui n'existe pas.
+
+Le format est stable en Godot 4. Attention cependant : **un `load_steps` faux ne produit aucune erreur en headless** — le moteur le tolère en silence hors de l'éditeur. Il faut donc que le compte soit juste à l'écriture : c'est le total des `ext_resource` et `sub_resource`, plus un. Aucune commande ne le vérifiera à ta place. Même logique pour les actions d'entrée : plutôt que de sérialiser des `InputEvent` à la main, on les fait écrire par le moteur (Task 9).
+
+## Convention de commit
+
+Depuis la 4.4, Godot génère un fichier `.uid` à côté de chaque script au premier scan. **Ces fichiers se commitent**, systématiquement et avec le script qu'ils accompagnent. Ils portent l'identifiant stable de la ressource, utilisé pour les références entre fichiers : les laisser hors du dépôt fait diverger les UID d'un clone à l'autre et casse la résolution des références. Les lignes `git add` des tâches ne les listent pas une par une ; ajoute-les sans le demander.
 
 ## Structure des fichiers
 
@@ -93,6 +99,14 @@ Définis d'abord un raccourci vers ton binaire Godot — les commandes de tout l
 ```bash
 export GODOT="/c/Users/alexa/AppData/Local/Microsoft/WinGet/Packages/GodotEngine.GodotEngine_Microsoft.Winget.Source_8wekyb3d8bbwe/Godot_v4.7.2-stable_win64.exe"
 ```
+
+Amorce ensuite le cache d'import, une seule fois :
+
+```bash
+"$GODOT" --headless --import
+```
+
+Sans cela, le tout premier lancement échoue sur `Some GUT class_names have not been imported` : un projet neuf n'a jamais eu son système de fichiers scanné, donc le `class_name GutTest` dont hérite le test n'est pas encore enregistré. Le piège est que la commande sort malgré tout en code 0 alors qu'aucun test n'a tourné — vérifie toujours le décompte, pas seulement le code de retour. Le cache vit dans `.godot/`, qui est ignoré par git : après un clone frais, il faut refaire cet import.
 
 Puis :
 
@@ -177,6 +191,15 @@ extends Resource
 @export var boost_durations: PackedFloat32Array = PackedFloat32Array([0.5, 1.0, 1.8])
 @export var boost_speed_multiplier: float = 1.35
 
+@export_group("Saut")
+@export var gravity: float = 30.0
+
+## Calé pour que l'atterrissage coïncide avec le début de la glisse.
+## Dérivé plutôt qu'exporté : régler hop_duration sans réajuster cette
+## valeur à la main recréerait un kart qui retombe en pleine glisse.
+var hop_impulse: float:
+	get: return gravity * hop_duration / 2.0
+
 @export_group("Pénalités")
 @export var offroad_speed_multiplier: float = 0.6
 @export var stun_duration: float = 1.2
@@ -212,11 +235,15 @@ func test_les_paliers_sont_strictement_croissants() -> void:
 func test_une_commande_effacee_est_neutre() -> void:
 	cmd.steer = 1.0
 	cmd.throttle = 1.0
+	cmd.brake = 1.0
 	cmd.drift = true
+	cmd.use_item = true
 	cmd.clear()
 	assert_eq(cmd.steer, 0.0)
 	assert_eq(cmd.throttle, 0.0)
+	assert_eq(cmd.brake, 0.0)
 	assert_false(cmd.drift)
+	assert_false(cmd.use_item)
 ```
 
 - [ ] **Step 4 : Lancer les tests**
@@ -258,7 +285,7 @@ func before_each() -> void:
 	motor = KartMotor.new(stats)
 ```
 
-Ajoute ce helper et ces trois tests à la fin du fichier :
+Ajoute ce helper et ces quatre tests à la fin du fichier :
 
 ```gdscript
 ## Fait tourner le moteur pendant `seconds` à 60 Hz avec la commande courante.
@@ -414,7 +441,19 @@ func test_en_adherence_la_caisse_suit_le_vecteur_vitesse() -> void:
 	_run(3.0)
 	assert_almost_eq(motor.heading, motor.velocity_dir, 0.001,
 		"hors dérapage, caisse et trajectoire sont alignées")
+
+
+func test_le_frein_est_prioritaire_sur_les_gaz() -> void:
+	cmd.throttle = 1.0
+	_run(10.0)
+	var lancee := motor.speed
+	cmd.brake = 1.0          # les deux enfoncés en même temps
+	_run(0.5)
+	assert_lt(motor.speed, lancee,
+		"frein et gaz ensemble : le frein doit gagner, pas se mélanger aux gaz")
 ```
+
+Ce dernier test fige une décision d'ordre des branches que la tâche 7 réécrira entièrement. Sans lui, un réordonnancement la casserait en silence.
 
 - [ ] **Step 2 : Lancer les tests pour vérifier qu'ils échouent**
 
@@ -454,7 +493,7 @@ func _update_grip_steering(cmd: KartCommand, delta: float) -> void:
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `11 passing`.
+Attendu : `12 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -590,6 +629,7 @@ func _update_hop(cmd: KartCommand, delta: float) -> void:
 		return
 	if cmd.drift:
 		state = State.DRIFT
+		hop_timer = 0.0
 		drift_charge = 0.0
 		drift_angle = 0.0
 	else:
@@ -612,7 +652,7 @@ func _end_drift() -> void:
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `17 passing`.
+Attendu : `18 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -686,7 +726,19 @@ func test_deraper_ne_coute_presque_pas_de_vitesse() -> void:
 	_run(2.0)
 	assert_gt(motor.speed, lancee * 0.9,
 		"le dérapage doit rester rentable, sinon le joueur l'évite")
+
+
+func test_la_charge_demarre_a_zero_a_l_atterrissage() -> void:
+	cmd.throttle = 1.0
+	_run(5.0)
+	cmd.steer = 1.0
+	cmd.drift = true
+	_run(stats.hop_duration + 1.0 / 60.0)
+	assert_lt(motor.drift_charge, 0.05,
+		"la charge part de zéro : le temps passé en saut ne compte pas")
 ```
+
+Ce dernier test est load-bearing pour la tâche 7 : si la charge héritait du temps de saut, tous les seuils de palier seraient décalés de 0,15 s sans que rien ne le signale.
 
 - [ ] **Step 2 : Lancer les tests pour vérifier qu'ils échouent**
 
@@ -717,8 +769,11 @@ func _update_drift(cmd: KartCommand, delta: float) -> void:
 	var target := deg_to_rad(lerpf(stats.drift_angle_max_deg, stats.drift_angle_min_deg, t))
 	drift_angle = move_toward(drift_angle, target, deg_to_rad(stats.drift_angle_rate_deg) * delta)
 
-	var max_angle := deg_to_rad(stats.drift_angle_max_deg)
-	var courbure := drift_angle / max_angle
+	# La courbure suit le braquage, pas l'angle de glisse. Les dériver l'un de
+	# l'autre inversait la commande : braquer vers l'intérieur ouvrait le rayon
+	# et contre-braquer le resserrait, et l'entrée en glisse sous-virait le temps
+	# que l'angle monte depuis zéro.
+	var courbure := lerpf(0.5, 1.0, t)
 	velocity_dir += float(drift_dir) * stats.drift_turn_rate * courbure * delta
 	heading = velocity_dir + float(drift_dir) * drift_angle
 
@@ -731,7 +786,7 @@ func _update_drift(cmd: KartCommand, delta: float) -> void:
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `22 passing`.
+Attendu : `24 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -803,7 +858,19 @@ func test_on_peut_encore_deraper_pendant_un_turbo() -> void:
 	_run(stats.hop_duration + 0.2)
 	assert_eq(motor.state, KartMotor.State.DRIFT,
 		"le turbo est un modificateur, il ne doit pas bloquer le dérapage")
+
+
+func test_le_derapage_a_gauche_est_le_miroir_du_droit() -> void:
+	_enter_drift(-1)
+	var depart := motor.velocity_dir
+	_run(0.5)
+	assert_lt(motor.velocity_dir, depart,
+		"une glisse à gauche courbe la trajectoire à gauche")
+	assert_almost_eq(motor.heading, motor.velocity_dir - motor.drift_angle, 0.001,
+		"à gauche, la caisse se décale du côté opposé")
 ```
+
+Ce dernier test comble un trou relevé en revue : jusqu'ici tous les tests de glisse entraient à droite, donc un `+1` codé en dur à la place de `drift_dir` aurait cassé tout le dérapage à gauche sans faire échouer quoi que ce soit.
 
 - [ ] **Step 2 : Lancer les tests pour vérifier qu'ils échouent**
 
@@ -845,8 +912,16 @@ func tier_for_charge(charge: float) -> int:
 func _release_drift() -> void:
 	var tier := tier_for_charge(drift_charge)
 	if tier > 0:
-		boost_timer = stats.boost_durations[tier - 1]
+		# Un turbo plus long déjà en cours ne doit pas être amputé par un
+		# palier inférieur : enchaîner doit récompenser, pas punir.
+		boost_timer = maxf(boost_timer, stats.boost_durations[tier - 1])
 	_end_drift()
+```
+
+Le retour au plafond après un turbo a son propre ressenti, distinct de la décélération en roue libre. Ajoute donc un réglage dédié à `scripts/kart/kart_stats.gd`, dans le groupe Mini-turbo :
+
+```gdscript
+@export var boost_decay_rate: float = 12.0      ## retour au plafond, u/s²
 ```
 
 Enfin, dans `_update_speed()`, le turbo doit pousser la vitesse et pas seulement lever le plafond. Remplace la méthode entière par :
@@ -866,7 +941,7 @@ func _update_speed(cmd: KartCommand, delta: float) -> void:
 		speed = move_toward(speed, 0.0, stats.coast_friction * delta)
 
 	if speed > ceiling:
-		speed = move_toward(speed, ceiling, stats.coast_friction * 2.0 * delta)
+		speed = move_toward(speed, ceiling, stats.boost_decay_rate * delta)
 ```
 
 - [ ] **Step 4 : Lancer les tests pour vérifier qu'ils passent**
@@ -875,12 +950,12 @@ func _update_speed(cmd: KartCommand, delta: float) -> void:
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `28 passing`.
+Attendu : `31 passing`.
 
 - [ ] **Step 5 : Commit**
 
 ```bash
-rtk git add scripts/kart/kart_motor.gd tests/test_kart_motor.gd && rtk git commit -m "feat: charge de dérapage, paliers et mini-turbo"
+rtk git add scripts/kart/kart_motor.gd scripts/kart/kart_stats.gd tests/test_kart_motor.gd && rtk git commit -m "feat: charge de dérapage, paliers et mini-turbo"
 ```
 
 ---
@@ -909,6 +984,7 @@ func test_tomber_sous_la_vitesse_minimale_annule_le_derapage() -> void:
 	cmd.brake = 1.0
 	_run(3.0)
 	assert_eq(motor.state, KartMotor.State.GRIP)
+	assert_eq(motor.boost_timer, 0.0, "une glisse cassée par la vitesse ne rapporte rien non plus")
 
 
 func test_le_hors_piste_plafonne_la_vitesse() -> void:
@@ -935,7 +1011,40 @@ func test_le_turbo_efface_la_penalite_hors_piste() -> void:
 	motor.step(cmd, 1.0 / 60.0)
 	assert_gt(motor.speed, stats.max_speed,
 		"foncer dans l'herbe sous turbo doit rester payant")
+
+
+func test_un_palier_sans_duree_de_turbo_n_en_est_pas_un() -> void:
+	stats.drift_tiers = PackedFloat32Array([0.6, 1.5, 2.6, 4.0])
+	assert_eq(motor.tier_for_charge(5.0), 3,
+		"un palier sans durée associée ne doit pas être atteignable")
+
+
+func test_une_glisse_cassee_exige_de_relacher_avant_d_en_relancer_une() -> void:
+	_enter_drift(1)
+	cmd.steer = -1.0
+	_run(0.5)
+	assert_eq(motor.state, KartMotor.State.GRIP,
+		"bouton toujours tenu : la glisse cassée ne se relance pas")
+	cmd.drift = false
+	_run(0.1)
+	cmd.steer = 1.0
+	cmd.drift = true
+	_run(stats.hop_duration + 0.1)
+	assert_eq(motor.state, KartMotor.State.DRIFT,
+		"après avoir relâché, on peut en relancer une")
+
+
+func test_tenir_le_bouton_avant_d_etre_assez_rapide_n_empeche_pas_la_glisse() -> void:
+	cmd.drift = true          # tenu dès le départ, avant d'avoir la vitesse
+	cmd.throttle = 1.0
+	_run(5.0)
+	cmd.steer = 1.0           # on braque une fois lancé, sans jamais relâcher
+	_run(stats.hop_duration + 0.2)
+	assert_eq(motor.state, KartMotor.State.DRIFT,
+		"tenir le bouton en attendant d'être assez rapide doit fonctionner")
 ```
+
+Ce dernier test couvre le geste manette le plus naturel qui soit — tenir la gâchette en accélérant, puis braquer — et c'est exactement celui qu'un verrou mal nommé casserait.
 
 - [ ] **Step 2 : Lancer les tests pour vérifier qu'ils échouent**
 
@@ -947,7 +1056,44 @@ Attendu : ÉCHEC sur les deux tests d'annulation — l'état reste `DRIFT`.
 
 - [ ] **Step 3 : Écrire l'implémentation**
 
-Dans `_update_drift()`, remplace le bloc final par :
+D'abord, un correctif relevé en revue. `_release_drift()` indexe `boost_durations[tier - 1]` sans garde : si `drift_tiers` gagne un palier que `boost_durations` n'a pas — ce qui arrivera dès qu'on éditera des `KartStats` par kart — un dérapage assez long plante. On borne à la source : un palier sans durée de turbo associée n'est pas un palier. Remplace `tier_for_charge` par :
+
+```gdscript
+## Nombre de paliers franchis pour une charge donnée. 0 = aucun turbo.
+## Borné par le plus court des deux tableaux : un palier sans durée de
+## turbo associée n'en est pas un, et indexer à l'aveugle planterait.
+func tier_for_charge(charge: float) -> int:
+	var count := mini(stats.drift_tiers.size(), stats.boost_durations.size())
+	var tier := 0
+	for i in count:
+		if charge >= stats.drift_tiers[i]:
+			tier = i + 1
+	return tier
+```
+
+Ensuite, le saut doit se déclencher à l'**appui** et non au maintien. Sans ça, une glisse annulée par contre-braquage se relance à la frame suivante dans le sens opposé, et l'annulation ne punit plus rien. C'est aussi le modèle du genre : on presse pour sauter, on maintient pour glisser, on relâche pour le turbo.
+
+Le verrou ne doit pas dire « le bouton était tenu à la frame précédente » — sinon un joueur qui tient la gâchette avant d'avoir la vitesse requise s'auto-verrouille et n'obtiendra plus jamais de saut sans relâcher. Il doit dire « cette glisse a été cassée, bouton toujours tenu ». Ajoute-le sous `hop_timer` :
+
+```gdscript
+var _drift_locked_out: bool = false   ## une glisse cassée bloque jusqu'au relâchement
+```
+
+Ajoute la garde en tête de `_try_enter_drift`, juste après le test `if not cmd.drift` :
+
+```gdscript
+	if _drift_locked_out:
+		return
+```
+
+et libère le verrou dès que le bouton remonte, à la toute fin de `step()`, après le `match` :
+
+```gdscript
+	if not cmd.drift:
+		_drift_locked_out = false
+```
+
+Puis, dans `_update_drift()`, remplace le bloc final par :
 
 ```gdscript
 	drift_charge += delta
@@ -956,9 +1102,25 @@ Dans `_update_drift()`, remplace le bloc final par :
 		_release_drift()
 		return
 
-	# Une glisse cassée ne rapporte rien, quel que soit son niveau de charge.
-	if speed < stats.min_drift_speed or inward < -0.8:
+	if _drift_is_broken(inward):
+		_drift_locked_out = true
 		_end_drift()
+```
+
+et ajoute la fonction qui nomme la condition, pour que les prochaines causes de rupture s'y ajoutent sans faire enfler `_update_drift` :
+
+```gdscript
+## Une glisse cassée ne rapporte rien, quel que soit son niveau de charge.
+func _drift_is_broken(inward: float) -> bool:
+	return speed < stats.min_drift_speed or inward < -0.8
+```
+
+Enfin, `test_le_sens_de_glisse_est_verrouille_a_l_entree` (écrit en tâche 5) vérifiait le verrouillage en braquant à fond dans l'autre sens — ce qui déclenche désormais l'annulation. Un contre-braquage partiel teste la même intention sans tomber dans le nouveau cas. Remplace sa deuxième moitié :
+
+```gdscript
+	cmd.steer = 0.5          # contre-braquage partiel, sous le seuil d'annulation
+	_run(0.5)
+	assert_eq(motor.drift_dir, -1, "le sens ne change pas en cours de glisse")
 ```
 
 - [ ] **Step 4 : Lancer les tests pour vérifier qu'ils passent**
@@ -967,7 +1129,7 @@ Dans `_update_drift()`, remplace le bloc final par :
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `33 passing`.
+Attendu : `39 passing`.
 
 - [ ] **Step 5 : Commit**
 
@@ -1102,7 +1264,7 @@ Attendu : `input map écrite`.
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `35 passing`.
+Attendu : `41 passing`.
 
 - [ ] **Step 6 : Commit**
 
@@ -1194,9 +1356,6 @@ extends CharacterBody3D
 ## Relie la source de commande, le moteur et le déplacement réel.
 ## Ne contient aucune règle de pilotage : tout est dans KartMotor.
 
-const GRAVITY := 30.0
-const HOP_IMPULSE := 4.5
-
 @export var stats: KartStats
 @export var input_path: NodePath
 
@@ -1223,13 +1382,13 @@ func _physics_process(delta: float) -> void:
 	# Le saut d'entrée en dérapage, purement vertical.
 	var hopping := motor.state == KartMotor.State.HOP
 	if hopping and not _was_hopping:
-		_vertical = HOP_IMPULSE
+		_vertical = stats.hop_impulse
 	_was_hopping = hopping
 
 	if is_on_floor() and _vertical <= 0.0:
 		_vertical = 0.0
 	else:
-		_vertical -= GRAVITY * delta
+		_vertical -= stats.gravity * delta
 
 	# En Godot, l'avant d'un nœud 3D est -Z.
 	var forward := Vector3(-sin(motor.velocity_dir), 0.0, -cos(motor.velocity_dir))
@@ -1298,7 +1457,7 @@ script = ExtResource("2_input")
 
 Attendu : aucune ligne contenant `ERROR` ni `SCRIPT ERROR` dans la sortie. Un avertissement sur l'absence de caméra est normal.
 
-Si Godot signale un `load_steps` incorrect, corrige le nombre : c'est le total des `ext_resource` et `sub_resource`, plus un.
+Ne compte pas sur Godot pour signaler un `load_steps` faux : il le tolère en silence en headless. Vérifie le compte toi-même — total des `ext_resource` et `sub_resource`, plus un.
 
 - [ ] **Step 5 : Commit**
 
@@ -1331,6 +1490,7 @@ extends Camera3D
 @export var fov_min: float = 70.0
 @export var fov_max: float = 85.0
 @export var drift_roll_deg: float = 6.0
+@export var roll_stiffness: float = 6.0
 
 var _kart: Kart
 var _roll: float = 0.0
@@ -1348,11 +1508,14 @@ func _physics_process(delta: float) -> void:
 
 	var desired := _kart.global_position - forward * distance + Vector3.UP * height
 	# Un suivi à ressort : la caméra se laisse distancer à l'accélération.
-	global_position = global_position.lerp(desired, clampf(follow_stiffness * delta, 0.0, 1.0))
+	global_position = global_position.lerp(desired, 1.0 - exp(-follow_stiffness * delta))
 
 	look_at(_kart.global_position + forward * look_ahead + Vector3.UP * 0.8, Vector3.UP)
 
-	var ratio := clampf(motor.speed / _kart.stats.max_speed, 0.0, 1.0)
+	# Le plafond de référence inclut le turbo, sinon le FOV sature dès la
+	# vitesse de pointe normale et le mini-turbo ne se voit plus du tout.
+	var ceiling := _kart.stats.max_speed * _kart.stats.boost_speed_multiplier
+	var ratio := clampf(motor.speed / ceiling, 0.0, 1.0)
 	fov = lerpf(fov_min, fov_max, ratio)
 
 	# Léger roulis dans la glisse, qui accentue la lecture du dérapage.
@@ -1361,7 +1524,7 @@ func _physics_process(delta: float) -> void:
 	var target_roll := 0.0
 	if motor.state == KartMotor.State.DRIFT:
 		target_roll = deg_to_rad(drift_roll_deg) * float(motor.drift_dir)
-	_roll = lerpf(_roll, target_roll, clampf(6.0 * delta, 0.0, 1.0))
+	_roll = lerpf(_roll, target_roll, 1.0 - exp(-roll_stiffness * delta))
 	rotation.z = _roll
 ```
 
@@ -1398,16 +1561,21 @@ extends Node3D
 ## Inclinaison de la caisse et étincelles dont la couleur annonce le palier
 ## de mini-turbo chargé. Purement cosmétique : ne modifie jamais le moteur.
 
+## Les trois couleurs se lisent en vision périphérique, sans quitter la route
+## des yeux : il leur faut donc à la fois de l'écart de teinte et de l'écart de
+## luminosité. Le palier 3 tire vers le magenta plutôt que vers le violet, qui
+## était trop proche du bleu du palier 1 et plus sombre que lui.
 const TIER_COLORS := [
-	Color(0.35, 0.60, 1.00),   # palier 1 — bleu
-	Color(1.00, 0.65, 0.14),   # palier 2 — orange
-	Color(0.66, 0.33, 0.97),   # palier 3 — violet
+	Color(0.35, 0.60, 1.00),   # palier 1 — bleu      (teinte 217°, luma 0.58)
+	Color(1.00, 0.65, 0.14),   # palier 2 — orange    (teinte  33°, luma 0.69)
+	Color(1.00, 0.45, 0.88),   # palier 3 — magenta   (teinte 313°, luma 0.60)
 ]
 
 @export var kart_path: NodePath
 @export var body_path: NodePath
 @export var sparks_path: NodePath
 @export var max_lean_deg: float = 14.0
+@export var lean_stiffness: float = 10.0
 
 var _kart: Kart
 var _body: Node3D
@@ -1442,7 +1610,7 @@ func _update_lean(motor: KartMotor, delta: float) -> void:
 	var lean := 0.0
 	if motor.state == KartMotor.State.DRIFT:
 		lean = -deg_to_rad(max_lean_deg) * float(motor.drift_dir)
-	_body.rotation.z = lerpf(_body.rotation.z, lean, clampf(10.0 * delta, 0.0, 1.0))
+	_body.rotation.z = lerpf(_body.rotation.z, lean, 1.0 - exp(-lean_stiffness * delta))
 
 
 func _update_sparks(motor: KartMotor) -> void:
@@ -1615,6 +1783,7 @@ albedo_color = Color(0.42, 0.44, 0.46, 1)
 
 [sub_resource type="Environment" id="Env_sky"]
 background_mode = 1
+background_color = Color(0.55, 0.72, 0.90, 1)
 ambient_light_source = 2
 ambient_light_color = Color(0.6, 0.68, 0.78, 1)
 ambient_light_energy = 0.6
@@ -1672,7 +1841,7 @@ Attendu : aucune ligne contenant `ERROR` ni `SCRIPT ERROR`.
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : `35 passing`, `0 failing`.
+Attendu : `41 passing`, `0 failing`.
 
 - [ ] **Step 6 : Commit**
 
@@ -1700,26 +1869,71 @@ C'est le jalon 3 du spec, et le seul qui puisse remettre en cause le reste du de
 
 - Le kart répond immédiatement, sans sensation de latence.
 - Le dérapage s'enclenche de façon fiable et se tient sans lutter.
-- Les trois couleurs d'étincelles sont distinguables d'un coup d'œil, sans quitter la route des yeux.
+- Les trois couleurs d'étincelles sont distinguables d'un coup d'œil, sans quitter la route des yeux. **Teste spécifiquement le palier 1 contre le palier 3 en regardant la piste, pas les étincelles.** Après le passage du violet au magenta, ces deux-là ne se distinguent plus que par la teinte — 96° d'écart, mais une luminance quasi identique. Or la vision périphérique lit bien mieux la luminosité que la couleur. Si la confusion persiste, assombris le bleu du palier 1 plutôt que de retoucher le magenta : ça rétablit un écart de luminance sans rapprocher les teintes.
 - Le mini-turbo se **sent** au déclenchement — si le coup de pied est discret, augmente `boost_speed_multiplier`.
 - Enchaîner les dérapages en zigzag sur une ligne droite est plaisant et rentable.
+- **Le frein est inopérant pendant tout un turbo**, soit jusqu'à 1,8 s au palier 3. Arrive-t-il de subir un turbo max à l'approche d'un virage serré, sans recours ? Si oui, il faudra soit laisser le frein écourter le turbo, soit raccourcir le palier 3.
 - La vitesse se perçoit en passant près des repères.
 
-- [ ] **Step 3 : Régler et commiter les valeurs retenues**
+**Le sens du roulis de caméra.** Le roulis en glisse est arithmétiquement cohérent, mais qu'il penche vers l'intérieur du virage plutôt que vers l'extérieur dépend d'une convention de signe que seul l'œil tranche. Si la caméra bascule du mauvais côté, inverse le signe de `target_roll`.
 
-Les réglages se font dans `resources/karts/default_kart.tres`, moteur tournant : l'inspecteur applique les changements en direct.
+**La hauteur du saut.** Avec l'impulsion calée pour atterrir pile au début de la glisse, l'apex est à 8,4 cm — soit un dixième de la hauteur du châssis — pendant 9 images. Attends-toi à le sentir plus qu'à le voir.
 
-```bash
-rtk git add resources/karts/default_kart.tres && rtk git commit -m "tune: réglages de pilotage retenus après la session de validation"
-```
+S'il faut le rendre lisible, trois leviers par ordre de coût croissant : allonger `hop_duration`, ce qui rehausse l'impulsion par la même formule mais retarde l'engagement de la glisse ; ajouter de l'écrasement et des particules à l'atterrissage, qui vendent un saut bien mieux que sa hauteur réelle ; ou découpler complètement le saut visuel de la physique en l'animant sur le maillage seul, ce que font la plupart des jeux du genre.
+
+**La pose de la caisse lit à l'envers de la trajectoire.** En remettant le virage à l'endroit, le correctif a laissé l'angle de caisse pointer dans l'autre sens : braquer vers l'intérieur donne le rayon le plus serré (7,86 m) mais la caisse la moins en travers (30°), et contre-braquer donne l'inverse (13,66 m, 51°). Le kart a donc l'air le plus spectaculaire quand il tourne le plus mal, alors que le joueur lit « plus en travers = mieux ». C'est physiquement défendable mais ce n'est pas la convention du genre. Si ça te gêne, le correctif est d'inverser l'ordre des arguments à la ligne 131 de `kart_motor.gd` (`lerpf(min, max, t)` au lieu de `lerpf(max, min, t)`) — et d'inverser `test_braquer_vers_l_interieur_resserre_la_glisse` avec.
+
+**Au pad, déraper sous 43 % de manche vers l'intérieur pénalise encore.** C'est le seuil où la glisse égale l'adhérence ; en deçà elle tourne plus large. « Il faut s'engager » est une bonne règle arcade, mais rien ne l'indique au joueur. Au clavier, sans objet.
+
+**Si le dérapage manque de mordant**, le bouton est `drift_turn_rate`, pas la formule : à 3,2 au lieu de 2,8 le rayon tombe à 6,88 m, soit 25 % de mieux que l'adhérence au lieu de 17 % — là, ça se sent.
+
+**Le frein reste inopérant pendant un turbo**, jusqu'à 1,8 s au palier 3. C'est délibéré mais non tranché : sur un plan nu ça ne se voit pas, au plan 2 avec des virages et des murs ça se paiera. Dis-moi si ça t'a gêné.
+
+**Au pad, l'entrée en glisse demande environ 36 % de débattement du stick** — la zone morte de l'action (0,2) et `STEER_DEADZONE` (0,2) se composent. Au clavier, sans objet. Si ça paraît mou, c'est l'une des deux qu'il faut baisser.
+
+**Échappatoire** : Échap remet le kart au départ, et il est rattrapé automatiquement au-delà de 180 m.
 
 **Si la conduite n'est pas agréable ici, ne passe pas au plan 2.** Aucune piste, aucune IA et aucun shader ne rattraperont un pilotage médiocre — et c'est précisément pour le découvrir maintenant que ce jalon existe.
 
 ---
 
+## À faire avant d'ouvrir le plan 2
+
+Trois points que la revue finale place avant le plan suivant plutôt qu'après.
+
+- **Un test d'indépendance au delta.** Le moteur est *défini* comme `f(état, commande, delta)` — c'est la thèse de l'architecture — et les 43 tests tournent tous à exactement 1/60. C'est la seule propriété que le design revendique et que la suite ne vérifie jamais. Le correctif de courbure vient justement de démontrer que cette fonction peut héberger une erreur de couplage qui survit à quinze tâches.
+- **Trancher la convention de signe de la marche arrière.** L'invariant non écrit `speed >= 0` est supposé par quatre fonctions. Le plan 2 écrira la réconciliation de vitesse après collision, et ce code encodera forcément une hypothèse sur ce signe. Décider maintenant coûte cinq minutes, le lever après coûte une réécriture.
+- **`KartMotor.reset()` plutôt qu'un `KartMotor.new()` dans `respawn_at()`.** Aujourd'hui ça marche parce que la caméra et les visuels relisent `_kart.motor` à chaque frame. La première présentation qui mettra le moteur en cache dans son `_ready()` se détachera en silence, sans erreur et sans test pour l'attraper.
+
+## Leçon de la première session de conduite
+
+Le braquage tournait du mauvais côté, et **43 tests au vert ne pouvaient pas l'attraper**. Le
+moteur compte ses angles à la boussole (lacet positif = vers la droite) ; Godot compte l'inverse.
+Tous les tests vérifiaient la cohérence interne du moteur, aucun ne projetait le résultat dans
+l'espace monde — là où vit la seule question qui compte : « appuyer à droite, est-ce que ça va
+à droite ? »
+
+La conversion se fait désormais dans `kart.gd`, au seul endroit où les deux repères se
+rencontrent. La leçon générale : un moteur testé en isolation ne prouve rien sur le signe de sa
+sortie une fois branchée. Tout futur passage moteur → monde mérite une vérification humaine, pas
+un test de plus.
+
+## Dette acceptée
+
+Relevée en revue, sciemment non traitée — à reconsidérer à la passe de réglage du jalon 15, pas avant.
+
+- `_steering_authority()` divise par `stats.max_speed * 0.5` sans garde. Si `max_speed` valait 0, `velocity_dir` serait empoisonné par un NaN de façon irrécupérable. Rien ne met cette valeur à 0 aujourd'hui, et se prémunir contre un état qu'aucun chemin de code ne produit coûterait plus en bruit qu'il ne rapporte.
+- `move_and_slide()` corrige la vitesse en cas de collision, mais `motor.speed` ne l'apprend jamais : la frame suivante, le nœud l'écrase depuis le moteur. Sans effet sur un plan vide, mais dès que le plan 2 ajoutera des murs, le kart les longera sans ralentir. La forme du correctif est connue et suit le précédent d'`on_offroad` : c'est au nœud d'observer le résultat de `move_and_slide()` et de l'injecter dans le moteur, jamais au moteur d'aller lire la scène.
+- Les raideurs de lissage (`follow_stiffness`, `roll_stiffness`, `lean_stiffness`) ne sont pas bornées à zéro. Sous la forme exponentielle, une valeur négative ferait diverger l'interpolation au lieu d'être neutralisée comme l'ancien `clampf` le faisait. Une raideur négative n'a aucun sens, et un échec bruyant vaut mieux qu'une caméra silencieusement figée — un `@export_range(0.0, ...)` fermerait le sujet si l'occasion se présente.
+- La caméra tourne en `_physics_process`, donc à 60 Hz. C'est le bon choix tant que la cible est 60 fps : le kart lui-même ne bouge qu'à la tick physique, donc passer la caméra en `_process` ne lisserait rien et ajouterait seulement des lectures décalées d'une tick. Le jour où le jeu viserait des écrans à 120 ou 144 Hz, le levier serait l'interpolation physique de Godot — un réglage projet à part entière, pas un changement de callback.
+- Le « coup de pied » du turbo s'applique une image après le relâchement : `_update_speed()` a déjà tourné quand `_release_drift()` pose `boost_timer`. À 60 Hz cela fait 16 ms, sous le seuil de perception ; à revoir seulement si la session de validation trouve le déclenchement mou.
+- Le facteur `0.5` — la vitesse à laquelle le braquage atteint sa pleine autorité — est un littéral en dur, alors que c'est un paramètre de ressenti et que le principe affiché est que les réglages vivent dans `KartStats`. À déplacer le jour où quelqu'un voudra réellement le régler.
+
 ## Périmètre de ce plan
 
-**Livré :** un kart pilotable sur un plan nu, dérapage à trois paliers et mini-turbo, caméra dynamique, étincelles colorées, 33 tests unitaires sur la physique.
+**Rayons de virage mesurés à 22 u/s**, après correction : 7,86 m en glisse braquage intérieur, 9,17 m en adhérence, 10,48 m en glisse braquage neutre, 13,66 m en contre-braquage à −0,7. Déraper vers l'intérieur est donc le moyen le plus serré de tourner, et contre-braquer redresse — l'ordre que le mécanisme doit avoir. À −1,0 le contre-braquage franchit le seuil de rupture et annule la glisse, ce qui est le comportement voulu.
+
+**Livré :** un kart pilotable sur un plan nu, dérapage à trois paliers et mini-turbo, caméra dynamique, étincelles colorées, 39 tests unitaires sur la physique.
 
 **Reporté au plan 2 :** suspension par quatre raycasts et alignement sur la pente, circuit réel, checkpoints, tours, chrono, IA.
 

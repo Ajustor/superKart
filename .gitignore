@@ -1,5 +1,8 @@
 # Godot
 .godot/
+
+# Les sidecars .uid sont versionnés délibérément : ils portent l'identifiant
+# stable des ressources et doivent rester identiques d'un clone à l'autre.
 /android/
 export_presets.cfg
 
@@ -13,3 +16,6 @@ export_presets.cfg
 # OS
 .DS_Store
 Thumbs.db
+
+# Sorties de test laissées par les agents
+test_output.txt

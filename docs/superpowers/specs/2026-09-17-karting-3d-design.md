@@ -113,6 +113,15 @@ dans une fourchette de 30 à 55°, tandis que le vecteur vitesse ne rattrape ce 
 retard. Ce décalage est la glisse. Pendant le dérapage, le braquage ne fait plus tourner le kart :
 il module l'angle de glisse à l'intérieur de la fourchette.
 
+### 4.1 bis Marche arrière
+
+Le frein a deux rôles : il ralentit, puis engage la marche arrière une fois le kart à l'arrêt.
+Freiner est franc, reculer est lent, et la vitesse en marche arrière plafonne bien en deçà de la
+vitesse avant. On ne dérape pas en reculant.
+
+Conséquence à connaître : `speed` peut être négatif, donc toute fonction qui le lit doit le
+supposer signé — l'autorité de braquage travaille sur sa valeur absolue.
+
 **Déraper ne doit presque pas coûter de vitesse.** Si la glisse ralentit, le joueur l'évite et le
 mini-turbo devient une punition déguisée. Le dérapage doit rester gratuit et rentable, pour que la
 conduite devienne un rythme plutôt qu'une série de virages négociés.
