@@ -32,6 +32,12 @@ const POINTS: Array[Vector3] = [
 
 
 func _init() -> void:
+	if FileAccess.file_exists(SORTIE) and not "--force" in OS.get_cmdline_user_args():
+		printerr("%s existe déjà, et a peut-être été retouché à la souris depuis." % SORTIE)
+		printerr("Relancer avec  --  --force  pour l'écraser délibérément.")
+		quit(1)
+		return
+
 	var courbe := Curve3D.new()
 	var n := POINTS.size()
 	for i in n:

@@ -39,7 +39,10 @@ func _ready() -> void:
 ## Transformée de départ, sur la ligne de course, orientée dans le sens de la
 ## marche. Sert au placement initial comme aux remises en piste.
 func spawn_at(distance: float) -> Transform3D:
-	var position := track_curve.racing_line_at(distance) + Vector3.UP * 1.0
+	# Dix centimètres de garde : assez pour ne pas naître encastré dans la
+	# route, trop peu pour que la chute se voie. Un mètre donnait un quart de
+	# seconde de vol plané à chaque départ et à chaque remise en piste.
+	var position := track_curve.racing_line_at(distance) + Vector3.UP * 0.1
 	var lacet := track_curve.yaw_at(distance)
 	# Le circuit compte ses caps à la boussole, Godot à l'envers.
 	return Transform3D(Basis(Vector3.UP, -lacet), position)
