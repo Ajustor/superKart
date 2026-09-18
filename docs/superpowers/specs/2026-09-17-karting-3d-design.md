@@ -161,28 +161,48 @@ Hors-piste, un multiplicateur de vitesse à 0,6 suffit ; pas de physique de terr
 
 ## 5. Piste
 
-### 5.1 Une courbe, quatre usages
+### 5.1 Une courbe, tout le circuit
 
-Le `Path3D` tracé dans l'éditeur sert de trajectoire à l'IA, de référence pour le classement,
-d'origine pour les remises en piste et de placement de la grille de départ. Il n'est pas l'axe de
-la piste : il mord l'intérieur des virages, là où un bon pilote place son kart.
+Un `Curve3D` tracé à la souris dans l'éditeur définit l'axe du circuit. **Tout le reste en
+découle par le calcul**, sans rien à placer à la main :
 
-### 5.2 Checkpoints, classement, respawn
+| Ce qu'on en tire | Comment |
+|---|---|
+| La géométrie de la route | extrusion d'un ruban le long de la courbe, largeur et dévers paramétrés |
+| La collision | le même ruban, en trimesh |
+| La ligne de course de l'IA | l'axe décalé vers l'intérieur, proportionnellement à la courbure locale |
+| La progression et les tours | distance parcourue le long de la courbe |
+| Le classement | tri sur la distance cumulée |
+| Les remises en piste | projection du kart sur la courbe ; la tangente donne l'orientation |
+| La grille de départ | décalages en amont du point zéro |
+| Le hors-piste | distance à l'axe supérieure à la demi-largeur |
 
-Les checkpoints sont des `Area3D` numérotés, à franchir dans l'ordre — ce qui interdit de faire
-demi-tour pour valider un tour.
+Déplacer un point de contrôle redéfinit donc le circuit entier, sa collision, la trajectoire de
+l'IA et la logique de course d'un seul geste. Un troisième circuit coûte une courbe.
 
-Le classement ne compare jamais les karts entre eux : chacun connaît son dernier checkpoint et sa
-distance parcourue le long de la courbe, et trier huit karts sur ce couple reste juste quelle que
-soit la forme du circuit.
+### 5.2 Progression continue plutôt que checkpoints
 
-La remise en piste projette le kart sur la courbe : le point le plus proche donne la position, sa
-tangente donne l'orientation. Aucun marqueur de respawn à placer à la main.
+Une version précédente de ce spec prévoyait des `Area3D` numérotés à franchir dans l'ordre, pour
+interdire de faire demi-tour et valider un tour. La courbe rend l'idée inutile : **on suit une
+distance cumulée**, qui augmente en avançant et diminue en reculant. Un tour est validé quand
+cette distance franchit la longueur du circuit.
+
+C'est plus simple, plus robuste, et surtout il n'y a plus rien à poser : un circuit n'a pas
+d'objets de gameplay à aligner, seulement une courbe.
+
+Le classement ne compare jamais les karts entre eux : chacun connaît sa distance cumulée, et trier
+huit karts sur un seul nombre reste juste quelle que soit la forme du circuit.
 
 ### 5.3 Pipeline de fabrication
 
-Mesh modélisé dans Blender, importé en glTF, collision générée en trimesh. `Path3D` tracé par
-dessus dans l'éditeur Godot. Checkpoints et boîtes à objets posés à la main.
+Aucun outil externe. On trace un `Curve3D` dans l'éditeur Godot, un générateur produit le maillage
+et la collision au chargement, et le décor s'ajoute par-dessus séparément.
+
+*Écarté : la modélisation dans Blender avec import glTF.* Plus riche visuellement et sans limite
+de forme, mais elle faisait dépendre les trois circuits d'un travail manuel dans un outil tiers,
+sans bénéfice pour un rendu toon à facettes plates. La génération procédurale rend en prime la
+piste paramétrable : changer la largeur ou le dévers de tous les circuits est un réglage, pas une
+reprise de modélisation.
 
 ### 5.4 Les trois circuits
 
