@@ -10,6 +10,8 @@
 
 **Spec de référence :** `docs/superpowers/specs/2026-09-17-karting-3d-design.md`, §5.
 
+**Mesuré à la tâche 4**, et utile pour la suite : l'intervalle de bake par défaut d'un `Curve3D` donne 0,27 mm d'erreur de longueur sur un anneau de 314 m — inutile de le baisser. Et `TANGENT_EPSILON = 0.25` ne coûte que 0,006° d'erreur de tangente sur un virage de 5 m de rayon, parce qu'une différence centrée est d'ordre deux. Il ne fond une direction que sur un angle vif véritable, c'est-à-dire un point de contrôle aux poignées de longueur nulle — ce que le générateur de la tâche 8 ne produit pas.
+
 **État de départ :** `main` à 46 tests verts. `KartMotor` est complet et couvre toute la physique horizontale ; `Kart`, `PlayerInput`, `ChaseCamera`, `KartVisuals` et le terrain d'essai existent.
 
 ---
@@ -398,12 +400,17 @@ func _init(track_curve: Curve3D, track_half_width: float) -> void:
 
 
 ## Ramène une distance quelconque dans [0, length).
+##
+## Attention : GDScript expose une globale `wrap(valeur, min, max)`, et un
+## appel interne non qualifié résout vers elle plutôt que vers cette
+## méthode. Depuis l'intérieur de la classe, écrire `self.wrap(...)`.
+## L'échec est une erreur de parsing, donc bruyant — mais déroutant.
 func wrap(distance: float) -> float:
 	return fposmod(distance, length)
 
 
 func position_at(distance: float) -> Vector3:
-	return curve.sample_baked(wrap(distance))
+	return curve.sample_baked(self.wrap(distance))
 
 
 ## Dérivée par différence finie plutôt que par sample_baked_with_rotation :
