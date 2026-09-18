@@ -1144,17 +1144,26 @@ func complete_lap() -> void:
 
 
 ## Minutes:secondes.millisecondes, la forme attendue sur un chrono de course.
+##
+## On arrondit au millième avant de découper. Calculer les minutes sur la
+## partie entière puis arrondir le reste séparément fige les minutes trop
+## tôt : un temps à moins d'un millième d'une minute pleine s'affichait
+## 0:60.000 au lieu de 1:00.000.
+##
+## Un temps négatif n'existe pas sur un chrono ; on l'écrase plutôt que de
+## montrer 0:-5.000 si un appelant nous passe une valeur qui n'en est pas un.
 static func format(seconds: float) -> String:
-	var minutes := int(seconds) / 60
-	var restant := seconds - float(minutes * 60)
-	return "%d:%06.3f" % [minutes, restant]
+	var millisecondes := roundi(maxf(seconds, 0.0) * 1000.0)
+	var minutes := millisecondes / 60000
+	var reste := millisecondes % 60000
+	return "%d:%02d.%03d" % [minutes, reste / 1000, reste % 1000]
 ```
 
 - [ ] **Step 4 : Lancer les tests pour vérifier qu'ils passent**
 
 Attendu : **cinq tests de plus** qu'avant cette tâche. Aucun test existant ne doit disparaître : c'est le décompte qui le vérifie, pas la couleur.
 
-Si `format` ne produit pas exactement `0:00.000`, rapporte la chaîne obtenue plutôt que d'ajuster le test : le gabarit `%06.3f` réserve six caractères dont le point et trois décimales, ce qui doit donner `00.000`.
+À vérifier dans la revue de la tâche 11 : `complete_lap()` appelé deux fois sans `advance()` entre les deux enregistre un tour de zéro seconde, donc un record imbattable. Inatteignable sous le pilotage normal — le compteur de tours ne monte que d'une unité par image — mais une boucle qui rattraperait plusieurs tours d'un coup après une téléportation le déclencherait. Le garde-fou appartient à l'appelant, pas au chrono.
 
 - [ ] **Step 5 : Commit**
 
