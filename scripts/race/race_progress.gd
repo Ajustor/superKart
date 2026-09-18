@@ -2,9 +2,14 @@ class_name RaceProgress
 extends RefCounted
 
 ## Transforme une position en progression de course. Le spec a renoncé aux
-## checkpoints posés à la main : une distance cumulée le long de l'axe suffit,
+## checkpoints posés à la main : la distance parcourue le long de l'axe suffit,
 ## elle augmente en avançant et diminue en reculant, donc faire demi-tour ne
 ## permet pas de gagner un tour.
+##
+## « Parcourue » et non « position sur l'axe » : `total` part de zéro au départ
+## et compte ce que le kart a réellement roulé. C'est ce que le classement doit
+## trier, et c'est ce qui rend une grille décalée équitable — sinon le kart
+## posé vingt mètres avant la ligne bouclerait son premier tour en vingt mètres.
 ##
 ## Comme TrackCurve et KartMotor, cette classe ne connaît ni la scène ni les
 ## nœuds : on lui donne un point, elle met son état à jour.

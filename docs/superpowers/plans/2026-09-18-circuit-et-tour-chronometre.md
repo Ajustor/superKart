@@ -1439,6 +1439,16 @@ Supprime le script avant de committer, et vérifie avec `rtk git status` qu'il n
 rtk git add scripts/race/race_progress.gd scripts/race/race_session.gd tests/test_race_progress.gd && rtk git commit -m "fix: le kart empochait un tour au premier centimetre"
 ```
 
+**Ce que la correction ne corrige pas, et pourquoi ça tient quand même.** Seul le point de réapparition cesse d'être reprojeté ; `progress.total`, lui, continue de se nourrir de la projection brute. Pendant une sortie dans l'épingle, la distance parcourue gonfle donc toujours de 48 m, puis se rétracte au retour en piste. Ce gonflement ne fabriquerait un tour que s'il franchissait un multiple de la longueur. Balayage du circuit entier, sortie latérale de 29 m des deux côtés, de mètre en mètre :
+
+```
+mensonge maximal vers l'AVANT               : +48.51 m à d=384
+mensonge maximal vers l'ARRIÈRE             : -48.02 m à d=432
+mensonge maximal à moins de 60 m de la ligne :  0.065 m
+```
+
+Le repli de la courbe vit dans l'épingle, à une demi-piste de la ligne ; près de la ligne, la projection ne ment que de six centimètres. Le compteur de tours est donc hors d'atteinte — **par la géométrie de `track_01`, pas par construction**. Un circuit dont l'épingle passerait à moins d'une cinquantaine de mètres de la ligne d'arrivée rouvrirait le trou : une sortie de route y offrirait un tour. À vérifier en dessinant les circuits 2 et 3, avec ce même balayage.
+
 **Ce que cette tâche coûte en leçon.** Les deux défauts vivaient sous 88 tests verts, dans deux des classes les plus soigneusement testées du dépôt. Aucun ne s'est montré avant qu'on branche les morceaux ensemble sur la vraie géométrie. Les tests vérifient ce qu'on a pensé à imaginer ; la mesure montre ce qui arrive.
 
 ---
