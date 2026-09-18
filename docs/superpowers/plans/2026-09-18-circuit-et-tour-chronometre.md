@@ -609,6 +609,8 @@ func racing_line_at(distance: float) -> Vector3:
 	return position_at(distance) + right_at(distance) * mordant * half_width * RACING_LINE_BITE
 ```
 
+**Calibrage mesuré** : sur l'anneau de 50 m la ligne mord 2,85 m, soit 51 % du maximum ; sur un anneau de 10 m elle sature à 100 %. Le diviseur `PI * 0.25` place donc la morsure complète autour d'un rayon de 10 m, et tout virage plus serré obtient la même correction — il n'y a pas de discrimination en deçà. La ligne est continue au point d'enroulement.
+
 - [ ] **Step 4 : Lancer les tests pour vérifier qu'ils passent**
 
 Attendu : **trois tests de plus** qu'avant cette tâche. Aucun test existant ne doit disparaître : c'est le décompte qui le vérifie, pas la couleur.
