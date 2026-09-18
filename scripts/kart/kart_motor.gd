@@ -9,6 +9,9 @@ enum State { GRIP, HOP, DRIFT, STUNNED }
 
 const STEER_DEADZONE := 0.2
 
+## Tout champ mutable ajouté ci-dessous doit aussi être remis à neuf dans
+## reset() : la remise en piste ne reconstruit plus le moteur, donc un champ
+## oublié y survivrait en silence.
 var stats: KartStats
 
 var state: int = State.GRIP

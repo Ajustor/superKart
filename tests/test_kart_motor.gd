@@ -441,15 +441,13 @@ func test_on_dirige_encore_en_marche_arriere() -> void:
 	assert_gt(motor.velocity_dir, depart, "le braquage garde de l'autorité en marche arrière")
 
 
-func test_reset_remet_le_moteur_a_neuf_sans_le_remplacer() -> void:
+func test_reset_remet_le_moteur_a_neuf() -> void:
 	_enter_drift(1)
 	motor.boost_timer = 1.0
 	motor.on_offroad = true
-	var avant := motor
 
 	motor.reset(1.5)
 
-	assert_eq(motor, avant, "reset ne doit pas remplacer l'objet moteur")
 	assert_eq(motor.state, KartMotor.State.GRIP)
 	assert_eq(motor.speed, 0.0)
 	assert_eq(motor.boost_timer, 0.0)
