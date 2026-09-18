@@ -1,0 +1,42 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/tracks/track_01.tscn" id="1_track"]
+[ext_resource type="PackedScene" path="res://scenes/kart/kart.tscn" id="2_kart"]
+[ext_resource type="Script" path="res://scripts/camera/chase_camera.gd" id="3_camera"]
+[ext_resource type="Script" path="res://scripts/race/race_session.gd" id="4_session"]
+[ext_resource type="Script" path="res://scripts/ui/race_hud.gd" id="5_hud"]
+
+[sub_resource type="Environment" id="Env_race"]
+background_mode = 1
+background_color = Color(0.55, 0.72, 0.90, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.6, 0.68, 0.78, 1)
+ambient_light_energy = 0.6
+
+[node name="Race" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_race")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.766, -0.492, 0.414, 0, 0.643, 0.766, -0.643, -0.587, 0.492, 0, 40, 0)
+shadow_enabled = true
+
+[node name="Track" parent="." instance=ExtResource("1_track")]
+
+[node name="Kart" parent="." instance=ExtResource("2_kart")]
+
+[node name="ChaseCamera" type="Camera3D" parent="."]
+script = ExtResource("3_camera")
+target_path = NodePath("../Kart")
+
+[node name="Session" type="Node" parent="."]
+script = ExtResource("4_session")
+track_path = NodePath("../Track")
+kart_path = NodePath("../Kart")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="RaceHUD" type="Control" parent="HUD"]
+script = ExtResource("5_hud")
+session_path = NodePath("../../Session")
