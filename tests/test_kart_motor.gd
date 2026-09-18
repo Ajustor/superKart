@@ -67,13 +67,16 @@ func test_relacher_les_gaz_fait_ralentir() -> void:
 	assert_lt(motor.speed, lancee, "sans gaz, la friction doit réduire la vitesse")
 
 
-func test_le_frein_arrete_le_kart() -> void:
+func test_le_frein_arrete_le_kart_puis_engage_la_marche_arriere() -> void:
 	cmd.throttle = 1.0
 	_run(10.0)
 	cmd.throttle = 0.0
 	cmd.brake = 1.0
+	_run(0.85)
+	assert_almost_eq(motor.speed, 0.0, 0.5, "le frein doit d'abord immobiliser le kart")
 	_run(3.0)
-	assert_almost_eq(motor.speed, 0.0, 0.01, "trois secondes de frein doivent immobiliser le kart")
+	assert_almost_eq(motor.speed, -stats.max_reverse_speed, 0.1,
+		"maintenu, il engage la marche arrière jusqu'à sa vitesse maximale")
 
 
 func test_braquer_a_droite_fait_tourner_le_cap_a_droite() -> void:
@@ -407,3 +410,32 @@ func test_un_petit_turbo_ne_raccourcit_pas_un_grand_deja_en_cours() -> void:
 		"enchaîner une petite glisse ne doit pas amputer un turbo plus long en cours")
 	assert_lte(motor.boost_timer, stats.boost_durations[2],
 		"et il ne doit pas non plus s'accumuler au-delà du palier le plus long")
+
+
+func test_on_ne_derape_pas_en_marche_arriere() -> void:
+	cmd.brake = 1.0
+	_run(3.0)
+	assert_lt(motor.speed, 0.0, "le kart recule")
+	cmd.steer = 1.0
+	cmd.drift = true
+	_run(0.5)
+	assert_eq(motor.state, KartMotor.State.GRIP, "pas de glisse en marche arrière")
+
+
+func test_les_gaz_repassent_de_la_marche_arriere_a_l_avant() -> void:
+	cmd.brake = 1.0
+	_run(3.0)
+	assert_lt(motor.speed, 0.0)
+	cmd.brake = 0.0
+	cmd.throttle = 1.0
+	_run(5.0)
+	assert_gt(motor.speed, 0.0, "les gaz doivent reprendre la main sur la marche arrière")
+
+
+func test_on_dirige_encore_en_marche_arriere() -> void:
+	cmd.brake = 1.0
+	_run(3.0)
+	var depart := motor.velocity_dir
+	cmd.steer = 1.0
+	_run(1.0)
+	assert_gt(motor.velocity_dir, depart, "le braquage garde de l'autorité en marche arrière")

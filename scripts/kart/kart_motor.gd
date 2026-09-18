@@ -64,7 +64,12 @@ func _update_speed(cmd: KartCommand, delta: float) -> void:
 		# Le turbo pousse instantanément : c'est ce coup de pied qui se sent.
 		speed = maxf(speed, ceiling)
 	elif cmd.brake > 0.0:
-		speed = move_toward(speed, 0.0, stats.brake_force * cmd.brake * delta)
+		# Le frein ralentit d'abord, puis engage la marche arrière une fois le
+		# kart arrêté : un seul bouton, deux rôles. Freiner est franc, reculer
+		# est lent, d'où les deux taux distincts.
+		var rate := stats.brake_force if speed > 0.0 else stats.reverse_acceleration
+		var target := -stats.max_reverse_speed * cmd.brake
+		speed = move_toward(speed, target, rate * cmd.brake * delta)
 	elif cmd.throttle > 0.0:
 		speed = move_toward(speed, ceiling, stats.acceleration * cmd.throttle * delta)
 	else:
@@ -77,7 +82,7 @@ func _update_speed(cmd: KartCommand, delta: float) -> void:
 ## Le braquage perd son autorité à basse vitesse : un kart à l'arrêt
 ## ne pivote pas sur place, et l'effet monte progressivement.
 func _steering_authority() -> float:
-	return clampf(speed / (stats.max_speed * 0.5), 0.0, 1.0)
+	return clampf(absf(speed) / (stats.max_speed * 0.5), 0.0, 1.0)
 
 
 func _update_grip_steering(cmd: KartCommand, delta: float) -> void:

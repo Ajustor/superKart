@@ -43,3 +43,7 @@ extends Resource
 ## valeur à la main recréerait un kart qui retombe en pleine glisse.
 var hop_impulse: float:
 	get: return gravity * hop_duration / 2.0
+
+@export_group("Marche arrière")
+@export var max_reverse_speed: float = 7.0
+@export var reverse_acceleration: float = 9.0
