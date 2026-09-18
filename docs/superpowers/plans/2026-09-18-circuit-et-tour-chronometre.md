@@ -1405,7 +1405,7 @@ Ce qui se vérifie ici, et nulle part ailleurs :
 - **La route est visible et posée au bon endroit.** Si elle est invisible vue de dessus mais visible par en dessous, c'est l'ordre des sommets dans `TrackBuilder` — échange les deux derniers de chaque triangle.
 - **La collision suit le maillage.** Le kart roule sur la route, ne passe pas au travers, ne flotte pas au-dessus.
 - **La largeur est jouable.** 9 m de demi-largeur, soit 18 m de route : trop large et les virages n'existent pas, trop étroit et le dérapage devient punitif.
-- **Les virages du circuit 1 méritent le dérapage.** Si tout se prend à fond, il faut resserrer des points de contrôle ; si tout est trop serré, c'est l'inverse.
+- **Les virages du circuit 1 méritent le dérapage.** Mesuré avant conduite : épingle à 11,7 m de rayon, contre 9,2 m de rayon de braquage en adhérence à pleine vitesse — il faut donc y lever le pied. Le reste du tour est à 97 % au-dessus de 25 m, donc rapide. Si le contraste paraît trop faible ou trop brutal, les points de contrôle sont dans `tools/build_track_01.gd` et le tracé se regénère d'une commande. Si tout se prend à fond, il faut resserrer des points de contrôle ; si tout est trop serré, c'est l'inverse.
 - **Le hors-piste se sent** sans être punitif au point de décourager une trajectoire large.
 - **La remise en piste tombe juste** — ni trop prompte, ni trop tardive. Le réglage est `OFF_TRACK_RESPAWN_MARGIN` dans `race_session.gd`.
 - **Le compte des tours est fiable**, y compris si tu fais volontairement demi-tour sur la ligne.
