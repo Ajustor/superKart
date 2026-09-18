@@ -1579,6 +1579,290 @@ rtk git add scripts/ui/race_hud.gd scenes/race.tscn project.godot && rtk git com
 
 ---
 
+### Task 12bis : Ce que la revue a trouvé sous les 90 tests verts
+
+**Files:**
+- Modify: `scripts/race/race_session.gd`
+- Modify: `scripts/race/race_progress.gd`
+- Create: `tests/test_race_session.gd`
+- Test: `tests/test_track_curve.gd`
+
+La revue du sous-système course a trouvé deux défauts réels, tous deux invisibles à la campagne de tests parce que `RaceSession` n'a aucune couverture. Le premier s'atteint à la manette, sans rien de spécial.
+
+**Le meilleur tour se fabrique en reculant sur la ligne.** `progress.lap` n'est pas monotone : il est recalculé à chaque image depuis `total`, qui diminue en marche arrière. Déclencher sur le front `progress.lap > tours_avant` enregistre donc un tour à *chaque* franchissement, pas à chaque tour. Mesuré sur `track_01`, en rejouant le corps de `_physics_process` à 60 Hz :
+
+```
+tour honnête                    : 1 tour enregistré,  meilleur 0:25.617
+puis 20 allers-retours de 70 cm : 21 tours enregistrés, meilleur 0:00.033
+```
+
+Le compteur affiché reste juste et la course ne se gagne pas ainsi — `finished` exige toujours trois longueurs de `total`. Mais `timer.best` est détruit pour de bon, et `timer.current` repart de zéro à chaque re-franchissement, donc le chrono du tour en cours ment aussi. C'est le « record imbattable » que la note de la tâche 10 voulait éviter, sous une forme que le garde-fou envisagé ne couvrait pas.
+
+**Après l'arrivée, le kart tombe indéfiniment.** `if finished: return` en tête de `_physics_process` gèle aussi l'entretien du monde. Mesuré dans l'arbre : kart jeté à 40 m du bord, course en cours → remis en piste, `y = 0,000` ; même jet avec `finished = true` → `y = −133` après 180 images, `y = −2530` après 13 s, toujours en chute. `FLOOR_LIMIT` n'est jamais évalué. Le drapeau hors-piste se fige dans les deux sens : franchir la ligne d'arrivée à 11 m de l'axe le laisse à `true`, soit 0,6× de vitesse pour l'éternité.
+
+« La course est finie » doit geler la **comptabilité**, pas le monde.
+
+**Et la vraie cause des deux : `RaceSession` n'est pas testable.** J'avais accepté ça à la tâche 11 en le jugeant défendable. C'était faux : la revue a mesuré que le seul obstacle est `_kart.global_position`, qui exige l'arbre. Tout le reste marche déjà hors arbre — `Track.spawn_at()`, `Kart.respawn_at()`, `set_offroad()`, dont `tests/test_kart.gd` fait déjà la démonstration. La couture coûte deux lignes, pas une abstraction.
+
+- [ ] **Step 1 : Écrire les tests qui échouent**
+
+Crée `tests/test_race_session.gd` :
+
+```gdscript
+extends GutTest
+
+## RaceSession n'a besoin de l'arbre que pour lire global_position. En passant
+## le point en paramètre, toute sa logique se teste comme KartMotor : sans
+## nœud, sans rendu, en quelques microsecondes. Les deux défauts que ce fichier
+## attrape avaient traversé 90 tests verts faute de cette couture.
+
+var track: Track
+var kart: Kart
+var session: RaceSession
+
+
+func _anneau(rayon: float = 50.0, points: int = 16) -> Curve3D:
+	var c := Curve3D.new()
+	var pas := TAU / float(points)
+	var poignee := rayon * (4.0 / 3.0) * tan(pas / 4.0)
+	for i in points:
+		var a := pas * float(i)
+		var p := Vector3(sin(a) * rayon, 0.0, -cos(a) * rayon)
+		var t := Vector3(cos(a), 0.0, sin(a)) * poignee
+		c.add_point(p, -t, t)
+	c.add_point(c.get_point_position(0), -c.get_point_out(0), c.get_point_out(0))
+	return c
+
+
+func before_each() -> void:
+	track = Track.new()
+	track.half_width = 9.0
+	track.track_curve = TrackCurve.new(_anneau(), 9.0)
+
+	kart = Kart.new()
+	kart.stats = KartStats.new()
+	kart.motor = KartMotor.new(kart.stats)
+
+	session = RaceSession.new()
+	session.demarrer(track, kart)
+
+
+func after_each() -> void:
+	session.free()
+	kart.free()
+	track.free()
+
+
+## Avance le long de l'axe par pas de 50 cm, en appelant la session comme le
+## ferait le moteur, à 60 Hz.
+func _rouler(de: float, vers: float) -> void:
+	var d := de
+	var pas := 0.5 * signf(vers - de)
+	while absf(vers - d) > 0.5:
+		d += pas
+		session.avancer(track.track_curve.position_at(d), 1.0 / 60.0)
+	session.avancer(track.track_curve.position_at(vers), 1.0 / 60.0)
+
+
+func test_un_tour_honnete_enregistre_un_tour() -> void:
+	var L := track.track_curve.length
+	_rouler(0.0, L + 0.3)
+	assert_eq(session.progress.lap, 1)
+	assert_true(session.timer.has_best, "le tour bouclé donne un meilleur temps")
+	assert_gt(session.timer.best, 1.0, "et ce temps n'est pas dérisoire")
+
+
+func test_reculer_sur_la_ligne_ne_refabrique_pas_de_tour() -> void:
+	var L := track.track_curve.length
+	_rouler(0.0, L + 0.3)
+	var reference := session.timer.best
+
+	# Vingt allers-retours de 70 cm à cheval sur la ligne : chaque retour en
+	# arrière fait redescendre progress.lap, chaque avancée le fait remonter.
+	for i in 20:
+		session.avancer(track.track_curve.position_at(L - 0.4), 1.0 / 60.0)
+		session.avancer(track.track_curve.position_at(L + 0.3), 1.0 / 60.0)
+
+	assert_almost_eq(session.timer.best, reference, 0.0001,
+		"repasser la ligne à l'envers ne doit pas offrir un tour de deux images")
+
+
+func test_le_monde_continue_apres_l_arrivee() -> void:
+	session.lap_count = 1
+	var L := track.track_curve.length
+	_rouler(0.0, L + 0.3)
+	assert_true(session.finished, "un tour suffit à finir cette course")
+
+	# Loin du bord, bien au-delà de la marge de remise en piste.
+	var dehors := track.track_curve.position_at(100.0) \
+		+ track.track_curve.right_at(100.0) * 40.0
+	session.avancer(dehors, 1.0 / 60.0)
+
+	var ecart := absf(track.track_curve.lateral_offset(kart.global_position))
+	assert_lt(ecart, 9.0,
+		"la course finie gèle la comptabilité, pas la remise en piste")
+
+
+func test_le_chrono_s_arrete_a_l_arrivee() -> void:
+	session.lap_count = 1
+	var L := track.track_curve.length
+	_rouler(0.0, L + 0.3)
+	var fige := session.timer.current
+	for i in 30:
+		session.avancer(track.track_curve.position_at(10.0), 1.0 / 60.0)
+	assert_almost_eq(session.timer.current, fige, 0.0001,
+		"le chrono ne tourne plus une fois la course finie")
+```
+
+Ajoute par ailleurs, à la fin de `tests/test_track_curve.gd`, le test qui manquait au `clampf` de `racing_line_at` — la revue a mesuré que le retirer laisse les 90 tests verts alors que la ligne de course sortirait du bitume sur `track_01` (9,125 m pour 9,0 m de demi-largeur) :
+
+```gdscript
+func test_la_ligne_de_course_reste_sur_le_bitume_du_vrai_circuit() -> void:
+	# L'anneau des autres tests a une courbure constante et douce : il ne
+	# sature jamais le mordant, donc il ne prouve rien du plafond. L'épingle
+	# de track_01, si — la marge n'y est que de 12 cm.
+	var courbe: Curve3D = load("res://resources/tracks/track_01_curve.tres")
+	var piste := TrackCurve.new(courbe, 9.0)
+	var pire := 0.0
+	var d := 0.0
+	while d < piste.length:
+		var ecart := absf(piste.lateral_offset(piste.racing_line_at(d)))
+		pire = maxf(pire, ecart)
+		d += 0.5
+	assert_lt(pire, 9.0,
+		"la ligne de course doit rester sur la chaussée, épingle comprise")
+```
+
+- [ ] **Step 2 : Lancer et vérifier l'échec**
+
+```bash
+"$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
+```
+
+Attendu : ÉCHEC — `demarrer()` et `avancer()` n'existent pas encore. Comme à la tâche 11bis, cet échec-là ne prouve rien.
+
+**Donc : fais les étapes 3 et 4, puis reviens neutraliser chaque correctif séparément** et rapporte le message d'échec obtenu :
+1. remets le déclenchement sur front (`progress.lap > tours_avant`) → `test_reculer_sur_la_ligne_ne_refabrique_pas_de_tour` doit virer au rouge ;
+2. remets `if finished: return` en tête d'`avancer()` → `test_le_monde_continue_apres_l_arrivee` doit virer au rouge ;
+3. retire le `clampf` de `TrackCurve.racing_line_at` → le nouveau test de la ligne de course doit virer au rouge.
+
+Trois messages d'échec verbatim dans ton rapport. Un test de régression qui n'a jamais été rouge ne prouve rien.
+
+- [ ] **Step 3 : Ouvrir la couture dans `RaceSession`**
+
+Dans `scripts/race/race_session.gd`, `_ready()` ne fait plus que résoudre les chemins, et le corps part dans deux méthodes appelables sans arbre :
+
+```gdscript
+func _ready() -> void:
+	var piste := get_node_or_null(track_path) as Track
+	var kart := get_node_or_null(kart_path) as Kart
+	assert(piste != null, "track_path doit pointer vers un Track")
+	assert(kart != null, "kart_path doit pointer vers un Kart")
+	demarrer(piste, kart)
+
+
+## Prend le circuit et le kart en paramètres plutôt que de les lire dans
+## l'arbre : c'est toute la différence entre une logique testable et une
+## logique qu'on ne peut qu'espérer juste.
+func demarrer(piste: Track, pilote: Kart) -> void:
+	assert(lap_count > 0, "une course sans tour à boucler ne finit jamais")
+	_track = piste
+	_kart = pilote
+	_demi_largeur = _track.track_curve.half_width
+	_kart.respawn_at(_track.spawn_at(DEPART))
+	progress = RaceProgress.new(_track.track_curve, DEPART)
+	_derniere_en_piste = DEPART
+
+
+func _physics_process(delta: float) -> void:
+	avancer(_kart.global_position, delta)
+```
+
+`get_node` devient `get_node_or_null` : `get_node` lève l'erreur *avant* l'`assert`, et les `assert` disparaissent en export release — le message n'aurait servi à personne.
+
+Ajoute le champ `var _demi_largeur: float = 0.0` auprès des autres. Il remplace les lectures de `_track.half_width` : `TrackCurve` porte déjà sa propre copie de la demi-largeur, et c'est elle que `is_off_track` compare. Deux sources pour la même valeur finissent toujours par diverger.
+
+- [ ] **Step 4 : Corriger les deux défauts dans `avancer()`**
+
+```gdscript
+## Le point est passé plutôt que lu sur le kart : global_position exige
+## l'arbre de scènes, et c'est le seul obstacle qui rendait cette logique
+## intestable.
+func avancer(point: Vector3, delta: float) -> void:
+	progress.update(point)
+
+	# La comptabilité s'arrête à l'arrivée ; le monde, lui, continue.
+	if not finished:
+		timer.advance(delta)
+		# progress.lap n'est pas monotone : il redescend quand le kart recule.
+		# Se déclencher sur sa montée enregistrait un tour à chaque
+		# franchissement, donc reculer sur la ligne d'arrivée fabriquait un
+		# meilleur temps de deux images. On compte sur une ligne de crue.
+		if progress.lap > _tours_comptes:
+			_tours_comptes = progress.lap
+			timer.complete_lap()
+			if _tours_comptes >= lap_count:
+				finished = true
+
+	# Une seule projection par image : is_off_track la referait entièrement,
+	# et la remise en piste une troisième fois.
+	var ecart := absf(_track.track_curve.lateral_offset(point))
+	var dehors := ecart > _demi_largeur
+	_kart.set_offroad(dehors)
+	if not dehors:
+		# On remet en piste là où le kart roulait encore, pas là où la courbe
+		# projette son point de sortie. Dans l'épingle la courbe se replie sur
+		# elle-même : le point le plus proche d'une sortie de 29 m s'y trompe
+		# de 48 m — en arrière d'un côté, mais en avant de l'autre. Reprojeter
+		# ne punissait donc pas seulement la sortie de route, elle pouvait
+		# aussi l'offrir en raccourci.
+		_derniere_en_piste = progress.distance
+
+	if point.y < FLOOR_LIMIT or ecart > _demi_largeur + OFF_TRACK_RESPAWN_MARGIN:
+		_kart.respawn_at(_track.spawn_at(_derniere_en_piste))
+```
+
+Ajoute le champ `var _tours_comptes: int = 0` auprès des autres.
+
+- [ ] **Step 5 : Corriger un commentaire qui ment**
+
+`scripts/race/race_progress.gd` : j'ai écrit que `total` « compte ce que le kart a réellement roulé ». C'est faux, et la revue l'a mesuré — un kart qui zigzague d'un bord à l'autre parcourt 2155 m pour un `total` de 768 m. `total` mesure l'**avancement projeté sur l'axe**, ce qui est le bon comportement pour un classement mais pas ce que la phrase dit. Remplace le second paragraphe de l'en-tête par :
+
+```gdscript
+## « Avancement » et non « distance parcourue » : `total` part de zéro au
+## départ et mesure la progression le long de l'axe, pas les kilomètres au
+## compteur — zigzaguer d'un bord à l'autre use les pneus sans avancer d'un
+## mètre de plus. C'est ce que le classement doit trier, et c'est ce qui rend
+## une grille décalée équitable : sinon le kart posé vingt mètres avant la
+## ligne bouclerait son premier tour en vingt mètres.
+```
+
+- [ ] **Step 6 : Lancer les tests**
+
+```bash
+"$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
+```
+
+Attendu : **10 scripts et 95 tests** (90 + quatre dans `test_race_session.gd` + un dans `test_track_curve.gd`), tous verts. Si le décompte n'y est pas, un fichier ne compile pas et GUT l'a sauté en silence.
+
+- [ ] **Step 7 : Vérifier que la scène tourne toujours**
+
+```bash
+"$GODOT" --headless --quit-after 180 scenes/race.tscn
+```
+
+Attendu : la bannière, rien d'autre. Aucune ligne `ERROR` ni `SCRIPT ERROR`.
+
+- [ ] **Step 8 : Commit**
+
+```bash
+rtk git add scripts/race/ tests/test_race_session.gd tests/test_track_curve.gd && rtk git commit -m "fix: reculer sur la ligne fabriquait un meilleur tour de deux images"
+```
+
+**Ce que cette tâche coûte en leçon.** J'avais jugé à la tâche 11 que l'absence de test sur `RaceSession` était défendable puisqu'elle a besoin de l'arbre. C'était une conclusion confortable, pas une mesure : le seul obstacle était une lecture de `global_position`, et l'écarter coûtait deux lignes. Les deux défauts vivaient exactement là, dans la seule classe non couverte du sous-système. « Ce n'est pas testable » mérite d'être vérifié avec la même rigueur qu'un chiffre.
+
+---
+
 ### Task 13 : Le point de validation
 
 **Files:** aucun — c'est une session de jeu.
