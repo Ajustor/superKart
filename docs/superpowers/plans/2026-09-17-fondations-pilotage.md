@@ -1905,6 +1905,19 @@ Trois points que la revue finale place avant le plan suivant plutôt qu'après.
 - **Trancher la convention de signe de la marche arrière.** L'invariant non écrit `speed >= 0` est supposé par quatre fonctions. Le plan 2 écrira la réconciliation de vitesse après collision, et ce code encodera forcément une hypothèse sur ce signe. Décider maintenant coûte cinq minutes, le lever après coûte une réécriture.
 - **`KartMotor.reset()` plutôt qu'un `KartMotor.new()` dans `respawn_at()`.** Aujourd'hui ça marche parce que la caméra et les visuels relisent `_kart.motor` à chaque frame. La première présentation qui mettra le moteur en cache dans son `_ready()` se détachera en silence, sans erreur et sans test pour l'attraper.
 
+## Leçon de la première session de conduite
+
+Le braquage tournait du mauvais côté, et **43 tests au vert ne pouvaient pas l'attraper**. Le
+moteur compte ses angles à la boussole (lacet positif = vers la droite) ; Godot compte l'inverse.
+Tous les tests vérifiaient la cohérence interne du moteur, aucun ne projetait le résultat dans
+l'espace monde — là où vit la seule question qui compte : « appuyer à droite, est-ce que ça va
+à droite ? »
+
+La conversion se fait désormais dans `kart.gd`, au seul endroit où les deux repères se
+rencontrent. La leçon générale : un moteur testé en isolation ne prouve rien sur le signe de sa
+sortie une fois branchée. Tout futur passage moteur → monde mérite une vérification humaine, pas
+un test de plus.
+
 ## Dette acceptée
 
 Relevée en revue, sciemment non traitée — à reconsidérer à la passe de réglage du jalon 15, pas avant.
