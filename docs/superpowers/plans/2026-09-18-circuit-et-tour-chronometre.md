@@ -1271,6 +1271,179 @@ rtk git add scripts/race/race_session.gd scripts/kart/kart.gd && rtk git commit 
 
 ---
 
+### Task 11bis : Le tour fantôme du départ
+
+**Files:**
+- Modify: `scripts/race/race_progress.gd`
+- Modify: `scripts/race/race_session.gd`
+- Test: `tests/test_race_progress.gd`
+
+Deux défauts découverts en câblant la tâche 11, tous deux dans des couches déjà réputées testées. Le premier rend chaque course fausse.
+
+**Le tour fantôme.** `RaceSession._ready()` pose le kart avec `spawn_at(0.0)` puis demande à `RaceProgress` de retrouver sa distance *en la reprojetant*. Or `spawn_at` ne place pas le kart sur l'axe mais sur la **ligne de course**, décalée latéralement ; et à la distance 0, ce point décalé se projette 0,7 mm **avant** la ligne. Mesuré sur `track_01` :
+
+```
+longueur                    = 768.07800
+distance_of(position_at(0)) =   0.00000     <- l'axe, net
+distance_of(spawn_at(0))    = 768.07727     <- la ligne de course, de l'autre côté
+```
+
+`update()` amorce alors `total = 768.077`. Cinq centimètres plus loin, `total` franchit une longueur et `lap` passe à 1. Mesuré : **le tour 1 tombe après 5 cm sur 768 m.** Une course de trois tours n'en demande donc que deux, et `complete_lap()` enregistre d'entrée un meilleur temps de quelques millisecondes que rien ne battra jamais.
+
+Aucun des 88 tests ne pouvait le voir : ils tournent tous sur un anneau parfait, dont la projection au point 0 vaut exactement 0. La géométrie de test était trop propre pour reproduire le cas.
+
+**La correction va plus loin que la couture.** Le vrai tort est que la session *sait* à quelle distance elle a posé le kart, et jette cette information pour la redeviner par projection — précisément à l'endroit où la projection est ambiguë. On la lui donne. Et tant qu'à toucher à `total`, on le rend **relatif au départ** : il devient littéralement « distance parcourue depuis le départ ». C'est ce que le classement doit trier (§5 du spec), et c'est ce qui rendra la grille décalée du plan 3 équitable — sinon le kart placé 20 m avant la ligne bouclerait son premier tour en 20 m.
+
+- [ ] **Step 1 : Écrire les tests qui échouent**
+
+Ajoute ces deux tests à la fin de `tests/test_race_progress.gd` :
+
+```gdscript
+func test_naitre_juste_avant_la_ligne_ne_donne_pas_un_tour() -> void:
+	# Le kart est posé un millimètre avant la ligne — ce que fait spawn_at dès
+	# que la ligne de course est décalée par rapport à l'axe. Avancer de cinq
+	# centimètres ne boucle pas un tour de 314 m.
+	var p := RaceProgress.new(track, 0.0)
+	p.update(track.position_at(track.length - 0.001))
+	assert_eq(p.lap, 0, "naître derrière la ligne ne compte pas un tour")
+	p.update(track.position_at(0.05))
+	assert_eq(p.lap, 0, "franchir la ligne au premier centimètre non plus")
+
+
+func test_le_vrai_circuit_ne_boucle_pas_au_depart() -> void:
+	# Le cas réel, sur la géométrie livrée : l'anneau des autres tests projette
+	# trop proprement pour reproduire la couture.
+	var courbe: Curve3D = load("res://resources/tracks/track_01_curve.tres")
+	var piste := TrackCurve.new(courbe, 9.0)
+	var p := RaceProgress.new(piste, 0.0)
+	p.update(piste.racing_line_at(0.0) + Vector3.UP * 0.1)
+	p.update(piste.racing_line_at(0.5) + Vector3.UP * 0.1)
+	assert_eq(p.lap, 0, "un demi-mètre depuis la grille ne boucle pas 768 m")
+	assert_almost_eq(p.total, 0.5, 0.2, "et la distance parcourue vaut ce qu'on a roulé")
+```
+
+Puis remplace, dans `before_each` et partout ailleurs dans ce fichier, `RaceProgress.new(track)` par `RaceProgress.new(track, 0.0)`.
+
+- [ ] **Step 2 : Lancer et vérifier l'échec**
+
+```bash
+"$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
+```
+
+Attendu : ÉCHEC — `RaceProgress.new()` prend un argument de trop tant que l'étape 3 n'est pas faite. Cet échec-là ne prouve rien : il dit seulement que la signature a changé.
+
+**Donc : fais l'étape 3, puis reviens neutraliser le seul correctif de comptage** — garde la nouvelle signature, mais remets dans `_init` le comportement d'avant (`distance = 0.0` sans `wrap`, et un `update()` qui amorce `total = d` au premier appel). Relance, et **rapporte le message d'échec obtenu** pour les deux nouveaux tests. Un test de régression qui n'a jamais été rouge ne prouve rien.
+
+- [ ] **Step 3 : Corriger `RaceProgress`**
+
+Dans `scripts/race/race_progress.gd`, remplace les déclarations, `_init` et `update` par :
+
+```gdscript
+var track: TrackCurve
+
+var lap: int = 0
+var distance: float = 0.0   ## position le long de l'axe, dans [0, length)
+var total: float = 0.0      ## distance parcourue depuis le départ, signée
+
+
+## La distance de départ est donnée, jamais devinée : celui qui pose le kart
+## la connaît. La redériver par projection revenait à interroger la courbe à
+## l'endroit précis où elle est ambiguë — la couture — et un point posé un
+## millimètre du mauvais côté offrait un tour complet.
+func _init(track_curve: TrackCurve, start_distance: float) -> void:
+	track = track_curve
+	distance = track.wrap(start_distance)
+
+
+func update(point: Vector3) -> void:
+	var d := track.distance_of(point)
+
+	# Le déplacement réel sur une boucle est le chemin le plus court, pas la
+	# différence brute des coordonnées : sans ça, deux centimètres de
+	# tremblement au-dessus de la ligne se lisent comme un tour complet, et le
+	# compteur oscille pendant que le kart attend le départ, immobile.
+	total += wrapf(d - distance, -track.length * 0.5, track.length * 0.5)
+	distance = d
+
+	# total part de zéro : le tour se compte sur ce qui a été roulé, pas sur la
+	# position absolue. Deux karts sur une grille décalée doivent parcourir la
+	# même distance pour boucler le même nombre de tours.
+	#
+	# Un kart qui recule avant même d'être parti reste au tour zéro : la
+	# distance parcourue peut devenir négative, le numéro de tour non.
+	lap = maxi(floori(total / track.length), 0)
+```
+
+Le drapeau `_demarre` disparaît : il n'y a plus de premier appel particulier.
+
+- [ ] **Step 4 : Corriger l'appel dans la session**
+
+Dans `scripts/race/race_session.gd`, `_ready()` — poser le kart d'abord, puis annoncer la distance au lieu de la faire redeviner :
+
+```gdscript
+	_kart.respawn_at(_track.spawn_at(0.0))
+	progress = RaceProgress.new(_track.track_curve, 0.0)
+```
+
+La ligne `progress.update(_kart.global_position)` disparaît.
+
+- [ ] **Step 5 : Lancer les tests**
+
+```bash
+"$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
+```
+
+Attendu : **+2 tests par rapport aux 88**, tous verts, et aucun test existant disparu. Si le total n'est pas 90, un fichier ne compile pas et GUT l'a sauté en silence.
+
+- [ ] **Step 6 : La remise en piste recule le kart dans les épingles**
+
+Second défaut mesuré à la tâche 11 : sur l'épingle (vers d ≈ 410 m), une sortie latérale de 29 m se projette sur **380,69 m** — la courbe se replie sur elle-même, et le point le plus proche n'est plus celui d'où l'on est sorti. La remise en piste replace alors le kart 29 m en arrière.
+
+La progression y survit (`wrapf` encaisse l'aller-retour, le tour reste intact), mais rendre 29 m pour une sortie de route est une punition qu'on n'a pas décidée. La session n'a pas besoin de deviner : elle sait où le kart roulait encore.
+
+Dans `scripts/race/race_session.gd`, ajoute le champ auprès des autres :
+
+```gdscript
+var _derniere_en_piste: float = 0.0
+```
+
+puis, dans `_physics_process`, remplace le bloc qui suit le calcul de `ecart` par :
+
+```gdscript
+	var dehors := ecart > _track.half_width
+	_kart.set_offroad(dehors)
+	if not dehors:
+		# On remet en piste là où le kart roulait encore, pas là où la courbe
+		# projette son point de sortie : dans une épingle la courbe se replie,
+		# et le point le plus proche peut être trente mètres en arrière.
+		_derniere_en_piste = progress.distance
+
+	if _kart.global_position.y < FLOOR_LIMIT or ecart > _track.half_width + OFF_TRACK_RESPAWN_MARGIN:
+		_kart.respawn_at(_track.spawn_at(_derniere_en_piste))
+```
+
+- [ ] **Step 7 : Mesurer les deux corrections en situation**
+
+Cette étape ne s'appuie sur aucun test : `RaceSession` a besoin de l'arbre de scènes, et monter un banc permanent pour trois lignes coûterait plus qu'il ne rapporte. Écris un script jetable (**non commité**) qui instancie `track_01` et le kart, câble une `RaceSession`, et **rapporte les nombres** :
+
+1. Au départ, après dix images sans toucher aux commandes : `lap` vaut-il toujours 0 ? `timer.best` est-il resté vide ?
+2. Un tour complet parcouru pas à pas : `lap` passe-t-il à 1 une seule fois, et `total` vaut-il bien une longueur de piste ?
+3. Téléportation latérale de 29 m au niveau de l'épingle (d ≈ 410 m) : **à quelle distance le kart est-il replacé ?** Attendu : près de 410, pas 380. Donne le chiffre obtenu, pas une appréciation.
+4. La même téléportation sur une portion droite : le kart revient-il au même endroit qu'avant la correction ?
+
+Supprime le script avant de committer, et vérifie avec `rtk git status` qu'il ne reste rien d'autre à l'index.
+
+- [ ] **Step 8 : Commit**
+
+```bash
+rtk git add scripts/race/race_progress.gd scripts/race/race_session.gd tests/test_race_progress.gd && rtk git commit -m "fix: le kart empochait un tour au premier centimetre"
+```
+
+**Ce que cette tâche coûte en leçon.** Les deux défauts vivaient sous 88 tests verts, dans deux des classes les plus soigneusement testées du dépôt. Aucun ne s'est montré avant qu'on branche les morceaux ensemble sur la vraie géométrie. Les tests vérifient ce qu'on a pensé à imaginer ; la mesure montre ce qui arrive.
+
+---
+
+
 ### Task 12 : Le HUD et la scène de course
 
 **Files:**
