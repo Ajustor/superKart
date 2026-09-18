@@ -1687,20 +1687,36 @@ func test_reculer_sur_la_ligne_ne_refabrique_pas_de_tour() -> void:
 		"repasser la ligne à l'envers ne doit pas offrir un tour de deux images")
 
 
-func test_le_monde_continue_apres_l_arrivee() -> void:
+func test_le_hors_piste_ne_se_fige_pas_apres_l_arrivee() -> void:
 	session.lap_count = 1
 	var L := track.track_curve.length
 	_rouler(0.0, L + 0.3)
 	assert_true(session.finished, "un tour suffit à finir cette course")
 
-	# Loin du bord, bien au-delà de la marge de remise en piste.
+	# Entre le bord de piste et la marge de remise en piste : assez dehors pour
+	# que le drapeau lève, pas assez pour être ramené. Sinon la remise en piste
+	# remettrait le moteur à neuf dans la même image et effacerait le drapeau.
+	var large := track.track_curve.position_at(100.0) \
+		+ track.track_curve.right_at(100.0) * 10.5
+	session.avancer(large, 1.0 / 60.0)
+
+	assert_true(kart.motor.on_offroad,
+		"le hors-piste ne se fige pas parce que la course est finie")
+
+
+func test_la_remise_en_piste_continue_apres_l_arrivee() -> void:
+	session.lap_count = 1
+	var L := track.track_curve.length
+	_rouler(0.0, L + 0.3)
+	assert_true(session.finished)
+
+	kart.motor.speed = 20.0
 	var dehors := track.track_curve.position_at(100.0) \
 		+ track.track_curve.right_at(100.0) * 40.0
 	session.avancer(dehors, 1.0 / 60.0)
 
-	var ecart := absf(track.track_curve.lateral_offset(kart.global_position))
-	assert_lt(ecart, 9.0,
-		"la course finie gèle la comptabilité, pas la remise en piste")
+	assert_eq(kart.motor.speed, 0.0,
+		"respawn_at remet le moteur à neuf : sans lui le kart tombe sans fin")
 
 
 func test_le_chrono_s_arrete_a_l_arrivee() -> void:
@@ -1743,7 +1759,7 @@ Attendu : ÉCHEC — `demarrer()` et `avancer()` n'existent pas encore. Comme à
 
 **Donc : fais les étapes 3 et 4, puis reviens neutraliser chaque correctif séparément** et rapporte le message d'échec obtenu :
 1. remets le déclenchement sur front (`progress.lap > tours_avant`) → `test_reculer_sur_la_ligne_ne_refabrique_pas_de_tour` doit virer au rouge ;
-2. remets `if finished: return` en tête d'`avancer()` → `test_le_monde_continue_apres_l_arrivee` doit virer au rouge ;
+2. remets `if finished: return` en tête d'`avancer()` → les deux tests `..._apres_l_arrivee` doivent virer au rouge ;
 3. retire le `clampf` de `TrackCurve.racing_line_at` → le nouveau test de la ligne de course doit virer au rouge.
 
 Trois messages d'échec verbatim dans ton rapport. Un test de régression qui n'a jamais été rouge ne prouve rien.
@@ -1843,7 +1859,7 @@ Ajoute le champ `var _tours_comptes: int = 0` auprès des autres.
 "$GODOT" --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 ```
 
-Attendu : **10 scripts et 95 tests** (90 + quatre dans `test_race_session.gd` + un dans `test_track_curve.gd`), tous verts. Si le décompte n'y est pas, un fichier ne compile pas et GUT l'a sauté en silence.
+Attendu : **10 scripts et 96 tests** (90 + cinq dans `test_race_session.gd` + un dans `test_track_curve.gd`), tous verts. Si le décompte n'y est pas, un fichier ne compile pas et GUT l'a sauté en silence.
 
 - [ ] **Step 7 : Vérifier que la scène tourne toujours**
 
@@ -1858,6 +1874,10 @@ Attendu : la bannière, rien d'autre. Aucune ligne `ERROR` ni `SCRIPT ERROR`.
 ```bash
 rtk git add scripts/race/ tests/test_race_session.gd tests/test_track_curve.gd && rtk git commit -m "fix: reculer sur la ligne fabriquait un meilleur tour de deux images"
 ```
+
+**Correction apportée en cours de route.** Ce plan demandait d'abord d'affirmer sur `track_curve.lateral_offset(kart.global_position)` après la remise en piste. Ça ne marche pas : lire `global_position` hors de l'arbre est précisément l'obstacle que la couture contourne, et le test aurait lu `(0,0,0)`. La remise en piste se constate donc sur le moteur — `respawn_at` appelle `motor.reset()`, qui remet la vitesse à zéro.
+
+Le test avait aussi été écrit en confondant deux comportements : à 40 m du bord, le kart est remis en piste *dans la même image*, et `motor.reset()` efface `on_offroad`. Vérifier le drapeau demande un point hors-piste mais **en deçà** de la marge de remise en piste. D'où deux tests au lieu d'un.
 
 **Ce que cette tâche coûte en leçon.** J'avais jugé à la tâche 11 que l'absence de test sur `RaceSession` était défendable puisqu'elle a besoin de l'arbre. C'était une conclusion confortable, pas une mesure : le seul obstacle était une lecture de `global_position`, et l'écarter coûtait deux lignes. Les deux défauts vivaient exactement là, dans la seule classe non couverte du sous-système. « Ce n'est pas testable » mérite d'être vérifié avec la même rigueur qu'un chiffre.
 
