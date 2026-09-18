@@ -672,21 +672,69 @@ static func build(track: TrackCurve, segment_length: float = 2.0) -> ArrayMesh:
 	return outil.commit()
 ```
 
-- [ ] **Step 2 : Vérifier que le script compile**
+- [ ] **Step 2 : Écrire les tests**
 
-```bash
-"$GODOT" --headless --check-only --script scripts/track/track_builder.gd
+`tests/test_track_builder.gd`. **L'orientation des faces est testable en headless**, contrairement à ce que j'ai cru en écrivant ce plan : `generate_normals()` dérive les normales de l'ordre des sommets, donc un ordre inversé produit des normales qui pointent vers le bas, et ça se lit dans le maillage.
+
+```gdscript
+extends GutTest
+
+var track: TrackCurve
+
+
+func _anneau(rayon: float = 50.0, points: int = 16) -> Curve3D:
+	var c := Curve3D.new()
+	var pas := TAU / float(points)
+	var poignee := rayon * (4.0 / 3.0) * tan(pas / 4.0)
+	for i in points:
+		var a := pas * float(i)
+		var p := Vector3(sin(a) * rayon, 0.0, -cos(a) * rayon)
+		var t := Vector3(cos(a), 0.0, sin(a)) * poignee
+		c.add_point(p, -t, t)
+	c.add_point(c.get_point_position(0), -c.get_point_out(0), c.get_point_out(0))
+	return c
+
+
+func before_each() -> void:
+	track = TrackCurve.new(_anneau(), 8.0)
+
+
+func test_les_normales_pointent_vers_le_haut() -> void:
+	var maillage := TrackBuilder.build(track, 5.0)
+	var normales: PackedVector3Array = maillage.surface_get_arrays(0)[Mesh.ARRAY_NORMAL]
+	assert_gt(normales.size(), 0, "le maillage doit porter des normales")
+	for n in normales:
+		assert_gt(n.y, 0.9,
+			"une normale vers le bas trahit un ordre de sommets inversé")
+
+
+func test_chaque_section_donne_deux_triangles() -> void:
+	var maillage := TrackBuilder.build(track, 10.0)
+	var sommets: PackedVector3Array = maillage.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	var sections := maxi(int(track.length / 10.0), 8)
+	assert_eq(sommets.size(), sections * 6,
+		"deux triangles de trois sommets par section")
+
+
+func test_le_ruban_couvre_toute_la_largeur() -> void:
+	var maillage := TrackBuilder.build(track, 5.0)
+	var sommets: PackedVector3Array = maillage.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	var ecart_max := 0.0
+	for v in sommets:
+		ecart_max = maxf(ecart_max, absf(track.lateral_offset(v)))
+	assert_almost_eq(ecart_max, track.half_width, 0.3,
+		"les bords du ruban tombent sur la demi-largeur")
 ```
 
-Attendu : aucune sortie, code de retour 0.
+- [ ] **Step 3 : Lancer les tests**
 
-- [ ] **Step 3 : Commit**
+Attendu : **trois tests de plus** qu'avant cette tâche. Aucun test existant ne doit disparaître.
+
+- [ ] **Step 4 : Commit**
 
 ```bash
-rtk git add scripts/track/track_builder.gd && rtk git commit -m "feat: extrusion du ruban de route"
+rtk git add scripts/track/track_builder.gd tests/test_track_builder.gd && rtk git commit -m "feat: extrusion du ruban de route"
 ```
-
-**Note sur l'ordre des sommets.** L'orientation d'une face dépend de l'ordre dans lequel on donne ses sommets, et `generate_normals()` la suit. Si à la tâche 8 la route est invisible vue de dessus mais visible par en dessous, échange les deux derniers sommets de chacun des deux triangles. Aucune commande headless ne peut le dire — ça se voit à l'écran, et seulement là.
 
 ---
 
