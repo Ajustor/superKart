@@ -142,3 +142,12 @@ func test_la_ligne_de_course_suit_une_ligne_droite() -> void:
 	var plate := TrackCurve.new(droite, 8.0)
 	assert_almost_eq(plate.lateral_offset(plate.racing_line_at(100.0)), 0.0, 0.5,
 		"sans courbure, la ligne de course reste sur l'axe")
+
+
+func test_un_virage_plus_serre_mord_davantage() -> void:
+	var serre := TrackCurve.new(_anneau(10.0), 8.0)
+	var large := TrackCurve.new(_anneau(50.0), 8.0)
+	var mordant_serre := serre.lateral_offset(serre.racing_line_at(serre.length * 0.25))
+	var mordant_large := large.lateral_offset(large.racing_line_at(large.length * 0.25))
+	assert_gt(mordant_serre, mordant_large,
+		"plus le virage est serré, plus la ligne de course mord vers l'intérieur")

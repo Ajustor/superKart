@@ -23,6 +23,10 @@ const CURVATURE_SAMPLE := 10.0
 ## de 1.0 pour qu'elle reste sur le bitume et non sur le bord.
 const RACING_LINE_BITE := 0.7
 
+## Variation de cap, sur la fenêtre de mesure, qui vaut une morsure complète.
+## Mesuré : un rayon de 10 m sature, un rayon de 50 m mord à moitié.
+const FULL_BITE_YAW := PI * 0.25
+
 var curve: Curve3D
 var half_width: float
 var length: float
@@ -91,5 +95,5 @@ func racing_line_at(distance: float) -> Vector3:
 	var arriere := yaw_at(distance - CURVATURE_SAMPLE)
 	# Positif = le circuit tourne à droite ici, donc l'intérieur est à droite.
 	var virage := wrapf(avant - arriere, -PI, PI)
-	var mordant := clampf(virage / (PI * 0.25), -1.0, 1.0)
+	var mordant := clampf(virage / FULL_BITE_YAW, -1.0, 1.0)
 	return position_at(distance) + right_at(distance) * mordant * half_width * RACING_LINE_BITE
