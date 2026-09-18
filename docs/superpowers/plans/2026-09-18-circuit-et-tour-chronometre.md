@@ -1243,17 +1243,13 @@ func _physics_process(delta: float) -> void:
 			finished = true
 			return
 
-	_kart.set_offroad(_track.track_curve.is_off_track(_kart.global_position))
-
-	if _is_lost():
-		_kart.respawn_at(_track.spawn_at(progress.distance))
-
-
-func _is_lost() -> bool:
-	if _kart.global_position.y < FLOOR_LIMIT:
-		return true
+	# Une seule projection par image : is_off_track la referait entièrement,
+	# et la remise en piste une troisième fois.
 	var ecart := absf(_track.track_curve.lateral_offset(_kart.global_position))
-	return ecart > _track.half_width + OFF_TRACK_RESPAWN_MARGIN
+	_kart.set_offroad(ecart > _track.half_width)
+
+	if _kart.global_position.y < FLOOR_LIMIT or ecart > _track.half_width + OFF_TRACK_RESPAWN_MARGIN:
+		_kart.respawn_at(_track.spawn_at(progress.distance))
 ```
 
 - [ ] **Step 3 : Vérifier que les scripts compilent**
