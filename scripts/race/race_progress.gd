@@ -31,13 +31,13 @@ func update(point: Vector3) -> void:
 		total = d
 		return
 
-	# Un saut de plus d'une demi-longueur entre deux relevés ne peut pas être
-	# un vrai déplacement : c'est la ligne qu'on vient de franchir.
-	var pas := d - distance
-	if pas < -track.length * 0.5:
-		lap += 1
-	elif pas > track.length * 0.5:
-		lap -= 1
-
+	# Le déplacement réel sur une boucle est le chemin le plus court, pas la
+	# différence brute des coordonnées : sans ça, deux centimètres de
+	# tremblement au-dessus de la ligne se lisent comme un tour complet, et le
+	# compteur oscille pendant que le kart attend le départ, immobile.
+	total += wrapf(d - distance, -track.length * 0.5, track.length * 0.5)
 	distance = d
-	total = float(lap) * track.length + d
+
+	# Un kart qui recule avant même d'être parti reste au tour zéro : la
+	# distance cumulée peut devenir négative, le numéro de tour non.
+	lap = maxi(floori(total / track.length), 0)

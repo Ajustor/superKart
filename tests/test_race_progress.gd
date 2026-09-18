@@ -74,3 +74,20 @@ func test_deux_tours_complets() -> void:
 	_parcourir(track.length + 10.0, 2.0 * track.length - 5.0)
 	_parcourir(2.0 * track.length - 5.0, 2.0 * track.length + 10.0)
 	assert_eq(progress.lap, 2)
+
+
+func test_trembler_sur_la_ligne_ne_compte_aucun_tour() -> void:
+	progress.update(track.position_at(0.0))
+	for i in 50:
+		var tremblement := 0.03 if i % 2 == 0 else -0.03
+		progress.update(track.position_at(tremblement))
+		assert_eq(progress.lap, 0,
+			"un kart immobile sur la ligne ne boucle rien")
+
+
+func test_reculer_avant_le_depart_ne_donne_pas_de_tour_negatif() -> void:
+	progress.update(track.position_at(0.0))
+	_parcourir(0.0, -30.0)
+	assert_eq(progress.lap, 0, "on ne descend pas sous le tour zéro")
+	assert_lt(progress.total, 0.0,
+		"la distance cumulée, elle, a le droit d'être négative")
