@@ -932,6 +932,11 @@ func before_each() -> void:
 
 ## Déplace le kart le long de l'axe par petits pas, comme le ferait un vrai
 ## tour : la détection de passage de ligne repose sur la continuité.
+##
+## L'aide travaille en compteur kilométrique, pas en coordonnée enroulée :
+## pour franchir la ligne vers l'avant on vise `length + 10`, pas `10`, sans
+## quoi elle recule sur presque tout le tour au lieu d'avancer de quinze
+## mètres.
 func _parcourir(de: float, vers: float, pas: float = 5.0) -> void:
 	var d := de
 	while absf(vers - d) > pas:
@@ -955,7 +960,7 @@ func test_avancer_augmente_la_distance_cumulee() -> void:
 func test_boucler_incremente_le_tour() -> void:
 	_parcourir(0.0, track.length - 5.0)
 	assert_eq(progress.lap, 0)
-	_parcourir(track.length - 5.0, 10.0)
+	_parcourir(track.length - 5.0, track.length + 10.0)
 	assert_eq(progress.lap, 1, "franchir la ligne compte un tour")
 	assert_almost_eq(progress.total, track.length + 10.0, 3.0)
 
@@ -969,18 +974,18 @@ func test_reculer_decremente_la_distance() -> void:
 
 func test_repasser_la_ligne_a_l_envers_annule_le_tour() -> void:
 	_parcourir(0.0, track.length - 5.0)
-	_parcourir(track.length - 5.0, 10.0)
+	_parcourir(track.length - 5.0, track.length + 10.0)
 	assert_eq(progress.lap, 1)
-	_parcourir(10.0, track.length - 10.0)
+	_parcourir(10.0, -10.0)
 	assert_eq(progress.lap, 0,
 		"revenir en arrière par la ligne doit reprendre le tour")
 
 
 func test_deux_tours_complets() -> void:
 	_parcourir(0.0, track.length - 5.0)
-	_parcourir(track.length - 5.0, 10.0)
-	_parcourir(10.0, track.length - 5.0)
-	_parcourir(track.length - 5.0, 10.0)
+	_parcourir(track.length - 5.0, track.length + 10.0)
+	_parcourir(track.length + 10.0, 2.0 * track.length - 5.0)
+	_parcourir(2.0 * track.length - 5.0, 2.0 * track.length + 10.0)
 	assert_eq(progress.lap, 2)
 ```
 
@@ -1026,16 +1031,16 @@ func update(point: Vector3) -> void:
 		total = d
 		return
 
-	# Un saut de plus d'une demi-longueur entre deux relevés ne peut pas être
-	# un vrai déplacement : c'est la ligne qu'on vient de franchir.
-	var pas := d - distance
-	if pas < -track.length * 0.5:
-		lap += 1
-	elif pas > track.length * 0.5:
-		lap -= 1
-
+	# Le déplacement réel sur une boucle est le chemin le plus court, pas la
+	# différence brute des coordonnées : sans ça, deux centimètres de
+	# tremblement au-dessus de la ligne se lisent comme un tour complet, et le
+	# compteur oscille pendant que le kart attend le départ, immobile.
+	total += wrapf(d - distance, -track.length * 0.5, track.length * 0.5)
 	distance = d
-	total = float(lap) * track.length + d
+
+	# Un kart qui recule avant même d'être parti reste au tour zéro : la
+	# distance cumulée peut devenir négative, le numéro de tour non.
+	lap = maxi(floori(total / track.length), 0)
 ```
 
 - [ ] **Step 4 : Lancer les tests pour vérifier qu'ils passent**
