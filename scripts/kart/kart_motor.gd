@@ -181,3 +181,20 @@ func _release_drift() -> void:
 		# palier inférieur : enchaîner doit récompenser, pas punir.
 		boost_timer = maxf(boost_timer, stats.boost_durations[tier - 1])
 	_end_drift()
+
+
+## Remet le moteur à neuf au cap donné, sans changer d'objet. Les nœuds de
+## présentation gardent des références au moteur : le remplacer les
+## détacherait en silence, sans erreur et sans test pour l'attraper.
+func reset(yaw: float) -> void:
+	state = State.GRIP
+	speed = 0.0
+	velocity_dir = yaw
+	heading = yaw
+	boost_timer = 0.0
+	on_offroad = false
+	drift_dir = 0
+	drift_charge = 0.0
+	drift_angle = 0.0
+	hop_timer = 0.0
+	_drift_locked_out = false

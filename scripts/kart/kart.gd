@@ -53,12 +53,10 @@ func _physics_process(delta: float) -> void:
 
 
 ## Remet le kart à un état neutre à la position donnée. Le terrain d'essai
-## s'en sert ; le plan 2 s'en servira pour les remises en piste.
+## s'en sert ; la remise en piste du circuit aussi.
 func respawn_at(where: Transform3D) -> void:
 	global_transform = where
 	velocity = Vector3.ZERO
 	_vertical = 0.0
 	_was_hopping = false
-	motor = KartMotor.new(stats)
-	motor.velocity_dir = -where.basis.get_euler().y
-	motor.heading = motor.velocity_dir
+	motor.reset(-where.basis.get_euler().y)
