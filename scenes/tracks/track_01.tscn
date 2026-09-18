@@ -1,0 +1,8 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/track/track.gd" id="1_track"]
+[ext_resource type="Curve3D" path="res://resources/tracks/track_01_curve.tres" id="2_curve"]
+
+[node name="Track" type="Node3D"]
+script = ExtResource("1_track")
+curve = ExtResource("2_curve")
