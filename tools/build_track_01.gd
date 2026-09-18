@@ -14,17 +14,22 @@ const SORTIE := "res://resources/tracks/track_01_curve.tres"
 ## sont calculées pour lisser le tout.
 ##
 ## L'épingle (points 4-6) a été réglée par recherche de paramètres plutôt que
-## deviné : un triangle symétrique (écart 80 m entre l'entrée et la sortie,
-## apex poussé de 30 m) donne un rayon minimal d'environ 11,7 m au sommet —
-## dans la fenêtre visée de 10-13 m, sans à-coup sur le lacet.
+## deviné : un triangle symétrique (écart 82 m entre l'entrée et la sortie,
+## apex poussé de 28 m) donne un rayon minimal d'environ 13,3 m au sommet.
+## Revu une fois : un rayon d'axe de 10-13 m avec une demi-largeur de 9 m
+## laissait un bord intérieur à seulement 2,7 m — une chaussée large sur un
+## axe serré donne un coin en biseau, pas une épingle. Viser 12,5-13,5 m
+## d'axe garde un bord intérieur d'au moins 3,5 m tout en restant bien
+## au-dessus du rayon d'adhérence du kart (9,2 m) : le virage force toujours
+## à lever le pied.
 const POINTS: Array[Vector3] = [
 	Vector3(0, 0, -120),
 	Vector3(90, 0, -110),
 	Vector3(140, 0, -40),
 	Vector3(120, 0, 40),
-	Vector3(30, 0, 60),
-	Vector3(-10, 0, 90),
-	Vector3(-50, 0, 60),
+	Vector3(31, 0, 60),
+	Vector3(-10, 0, 88),
+	Vector3(-51, 0, 60),
 	Vector3(-130, 0, 10),
 	Vector3(-110, 0, -70),
 	Vector3(-50, 0, -120),
