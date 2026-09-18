@@ -48,6 +48,15 @@ func test_le_cap_suit_la_convention_boussole() -> void:
 		"partir vers +X correspond à un cap de +90°")
 
 
+func test_le_cap_est_juste_la_ou_les_deux_axes_comptent() -> void:
+	# Au huitième du tour la tangente a ses composantes x et z toutes deux
+	# non nulles : c'est le seul endroit où une inversion de signe sur z se
+	# voit. Au point zéro, t.z vaut zéro et les deux signes donnent le même
+	# résultat.
+	assert_almost_eq(track.yaw_at(track.length / 8.0), PI * 0.75, 0.05,
+		"à un huitième de l'anneau, le cap boussole vaut 135°")
+
+
 func test_la_droite_est_perpendiculaire_a_la_tangente() -> void:
 	for d in [0.0, 70.0, 200.0]:
 		var t := track.tangent_at(d)

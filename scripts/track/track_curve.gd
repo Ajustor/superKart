@@ -8,6 +8,10 @@ extends RefCounted
 ##
 ## Les caps qu'elle produit suivent la convention du moteur — lacet positif
 ## vers la droite — pour se comparer directement à motor.heading.
+##
+## La courbe est supposée fermée : les distances s'enroulent modulo la
+## longueur. Sur une courbe ouverte, la tangente près des extrémités
+## échantillonnerait l'autre bout et renverrait une direction sans rapport.
 
 ## Écart utilisé pour dériver la tangente par différence finie, en mètres.
 const TANGENT_EPSILON := 0.25
@@ -21,6 +25,7 @@ func _init(track_curve: Curve3D, track_half_width: float) -> void:
 	curve = track_curve
 	half_width = track_half_width
 	length = curve.get_baked_length()
+	assert(length > 0.0, "un TrackCurve a besoin d'une courbe de longueur non nulle")
 
 
 ## Ramène une distance quelconque dans [0, length).
