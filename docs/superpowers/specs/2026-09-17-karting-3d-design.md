@@ -168,7 +168,7 @@ découle par le calcul**, sans rien à placer à la main :
 
 | Ce qu'on en tire | Comment |
 |---|---|
-| La géométrie de la route | extrusion d'un ruban le long de la courbe, largeur et dévers paramétrés |
+| La géométrie de la route | extrusion d'un ruban le long de la courbe, largeur paramétrée |
 | La collision | le même ruban, en trimesh |
 | La ligne de course de l'IA | l'axe décalé vers l'intérieur, proportionnellement à la courbure locale |
 | La progression et les tours | distance parcourue le long de la courbe |
@@ -179,6 +179,8 @@ découle par le calcul**, sans rien à placer à la main :
 
 Déplacer un point de contrôle redéfinit donc le circuit entier, sa collision, la trajectoire de
 l'IA et la logique de course d'un seul geste. Un troisième circuit coûte une courbe.
+
+**Le dévers arrivera avec le dénivelé, pas avant.** Le ruban est extrudé à plat : la tangente est aplatie à l'horizontale et la normale de la route est verticale partout. `Curve3D` expose nativement un `tilt` par point de contrôle, délibérément ignoré tant que les circuits sont plats. L'incliner ne touchera que `TrackCurve` et `TrackBuilder`, sans changer la façon dont un circuit se définit.
 
 **Une limite à lever avant le circuit de montagne.** La projection d'un kart sur l'axe mesure en 3D, altitude comprise, alors que l'écart latéral est calculé à plat. Sur un circuit plat c'est équivalent. Dès qu'il y aura du dénivelé, un kart en vol au-dessus d'une portion qui passe sous lui pourra se projeter sur le mauvais tronçon, et le hors-piste comme la progression suivront la mauvaise route. Le correctif — projeter sur une copie horizontalement aplatie de la courbe — appartient au plan qui introduira le dénivelé : c'est le premier où un test pourra échouer sans lui.
 
