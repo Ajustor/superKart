@@ -151,3 +151,19 @@ func test_un_virage_plus_serre_mord_davantage() -> void:
 	var mordant_large := large.lateral_offset(large.racing_line_at(large.length * 0.25))
 	assert_gt(mordant_serre, mordant_large,
 		"plus le virage est serré, plus la ligne de course mord vers l'intérieur")
+
+
+func test_la_ligne_de_course_reste_sur_le_bitume_du_vrai_circuit() -> void:
+	# L'anneau des autres tests a une courbure constante et douce : il ne
+	# sature jamais le mordant, donc il ne prouve rien du plafond. L'épingle
+	# de track_01, si — la marge n'y est que de douze centimètres.
+	var courbe: Curve3D = load("res://resources/tracks/track_01_curve.tres")
+	var piste := TrackCurve.new(courbe, 9.0)
+	var pire := 0.0
+	var d := 0.0
+	while d < piste.length:
+		var ecart := absf(piste.lateral_offset(piste.racing_line_at(d)))
+		pire = maxf(pire, ecart)
+		d += 0.5
+	assert_lt(pire, 9.0,
+		"la ligne de course doit rester sur la chaussée, épingle comprise")
