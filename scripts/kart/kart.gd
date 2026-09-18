@@ -61,3 +61,9 @@ func respawn_at(where: Transform3D) -> void:
 	_vertical = 0.0
 	_was_hopping = false
 	motor.reset(-where.basis.get_euler().y)
+
+
+## Renseigné de l'extérieur par la session de course : le kart ne connaît pas
+## le circuit, et le moteur encore moins.
+func set_offroad(value: bool) -> void:
+	motor.on_offroad = value
