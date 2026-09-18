@@ -609,6 +609,10 @@ func racing_line_at(distance: float) -> Vector3:
 	return position_at(distance) + right_at(distance) * mordant * half_width * RACING_LINE_BITE
 ```
 
+**Limite connue de la méthode** : deux virages opposés séparés de moins d'une vingtaine de mètres tombent ensemble dans la fenêtre de mesure et s'annulent partiellement. Sur une chicane serrée, la ligne resterait donc proche de l'axe là où un pilote traverserait franchement d'un bord à l'autre. C'est le prix d'une fenêtre symétrique à largeur fixe. Si le tracé finit par en comporter, les deux issues sont de réduire `CURVATURE_SAMPLE` ou de passer à une intégrale de courbure locale.
+
+La fenêtre étant symétrique, la ligne entre aussi dans le virage une dizaine de mètres trop tôt et en ressort autant trop tard, là où un pilote braque tôt et débourre tard. Simplification assumée pour une IA d'arcade, à revoir seulement si le plan de l'IA veut un apex retardé perceptible.
+
 **Calibrage mesuré** : sur l'anneau de 50 m la ligne mord 2,85 m, soit 51 % du maximum ; sur un anneau de 10 m elle sature à 100 %. Le diviseur `PI * 0.25` place donc la morsure complète autour d'un rayon de 10 m, et tout virage plus serré obtient la même correction — il n'y a pas de discrimination en deçà. La ligne est continue au point d'enroulement.
 
 - [ ] **Step 4 : Lancer les tests pour vérifier qu'ils passent**
