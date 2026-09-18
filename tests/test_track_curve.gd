@@ -77,3 +77,43 @@ func test_la_droite_pointe_vers_l_interieur_de_l_anneau() -> void:
 func test_la_distance_s_enroule_sur_la_longueur() -> void:
 	assert_almost_eq(track.wrap(track.length + 10.0), 10.0, 0.001)
 	assert_almost_eq(track.wrap(-10.0), track.length - 10.0, 0.001)
+
+
+func test_un_point_sur_l_axe_se_projette_sur_lui_meme() -> void:
+	for d in [0.0, 60.0, 180.0]:
+		var p := track.position_at(d)
+		assert_almost_eq(track.distance_of(p), d, 1.0,
+			"la projection doit retrouver la distance d'origine")
+
+
+func test_l_ecart_lateral_est_signe() -> void:
+	var d := 90.0
+	var axe := track.position_at(d)
+	var droite := track.right_at(d)
+	assert_almost_eq(track.lateral_offset(axe + droite * 5.0), 5.0, 0.3,
+		"à droite de l'axe, l'écart est positif")
+	assert_almost_eq(track.lateral_offset(axe - droite * 5.0), -5.0, 0.3,
+		"à gauche, il est négatif")
+
+
+func test_l_ecart_lateral_est_nul_sur_l_axe() -> void:
+	assert_almost_eq(track.lateral_offset(track.position_at(140.0)), 0.0, 0.3)
+
+
+func test_le_hors_piste_se_declenche_au_dela_de_la_demi_largeur() -> void:
+	var d := 40.0
+	var axe := track.position_at(d)
+	var droite := track.right_at(d)
+	assert_false(track.is_off_track(axe), "l'axe est sur la piste")
+	assert_false(track.is_off_track(axe + droite * (track.half_width - 1.0)),
+		"juste à l'intérieur du bord, on est encore sur la piste")
+	assert_true(track.is_off_track(axe + droite * (track.half_width + 1.0)),
+		"au-delà du bord, on est hors-piste")
+	assert_true(track.is_off_track(axe - droite * (track.half_width + 1.0)),
+		"des deux côtés")
+
+
+func test_la_hauteur_n_influence_pas_le_hors_piste() -> void:
+	var haut := track.position_at(20.0) + Vector3.UP * 30.0
+	assert_false(track.is_off_track(haut),
+		"sauter ne doit pas compter comme une sortie de piste")

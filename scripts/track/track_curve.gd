@@ -57,3 +57,21 @@ func yaw_at(distance: float) -> float:
 func right_at(distance: float) -> Vector3:
 	var t := tangent_at(distance)
 	return Vector3(-t.z, 0.0, t.x)
+
+
+## Distance le long de l'axe du point de la courbe le plus proche.
+func distance_of(point: Vector3) -> float:
+	return curve.get_closest_offset(point)
+
+
+## Écart signé à l'axe, positif à droite de la marche. La composante verticale
+## est ignorée : un kart en l'air n'est pas hors-piste.
+func lateral_offset(point: Vector3) -> float:
+	var d := distance_of(point)
+	var vers_point := point - position_at(d)
+	vers_point.y = 0.0
+	return vers_point.dot(right_at(d))
+
+
+func is_off_track(point: Vector3) -> bool:
+	return absf(lateral_offset(point)) > half_width
