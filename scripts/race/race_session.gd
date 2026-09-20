@@ -40,6 +40,7 @@ var entries: Array[RaceEntry] = []
 
 var _track: Track
 var _demi_largeur: float = 0.0
+var _cerveaux: Array[AIInput] = []
 
 
 func _ready() -> void:
@@ -54,7 +55,19 @@ func _ready() -> void:
 		assert(k != null, "chaque entrée de kart_paths doit pointer vers un Kart")
 		pilotes.append(k)
 
+	for k in pilotes:
+		for enfant in k.get_children():
+			if enfant is AIInput:
+				brancher_ia(enfant as AIInput)
+
 	demarrer(piste, pilotes)
+
+
+## Déclare une IA à nourrir. Appelée depuis _ready pour chaque kart dont
+## l'entrée en est une ; les tests l'appellent directement.
+func brancher_ia(cerveau: AIInput) -> void:
+	if cerveau != null and not _cerveaux.has(cerveau):
+		_cerveaux.append(cerveau)
 
 
 ## Prend le circuit et les karts en paramètres plutôt que de les lire dans
@@ -77,7 +90,13 @@ func demarrer(piste: Track, pilotes: Array[Kart]) -> void:
 		var lateral := (float(colonne) - 0.5) * 2.0 * GRID_COLUMN_OFFSET
 		var place := _track.spawn_at(depart, lateral)
 		pilotes[i].respawn_at(place)
-		entries.append(RaceEntry.new(pilotes[i], _track.track_curve, depart))
+		var entree := RaceEntry.new(pilotes[i], _track.track_curve, depart)
+		entries.append(entree)
+		# L'IA décide à partir des valeurs de l'image précédente : sans
+		# amorçage, sa toute première décision viserait l'origine du monde.
+		# On lui donne la case de grille et non kart.global_position, qui
+		# échoue hors de l'arbre et rendrait cette ligne intestable.
+		_nourrir_ia(entree, place.origin)
 
 
 func _physics_process(delta: float) -> void:
@@ -91,6 +110,7 @@ func _physics_process(delta: float) -> void:
 ## intestable.
 func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 	entree.progress.update(point)
+	_nourrir_ia(entree, point)
 
 	# La comptabilité s'arrête à l'arrivée ; le monde, lui, continue.
 	if not entree.finished:
@@ -133,3 +153,16 @@ func classer() -> void:
 		return a.progress.total > b.progress.total)
 	for i in ordre.size():
 		ordre[i].position = i + 1
+
+
+## Donne à l'IA de ce kart ce qu'elle ne peut pas aller chercher seule. Elle
+## pourrait projeter sa propre position, mais ce serait une projection de plus
+## par kart et par image — et lire global_position l'empêcherait d'être testée
+## hors de l'arbre.
+func _nourrir_ia(entree: RaceEntry, point: Vector3) -> void:
+	for cerveau in _cerveaux:
+		if cerveau.kart == entree.kart:
+			cerveau.track = _track.track_curve
+			cerveau.distance = entree.progress.distance
+			cerveau.position = point
+			return

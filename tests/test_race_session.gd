@@ -12,7 +12,7 @@ extends GutTest
 
 var track: Track
 var karts: Array[Kart] = []
-var cerveaux: Array[KartInput] = []
+var cerveaux: Array[AIInput] = []
 var session: RaceSession
 
 
@@ -40,14 +40,20 @@ func _kart() -> Kart:
 ## Démonte d'abord ce qui existe : `before_each` a déjà monté une session à un
 ## kart, et un test qui en remonte une à huit laisserait sinon des nœuds
 ## orphelins derrière lui — que GUT compte et signale.
-func _monter(combien: int) -> void:
+func _monter(combien: int, avec_ia: bool = false) -> void:
 	_demonter()
 	track = Track.new()
 	track.half_width = 9.0
 	track.track_curve = TrackCurve.new(_anneau(), 9.0)
 	session = RaceSession.new()
 	for i in combien:
-		karts.append(_kart())
+		var k := _kart()
+		karts.append(k)
+		if avec_ia:
+			var cerveau := AIInput.new()
+			cerveau.kart = k
+			cerveaux.append(cerveau)
+			session.brancher_ia(cerveau)
 	session.demarrer(track, karts)
 
 
@@ -290,3 +296,26 @@ func test_chaque_image_met_le_classement_a_jour() -> void:
 	session.classer()
 	assert_eq(session.entries[1].position, 1,
 		"celui qui a roulé passe devant sans qu'on ait à le dire")
+
+
+func test_la_session_branche_l_ia_sur_le_circuit() -> void:
+	_monter(1, true)
+
+	assert_eq(cerveaux[0].track, track.track_curve,
+		"sans circuit, l'IA ne sait pas où viser")
+	assert_almost_eq(cerveaux[0].distance, session.entries[0].progress.distance, 0.001,
+		"et elle part de sa case de grille, pas de la ligne")
+	assert_gt(cerveaux[0].position.length(), 1.0,
+		"amorcée sur sa case, pas sur l'origine du monde")
+
+
+func test_avancer_tient_l_ia_a_jour() -> void:
+	_monter(1, true)
+
+	var ou := track.track_curve.position_at(60.0)
+	session.avancer(session.entries[0], ou, 1.0 / 60.0)
+
+	assert_almost_eq(cerveaux[0].distance, 60.0, 0.5,
+		"l'IA doit savoir où elle est rendue")
+	assert_almost_eq(cerveaux[0].position.distance_to(ou), 0.0, 0.001,
+		"et à quel endroit exactement, pour mesurer son écart à la ligne")
