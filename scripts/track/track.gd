@@ -35,6 +35,11 @@ const NOM_CORPS := "RoadBody"
 		segment_length = valeur
 		_reconstruire_si_montee()
 
+## Rayon minimal, en mètres, en deçà duquel on prévient que le virage n'est pas
+## franchissable. Le kart tourne au mieux à 8,5 m en dérapage et 12,2 m en
+## adhérence : plus serré que ça, il ne passe pas, il s'encastre.
+@export var min_drivable_radius: float = 9.0
+
 @export var road_color: Color = Color(0.36, 0.38, 0.42):
 	set(valeur):
 		road_color = valeur
@@ -80,6 +85,9 @@ func _reconstruire() -> void:
 	corps.add_child(forme)
 	add_child(corps)
 
+	if Engine.is_editor_hint():
+		update_configuration_warnings()
+
 
 ## Les setters tirent avant `_ready` pendant le chargement de la scène, quand
 ## rien n'est encore en place : on ne reconstruit qu'une fois le nœud monté.
@@ -109,6 +117,39 @@ func _suivre_courbe(brancher: bool) -> void:
 			curve.changed.connect(_reconstruire_si_montee)
 	elif curve.changed.is_connected(_reconstruire_si_montee):
 		curve.changed.disconnect(_reconstruire_si_montee)
+
+
+## Prévient dans l'éditeur quand le tracé contient un virage qu'aucun kart ne
+## peut prendre. Un point de contrôle posé sans poignée fait un angle vif,
+## invisible tant que la courbe reste une jolie ligne à l'écran : mesuré sur le
+## circuit 1, trois points sans poignée donnaient un pli de 2,7 m de rayon où
+## le kart se bloquait net, vitesse réelle nulle, moteur à fond.
+##
+## L'avertissement s'affiche dans l'arbre de scènes, à côté du nœud, et se met
+## à jour dès qu'on lâche la poignée.
+func _get_configuration_warnings() -> PackedStringArray:
+	var avertissements := PackedStringArray()
+	if curve == null:
+		avertissements.append("Aucune courbe : ce circuit n'a pas de tracé.")
+		return avertissements
+	if track_curve == null:
+		return avertissements
+
+	var serres := track_curve.tight_spots(min_drivable_radius, segment_length)
+	if serres.is_empty():
+		return avertissements
+
+	var pire: Array = serres[0]
+	var texte := "%d endroit(s) tournent plus court que %.1f m, " 		% [serres.size(), min_drivable_radius]
+	texte += "le kart n'y passera pas.
+Le pire : %.1f m de rayon à %.0f m du départ." 		% [pire[1], pire[0]]
+	texte += "
+Un point de contrôle sans poignée fait un angle vif : tire ses "
+	texte += "poignées dans l'éditeur, ou lance
+  "
+	texte += "godot --headless --script tools/smooth_track_curve.gd"
+	avertissements.append(texte)
+	return avertissements
 
 
 ## Transformée de départ, sur la ligne de course, orientée dans le sens de la

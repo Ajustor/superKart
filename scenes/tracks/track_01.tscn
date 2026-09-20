@@ -1,11 +1,11 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://n6mqgpx6l2g2"]
 
-[ext_resource type="Script" path="res://scripts/track/track.gd" id="1_track"]
-[ext_resource type="Curve3D" path="res://resources/tracks/track_01_curve.tres" id="2_curve"]
+[ext_resource type="Script" uid="uid://bojo1pbj42c3o" path="res://scripts/track/track.gd" id="1_track"]
+[ext_resource type="Curve3D" uid="uid://yhtx47bkwe5a" path="res://resources/tracks/track_01_curve.tres" id="2_curve"]
 
-[node name="Track" type="Node3D"]
+[node name="Track" type="Node3D" unique_id=1258864960]
 script = ExtResource("1_track")
 curve = ExtResource("2_curve")
 
-[node name="CurveEditor" type="Path3D" parent="."]
+[node name="CurveEditor" type="Path3D" parent="." unique_id=1708648200]
 curve = ExtResource("2_curve")
