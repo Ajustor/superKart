@@ -1,9 +1,10 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/kart/kart.gd" id="1_kart"]
 [ext_resource type="Script" path="res://scripts/kart/player_input.gd" id="2_input"]
 [ext_resource type="Resource" path="res://resources/karts/default_kart.tres" id="3_stats"]
 [ext_resource type="Script" path="res://scripts/kart/kart_visuals.gd" id="4_visuals"]
+[ext_resource type="Script" path="res://scripts/kart/kart_rumble.gd" id="5_rumble"]
 
 [sub_resource type="BoxShape3D" id="Shape_body"]
 size = Vector3(1.2, 0.8, 1.8)
@@ -58,3 +59,7 @@ script = ExtResource("4_visuals")
 kart_path = NodePath("..")
 body_path = NodePath("../Body")
 sparks_path = NodePath("../Body/Sparks")
+
+[node name="Rumble" type="Node" parent="."]
+script = ExtResource("5_rumble")
+kart_path = NodePath("..")
