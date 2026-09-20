@@ -33,7 +33,7 @@ target_path = NodePath("../Kart")
 [node name="Session" type="Node" parent="."]
 script = ExtResource("4_session")
 track_path = NodePath("../Track")
-kart_path = NodePath("../Kart")
+kart_paths = [NodePath("../Kart")]
 
 [node name="HUD" type="CanvasLayer" parent="."]
 

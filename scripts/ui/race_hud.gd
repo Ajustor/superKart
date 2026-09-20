@@ -22,12 +22,15 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	var tour := mini(_session.progress.lap + 1, _session.lap_count)
+	if _session.entries.is_empty():
+		return
+	var moi := _session.entries[0]
+	var tour := mini(moi.progress.lap + 1, _session.lap_count)
 	var lignes := PackedStringArray()
 	lignes.append("TOUR %d/%d" % [tour, _session.lap_count])
-	lignes.append(RaceTimer.format(_session.timer.current))
-	if _session.timer.has_best:
-		lignes.append("MEILLEUR %s" % RaceTimer.format(_session.timer.best))
-	if _session.finished:
+	lignes.append(RaceTimer.format(moi.timer.current))
+	if moi.timer.has_best:
+		lignes.append("MEILLEUR %s" % RaceTimer.format(moi.timer.best))
+	if moi.finished:
 		lignes.append("ARRIVÉE")
 	_label.text = "\n".join(lignes)
