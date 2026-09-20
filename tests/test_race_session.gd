@@ -319,3 +319,48 @@ func test_avancer_tient_l_ia_a_jour() -> void:
 		"l'IA doit savoir où elle est rendue")
 	assert_almost_eq(cerveaux[0].position.distance_to(ou), 0.0, 0.001,
 		"et à quel endroit exactement, pour mesurer son écart à la ligne")
+
+
+## Le même anneau, mais creusé loin sous l'altitude zéro : une piste à
+## plusieurs niveaux descend, et « en bas » ne veut rien dire dans l'absolu.
+func _anneau_enfoui(profondeur: float) -> Curve3D:
+	var c := _anneau()
+	for i in c.point_count:
+		var p := c.get_point_position(i)
+		c.set_point_position(i, p + Vector3.DOWN * profondeur)
+	return c
+
+
+func test_rouler_loin_sous_l_altitude_zero_ne_teleporte_pas() -> void:
+	_demonter()
+	track = Track.new()
+	track.half_width = 9.0
+	track.track_curve = TrackCurve.new(_anneau_enfoui(30.0), 9.0)
+	session = RaceSession.new()
+	karts.append(_kart())
+	session.demarrer(track, karts)
+
+	karts[0].motor.speed = 20.0
+	var sur_la_route := track.track_curve.racing_line_at(120.0)
+	session.avancer(session.entries[0], sur_la_route, 1.0 / 60.0)
+
+	assert_eq(karts[0].motor.speed, 20.0,
+		"une route à -30 m n'est pas un kart tombé dans le vide : "
+		+ "un plancher absolu téléportait le kart 88 %% des images")
+
+
+func test_tomber_sous_la_route_teleporte_toujours() -> void:
+	_demonter()
+	track = Track.new()
+	track.half_width = 9.0
+	track.track_curve = TrackCurve.new(_anneau_enfoui(30.0), 9.0)
+	session = RaceSession.new()
+	karts.append(_kart())
+	session.demarrer(track, karts)
+
+	karts[0].motor.speed = 20.0
+	var sous_la_route := track.track_curve.racing_line_at(120.0) 		+ Vector3.DOWN * (RaceSession.FALL_DEPTH + 1.0)
+	session.avancer(session.entries[0], sous_la_route, 1.0 / 60.0)
+
+	assert_eq(karts[0].motor.speed, 0.0,
+		"le garde-fou doit toujours rattraper un kart réellement tombé")

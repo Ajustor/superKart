@@ -9,7 +9,14 @@ extends Node
 ## d'autre ne distingue les huit : l'IA passe par le même KartCommand et subit
 ## la même physique, donc elle ne peut pas tricher.
 
-const FLOOR_LIMIT := -10.0
+## Profondeur sous la route, en mètres, au-delà de laquelle on considère que le
+## kart est tombé dans le vide.
+##
+## Relative à la route, et non à l'altitude zéro. C'était un plancher absolu à
+## -10 m, écrit quand la piste était plate : dès qu'elle a gagné du relief,
+## 18 % de la chaussée s'est retrouvée SOUS son propre plancher anti-chute et le
+## kart était téléporté 88 % des images, immobilisé au premier creux.
+const FALL_DEPTH := 12.0
 const OFF_TRACK_RESPAWN_MARGIN := 3.0
 
 ## Distance de départ le long de l'axe, pour la première case de grille.
@@ -139,7 +146,10 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 		# aussi l'offrir en raccourci.
 		entree.derniere_en_piste = entree.progress.distance
 
-	if point.y < FLOOR_LIMIT or ecart > _demi_largeur + OFF_TRACK_RESPAWN_MARGIN:
+	# L'altitude de la route sous le kart, et non une constante : sur une piste
+	# à plusieurs niveaux, « en bas » ne veut rien dire dans l'absolu.
+	var sol := _track.track_curve.position_at(entree.progress.distance).y
+	if point.y < sol - FALL_DEPTH or ecart > _demi_largeur + OFF_TRACK_RESPAWN_MARGIN:
 		entree.kart.respawn_at(_track.spawn_at(entree.derniere_en_piste))
 
 
