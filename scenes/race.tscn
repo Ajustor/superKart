@@ -1,7 +1,8 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/tracks/track_01.tscn" id="1_track"]
 [ext_resource type="PackedScene" path="res://scenes/kart/kart.tscn" id="2_kart"]
+[ext_resource type="PackedScene" path="res://scenes/kart/ai_kart.tscn" id="6_ai"]
 [ext_resource type="Script" path="res://scripts/camera/chase_camera.gd" id="3_camera"]
 [ext_resource type="Script" path="res://scripts/race/race_session.gd" id="4_session"]
 [ext_resource type="Script" path="res://scripts/ui/race_hud.gd" id="5_hud"]
@@ -26,6 +27,20 @@ shadow_enabled = true
 
 [node name="Kart" parent="." instance=ExtResource("2_kart")]
 
+[node name="AIKart1" parent="." instance=ExtResource("6_ai")]
+
+[node name="AIKart2" parent="." instance=ExtResource("6_ai")]
+
+[node name="AIKart3" parent="." instance=ExtResource("6_ai")]
+
+[node name="AIKart4" parent="." instance=ExtResource("6_ai")]
+
+[node name="AIKart5" parent="." instance=ExtResource("6_ai")]
+
+[node name="AIKart6" parent="." instance=ExtResource("6_ai")]
+
+[node name="AIKart7" parent="." instance=ExtResource("6_ai")]
+
 [node name="ChaseCamera" type="Camera3D" parent="."]
 script = ExtResource("3_camera")
 target_path = NodePath("../Kart")
@@ -33,7 +48,7 @@ target_path = NodePath("../Kart")
 [node name="Session" type="Node" parent="."]
 script = ExtResource("4_session")
 track_path = NodePath("../Track")
-kart_paths = [NodePath("../Kart")]
+kart_paths = [NodePath("../Kart"), NodePath("../AIKart1"), NodePath("../AIKart2"), NodePath("../AIKart3"), NodePath("../AIKart4"), NodePath("../AIKart5"), NodePath("../AIKart6"), NodePath("../AIKart7")]
 
 [node name="HUD" type="CanvasLayer" parent="."]
 
