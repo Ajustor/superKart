@@ -167,3 +167,51 @@ func test_la_ligne_de_course_reste_sur_le_bitume_du_vrai_circuit() -> void:
 		d += 0.5
 	assert_lt(pire, 9.0,
 		"la ligne de course doit rester sur la chaussée, épingle comprise")
+
+
+func test_le_virage_est_positif_vers_la_droite() -> void:
+	# L'anneau des autres tests tourne à droite vu de dessus.
+	assert_gt(track.turn_at(100.0), 0.0,
+		"un circuit qui tourne à droite doit rendre une variation de cap positive")
+
+
+func test_le_rayon_de_courbure_retrouve_celui_de_l_anneau() -> void:
+	# Un anneau de rayon 50 doit se mesurer à 50, à l'approximation de la
+	# fenêtre près : c'est la seule forme dont on connaisse la réponse.
+	assert_almost_eq(track.radius_at(120.0), 50.0, 2.0,
+		"le rayon mesuré doit retrouver celui de la forme connue")
+
+
+func test_un_anneau_plus_serre_donne_un_rayon_plus_petit() -> void:
+	var serre := TrackCurve.new(_anneau(15.0, 24), 8.0)
+	assert_almost_eq(serre.radius_at(20.0), 15.0, 1.5,
+		"un anneau de rayon 15 doit se mesurer à 15")
+	assert_lt(serre.radius_at(20.0), track.radius_at(20.0),
+		"et rester nettement en deçà de l'anneau de 50")
+
+
+func test_une_ligne_droite_a_un_rayon_infini() -> void:
+	var droite := Curve3D.new()
+	for i in 6:
+		droite.add_point(Vector3(0.0, 0.0, -40.0 * float(i)))
+	var plate := TrackCurve.new(droite, 8.0)
+	assert_gt(plate.radius_at(60.0), 1000.0,
+		"sans virage, le rayon ne doit pas être une petite valeur bruitée")
+
+
+func test_le_rayon_est_positif_des_deux_cotes() -> void:
+	# Un virage à gauche a une variation de cap négative, mais un rayon reste
+	# un rayon : le signe n'a rien à faire là.
+	var gauche := Curve3D.new()
+	var pas := TAU / 16.0
+	var poignee := 30.0 * (4.0 / 3.0) * tan(pas / 4.0)
+	for i in 16:
+		var a := pas * float(i)
+		# Sens inverse de _anneau : le circuit tourne à gauche.
+		var p := Vector3(-sin(a) * 30.0, 0.0, -cos(a) * 30.0)
+		var t := Vector3(-cos(a), 0.0, sin(a)) * poignee
+		gauche.add_point(p, -t, t)
+	gauche.add_point(gauche.get_point_position(0), -gauche.get_point_out(0), gauche.get_point_out(0))
+	var c := TrackCurve.new(gauche, 8.0)
+	assert_lt(c.turn_at(30.0), 0.0, "un virage à gauche a une variation négative")
+	assert_almost_eq(c.radius_at(30.0), 30.0, 2.0, "mais son rayon reste positif")

@@ -87,13 +87,31 @@ func lateral_offset(point: Vector3) -> float:
 func is_off_track(point: Vector3) -> bool:
 	return absf(lateral_offset(point)) > half_width
 
+## Variation de cap sur la fenêtre de mesure, en radians. Positive quand le
+## circuit tourne à droite, donc quand l'intérieur du virage est à droite.
+##
+## Exposée parce que la ligne de course n'est pas seule à vouloir savoir si un
+## virage arrive : l'IA en a besoin pour décider de déraper, et elle doit lire
+## la même courbure que celle qui a tracé la ligne qu'elle suit.
+func turn_at(distance: float) -> float:
+	var avant := yaw_at(distance + CURVATURE_SAMPLE)
+	var arriere := yaw_at(distance - CURVATURE_SAMPLE)
+	return wrapf(avant - arriere, -PI, PI)
+
+
+## Rayon de courbure approché, en mètres, toujours positif. INF en ligne
+## droite. C'est l'arc de la fenêtre de mesure divisé par l'angle balayé :
+## la grandeur qu'on compare au rayon de braquage du kart.
+func radius_at(distance: float) -> float:
+	var virage := absf(turn_at(distance))
+	if virage < 0.0001:
+		return INF
+	return (2.0 * CURVATURE_SAMPLE) / virage
+
+
 ## L'axe décalé vers l'intérieur du virage, proportionnellement à la courbure
 ## locale. Dérivée plutôt que tracée à la main : déplacer un point de contrôle
 ## déplace la ligne de course avec lui, sans rien à remettre à jour.
 func racing_line_at(distance: float) -> Vector3:
-	var avant := yaw_at(distance + CURVATURE_SAMPLE)
-	var arriere := yaw_at(distance - CURVATURE_SAMPLE)
-	# Positif = le circuit tourne à droite ici, donc l'intérieur est à droite.
-	var virage := wrapf(avant - arriere, -PI, PI)
-	var mordant := clampf(virage / FULL_BITE_YAW, -1.0, 1.0)
+	var mordant := clampf(turn_at(distance) / FULL_BITE_YAW, -1.0, 1.0)
 	return position_at(distance) + right_at(distance) * mordant * half_width * RACING_LINE_BITE
