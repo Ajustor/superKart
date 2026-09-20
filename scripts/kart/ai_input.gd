@@ -23,6 +23,18 @@ extends KartInput
 ## Écart de cap, en degrés, au-delà duquel l'IA braque à fond.
 @export var full_steer_angle_deg: float = 20.0
 
+## Écart de cap, en degrés, à partir duquel l'IA engage le dérapage.
+@export var drift_entry_angle_deg: float = 32.0
+
+## Écart de cap, en degrés, en dessous duquel elle lâche une glisse en cours.
+## Plus bas que l'entrée, pour ne pas battre de l'aile à la frontière.
+@export var drift_exit_angle_deg: float = 14.0
+
+## Palier de mini-turbo visé avant de lâcher, de 1 à 3. Une IA gourmande tient
+## la glisse plus longtemps et sort plus vite — c'est un des quatre leviers de
+## difficulté, et le seul qui se voie à l'œil nu.
+@export var drift_release_tier: int = 2
+
 ## Renseignés par la session avant chaque image. Les lire soi-même coûterait
 ## une projection de plus par kart, et global_position interdirait de tester
 ## cette classe hors de l'arbre.
@@ -40,6 +52,7 @@ func point_vise() -> Vector3:
 func _fill(_delta: float) -> void:
 	command.throttle = 1.0
 	command.steer = _braquage()
+	command.drift = _veut_deraper()
 
 
 ## Écart de cap entre la direction du kart et celle du point de mire, en
@@ -56,3 +69,19 @@ func ecart_de_cap() -> float:
 func _braquage() -> float:
 	var plein := deg_to_rad(full_steer_angle_deg)
 	return clampf(ecart_de_cap() / plein, -1.0, 1.0)
+
+
+## Le dérapage se décide comme le joueur appuie : un booléen, rien de plus.
+## Le moteur reste seul juge de ce qu'il en fait.
+func _veut_deraper() -> bool:
+	if kart.motor.speed < kart.stats.min_drift_speed:
+		return false
+
+	var angle := absf(rad_to_deg(ecart_de_cap()))
+	if kart.motor.state == KartMotor.State.DRIFT:
+		# Une glisse tenue en ligne droite finit dans le décor, et une glisse
+		# lâchée trop tôt ne rapporte rien : on sort au premier des deux.
+		var palier := kart.motor.tier_for_charge(kart.motor.drift_charge)
+		return palier < drift_release_tier and angle > drift_exit_angle_deg
+
+	return angle > drift_entry_angle_deg

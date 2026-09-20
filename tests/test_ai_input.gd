@@ -104,3 +104,64 @@ func test_a_l_arret_elle_vise_quand_meme_devant() -> void:
 	var d := piste.distance_of(vise)
 	assert_gt(d, 1.0,
 		"sans plancher, un kart à l'arrêt viserait ses propres roues et ne partirait jamais")
+
+
+func test_elle_ne_derape_pas_en_ligne_droite() -> void:
+	_poser(0.0, piste.yaw_at(0.0))
+	var cmd := ia.poll(1.0 / 60.0)
+	assert_false(cmd.drift, "déraper tout droit ne charge rien et ralentit")
+
+
+func test_elle_declenche_la_glisse_sur_un_gros_ecart() -> void:
+	_poser(0.0, piste.yaw_at(0.0) - deg_to_rad(40.0))
+	var cmd := ia.poll(1.0 / 60.0)
+	assert_true(cmd.drift, "un virage franc se prend en dérapage")
+
+
+func test_elle_ne_derape_pas_trop_lentement() -> void:
+	# En dessous de min_drift_speed le moteur refuse la glisse : insister ne
+	# ferait que garder la gâchette enfoncée pour rien.
+	_poser(0.0, piste.yaw_at(0.0) - deg_to_rad(40.0))
+	kart.motor.speed = kart.stats.min_drift_speed - 1.0
+	var cmd := ia.poll(1.0 / 60.0)
+	assert_false(cmd.drift, "trop lente pour glisser, elle n'essaie pas")
+
+
+func test_elle_tient_la_glisse_jusqu_au_palier_vise() -> void:
+	_poser(0.0, piste.yaw_at(0.0) - deg_to_rad(40.0))
+	ia.drift_release_tier = 2
+	kart.motor.state = KartMotor.State.DRIFT
+	kart.motor.drift_dir = 1
+	# Charge correspondant au palier 1 : elle en veut un de plus.
+	kart.motor.drift_charge = kart.stats.drift_tiers[0]
+	assert_eq(kart.motor.tier_for_charge(kart.motor.drift_charge), 1,
+		"prémisse du test : on est bien au palier 1")
+
+	var cmd := ia.poll(1.0 / 60.0)
+	assert_true(cmd.drift, "elle ne lâche pas un palier trop tôt")
+
+
+func test_elle_lache_la_glisse_au_palier_vise() -> void:
+	_poser(0.0, piste.yaw_at(0.0) - deg_to_rad(40.0))
+	ia.drift_release_tier = 2
+	kart.motor.state = KartMotor.State.DRIFT
+	kart.motor.drift_dir = 1
+	kart.motor.drift_charge = kart.stats.drift_tiers[1]
+	assert_eq(kart.motor.tier_for_charge(kart.motor.drift_charge), 2,
+		"prémisse du test : on est bien au palier 2")
+
+	var cmd := ia.poll(1.0 / 60.0)
+	assert_false(cmd.drift, "palier atteint, elle encaisse son turbo")
+
+
+func test_elle_lache_la_glisse_quand_la_route_se_redresse() -> void:
+	# Cap redevenu aligné : garder la glisse ferait sortir le kart de la piste.
+	_poser(0.0, piste.yaw_at(0.0))
+	ia.drift_release_tier = 3
+	kart.motor.state = KartMotor.State.DRIFT
+	kart.motor.drift_dir = 1
+	kart.motor.drift_charge = 0.1
+
+	var cmd := ia.poll(1.0 / 60.0)
+	assert_false(cmd.drift,
+		"une glisse qu'on tient en ligne droite finit dans le décor")
