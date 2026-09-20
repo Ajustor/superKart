@@ -165,3 +165,53 @@ func test_elle_lache_la_glisse_quand_la_route_se_redresse() -> void:
 	var cmd := ia.poll(1.0 / 60.0)
 	assert_false(cmd.drift,
 		"une glisse qu'on tient en ligne droite finit dans le décor")
+
+
+func test_le_decalage_lateral_deplace_la_mire() -> void:
+	_poser(0.0, piste.yaw_at(0.0))
+	var propre := ia.point_vise()
+	ia.lateral_bias = 4.0
+	var decale := ia.point_vise()
+
+	var d := piste.distance_of(propre)
+	var vers := decale - propre
+	vers.y = 0.0
+	assert_almost_eq(vers.dot(piste.right_at(d)), 4.0, 0.3,
+		"un biais positif vise quatre mètres à droite de la ligne idéale")
+
+
+func test_le_decalage_lateral_ne_change_pas_la_distance_de_mire() -> void:
+	_poser(0.0, piste.yaw_at(0.0))
+	var avant := piste.distance_of(ia.point_vise())
+	ia.lateral_bias = 4.0
+	var apres := piste.distance_of(ia.point_vise())
+	assert_almost_eq(apres, avant, 1.0,
+		"se décaler sur le côté ne veut pas dire viser plus loin")
+
+
+func test_sans_delai_elle_decide_a_chaque_image() -> void:
+	_poser(0.0, piste.yaw_at(0.0) - deg_to_rad(40.0))
+	var premier := ia.poll(1.0 / 60.0).steer
+	# Le kart se réaligne d'un coup : sans délai, la commande suit tout de suite.
+	kart.motor.heading = piste.yaw_at(0.0)
+	var second := ia.poll(1.0 / 60.0).steer
+	assert_lt(absf(second), absf(premier) - 0.2,
+		"sans délai de réaction, elle corrige dans l'image")
+
+
+func test_le_delai_de_reaction_fige_la_commande() -> void:
+	ia.reaction_delay = 0.25
+	_poser(0.0, piste.yaw_at(0.0) - deg_to_rad(40.0))
+	var premier := ia.poll(1.0 / 60.0).steer
+
+	kart.motor.heading = piste.yaw_at(0.0)
+	var tout_de_suite := ia.poll(1.0 / 60.0).steer
+	assert_almost_eq(tout_de_suite, premier, 0.0001,
+		"une IA lente braque en retard, elle ne braque pas mollement")
+
+	# Après le délai, elle finit par voir.
+	for i in 20:
+		ia.poll(1.0 / 60.0)
+	var plus_tard := ia.poll(1.0 / 60.0).steer
+	assert_lt(absf(plus_tard), absf(premier) - 0.2,
+		"le retard finit par se rattraper")

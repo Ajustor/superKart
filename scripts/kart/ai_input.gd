@@ -35,6 +35,16 @@ extends KartInput
 ## difficulté, et le seul qui se voie à l'œil nu.
 @export var drift_release_tier: int = 2
 
+## Décalage constant par rapport à la ligne idéale, en mètres vers la droite.
+## Une IA qui vise systématiquement à côté pilote mal sans jamais être bridée.
+@export var lateral_bias: float = 0.0
+
+## Intervalle entre deux décisions, en secondes. Zéro veut dire une décision
+## par image. Au-delà, l'IA tient sa commande précédente : elle braque en
+## retard plutôt que mollement, ce qui est la façon dont un humain rate un
+## virage.
+@export var reaction_delay: float = 0.0
+
 ## Renseignés par la session avant chaque image. Les lire soi-même coûterait
 ## une projection de plus par kart, et global_position interdirait de tester
 ## cette classe hors de l'arbre.
@@ -42,17 +52,32 @@ var track: TrackCurve
 var distance: float = 0.0
 var position := Vector3.ZERO
 
+var _depuis_decision: float = 0.0
+var _steer_decide: float = 0.0
+var _drift_decide: bool = false
+var _jamais_decide: bool = true
 
-## Le point de mire, sur la ligne de course, devant le kart.
+
+## Le point de mire, sur la ligne de course, devant le kart. Le biais latéral
+## s'applique à ce point et non à la distance : viser à côté ne veut pas dire
+## viser plus loin.
 func point_vise() -> Vector3:
 	var avance := maxf(kart.motor.speed * aim_time, aim_minimum)
-	return track.racing_line_at(distance + avance)
+	var ou := distance + avance
+	return track.racing_line_at(ou) + track.right_at(ou) * lateral_bias
 
 
-func _fill(_delta: float) -> void:
+func _fill(delta: float) -> void:
+	_depuis_decision += delta
+	if _jamais_decide or _depuis_decision >= reaction_delay:
+		_jamais_decide = false
+		_depuis_decision = 0.0
+		_steer_decide = _braquage()
+		_drift_decide = _veut_deraper()
+
 	command.throttle = 1.0
-	command.steer = _braquage()
-	command.drift = _veut_deraper()
+	command.steer = _steer_decide
+	command.drift = _drift_decide
 
 
 ## Écart de cap entre la direction du kart et celle du point de mire, en
