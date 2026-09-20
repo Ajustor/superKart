@@ -236,3 +236,57 @@ func _place_de_la_case(index: int) -> Transform3D:
 		- float(colonne) * RaceSession.GRID_COLUMN_STAGGER
 	var lateral := (float(colonne) - 0.5) * 2.0 * RaceSession.GRID_COLUMN_OFFSET
 	return track.spawn_at(d, lateral)
+
+
+func test_le_classement_suit_la_distance_parcourue() -> void:
+	_monter(3)
+	session.entries[0].progress.total = 120.0
+	session.entries[1].progress.total = 400.0
+	session.entries[2].progress.total = 250.0
+
+	session.classer()
+
+	assert_eq(session.entries[1].position, 1, "le plus avancé est premier")
+	assert_eq(session.entries[2].position, 2)
+	assert_eq(session.entries[0].position, 3)
+
+
+func test_le_classement_ne_se_laisse_pas_tromper_par_la_position_sur_l_axe() -> void:
+	_monter(2)
+	var L := track.track_curve.length
+
+	# Le premier a bouclé un tour et entamé le suivant : 10 m parcourus au-delà.
+	session.entries[0].progress.total = L + 10.0
+	session.entries[0].progress.distance = 10.0
+	# Le second a reculé sous la ligne sans jamais boucler : sa position sur
+	# l'axe est proche de la fin du tour, mais il n'a presque rien parcouru.
+	session.entries[1].progress.total = 5.0
+	session.entries[1].progress.distance = L - 2.0
+
+	session.classer()
+
+	assert_eq(session.entries[0].position, 1,
+		"celui qui a réellement parcouru le plus est devant")
+	assert_eq(session.entries[1].position, 2,
+		"une position d'axe élevée ne vaut pas un tour")
+
+
+func test_le_classement_est_stable_a_egalite() -> void:
+	_monter(3)
+	for entree in session.entries:
+		entree.progress.total = 100.0
+
+	session.classer()
+
+	var places := [session.entries[0].position, session.entries[1].position, session.entries[2].position]
+	places.sort()
+	assert_eq(places, [1, 2, 3],
+		"trois karts à égalité occupent quand même trois places distinctes")
+
+
+func test_chaque_image_met_le_classement_a_jour() -> void:
+	_monter(2)
+	session.avancer(session.entries[1], track.track_curve.position_at(30.0), 1.0 / 60.0)
+	session.classer()
+	assert_eq(session.entries[1].position, 1,
+		"celui qui a roulé passe devant sans qu'on ait à le dire")

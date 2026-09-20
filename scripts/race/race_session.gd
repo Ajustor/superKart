@@ -83,6 +83,7 @@ func demarrer(piste: Track, pilotes: Array[Kart]) -> void:
 func _physics_process(delta: float) -> void:
 	for entree in entries:
 		avancer(entree, entree.kart.global_position, delta)
+	classer()
 
 
 ## Le point est passé plutôt que lu sur le kart : global_position exige
@@ -120,3 +121,15 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 
 	if point.y < FLOOR_LIMIT or ecart > _demi_largeur + OFF_TRACK_RESPAWN_MARGIN:
 		entree.kart.respawn_at(_track.spawn_at(entree.derniere_en_piste))
+
+
+## Attribue les places, 1 au plus avancé. Trie sur la distance parcourue et
+## sur rien d'autre : un couple (tour, position sur l'axe) mettrait devant un
+## kart qui a reculé sous la ligne, parce que sa position d'axe est alors
+## proche de la fin du tour. `total` porte le signe que ce couple perd.
+func classer() -> void:
+	var ordre := entries.duplicate()
+	ordre.sort_custom(func(a: RaceEntry, b: RaceEntry) -> bool:
+		return a.progress.total > b.progress.total)
+	for i in ordre.size():
+		ordre[i].position = i + 1
