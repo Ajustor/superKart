@@ -6,3 +6,6 @@
 [node name="Track" type="Node3D"]
 script = ExtResource("1_track")
 curve = ExtResource("2_curve")
+
+[node name="CurveEditor" type="Path3D" parent="."]
+curve = ExtResource("2_curve")
