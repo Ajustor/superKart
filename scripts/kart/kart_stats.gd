@@ -19,12 +19,25 @@ extends Resource
 
 @export_group("Dérapage — tenue de route")
 @export var min_drift_speed: float = 8.0
-## Baissé dans la même proportion que turn_rate, pour que le dérapage garde
-## l'avantage qu'il avait sur l'adhérence : 10,5 m de rayon contre 12,3 m.
-## Le descendre seul rendrait la glisse inutile, le laisser seul la rendrait
-## indispensable partout.
-@export var drift_turn_rate: float = 2.1        ## rad/s pendant la glisse
-@export var hop_duration: float = 0.15
+## Mesuré : à 2,1 rad/s, une glisse au braquage neutre décrivait un rayon de
+## 14,0 m contre 12,2 m en adhérence — s'engager dans le dérapage élargissait
+## la trajectoire au lieu de la resserrer, et il fallait tenir le braquage
+## presque à fond pour y gagner quoi que ce soit. Monté à 2,6 pour que toute
+## la plage de glisse tienne à l'intérieur du rayon d'adhérence, comme dans
+## un Mario Kart où la glisse est la trajectoire rapide et la modulation un
+## réglage fin, pas une condition.
+@export var drift_turn_rate: float = 2.6        ## rad/s pendant la glisse
+
+## Part de drift_turn_rate qui reste au contre-braquage maximal. C'est le
+## plancher de la plage de modulation : à 0,68 le contre-braquage ouvre à
+## 11,9 m, encore en deçà des 12,2 m de l'adhérence. Le descendre rendrait la
+## glisse à nouveau plus large que de ne rien faire.
+@export var drift_curvature_min: float = 0.68
+
+## Monté de 0,15 à 0,20 s : l'impulsion en découle, et le saut passait de 8 cm,
+## invisible, à 15 cm. Le début de la glisse coïncide toujours avec
+## l'atterrissage, puisque hop_impulse est dérivée de cette durée.
+@export var hop_duration: float = 0.20
 
 @export_group("Dérapage — apparence")
 ## Ces trois-là ne touchent que l'angle affiché de la caisse, pas la
@@ -36,7 +49,13 @@ extends Resource
 @export_group("Mini-turbo")
 @export var drift_tiers: PackedFloat32Array = PackedFloat32Array([0.6, 1.5, 2.6])
 @export var boost_durations: PackedFloat32Array = PackedFloat32Array([0.5, 1.0, 1.8])
-@export var boost_speed_multiplier: float = 1.35
+
+## Un multiplicateur par palier, et non un seul pour les trois. Mesuré avant :
+## les trois turbos poussaient tous à 29,70 m/s et seule la durée changeait,
+## si bien qu'un palier 3 se sentait comme un palier 1 qui dure. Un palier plus
+## haut doit pousser plus fort — c'est ce qui fait qu'on tient la glisse une
+## seconde de plus au lieu de lâcher dès le premier éclair.
+@export var boost_speed_multipliers: PackedFloat32Array = PackedFloat32Array([1.22, 1.33, 1.48])
 @export var boost_decay_rate: float = 12.0      ## retour au plafond, u/s²
 
 @export_group("Pénalités")

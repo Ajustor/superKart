@@ -35,7 +35,9 @@ func _physics_process(delta: float) -> void:
 
 	# Le plafond de référence inclut le turbo, sinon le FOV sature dès la
 	# vitesse de pointe normale et le mini-turbo ne se voit plus du tout.
-	var ceiling := _kart.stats.max_speed * _kart.stats.boost_speed_multiplier
+	var multiplicateurs := _kart.stats.boost_speed_multipliers
+	var plafond_turbo: float = multiplicateurs[multiplicateurs.size() - 1] if not multiplicateurs.is_empty() else 1.0
+	var ceiling := _kart.stats.max_speed * plafond_turbo
 	var ratio := clampf(motor.speed / ceiling, 0.0, 1.0)
 	fov = lerpf(fov_min, fov_max, ratio)
 
