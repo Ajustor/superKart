@@ -215,3 +215,154 @@ func test_le_rayon_est_positif_des_deux_cotes() -> void:
 	var c := TrackCurve.new(gauche, 8.0)
 	assert_lt(c.turn_at(30.0), 0.0, "un virage à gauche a une variation négative")
 	assert_almost_eq(c.radius_at(30.0), 30.0, 2.0, "mais son rayon reste positif")
+
+
+## Une rampe droite qui monte d'une pente constante : la seule forme dont on
+## connaisse la pente exactement, en tout point.
+func _rampe(pente_deg: float, longueur: float = 200.0) -> Curve3D:
+	var c := Curve3D.new()
+	var pente := deg_to_rad(pente_deg)
+	for i in 6:
+		var z := -longueur * float(i) / 5.0
+		c.add_point(Vector3(0.0, -z * tan(pente), z))
+	return c
+
+
+func test_la_pente_se_mesure() -> void:
+	for deg in [0.0, 10.0, 20.0, 30.0]:
+		var c := TrackCurve.new(_rampe(deg), 9.0)
+		assert_almost_eq(rad_to_deg(c.slope_at(60.0)), deg, 0.5,
+			"une rampe à %f degrés doit se mesurer à %f" % [deg, deg])
+
+
+func test_la_pente_est_negative_en_descente() -> void:
+	var c := TrackCurve.new(_rampe(-15.0), 9.0)
+	assert_lt(c.slope_at(60.0), 0.0, "une descente a une pente négative")
+
+
+func test_la_tangente_a_plat_ignore_la_pente() -> void:
+	var c := TrackCurve.new(_rampe(25.0), 9.0)
+	assert_almost_eq(c.tangent_at(60.0).y, 0.0, 0.001,
+		"le cap boussole ne doit rien savoir de la pente")
+	assert_gt(c.forward_at(60.0).y, 0.3,
+		"mais la tangente complète, si")
+
+
+func test_le_repere_de_la_route_reste_orthonorme() -> void:
+	var c := TrackCurve.new(_rampe(20.0), 9.0)
+	for d in [20.0, 60.0, 120.0]:
+		var avant := c.forward_at(d)
+		var haut := c.up_at(d)
+		var droite := c.right_at(d)
+		assert_almost_eq(avant.dot(haut), 0.0, 0.001, "avant et haut doivent être perpendiculaires")
+		assert_almost_eq(avant.dot(droite), 0.0, 0.001, "avant et droite aussi")
+		assert_almost_eq(haut.dot(droite), 0.0, 0.001, "haut et droite aussi")
+		assert_almost_eq(haut.length(), 1.0, 0.001, "et tout ça doit être normé")
+
+
+func test_sur_une_pente_le_cote_de_la_route_reste_horizontal_sans_devers() -> void:
+	# Sans dévers, une route en pente garde sa largeur à l'horizontale :
+	# c'est une route qui monte, pas une route inclinée sur le côté.
+	var c := TrackCurve.new(_rampe(20.0), 9.0)
+	assert_almost_eq(c.right_at(60.0).y, 0.0, 0.01,
+		"sans dévers, le côté de la chaussée ne penche pas")
+
+
+func test_le_devers_incline_le_cote_de_la_route() -> void:
+	var plat := _anneau(50.0, 16)
+	var incline := _anneau(50.0, 16)
+	for i in incline.point_count:
+		incline.set_point_tilt(i, deg_to_rad(25.0))
+
+	var sans := TrackCurve.new(plat, 9.0)
+	var avec := TrackCurve.new(incline, 9.0)
+
+	assert_almost_eq(sans.right_at(120.0).y, 0.0, 0.01,
+		"sans dévers, le bord droit est à la même hauteur que l'axe")
+	assert_gt(absf(avec.right_at(120.0).y), 0.3,
+		"avec 25 degrés de dévers, il doit être nettement plus haut ou plus bas")
+
+
+func test_le_devers_leve_vraiment_le_bord_de_la_chaussee() -> void:
+	var incline := _anneau(50.0, 16)
+	for i in incline.point_count:
+		incline.set_point_tilt(i, deg_to_rad(25.0))
+	var c := TrackCurve.new(incline, 9.0)
+
+	var axe := c.position_at(120.0)
+	var bord := axe + c.right_at(120.0) * 9.0
+	assert_almost_eq(absf(bord.y - axe.y), 9.0 * sin(deg_to_rad(25.0)), 0.5,
+		"le bord doit se lever de la largeur fois le sinus du dévers")
+
+
+func test_un_kart_en_l_air_n_est_pas_hors_piste() -> void:
+	# La propriété que l'ancienne version obtenait en aplatissant le vecteur.
+	# Elle doit survivre au passage en repère de chaussée, y compris en pente.
+	var c := TrackCurve.new(_rampe(20.0), 9.0)
+	var en_l_air := c.position_at(60.0) + c.up_at(60.0) * 5.0
+	assert_almost_eq(c.lateral_offset(en_l_air), 0.0, 0.2,
+		"sauter au-dessus de la route ne doit pas compter comme un écart")
+
+
+func test_une_cote_qui_tourne_ne_se_releve_pas_toute_seule() -> void:
+	# Le défaut mesuré sur le vrai tracé : Godot transporte son repère le long
+	# d'une courbe 3D, ce qui faisait rouler la chaussée jusqu'à 27 degrés alors
+	# que tous les tilts valaient zéro. Une côte n'est pas un virage relevé.
+	var vallonne := _anneau(50.0, 16)
+	for i in vallonne.point_count:
+		var p := vallonne.get_point_position(i)
+		vallonne.set_point_position(i, p + Vector3.UP * (15.0 * sin(float(i) * 0.8)))
+	var c := TrackCurve.new(vallonne, 9.0)
+
+	var pente_vue := false
+	for d in range(0, 300, 10):
+		if absf(rad_to_deg(c.slope_at(float(d)))) > 5.0:
+			pente_vue = true
+		assert_almost_eq(c.right_at(float(d)).y, 0.0, 0.02,
+			"sans dévers demandé, la chaussée ne doit pas rouler à %d m" % d)
+	assert_true(pente_vue, "prémisse : ce tracé a bien de la pente")
+
+
+func test_le_devers_demande_est_celui_qu_on_obtient() -> void:
+	for degres in [10.0, 25.0, -20.0]:
+		var c3 := _anneau(50.0, 16)
+		for i in c3.point_count:
+			c3.set_point_tilt(i, deg_to_rad(degres))
+		var c := TrackCurve.new(c3, 9.0)
+		assert_almost_eq(rad_to_deg(c.tilt_at(120.0)), degres, 1.0,
+			"un dévers de %f degrés doit se relire tel quel" % degres)
+
+
+func test_un_anneau_regulier_n_a_aucun_pli() -> void:
+	assert_eq(track.tight_spots(9.0).size(), 0,
+		"un anneau de rayon 50 ne contient aucun virage impraticable")
+
+
+## Un anneau régulier dont on arrache les poignées d'un point : exactement le
+## défaut du circuit 1, et sur une courbe FERMÉE, le seul cas que TrackCurve
+## prétende gérer. Sur une courbe ouverte, la différence finie repart de l'autre
+## bout à d=0 et fabrique un pli qui n'existe pas.
+func _anneau_avec_un_angle(index: int) -> Curve3D:
+	var c := _anneau(50.0, 16)
+	c.set_point_in(index, Vector3.ZERO)
+	c.set_point_out(index, Vector3.ZERO)
+	return c
+
+
+func test_un_point_sans_poignee_fait_un_pli_qu_on_retrouve() -> void:
+	var c := TrackCurve.new(_anneau_avec_un_angle(4), 9.0)
+	var plis := c.tight_spots(9.0)
+
+	assert_gt(plis.size(), 0, "le point sans poignée doit être trouvé")
+	var pire: Array = plis[0]
+	assert_lt(pire[1], 9.0, "et son rayon doit être inférieur au seuil")
+	# Le quatrième point d'un anneau de seize est au quart du tour.
+	assert_almost_eq(float(pire[0]), c.length * 0.25, 20.0,
+		"il est à l'endroit du point sans poignée, au quart du tour")
+
+
+func test_le_rayon_de_pli_voit_ce_que_le_rayon_lisse_manque() -> void:
+	var c := TrackCurve.new(_anneau_avec_un_angle(4), 9.0)
+	var ou: float = c.tight_spots(9.0)[0][0]
+	assert_lt(c.kink_radius_at(ou), c.radius_at(ou),
+		"la fenêtre de plus ou moins 10 m lisse le pli ; la fenêtre courte le voit")
