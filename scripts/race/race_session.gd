@@ -15,6 +15,23 @@ const OFF_TRACK_RESPAWN_MARGIN := 3.0
 ## Distance de départ le long de l'axe, pour la première case de grille.
 const DEPART := 0.0
 
+## Deux colonnes, comme une vraie grille : huit karts en file indienne
+## s'étireraient sur trente mètres et le dernier ne verrait jamais le premier.
+const GRID_COLUMNS := 2
+
+## Écart entre deux rangées, en mètres le long de l'axe.
+const GRID_ROW_SPACING := 5.0
+
+## Demi-écartement des colonnes, en mètres de part et d'autre de la ligne de
+## course. Reste bien en deçà de la demi-largeur de 9 m, y compris là où la
+## ligne de course mord déjà le bord intérieur d'un virage.
+const GRID_COLUMN_OFFSET := 2.5
+
+## Recul de la colonne de droite par rapport à celle de gauche, en mètres.
+## Une grille alignée au cordeau n'existe nulle part, et décaler donne à
+## chaque kart une distance de départ qui lui est propre.
+const GRID_COLUMN_STAGGER := 2.5
+
 @export var track_path: NodePath
 @export var kart_paths: Array[NodePath] = []
 @export var lap_count: int = 3
@@ -51,8 +68,15 @@ func demarrer(piste: Track, pilotes: Array[Kart]) -> void:
 
 	entries.clear()
 	for i in pilotes.size():
-		var depart := DEPART
-		pilotes[i].respawn_at(_track.spawn_at(depart))
+		var rangee := i / GRID_COLUMNS
+		var colonne := i % GRID_COLUMNS
+		var depart := DEPART \
+			- float(rangee) * GRID_ROW_SPACING \
+			- float(colonne) * GRID_COLUMN_STAGGER
+		# -1 pour la colonne de gauche, +1 pour celle de droite.
+		var lateral := (float(colonne) - 0.5) * 2.0 * GRID_COLUMN_OFFSET
+		var place := _track.spawn_at(depart, lateral)
+		pilotes[i].respawn_at(place)
 		entries.append(RaceEntry.new(pilotes[i], _track.track_curve, depart))
 
 

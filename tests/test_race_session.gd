@@ -184,3 +184,55 @@ func test_la_course_finit_pour_chacun_separement() -> void:
 
 	assert_true(session.entries[0].finished, "celui qui a bouclé a fini")
 	assert_false(session.entries[1].finished, "celui qui n'a pas bouclé court toujours")
+
+
+func test_la_grille_ne_superpose_personne() -> void:
+	_monter(8)
+	# Sur les positions dans l'espace et non sur les distances le long de l'axe :
+	# deux karts de la même rangée sont côte à côte, ce qui est exactement le
+	# but d'une grille à deux colonnes.
+	var places: Array[Vector3] = []
+	for i in session.entries.size():
+		var ou := _place_de_la_case(i).origin
+		for autre in places:
+			assert_gt(ou.distance_to(autre), 2.0,
+				"la case %d chevauche une autre" % i)
+		places.append(ou)
+
+
+func test_la_grille_part_en_amont_de_la_ligne() -> void:
+	_monter(8)
+	var L := track.track_curve.length
+	for i in session.entries.size():
+		# Les cases sont à des distances négatives, donc enroulées près de la
+		# fin du tour. wrapf les relit en « combien de mètres avant la ligne ».
+		var recul := wrapf(-session.entries[i].progress.distance, 0.0, L)
+		assert_between(recul, 0.0, 20.0,
+			"la case %d doit être entre la ligne et vingt mètres en amont" % i)
+
+
+func test_tout_le_monde_part_a_zero_de_distance_parcourue() -> void:
+	_monter(8)
+	for entree in session.entries:
+		assert_almost_eq(entree.progress.total, 0.0, 0.001,
+			"la grille décale la position, jamais la distance à parcourir")
+
+
+func test_la_grille_tient_sur_la_chaussee() -> void:
+	_monter(8)
+	for i in session.entries.size():
+		var place := _place_de_la_case(i)
+		var ecart := absf(track.track_curve.lateral_offset(place.origin))
+		assert_lt(ecart, 9.0,
+			"la case %d doit être sur le bitume, pas sur le bas-côté" % i)
+
+
+## Rejoue le placement de la session pour la case donnée.
+func _place_de_la_case(index: int) -> Transform3D:
+	var rangee := index / RaceSession.GRID_COLUMNS
+	var colonne := index % RaceSession.GRID_COLUMNS
+	var d := RaceSession.DEPART \
+		- float(rangee) * RaceSession.GRID_ROW_SPACING \
+		- float(colonne) * RaceSession.GRID_COLUMN_STAGGER
+	var lateral := (float(colonne) - 0.5) * 2.0 * RaceSession.GRID_COLUMN_OFFSET
+	return track.spawn_at(d, lateral)
