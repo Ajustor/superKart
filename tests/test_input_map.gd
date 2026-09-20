@@ -78,13 +78,53 @@ func test_accelerer_et_deraper_ne_partagent_pas_de_bouton() -> void:
 				"le bouton %d accélère et dérape à la fois" % e.button_index)
 
 
-func test_les_gaz_et_le_frein_sont_analogiques_a_la_manette() -> void:
-	# Les gâchettes rendent une valeur continue, et KartMotor s'en sert :
-	# get_action_strength module l'accélération et le freinage.
-	for action in ["throttle", "brake"]:
-		var axes := 0
+func test_deraper_et_lancer_un_objet_sont_sur_les_gachettes() -> void:
+	# Disposition Mario Kart : la gâchette droite fait sauter puis déraper, la
+	# gauche lance l'objet. Les gaz occupent le pouce droit en permanence, donc
+	# tout ce qui se déclenche en virage doit tomber sous un index.
+	var attendu := {
+		"drift": JOY_AXIS_TRIGGER_RIGHT,
+		"use_item": JOY_AXIS_TRIGGER_LEFT,
+	}
+	for action in attendu:
+		var axes: Array[int] = []
 		for e in _manette(action):
 			if e is InputEventJoypadMotion:
-				axes += 1
-		assert_gt(axes, 0,
-			"l'action %s doit avoir une gâchette analogique, pas qu'un bouton" % action)
+				axes.append(e.axis)
+		assert_true(axes.has(attendu[action]),
+			"l'action %s doit être sur la gâchette %d, trouvé %s"
+			% [action, attendu[action], str(axes)])
+
+
+func test_les_gachettes_sont_doublees_par_leur_tranche() -> void:
+	# R et ZR font tous deux déraper sur une manette Nintendo ; on garde cette
+	# tolérance, parce que toutes les manettes n'exposent pas leurs gâchettes
+	# comme des axes analogiques.
+	var attendu := {
+		"drift": JOY_BUTTON_RIGHT_SHOULDER,
+		"use_item": JOY_BUTTON_LEFT_SHOULDER,
+	}
+	for action in attendu:
+		var boutons: Array[int] = []
+		for e in _manette(action):
+			if e is InputEventJoypadButton:
+				boutons.append(e.button_index)
+		assert_true(boutons.has(attendu[action]),
+			"l'action %s devrait aussi répondre à la tranche %d, trouvé %s"
+			% [action, attendu[action], str(boutons)])
+
+
+func test_les_gaz_ne_squattent_aucune_gachette() -> void:
+	# Le jour où les gaz reviendraient sur une gâchette, ils y écraseraient le
+	# dérapage ou l'objet sans que rien ne le signale.
+	var gachettes := [JOY_AXIS_TRIGGER_LEFT, JOY_AXIS_TRIGGER_RIGHT]
+	for action in ["throttle", "brake"]:
+		# Relevé puis comparé en bloc : une boucle qui n'iterait sur rien
+		# passerait sans lever la moindre assertion, et GUT a raison d'appeler
+		# ça un test à risque.
+		var occupees: Array[int] = []
+		for e in _manette(action):
+			if e is InputEventJoypadMotion and gachettes.has(e.axis):
+				occupees.append(e.axis)
+		assert_eq(occupees, [] as Array[int],
+			"l'action %s occupe %s, réservé au saut et à l'objet" % [action, str(occupees)])

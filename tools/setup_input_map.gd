@@ -6,7 +6,13 @@ extends SceneTree
 ##
 ## Disposition manette calquée sur celle d'un Mario Kart, parce que c'est la
 ## seule que les mains connaissent déjà : A accélère, B freine, la gâchette
-## droite accélère aussi en analogique, R1 dérape, L1 lance l'objet.
+## droite fait sauter puis déraper, la gâchette gauche lance l'objet.
+##
+## Les gâchettes vont donc au saut et à l'objet, pas aux gaz. C'est ce qui
+## coûte l'accélération analogique — et c'est juste : dans un Mario Kart on
+## accélère avec un bouton, tout ou rien, et c'est le dérapage qui module la
+## vitesse en virage. Chaque gâchette est doublée de sa tranche (R1, L1), comme
+## R et ZR y font tous deux déraper.
 ##
 ## Chaque action garde une liaison clavier ET une liaison manette : le jeu doit
 ## rester jouable sans manette branchée, et testable en headless.
@@ -27,15 +33,17 @@ func _init() -> void:
 	_action("steer_right", [
 		_touche(KEY_RIGHT), _axe(JOY_AXIS_LEFT_X, 1.0), _bouton(JOY_BUTTON_DPAD_RIGHT)])
 	_action("throttle", [
-		_touche(KEY_UP), _axe(JOY_AXIS_TRIGGER_RIGHT, 1.0), _bouton(JOY_BUTTON_A)])
+		_touche(KEY_UP), _bouton(JOY_BUTTON_A)])
 	_action("brake", [
-		_touche(KEY_DOWN), _axe(JOY_AXIS_TRIGGER_LEFT, 1.0), _bouton(JOY_BUTTON_B)])
-	# R1 et non A : A accélère désormais, et déraper avec le pouce qui tient les
-	# gaz est précisément ce qu'aucun jeu de kart ne demande.
+		_touche(KEY_DOWN), _bouton(JOY_BUTTON_B)])
+	# La gâchette droite, et non un bouton de façade : le pouce droit tient les
+	# gaz en permanence, il ne peut pas déraper en même temps. L'index est libre.
 	_action("drift", [
-		_touche(KEY_SPACE), _bouton(JOY_BUTTON_RIGHT_SHOULDER)])
+		_touche(KEY_SPACE),
+		_axe(JOY_AXIS_TRIGGER_RIGHT, 1.0), _bouton(JOY_BUTTON_RIGHT_SHOULDER)])
 	_action("use_item", [
-		_touche(KEY_CTRL), _bouton(JOY_BUTTON_LEFT_SHOULDER), _bouton(JOY_BUTTON_X)])
+		_touche(KEY_CTRL),
+		_axe(JOY_AXIS_TRIGGER_LEFT, 1.0), _bouton(JOY_BUTTON_LEFT_SHOULDER)])
 
 	var err := ProjectSettings.save()
 	if err != OK:
