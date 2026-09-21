@@ -21,6 +21,13 @@ Les entrées du déclenchement manuel :
 
 Un nouveau push sur la même référence annule le run précédent.
 
+> **Le déclenchement manuel n'apparaît qu'une fois le workflow sur la branche
+> par défaut.** GitHub ne liste *Run workflow* que pour les workflows présents
+> sur `main` ; il peut ensuite cibler n'importe quelle branche, y compris une
+> branche où le fichier n'existe pas encore. Tant que cette pipeline n'a pas
+> rejoint `main`, elle ne peut donc être lancée ni automatiquement ni à la
+> main : le premier run réel sera celui du push sur `main`.
+
 ## Ce qu'on récupère
 
 | Artefact | Contenu |
