@@ -1,0 +1,305 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: "Plateformes à construire"
+        type: choice
+        default: all
+        options:
+          - all
+          - windows
+          - android
+      build_type:
+        description: "Type d'export"
+        type: choice
+        default: release
+        options:
+          - release
+          - debug
+      godot_version:
+        description: "Version de Godot (tag godot-builds, ex. 4.7-stable). Vide = valeur par défaut du workflow."
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Version utilisée par défaut : elle doit correspondre à config/features de project.godot.
+  GODOT_VERSION_DEFAULT: "4.7-stable"
+
+jobs:
+  prepare:
+    name: Paramètres
+    runs-on: ubuntu-latest
+    outputs:
+      godot-version: ${{ steps.config.outputs.godot-version }}
+      build-type: ${{ steps.config.outputs.build-type }}
+      build-id: ${{ steps.config.outputs.build-id }}
+    steps:
+      - name: Résoudre les paramètres de build
+        id: config
+        env:
+          INPUT_GODOT_VERSION: ${{ inputs.godot_version }}
+          INPUT_BUILD_TYPE: ${{ inputs.build_type }}
+          REF_NAME: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          godot_version="${INPUT_GODOT_VERSION:-}"
+          godot_version="${godot_version:-$GODOT_VERSION_DEFAULT}"
+
+          build_type="${INPUT_BUILD_TYPE:-}"
+          build_type="${build_type:-release}"
+
+          # Les noms d'artefacts n'acceptent pas les « / » des branches type feat/xxx.
+          slug="$(printf '%s' "$REF_NAME" | tr -c 'A-Za-z0-9._-' '-')"
+
+          {
+            echo "godot-version=$godot_version"
+            echo "build-type=$build_type"
+            echo "build-id=${slug}-${SHA:0:7}"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Godot $godot_version · export $build_type · ${slug}-${SHA:0:7}" >> "$GITHUB_STEP_SUMMARY"
+
+  windows:
+    name: Windows (x86_64)
+    needs: prepare
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.platforms == 'all' || inputs.platforms == 'windows' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Installer Godot
+        uses: ./.github/actions/setup-godot
+        with:
+          version: ${{ needs.prepare.outputs.godot-version }}
+
+      - name: Mettre en place les presets d'export
+        run: cp .github/export_presets.ci.cfg export_presets.cfg
+
+      - name: Importer les ressources
+        run: |
+          set -euo pipefail
+          # Premier passage : Godot génère .godot/ et importe les ressources.
+          # Il peut sortir en erreur sur des avertissements ; c'est l'export qui tranche.
+          godot --headless --path . --import \
+            || echo "::warning title=Import Godot::L'import est sorti en erreur, on continue vers l'export."
+
+      - name: Exporter le jeu
+        env:
+          BUILD_TYPE: ${{ needs.prepare.outputs.build-type }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/windows
+
+          if [ "$BUILD_TYPE" = "debug" ]; then
+            export_flag="--export-debug"
+          else
+            export_flag="--export-release"
+          fi
+
+          godot --headless --path . "$export_flag" "Windows Desktop" "$PWD/build/windows/SuperKart.exe"
+
+          # Godot ne remonte pas toujours un code de sortie non nul : on vérifie la sortie.
+          test -s build/windows/SuperKart.exe
+          test -s build/windows/SuperKart.pck
+          ls -lh build/windows
+
+      - name: Publier l'artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: superkart-windows-${{ needs.prepare.outputs.build-id }}
+          path: build/windows
+          if-no-files-found: error
+          retention-days: 14
+
+  android:
+    name: Android (arm64-v8a)
+    needs: prepare
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.platforms == 'all' || inputs.platforms == 'android' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Installer le JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Installer le SDK Android
+        uses: android-actions/setup-android@v3
+        with:
+          packages: ""
+
+      - name: Installer platform-tools et build-tools
+        run: |
+          set -euo pipefail
+          # Godot n'utilise du SDK que adb (platform-tools) et apksigner (build-tools) :
+          # l'export passe par le modèle pré-compilé, pas par Gradle. On prend la dernière
+          # version de build-tools publiée plutôt qu'une version figée qui finira retirée.
+          build_tools="$(sdkmanager --list 2>/dev/null \
+            | grep -oE 'build-tools;[0-9]+\.[0-9]+\.[0-9]+' \
+            | sort -u -V | tail -1)"
+
+          if [ -z "$build_tools" ]; then
+            echo "::error title=SDK Android::Impossible de déterminer une version de build-tools."
+            exit 1
+          fi
+
+          echo "build-tools retenu : $build_tools"
+          sdkmanager --install "platform-tools" "$build_tools" > /dev/null
+
+      - name: Installer Godot
+        uses: ./.github/actions/setup-godot
+        with:
+          version: ${{ needs.prepare.outputs.godot-version }}
+
+      - name: Préparer la clé de signature
+        id: signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_USER: ${{ secrets.ANDROID_KEYSTORE_USER }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.android"
+
+          # Godot exige toujours une clé de debug, même pour un export release.
+          debug_keystore="$HOME/.android/debug.keystore"
+          keytool -genkeypair -v -noprompt \
+            -keystore "$debug_keystore" -storepass android \
+            -alias androiddebugkey -keypass android \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug, O=Android, C=US" > /dev/null
+
+          echo "debug-keystore=$debug_keystore" >> "$GITHUB_OUTPUT"
+
+          if [ -n "${ANDROID_KEYSTORE_BASE64:-}" ] \
+            && [ -n "${ANDROID_KEYSTORE_USER:-}" ] \
+            && [ -n "${ANDROID_KEYSTORE_PASSWORD:-}" ]; then
+            release_keystore="$HOME/.android/release.keystore"
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$release_keystore"
+            echo "release-keystore=$release_keystore" >> "$GITHUB_OUTPUT"
+            echo "mode=release" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=Signature Android::Aucun secret de signature release trouvé, l'APK sera signé en debug."
+            echo "release-keystore=" >> "$GITHUB_OUTPUT"
+            echo "mode=debug" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configurer l'éditeur Godot pour Android
+        env:
+          DEBUG_KEYSTORE: ${{ steps.signing.outputs.debug-keystore }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.config/godot"
+          # Godot lit les chemins du SDK et la clé de debug dans ses réglages éditeur,
+          # y compris en headless. GODOT_SETTINGS_VERSION est posé par l'action
+          # d'installation à partir de la version réellement téléchargée.
+          cat > "$HOME/.config/godot/editor_settings-${GODOT_SETTINGS_VERSION}.tres" <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_SDK_ROOT"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          export/android/debug_keystore = "$DEBUG_KEYSTORE"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+
+      - name: Mettre en place les presets d'export
+        env:
+          RELEASE_KEYSTORE: ${{ steps.signing.outputs.release-keystore }}
+          ANDROID_KEYSTORE_USER: ${{ secrets.ANDROID_KEYSTORE_USER }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          cp .github/export_presets.ci.cfg export_presets.cfg
+
+          # Les secrets ne transitent jamais par la ligne de commande ni par les logs.
+          python3 - <<'PY'
+          import os
+
+          keystore = os.environ.get("RELEASE_KEYSTORE", "")
+          if not keystore:
+              raise SystemExit(0)
+
+          replacements = {
+              'keystore/release=""': 'keystore/release="%s"' % keystore,
+              'keystore/release_user=""': 'keystore/release_user="%s"'
+              % os.environ["ANDROID_KEYSTORE_USER"],
+              'keystore/release_password=""': 'keystore/release_password="%s"'
+              % os.environ["ANDROID_KEYSTORE_PASSWORD"],
+          }
+
+          with open("export_presets.cfg", encoding="utf-8") as handle:
+              content = handle.read()
+
+          for needle, value in replacements.items():
+              if needle not in content:
+                  raise SystemExit("Ligne attendue absente du preset : %s" % needle)
+              content = content.replace(needle, value)
+
+          with open("export_presets.cfg", "w", encoding="utf-8") as handle:
+              handle.write(content)
+          PY
+
+      - name: Importer les ressources
+        run: |
+          set -euo pipefail
+          godot --headless --path . --import \
+            || echo "::warning title=Import Godot::L'import est sorti en erreur, on continue vers l'export."
+
+      - name: Exporter l'APK
+        id: export
+        env:
+          BUILD_TYPE: ${{ needs.prepare.outputs.build-type }}
+          SIGNING_MODE: ${{ steps.signing.outputs.mode }}
+          GODOT_ANDROID_KEYSTORE_DEBUG_PATH: ${{ steps.signing.outputs.debug-keystore }}
+          GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
+          GODOT_ANDROID_KEYSTORE_RELEASE_PATH: ${{ steps.signing.outputs.release-keystore }}
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER: ${{ secrets.ANDROID_KEYSTORE_USER }}
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/android
+
+          # Un export release sans clé de signature release échouerait : on retombe
+          # alors sur un APK de debug, installable tel quel sur un téléphone.
+          if [ "$BUILD_TYPE" = "release" ] && [ "$SIGNING_MODE" = "release" ]; then
+            export_flag="--export-release"
+            apk="SuperKart.apk"
+          else
+            export_flag="--export-debug"
+            apk="SuperKart-debug.apk"
+          fi
+
+          godot --headless --path . "$export_flag" "Android" "$PWD/build/android/$apk"
+
+          test -s "build/android/$apk"
+          ls -lh build/android
+
+          echo "apk=$apk" >> "$GITHUB_OUTPUT"
+
+      - name: Publier l'artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: superkart-android-${{ needs.prepare.outputs.build-id }}
+          path: build/android
+          if-no-files-found: error
+          retention-days: 14
