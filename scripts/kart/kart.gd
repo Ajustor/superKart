@@ -38,6 +38,11 @@ var _was_hopping: bool = false
 var _normale := Vector3.UP
 
 
+## Renseignée par KartSuspension quand elle existe : le terrain d'essai n'en a
+## pas, et le kart doit rouler sans elle.
+var suspension: KartSuspension
+
+
 func _ready() -> void:
 	assert(stats != null, "un Kart doit avoir une ressource KartStats")
 	motor = KartMotor.new(stats)
@@ -146,6 +151,10 @@ func respawn_at(where: Transform3D) -> void:
 	# milieu d'une pente et bascule dès la première image.
 	_normale = where.basis.y.normalized()
 	motor.reset(-where.basis.get_euler().y)
+	if suspension != null:
+		# Une roue qui garde sa vitesse au moment de la téléportation fait
+		# tressauter la caisse à l'arrivée.
+		suspension.reset()
 
 
 ## Renseigné de l'extérieur par la session de course : le kart ne connaît pas

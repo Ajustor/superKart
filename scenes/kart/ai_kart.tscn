@@ -1,18 +1,74 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=23 format=3]
 
 [ext_resource type="Script" path="res://scripts/kart/kart.gd" id="1_kart"]
 [ext_resource type="Script" path="res://scripts/kart/ai_input.gd" id="2_input"]
 [ext_resource type="Resource" path="res://resources/karts/default_kart.tres" id="3_stats"]
 [ext_resource type="Script" path="res://scripts/kart/kart_visuals.gd" id="4_visuals"]
+[ext_resource type="Script" path="res://scripts/kart/kart_suspension.gd" id="6_susp"]
 
 [sub_resource type="BoxShape3D" id="Shape_body"]
-size = Vector3(1.2, 0.8, 1.8)
-
-[sub_resource type="BoxMesh" id="Mesh_body"]
-size = Vector3(1.2, 0.8, 1.8)
+size = Vector3(1.1, 0.7, 1.7)
 
 [sub_resource type="StandardMaterial3D" id="Mat_body"]
-albedo_color = Color(0.78, 0.35, 0.3, 1)
+albedo_color = Color(0.78, 0.22, 0.20, 1)
+metallic = 0.2
+roughness = 0.55
+
+[sub_resource type="StandardMaterial3D" id="Mat_accent"]
+albedo_color = Color(0.20, 0.20, 0.22, 1)
+metallic = 0.4
+roughness = 0.4
+
+[sub_resource type="StandardMaterial3D" id="Mat_tire"]
+albedo_color = Color(0.09, 0.09, 0.1, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="Mat_rim"]
+albedo_color = Color(0.82, 0.83, 0.86, 1)
+metallic = 0.7
+roughness = 0.25
+
+[sub_resource type="BoxMesh" id="Mesh_floor"]
+size = Vector3(0.86, 0.09, 1.5)
+
+[sub_resource type="BoxMesh" id="Mesh_nose"]
+size = Vector3(0.62, 0.13, 0.42)
+
+[sub_resource type="BoxMesh" id="Mesh_sidepod"]
+size = Vector3(0.16, 0.2, 0.86)
+
+[sub_resource type="BoxMesh" id="Mesh_seatbase"]
+size = Vector3(0.46, 0.1, 0.42)
+
+[sub_resource type="BoxMesh" id="Mesh_seatback"]
+size = Vector3(0.46, 0.44, 0.1)
+
+[sub_resource type="BoxMesh" id="Mesh_engine"]
+size = Vector3(0.3, 0.28, 0.36)
+
+[sub_resource type="CylinderMesh" id="Mesh_column"]
+top_radius = 0.022
+bottom_radius = 0.022
+height = 0.34
+radial_segments = 8
+
+[sub_resource type="TorusMesh" id="Mesh_wheelrim"]
+inner_radius = 0.09
+outer_radius = 0.13
+rings = 8
+ring_segments = 12
+
+[sub_resource type="CylinderMesh" id="Mesh_tire"]
+top_radius = 0.17
+bottom_radius = 0.17
+height = 0.15
+radial_segments = 16
+
+[sub_resource type="CylinderMesh" id="Mesh_hub"]
+top_radius = 0.07
+bottom_radius = 0.07
+height = 0.17
+radial_segments = 10
 
 [sub_resource type="ParticleProcessMaterial" id="Proc_sparks"]
 emission_shape = 1
@@ -34,21 +90,117 @@ stats = ExtResource("3_stats")
 input_path = NodePath("AIInput")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.38, 0)
 shape = SubResource("Shape_body")
 
-[node name="Body" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
-mesh = SubResource("Mesh_body")
+[node name="Body" type="Node3D" parent="."]
+
+[node name="Floor" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
+mesh = SubResource("Mesh_floor")
 surface_material_override/0 = SubResource("Mat_body")
 
+[node name="Nose" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.33, -0.86)
+mesh = SubResource("Mesh_nose")
+surface_material_override/0 = SubResource("Mat_accent")
+
+[node name="SidePodL" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.45, 0.33, 0)
+mesh = SubResource("Mesh_sidepod")
+surface_material_override/0 = SubResource("Mat_body")
+
+[node name="SidePodR" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.45, 0.33, 0)
+mesh = SubResource("Mesh_sidepod")
+surface_material_override/0 = SubResource("Mat_body")
+
+[node name="SeatBase" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.39, 0.16)
+mesh = SubResource("Mesh_seatbase")
+surface_material_override/0 = SubResource("Mat_accent")
+
+[node name="SeatBack" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0.39)
+mesh = SubResource("Mesh_seatback")
+surface_material_override/0 = SubResource("Mat_accent")
+
+[node name="Engine" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.48, 0.66)
+mesh = SubResource("Mesh_engine")
+surface_material_override/0 = SubResource("Mat_accent")
+
+[node name="Column" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 0.87, 0.5, 0, -0.5, 0.87, 0, 0.5, -0.34)
+mesh = SubResource("Mesh_column")
+surface_material_override/0 = SubResource("Mat_rim")
+
+[node name="SteeringWheel" type="MeshInstance3D" parent="Body/Column"]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0.18, 0)
+mesh = SubResource("Mesh_wheelrim")
+surface_material_override/0 = SubResource("Mat_rim")
+
 [node name="Sparks" type="GPUParticles3D" parent="Body"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.2, 0.9)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0.9)
 emitting = false
 amount = 24
 lifetime = 0.35
 process_material = SubResource("Proc_sparks")
 draw_pass_1 = SubResource("Mesh_spark")
+
+[node name="Wheels" type="Node3D" parent="."]
+
+[node name="WheelFL" type="Node3D" parent="Wheels"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.52, 0.395, -0.6)
+
+[node name="Tire" type="MeshInstance3D" parent="Wheels/WheelFL"]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("Mesh_tire")
+surface_material_override/0 = SubResource("Mat_tire")
+
+[node name="Hub" type="MeshInstance3D" parent="Wheels/WheelFL"]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("Mesh_hub")
+surface_material_override/0 = SubResource("Mat_rim")
+
+[node name="WheelFR" type="Node3D" parent="Wheels"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.52, 0.395, -0.6)
+
+[node name="Tire" type="MeshInstance3D" parent="Wheels/WheelFR"]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("Mesh_tire")
+surface_material_override/0 = SubResource("Mat_tire")
+
+[node name="Hub" type="MeshInstance3D" parent="Wheels/WheelFR"]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("Mesh_hub")
+surface_material_override/0 = SubResource("Mat_rim")
+
+[node name="WheelRL" type="Node3D" parent="Wheels"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.54, 0.395, 0.62)
+
+[node name="Tire" type="MeshInstance3D" parent="Wheels/WheelRL"]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("Mesh_tire")
+surface_material_override/0 = SubResource("Mat_tire")
+
+[node name="Hub" type="MeshInstance3D" parent="Wheels/WheelRL"]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("Mesh_hub")
+surface_material_override/0 = SubResource("Mat_rim")
+
+[node name="WheelRR" type="Node3D" parent="Wheels"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.54, 0.395, 0.62)
+
+[node name="Tire" type="MeshInstance3D" parent="Wheels/WheelRR"]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("Mesh_tire")
+surface_material_override/0 = SubResource("Mat_tire")
+
+[node name="Hub" type="MeshInstance3D" parent="Wheels/WheelRR"]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("Mesh_hub")
+surface_material_override/0 = SubResource("Mat_rim")
 
 [node name="AIInput" type="Node" parent="."]
 script = ExtResource("2_input")
@@ -58,3 +210,9 @@ script = ExtResource("4_visuals")
 kart_path = NodePath("..")
 body_path = NodePath("../Body")
 sparks_path = NodePath("../Body/Sparks")
+
+[node name="Suspension" type="Node3D" parent="."]
+script = ExtResource("6_susp")
+kart_path = NodePath("..")
+body_path = NodePath("../Body")
+wheel_paths = [NodePath("../Wheels/WheelFL"), NodePath("../Wheels/WheelFR"), NodePath("../Wheels/WheelRL"), NodePath("../Wheels/WheelRR")]
