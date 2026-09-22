@@ -55,7 +55,7 @@ Deux tests ont été supprimés parce qu'ils figeaient une supposition erronée 
 - **L'IA n'encaisse aucun mini-turbo.** L'épingle donne 0,50 s de charge quand le palier 1 en demande 0,60. Aller au-delà l'envoyait hors du bitume. Les leviers restants sont `drift_tiers[0]`, qui touche au pilotage du joueur, ou un virage plus long.
 - **L'accélération n'est plus analogique** à la manette : les gâchettes servent au saut et à l'objet, comme dans un Mario Kart. C'est fidèle, mais c'est un changement.
 - **La suspension est cosmétique.** Délibérément : lui confier la trajectoire reviendrait à réécrire `KartMotor` et à jeter ses 45 tests, pour un réalisme qu'aucun jeu de kart ne demande.
-- **Pas de collision entre karts**, pas de décompte au départ, pas d'objets, pas d'écran de fin. `motor.speed` n'est toujours pas réconcilié après un `move_and_slide()` — sans mur ni choc, c'est sans effet aujourd'hui.
+- **Pas de collision entre karts gérée.** Mesuré sur une course à huit : chacun reste immobile 150 à 620 images sur 9000, et toujours dans des sections larges — rayon 75 à 140 m, pente nulle. Ce ne sont donc pas des virages ratés, ce sont les karts qui se rentrent dedans. Pas de décompte au départ, pas d'objets, pas d'écran de fin non plus. `motor.speed` n'est toujours pas réconcilié après un `move_and_slide()` — sans mur ni choc, c'est sans effet aujourd'hui.
 - **Un virage à 12,5 m de rayon** subsiste, juste au-dessus des 12,2 m de braquage du kart. Le nœud `Track` prévient dans l'éditeur tant que quelque chose passe en dessous.
 
 ## Une erreur à signaler
