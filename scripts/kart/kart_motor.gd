@@ -19,6 +19,12 @@ var speed: float = 0.0
 var velocity_dir: float = 0.0   ## yaw du vecteur vitesse, en radians
 var heading: float = 0.0        ## yaw de la caisse, en radians
 var boost_timer: float = 0.0
+
+## Force du turbo en cours, en multiple de max_speed. Retenue ici plutôt que
+## relue dans les stats parce qu'elle dépend du palier qui l'a déclenchée.
+## Vaut le palier le plus faible au repos : un turbo accordé directement, sans
+## passer par une glisse, doit pousser quand même.
+var boost_multiplier: float = 1.0
 var on_offroad: bool = false    ## piloté de l'extérieur par la détection de terrain
 
 var drift_dir: int = 0          ## -1 gauche, +1 droite, 0 hors dérapage
@@ -30,10 +36,20 @@ var _drift_locked_out: bool = false   ## une glisse cassée bloque jusqu'au rel�
 
 func _init(kart_stats: KartStats) -> void:
 	stats = kart_stats
+	boost_multiplier = _plancher_de_turbo()
+
+
+## Le plus faible des multiplicateurs, ou 1.0 si la table est vide.
+func _plancher_de_turbo() -> float:
+	return stats.boost_speed_multipliers[0] if not stats.boost_speed_multipliers.is_empty() else 1.0
 
 
 func step(cmd: KartCommand, delta: float) -> void:
 	boost_timer = maxf(boost_timer - delta, 0.0)
+	if boost_timer == 0.0:
+		# Sans ça, la force d'un palier 3 terminé s'appliquerait au turbo
+		# suivant, même accordé par une glisse à peine chargée.
+		boost_multiplier = _plancher_de_turbo()
 	_update_speed(cmd, delta)
 
 	match state:
@@ -54,7 +70,7 @@ func step(cmd: KartCommand, delta: float) -> void:
 ## foncer dans l'herbe sous champignon doit rester payant.
 func _current_max_speed() -> float:
 	if boost_timer > 0.0:
-		return stats.max_speed * stats.boost_speed_multiplier
+		return stats.max_speed * boost_multiplier
 	if on_offroad:
 		return stats.max_speed * stats.offroad_speed_multiplier
 	return stats.max_speed
@@ -145,7 +161,7 @@ func _update_drift(cmd: KartCommand, delta: float) -> void:
 	# l'autre inversait la commande : braquer vers l'intérieur ouvrait le rayon
 	# et contre-braquer le resserrait, et l'entrée en glisse sous-virait le temps
 	# que l'angle monte depuis zéro.
-	var courbure := lerpf(0.5, 1.0, t)
+	var courbure := lerpf(stats.drift_curvature_min, 1.0, t)
 	velocity_dir += float(drift_dir) * stats.drift_turn_rate * courbure * delta
 	heading = velocity_dir + float(drift_dir) * drift_angle
 
@@ -169,7 +185,8 @@ func _drift_is_broken(inward: float) -> bool:
 ## Borné par le plus court des deux tableaux : un palier sans durée de
 ## turbo associée n'en est pas un, et indexer à l'aveugle planterait.
 func tier_for_charge(charge: float) -> int:
-	var count := mini(stats.drift_tiers.size(), stats.boost_durations.size())
+	var count := mini(stats.drift_tiers.size(),
+		mini(stats.boost_durations.size(), stats.boost_speed_multipliers.size()))
 	var tier := 0
 	for i in count:
 		if charge >= stats.drift_tiers[i]:
@@ -181,8 +198,11 @@ func _release_drift() -> void:
 	var tier := tier_for_charge(drift_charge)
 	if tier > 0:
 		# Un turbo plus long déjà en cours ne doit pas être amputé par un
-		# palier inférieur : enchaîner doit récompenser, pas punir.
+		# palier inférieur : enchaîner doit récompenser, pas punir. La force
+		# suit la même règle, sans quoi un petit palier affaiblirait un gros
+		# turbo encore en cours.
 		boost_timer = maxf(boost_timer, stats.boost_durations[tier - 1])
+		boost_multiplier = maxf(boost_multiplier, stats.boost_speed_multipliers[tier - 1])
 	_end_drift()
 
 
@@ -195,6 +215,7 @@ func reset(yaw: float) -> void:
 	velocity_dir = yaw
 	heading = yaw
 	boost_timer = 0.0
+	boost_multiplier = _plancher_de_turbo()
 	on_offroad = false
 	drift_dir = 0
 	drift_charge = 0.0

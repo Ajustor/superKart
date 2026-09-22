@@ -1,22 +1,21 @@
-[gd_scene load_steps=24 format=3]
+[gd_scene load_steps=23 format=3]
 
 [ext_resource type="Script" path="res://scripts/kart/kart.gd" id="1_kart"]
-[ext_resource type="Script" path="res://scripts/kart/player_input.gd" id="2_input"]
+[ext_resource type="Script" path="res://scripts/kart/ai_input.gd" id="2_input"]
 [ext_resource type="Resource" path="res://resources/karts/default_kart.tres" id="3_stats"]
 [ext_resource type="Script" path="res://scripts/kart/kart_visuals.gd" id="4_visuals"]
 [ext_resource type="Script" path="res://scripts/kart/kart_suspension.gd" id="6_susp"]
-[ext_resource type="Script" path="res://scripts/kart/kart_rumble.gd" id="5_rumble"]
 
 [sub_resource type="BoxShape3D" id="Shape_body"]
 size = Vector3(1.1, 0.7, 1.7)
 
 [sub_resource type="StandardMaterial3D" id="Mat_body"]
-albedo_color = Color(0.20, 0.45, 0.85, 1)
+albedo_color = Color(0.78, 0.22, 0.20, 1)
 metallic = 0.2
 roughness = 0.55
 
 [sub_resource type="StandardMaterial3D" id="Mat_accent"]
-albedo_color = Color(0.93, 0.94, 0.96, 1)
+albedo_color = Color(0.20, 0.20, 0.22, 1)
 metallic = 0.4
 roughness = 0.4
 
@@ -85,10 +84,10 @@ scale_max = 0.12
 [sub_resource type="QuadMesh" id="Mesh_spark"]
 size = Vector2(0.1, 0.1)
 
-[node name="Kart" type="CharacterBody3D"]
+[node name="AIKart" type="CharacterBody3D"]
 script = ExtResource("1_kart")
 stats = ExtResource("3_stats")
-input_path = NodePath("PlayerInput")
+input_path = NodePath("AIInput")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.38, 0)
@@ -203,7 +202,7 @@ transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0)
 mesh = SubResource("Mesh_hub")
 surface_material_override/0 = SubResource("Mat_rim")
 
-[node name="PlayerInput" type="Node" parent="."]
+[node name="AIInput" type="Node" parent="."]
 script = ExtResource("2_input")
 
 [node name="Visuals" type="Node3D" parent="."]
@@ -217,7 +216,3 @@ script = ExtResource("6_susp")
 kart_path = NodePath("..")
 body_path = NodePath("../Body")
 wheel_paths = [NodePath("../Wheels/WheelFL"), NodePath("../Wheels/WheelFR"), NodePath("../Wheels/WheelRL"), NodePath("../Wheels/WheelRR")]
-
-[node name="Rumble" type="Node" parent="."]
-script = ExtResource("5_rumble")
-kart_path = NodePath("..")

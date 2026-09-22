@@ -1,0 +1,79 @@
+name: "Installer Godot"
+description: "Télécharge l'éditeur Godot headless et, au besoin, les modèles d'export."
+
+inputs:
+  version:
+    description: "Tag de version Godot tel que publié sur godot-builds (ex. 4.7-stable)."
+    required: true
+  export-templates:
+    description: "Installer aussi les modèles d'export (nécessaire pour exporter le jeu)."
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Restaurer le cache Godot
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.local/share/godot-ci/bin
+          ~/.local/share/godot/export_templates
+        key: godot-${{ runner.os }}-${{ inputs.version }}-templates-${{ inputs.export-templates }}
+
+    - name: Télécharger l'éditeur et les modèles
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        GODOT_TAG: ${{ inputs.version }}
+        WITH_TEMPLATES: ${{ inputs.export-templates }}
+      run: |
+        set -euo pipefail
+
+        base="https://github.com/godotengine/godot-builds/releases/download/${GODOT_TAG}"
+        editor_zip="Godot_v${GODOT_TAG}_linux.x86_64.zip"
+        bin_dir="$HOME/.local/share/godot-ci/bin"
+        work="$(mktemp -d)"
+
+        mkdir -p "$bin_dir"
+
+        echo "::group::Éditeur ${GODOT_TAG}"
+        curl --fail --location --retry 3 --retry-delay 5 --retry-all-errors \
+          --output "$work/$editor_zip" "$base/$editor_zip"
+        unzip -q "$work/$editor_zip" -d "$work/editor"
+        mv "$work/editor/Godot_v${GODOT_TAG}_linux.x86_64" "$bin_dir/godot"
+        chmod +x "$bin_dir/godot"
+        echo "::endgroup::"
+
+        if [ "$WITH_TEMPLATES" = "true" ]; then
+          echo "::group::Modèles d'export ${GODOT_TAG}"
+          templates_tpz="Godot_v${GODOT_TAG}_export_templates.tpz"
+          # Godot cherche les modèles dans un dossier nommé « 4.7.stable », pas « 4.7-stable ».
+          templates_dir="$HOME/.local/share/godot/export_templates/${GODOT_TAG/-/.}"
+          curl --fail --location --retry 3 --retry-delay 5 --retry-all-errors \
+            --output "$work/$templates_tpz" "$base/$templates_tpz"
+          unzip -q "$work/$templates_tpz" -d "$work/templates"
+          mkdir -p "$templates_dir"
+          mv "$work/templates/templates/"* "$templates_dir/"
+          echo "::endgroup::"
+        fi
+
+        rm -rf "$work"
+
+    - name: Ajouter Godot au PATH
+      shell: bash
+      run: echo "$HOME/.local/share/godot-ci/bin" >> "$GITHUB_PATH"
+
+    - name: Vérifier l'installation
+      shell: bash
+      run: |
+        set -euo pipefail
+        full_version="$(godot --headless --version)"
+        echo "Godot $full_version"
+        # Godot range ses réglages éditeur dans editor_settings-<majeur>.<mineur>.tres :
+        # le job Android a besoin du nom exact pour y déposer les chemins du SDK.
+        {
+          echo "GODOT_FULL_VERSION=$full_version"
+          echo "GODOT_SETTINGS_VERSION=$(printf '%s' "$full_version" | cut -d. -f1,2)"
+        } >> "$GITHUB_ENV"

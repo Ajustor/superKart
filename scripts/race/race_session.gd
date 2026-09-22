@@ -1,86 +1,142 @@
 class_name RaceSession
 extends Node
 
-## Met le kart et le circuit en rapport. Le kart ignore le circuit, le circuit
-## ignore le kart : c'est ici et nulle part ailleurs que les deux se parlent.
+## Met les karts et le circuit en rapport. Les karts ignorent le circuit, le
+## circuit ignore les karts : c'est ici et nulle part ailleurs que les deux se
+## parlent.
+##
+## Le concurrent d'indice 0 est le joueur — c'est lui que le HUD suit. Rien
+## d'autre ne distingue les huit : l'IA passe par le même KartCommand et subit
+## la même physique, donc elle ne peut pas tricher.
 
-const FLOOR_LIMIT := -10.0
+## Profondeur sous la route, en mètres, au-delà de laquelle on considère que le
+## kart est tombé dans le vide.
+##
+## Relative à la route, et non à l'altitude zéro. C'était un plancher absolu à
+## -10 m, écrit quand la piste était plate : dès qu'elle a gagné du relief,
+## 18 % de la chaussée s'est retrouvée SOUS son propre plancher anti-chute et le
+## kart était téléporté 88 % des images, immobilisé au premier creux.
+const FALL_DEPTH := 12.0
 const OFF_TRACK_RESPAWN_MARGIN := 3.0
 
-## Distance de départ le long de l'axe. Nommée plutôt que répétée en zéro :
-## les trois endroits qui la citent doivent bouger ensemble, et la grille
-## décalée du plan 3 les fera tous bouger.
+## Distance de départ le long de l'axe, pour la première case de grille.
 const DEPART := 0.0
 
+## Deux colonnes, comme une vraie grille : huit karts en file indienne
+## s'étireraient sur trente mètres et le dernier ne verrait jamais le premier.
+const GRID_COLUMNS := 2
+
+## Écart entre deux rangées, en mètres le long de l'axe.
+const GRID_ROW_SPACING := 5.0
+
+## Demi-écartement des colonnes, en mètres de part et d'autre de la ligne de
+## course. Reste bien en deçà de la demi-largeur de 9 m, y compris là où la
+## ligne de course mord déjà le bord intérieur d'un virage.
+const GRID_COLUMN_OFFSET := 2.5
+
+## Recul de la colonne de droite par rapport à celle de gauche, en mètres.
+## Une grille alignée au cordeau n'existe nulle part, et décaler donne à
+## chaque kart une distance de départ qui lui est propre.
+const GRID_COLUMN_STAGGER := 2.5
+
 @export var track_path: NodePath
-@export var kart_path: NodePath
+@export var kart_paths: Array[NodePath] = []
 @export var lap_count: int = 3
 
-var progress: RaceProgress
-var timer := RaceTimer.new()
-var finished: bool = false
+var entries: Array[RaceEntry] = []
 
 var _track: Track
-var _kart: Kart
-var _derniere_en_piste: float = 0.0
 var _demi_largeur: float = 0.0
-var _tours_comptes: int = 0
+var _cerveaux: Array[AIInput] = []
 
 
 func _ready() -> void:
 	# get_node lèverait l'erreur avant l'assert, et les assert disparaissent en
 	# export release : le message n'aurait servi à personne.
 	var piste := get_node_or_null(track_path) as Track
-	var kart := get_node_or_null(kart_path) as Kart
 	assert(piste != null, "track_path doit pointer vers un Track")
-	assert(kart != null, "kart_path doit pointer vers un Kart")
-	demarrer(piste, kart)
+
+	var pilotes: Array[Kart] = []
+	for chemin in kart_paths:
+		var k := get_node_or_null(chemin) as Kart
+		assert(k != null, "chaque entrée de kart_paths doit pointer vers un Kart")
+		pilotes.append(k)
+
+	for k in pilotes:
+		for enfant in k.get_children():
+			if enfant is AIInput:
+				brancher_ia(enfant as AIInput)
+
+	demarrer(piste, pilotes)
 
 
-## Prend le circuit et le kart en paramètres plutôt que de les lire dans
+## Déclare une IA à nourrir. Appelée depuis _ready pour chaque kart dont
+## l'entrée en est une ; les tests l'appellent directement.
+func brancher_ia(cerveau: AIInput) -> void:
+	if cerveau != null and not _cerveaux.has(cerveau):
+		_cerveaux.append(cerveau)
+
+
+## Prend le circuit et les karts en paramètres plutôt que de les lire dans
 ## l'arbre : c'est toute la différence entre une logique testable et une
 ## logique qu'on ne peut qu'espérer juste.
-func demarrer(piste: Track, pilote: Kart) -> void:
+func demarrer(piste: Track, pilotes: Array[Kart]) -> void:
 	assert(lap_count > 0, "une course sans tour à boucler ne finit jamais")
+	assert(not pilotes.is_empty(), "une course a besoin d'au moins un concurrent")
 	_track = piste
-	_kart = pilote
-	# TrackCurve porte déjà sa propre copie de la demi-largeur, et c'est elle
-	# que is_off_track compare : deux sources pour la même valeur finissent
-	# toujours par diverger.
 	_demi_largeur = _track.track_curve.half_width
-	_kart.respawn_at(_track.spawn_at(DEPART))
-	progress = RaceProgress.new(_track.track_curve, DEPART)
-	_derniere_en_piste = DEPART
+
+	entries.clear()
+	for i in pilotes.size():
+		var rangee := i / GRID_COLUMNS
+		var colonne := i % GRID_COLUMNS
+		var depart := DEPART \
+			- float(rangee) * GRID_ROW_SPACING \
+			- float(colonne) * GRID_COLUMN_STAGGER
+		# -1 pour la colonne de gauche, +1 pour celle de droite.
+		var lateral := (float(colonne) - 0.5) * 2.0 * GRID_COLUMN_OFFSET
+		var place := _track.spawn_at(depart, lateral)
+		pilotes[i].respawn_at(place)
+		var entree := RaceEntry.new(pilotes[i], _track.track_curve, depart)
+		entries.append(entree)
+		# L'IA décide à partir des valeurs de l'image précédente : sans
+		# amorçage, sa toute première décision viserait l'origine du monde.
+		# On lui donne la case de grille et non kart.global_position, qui
+		# échoue hors de l'arbre et rendrait cette ligne intestable.
+		_nourrir_ia(entree, place.origin)
 
 
 func _physics_process(delta: float) -> void:
-	avancer(_kart.global_position, delta)
+	for entree in entries:
+		avancer(entree, entree.kart.global_position, delta)
+	classer()
 
 
 ## Le point est passé plutôt que lu sur le kart : global_position exige
 ## l'arbre de scènes, et c'est le seul obstacle qui rendait cette logique
 ## intestable.
-func avancer(point: Vector3, delta: float) -> void:
-	progress.update(point)
+func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
+	entree.progress.update(point)
+	_nourrir_ia(entree, point)
 
 	# La comptabilité s'arrête à l'arrivée ; le monde, lui, continue.
-	if not finished:
-		timer.advance(delta)
+	if not entree.finished:
+		entree.timer.advance(delta)
 		# progress.lap n'est pas monotone : il redescend quand le kart recule.
 		# Se déclencher sur sa montée enregistrait un tour à chaque
 		# franchissement, donc reculer sur la ligne d'arrivée fabriquait un
 		# meilleur temps de deux images. On compte sur une ligne de crue.
-		if progress.lap > _tours_comptes:
-			_tours_comptes = progress.lap
-			timer.complete_lap()
-			if _tours_comptes >= lap_count:
-				finished = true
+		if entree.progress.lap > entree.tours_comptes:
+			entree.tours_comptes = entree.progress.lap
+			entree.timer.complete_lap()
+			if entree.tours_comptes >= lap_count:
+				entree.finished = true
 
-	# Une seule projection par image : is_off_track la referait entièrement,
-	# et la remise en piste une troisième fois.
+	# Une seule projection par image et par kart : is_off_track la referait
+	# entièrement, et la remise en piste une troisième fois.
 	var ecart := absf(_track.track_curve.lateral_offset(point))
 	var dehors := ecart > _demi_largeur
-	_kart.set_offroad(dehors)
+	entree.kart.set_offroad(dehors)
 	if not dehors:
 		# On remet en piste là où le kart roulait encore, pas là où la courbe
 		# projette son point de sortie. Dans l'épingle la courbe se replie sur
@@ -88,7 +144,35 @@ func avancer(point: Vector3, delta: float) -> void:
 		# de 48 m — en arrière d'un côté, mais en avant de l'autre. Reprojeter
 		# ne punissait donc pas seulement la sortie de route, elle pouvait
 		# aussi l'offrir en raccourci.
-		_derniere_en_piste = progress.distance
+		entree.derniere_en_piste = entree.progress.distance
 
-	if point.y < FLOOR_LIMIT or ecart > _demi_largeur + OFF_TRACK_RESPAWN_MARGIN:
-		_kart.respawn_at(_track.spawn_at(_derniere_en_piste))
+	# L'altitude de la route sous le kart, et non une constante : sur une piste
+	# à plusieurs niveaux, « en bas » ne veut rien dire dans l'absolu.
+	var sol := _track.track_curve.position_at(entree.progress.distance).y
+	if point.y < sol - FALL_DEPTH or ecart > _demi_largeur + OFF_TRACK_RESPAWN_MARGIN:
+		entree.kart.respawn_at(_track.spawn_at(entree.derniere_en_piste))
+
+
+## Attribue les places, 1 au plus avancé. Trie sur la distance parcourue et
+## sur rien d'autre : un couple (tour, position sur l'axe) mettrait devant un
+## kart qui a reculé sous la ligne, parce que sa position d'axe est alors
+## proche de la fin du tour. `total` porte le signe que ce couple perd.
+func classer() -> void:
+	var ordre := entries.duplicate()
+	ordre.sort_custom(func(a: RaceEntry, b: RaceEntry) -> bool:
+		return a.progress.total > b.progress.total)
+	for i in ordre.size():
+		ordre[i].position = i + 1
+
+
+## Donne à l'IA de ce kart ce qu'elle ne peut pas aller chercher seule. Elle
+## pourrait projeter sa propre position, mais ce serait une projection de plus
+## par kart et par image — et lire global_position l'empêcherait d'être testée
+## hors de l'arbre.
+func _nourrir_ia(entree: RaceEntry, point: Vector3) -> void:
+	for cerveau in _cerveaux:
+		if cerveau.kart == entree.kart:
+			cerveau.track = _track.track_curve
+			cerveau.distance = entree.progress.distance
+			cerveau.position = point
+			return

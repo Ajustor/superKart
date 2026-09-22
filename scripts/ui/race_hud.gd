@@ -1,9 +1,10 @@
 class_name RaceHUD
 extends Control
 
-## Trois informations, pas une de plus : le tour, le chrono, le meilleur temps.
-## Le palier de mini-turbo n'y figure pas — c'est la couleur des étincelles qui
-## le dit, et le joueur ne doit pas avoir à quitter la route des yeux.
+## Quatre informations, pas une de plus : la place, le tour, le chrono, le
+## meilleur temps. Le palier de mini-turbo n'y figure pas — c'est la couleur
+## des étincelles qui le dit, et le joueur ne doit pas avoir à quitter la route
+## des yeux.
 
 @export var session_path: NodePath
 
@@ -22,12 +23,18 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	var tour := mini(_session.progress.lap + 1, _session.lap_count)
+	if _session.entries.is_empty():
+		return
+	var moi := _session.entries[0]
+	var tour := mini(moi.progress.lap + 1, _session.lap_count)
 	var lignes := PackedStringArray()
+	# maxi(..., 1) couvre la toute première image, avant que classer() n'ait
+	# tourné : afficher « 0e » serait un bug visible.
+	lignes.append("%de / %d" % [maxi(moi.position, 1), _session.entries.size()])
 	lignes.append("TOUR %d/%d" % [tour, _session.lap_count])
-	lignes.append(RaceTimer.format(_session.timer.current))
-	if _session.timer.has_best:
-		lignes.append("MEILLEUR %s" % RaceTimer.format(_session.timer.best))
-	if _session.finished:
+	lignes.append(RaceTimer.format(moi.timer.current))
+	if moi.timer.has_best:
+		lignes.append("MEILLEUR %s" % RaceTimer.format(moi.timer.best))
+	if moi.finished:
 		lignes.append("ARRIVÉE")
 	_label.text = "\n".join(lignes)

@@ -1,0 +1,173 @@
+class_name AIInput
+extends KartInput
+
+## Pilote automatique. Elle vise un point de la ligne de course situé à une
+## demi-seconde de trajet devant elle, mesure l'écart entre son cap et la
+## direction de ce point, et en tire un braquage.
+##
+## Elle passe par le même KartCommand que le joueur, donc elle est enfermée
+## dans la même physique : elle ne peut pas prendre un virage que le joueur ne
+## pourrait pas prendre, et elle dérape pour de vrai, avec les mêmes étincelles.
+##
+## Tous les angles sont des caps boussole — positif vers la droite — comme dans
+## KartMotor et TrackCurve. Aucune rotation Godot n'apparaît ici.
+
+## Durée de trajet qui sépare le kart de son point de mire. Plus elle est
+## grande, plus l'IA anticipe et plus ses trajectoires sont propres.
+@export var aim_time: float = 0.45
+
+## Distance de mire minimale, en mètres. Sans elle, un kart à l'arrêt viserait
+## ses propres roues et ne démarrerait jamais.
+@export var aim_minimum: float = 6.0
+
+## Écart de cap, en degrés, au-delà duquel l'IA braque à fond.
+@export var full_steer_angle_deg: float = 20.0
+
+## Rayon du virage visé, en mètres, en deçà duquel l'IA engage le dérapage.
+##
+## Sur la sévérité du virage, et non sur son propre écart de cap. Mesuré :
+## avec l'ancienne règle, l'écart de cap de l'IA culminait à 16,2° dans
+## l'épingle contre un seuil de 32°, donc elle ne dérapait jamais — et plus
+## elle suivait bien sa ligne, moins elle dérapait, ce qui est exactement
+## l'inverse de ce qu'on veut. Un joueur dérape parce qu'il voit arriver le
+## virage, pas parce qu'il a déjà raté sa trajectoire.
+@export var drift_entry_radius: float = 22.0
+
+## Rayon au-delà duquel elle lâche une glisse en cours. Plus large que
+## l'entrée, pour ne pas battre de l'aile à la frontière du virage.
+##
+## Balayé sur track_01, trois tours à chaque fois : 34 m donne 0,42 s de charge
+## et 6,77 m d'écart, 42 m donne 0,50 s et 7,40 m, 50 m donne 0,55 s et 8,00 m,
+## 60 m atteint enfin le palier 1 mais à 9,21 m — hors d'une piste qui en fait
+## 9,00. On garde la glisse la plus longue qui reste sur le bitume.
+@export var drift_exit_radius: float = 42.0
+
+## Palier de mini-turbo visé avant de lâcher, de 1 à 3. Une IA gourmande tient
+## la glisse plus longtemps et sort plus vite — c'est un des quatre leviers de
+## difficulté, et le seul qui se voie à l'œil nu.
+@export var drift_release_tier: int = 2
+
+## Décalage constant par rapport à la ligne idéale, en mètres vers la droite.
+## Une IA qui vise systématiquement à côté pilote mal sans jamais être bridée.
+@export var lateral_bias: float = 0.0
+
+## Intervalle entre deux décisions, en secondes. Zéro veut dire une décision
+## par image. Au-delà, l'IA tient sa commande précédente : elle braque en
+## retard plutôt que mollement, ce qui est la façon dont un humain rate un
+## virage.
+@export var reaction_delay: float = 0.0
+
+## Contre-braquage maximal que l'IA s'autorise pendant une glisse, en part
+## d'inversion. Le moteur casse la glisse au-delà de -0,8 : mesuré sur
+## track_01, l'épingle fait 18 m de rayon quand le dérapage en décrit 8,5 à
+## 11, donc l'IA sur-tournait, contre-braquait à fond et cassait sa propre
+## glisse en six images — jamais un seul mini-turbo encaissé. Un pilote
+## contre-braque dans la glisse, pas assez fort pour la perdre.
+const CONTRE_BRAQUAGE_MAX := -0.7
+
+## Renseignés par la session avant chaque image. Les lire soi-même coûterait
+## une projection de plus par kart, et global_position interdirait de tester
+## cette classe hors de l'arbre.
+var track: TrackCurve
+var distance: float = 0.0
+var position := Vector3.ZERO
+
+var _depuis_decision: float = 0.0
+var _steer_decide: float = 0.0
+var _drift_decide: bool = false
+var _jamais_decide: bool = true
+
+
+## Distance de mire le long de l'axe : là où l'IA regarde.
+func distance_visee() -> float:
+	return distance + maxf(kart.motor.speed * aim_time, aim_minimum)
+
+
+## Le point de mire, sur la ligne de course, devant le kart. Le biais latéral
+## s'applique à ce point et non à la distance : viser à côté ne veut pas dire
+## viser plus loin.
+func point_vise() -> Vector3:
+	var ou := distance_visee()
+	return track.racing_line_at(ou) + track.right_at(ou) * lateral_bias
+
+
+func _fill(delta: float) -> void:
+	_depuis_decision += delta
+	if _jamais_decide or _depuis_decision >= reaction_delay:
+		_jamais_decide = false
+		_depuis_decision = 0.0
+		_steer_decide = _braquage()
+		_drift_decide = _veut_deraper()
+
+	command.throttle = 1.0
+	command.drift = _drift_decide
+	command.steer = _brider_pour_tenir_la_glisse(_steer_decide)
+
+
+## Écart de cap entre la direction du kart et celle du point de mire, en
+## radians, ramené dans [-PI, PI]. Positif = la cible est à droite.
+func ecart_de_cap() -> float:
+	var vers := point_vise() - position
+	vers.y = 0.0
+	if vers.length_squared() < 0.0001:
+		return 0.0
+	var cap_voulu := atan2(vers.x, -vers.z)
+	return wrapf(cap_voulu - kart.motor.heading, -PI, PI)
+
+
+func _braquage() -> float:
+	var plein := deg_to_rad(full_steer_angle_deg)
+	return clampf(ecart_de_cap() / plein, -1.0, 1.0)
+
+
+## Rabote le contre-braquage tant qu'on veut garder la glisse. Appliqué après
+## la décision et non dedans : quand l'IA veut sortir, elle contre-braque
+## librement, et c'est justement ce qui la fait sortir vite.
+func _brider_pour_tenir_la_glisse(braquage: float) -> float:
+	if not _drift_decide or kart.motor.state != KartMotor.State.DRIFT:
+		return braquage
+	var sens := float(kart.motor.drift_dir)
+	if sens == 0.0:
+		return braquage
+	return maxf(braquage * sens, CONTRE_BRAQUAGE_MAX) * sens
+
+
+## Distance à laquelle on juge la sévérité du virage. Bien plus courte que la
+## mire du braquage, et pour une raison mesurée : à 0,45 s d'anticipation,
+## l'IA visait déjà 10 m après l'apex quand ses roues entraient dans l'épingle.
+## Elle engageait donc la glisse à 399 m sur un rayon vu de 17,8 m, et la
+## relâchait à 411 m parce que sa mire lisait 35,9 m — six images de glisse,
+## pile au moment où il aurait fallu la tenir.
+##
+## Le braquage doit regarder loin, la glisse doit regarder où l'on est. Seule
+## l'entrée anticipe, d'une longueur de saut : le temps de décoller, et la
+## glisse commence quand le virage commence.
+func _distance_de_decision() -> float:
+	if kart.motor.state == KartMotor.State.GRIP:
+		return distance + kart.motor.speed * kart.stats.hop_duration
+	return distance
+
+
+## Le dérapage se décide comme le joueur appuie : un booléen, rien de plus.
+## Le moteur reste seul juge de ce qu'il en fait — c'est lui qui exige un
+## braquage suffisant à l'entrée et qui verrouille le sens de la glisse.
+func _veut_deraper() -> bool:
+	if kart.motor.speed < kart.stats.min_drift_speed:
+		return false
+
+	var rayon := track.radius_at(_distance_de_decision())
+
+	# Le saut fait partie de l'engagement : un joueur garde la gâchette
+	# enfoncée pendant qu'il décolle. En repassant par le seuil d'entrée,
+	# étroit, l'IA le ratait d'une image et retombait en adhérence — trois
+	# sauts par tour, pas une seule glisse.
+	if kart.motor.state == KartMotor.State.HOP:
+		return rayon < drift_exit_radius
+
+	if kart.motor.state == KartMotor.State.DRIFT:
+		# Une glisse tenue en ligne droite finit dans le décor, et une glisse
+		# lâchée trop tôt ne rapporte rien : on sort au premier des deux.
+		var palier := kart.motor.tier_for_charge(kart.motor.drift_charge)
+		return palier < drift_release_tier and rayon < drift_exit_radius
+
+	return rayon < drift_entry_radius
