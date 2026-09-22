@@ -29,17 +29,66 @@ shadow_enabled = true
 
 [node name="AIKart1" parent="." instance=ExtResource("6_ai")]
 
+[node name="AIInput" parent="AIKart1" index="2"]
+aim_time = 0.45
+lateral_bias = 1.0
+reaction_delay = 0.0
+drift_release_tier = 3
+full_steer_angle_deg = 12.0
+
 [node name="AIKart2" parent="." instance=ExtResource("6_ai")]
+
+[node name="AIInput" parent="AIKart2" index="2"]
+aim_time = 0.45
+lateral_bias = -0.6
+reaction_delay = 0.0
+drift_release_tier = 3
+full_steer_angle_deg = 18.0
 
 [node name="AIKart3" parent="." instance=ExtResource("6_ai")]
 
+[node name="AIInput" parent="AIKart3" index="2"]
+aim_time = 0.45
+lateral_bias = 0.6
+reaction_delay = 0.3
+drift_release_tier = 2
+full_steer_angle_deg = 22.0
+
 [node name="AIKart4" parent="." instance=ExtResource("6_ai")]
+
+[node name="AIInput" parent="AIKart4" index="2"]
+aim_time = 0.45
+lateral_bias = -1.0
+reaction_delay = 0.36
+drift_release_tier = 2
+full_steer_angle_deg = 26.0
 
 [node name="AIKart5" parent="." instance=ExtResource("6_ai")]
 
+[node name="AIInput" parent="AIKart5" index="2"]
+aim_time = 0.45
+lateral_bias = 0.2
+reaction_delay = 0.4
+drift_release_tier = 2
+full_steer_angle_deg = 30.0
+
 [node name="AIKart6" parent="." instance=ExtResource("6_ai")]
 
+[node name="AIInput" parent="AIKart6" index="2"]
+aim_time = 0.45
+lateral_bias = -0.2
+reaction_delay = 0.44
+drift_release_tier = 1
+full_steer_angle_deg = 36.0
+
 [node name="AIKart7" parent="." instance=ExtResource("6_ai")]
+
+[node name="AIInput" parent="AIKart7" index="2"]
+aim_time = 0.45
+lateral_bias = 1.2
+reaction_delay = 0.48
+drift_release_tier = 1
+full_steer_angle_deg = 44.0
 
 [node name="ChaseCamera" type="Camera3D" parent="."]
 script = ExtResource("3_camera")
