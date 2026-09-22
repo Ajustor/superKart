@@ -16,6 +16,11 @@ extends Camera3D
 var _kart: Kart
 var _roll: float = 0.0
 
+## Faux jusqu'à la première image : la caméra se pose alors directement derrière
+## le kart. Sans ça elle partait de l'origine du monde et traversait le décor
+## pendant tout le décompte, pile quand le joueur regarde sa case.
+var _placee: bool = false
+
 
 func _ready() -> void:
 	_kart = get_node(target_path) as Kart
@@ -29,7 +34,11 @@ func _physics_process(delta: float) -> void:
 
 	var desired := _kart.global_position - forward * distance + Vector3.UP * height
 	# Un suivi à ressort : la caméra se laisse distancer à l'accélération.
-	global_position = global_position.lerp(desired, 1.0 - exp(-follow_stiffness * delta))
+	if _placee:
+		global_position = global_position.lerp(desired, 1.0 - exp(-follow_stiffness * delta))
+	else:
+		global_position = desired
+		_placee = true
 
 	look_at(_kart.global_position + forward * look_ahead + Vector3.UP * 0.8, Vector3.UP)
 

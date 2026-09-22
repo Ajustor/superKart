@@ -46,6 +46,9 @@ func _monter(combien: int, avec_ia: bool = false) -> void:
 	track.half_width = 9.0
 	track.track_curve = TrackCurve.new(_anneau(), 9.0)
 	session = RaceSession.new()
+	# Sans décompte : ces tests roulent dès la première image. Le décompte a
+	# ses propres tests, plus bas.
+	session.duree_decompte = 0.0
 	for i in combien:
 		var k := _kart()
 		karts.append(k)
@@ -233,15 +236,8 @@ func test_la_grille_tient_sur_la_chaussee() -> void:
 			"la case %d doit être sur le bitume, pas sur le bas-côté" % i)
 
 
-## Rejoue le placement de la session pour la case donnée.
 func _place_de_la_case(index: int) -> Transform3D:
-	var rangee := index / RaceSession.GRID_COLUMNS
-	var colonne := index % RaceSession.GRID_COLUMNS
-	var d := RaceSession.DEPART \
-		- float(rangee) * RaceSession.GRID_ROW_SPACING \
-		- float(colonne) * RaceSession.GRID_COLUMN_STAGGER
-	var lateral := (float(colonne) - 0.5) * 2.0 * RaceSession.GRID_COLUMN_OFFSET
-	return track.spawn_at(d, lateral)
+	return session.transformee_de_case(index)
 
 
 func test_le_classement_suit_la_distance_parcourue() -> void:
@@ -364,3 +360,214 @@ func test_tomber_sous_la_route_teleporte_toujours() -> void:
 
 	assert_eq(karts[0].motor.speed, 0.0,
 		"le garde-fou doit toujours rattraper un kart réellement tombé")
+
+
+# --- Décompte et départ -----------------------------------------------------
+
+func _monter_avec_decompte(combien: int, duree: float) -> void:
+	_demonter()
+	track = Track.new()
+	track.half_width = 9.0
+	track.track_curve = TrackCurve.new(_anneau(), 9.0)
+	session = RaceSession.new()
+	session.duree_decompte = duree
+	for i in combien:
+		karts.append(_kart())
+	session.demarrer(track, karts)
+
+
+func test_le_decompte_fige_les_karts_sur_leur_case() -> void:
+	_monter_avec_decompte(3, 3.0)
+	assert_false(session.en_course, "la course attend le vert")
+	for k in karts:
+		assert_false(k.controle_actif, "aucun kart ne part avant le vert")
+
+
+func test_le_decompte_n_entre_dans_aucun_chrono() -> void:
+	_monter_avec_decompte(1, 3.0)
+	for i in 60:
+		session.avancer_decompte(1.0 / 60.0)
+		session.avancer(_joueur(), track.track_curve.position_at(0.0), 1.0 / 60.0)
+	assert_almost_eq(_joueur().timer.current, 0.0, 0.0001,
+		"une seconde de décompte ne doit pas coûter une seconde au chrono")
+	assert_almost_eq(_joueur().temps_course, 0.0, 0.0001)
+
+
+func test_le_vert_lache_tout_le_monde() -> void:
+	_monter_avec_decompte(3, 3.0)
+	watch_signals(session)
+	for i in 200:
+		session.avancer_decompte(1.0 / 60.0)
+	assert_true(session.en_course)
+	for k in karts:
+		assert_true(k.controle_actif, "chaque kart est lâché au vert")
+	assert_signal_emit_count(session, "depart", 1, "un seul départ, pas un par image")
+	assert_signal_emit_count(session, "decompte", 3, "trois, deux, un")
+
+
+func test_sans_decompte_la_course_part_tout_de_suite() -> void:
+	_monter_avec_decompte(2, 0.0)
+	assert_true(session.en_course)
+	assert_true(karts[0].controle_actif)
+
+
+# --- Case de départ du joueur ------------------------------------------------
+
+func test_les_cases_attribuees_sont_toutes_distinctes() -> void:
+	for choix in range(0, 10):
+		var cases := RaceSession.cases_attribuees(8, choix)
+		var triees := cases.duplicate()
+		triees.sort()
+		assert_eq(triees, [0, 1, 2, 3, 4, 5, 6, 7],
+			"choisir la case %d ne doit ni doubler ni oublier une case" % choix)
+
+
+func test_le_joueur_prend_la_case_choisie() -> void:
+	assert_eq(RaceSession.cases_attribuees(8, 1)[0], 0, "1 = pole position")
+	assert_eq(RaceSession.cases_attribuees(8, 5)[0], 4)
+	assert_eq(RaceSession.cases_attribuees(8, 8)[0], 7)
+
+
+func test_sans_choix_le_joueur_part_du_fond() -> void:
+	assert_eq(RaceSession.cases_attribuees(8, 0)[0], 7)
+	assert_eq(RaceSession.cases_attribuees(8, 42)[0], 7,
+		"une case hors grille renvoie au fond, pas dans le vide")
+
+
+func test_l_ia_la_plus_rapide_part_devant() -> void:
+	var cases := RaceSession.cases_attribuees(8, 1)
+	assert_eq(cases, [0, 1, 2, 3, 4, 5, 6, 7])
+	cases = RaceSession.cases_attribuees(8, 3)
+	assert_eq(cases, [2, 0, 1, 3, 4, 5, 6, 7],
+		"les adversaires gardent leur ordre autour de la case du joueur")
+
+
+func test_la_pole_position_est_sur_la_ligne() -> void:
+	_demonter()
+	track = Track.new()
+	track.half_width = 9.0
+	track.track_curve = TrackCurve.new(_anneau(), 9.0)
+	session = RaceSession.new()
+	session.duree_decompte = 0.0
+	session.case_du_joueur = 1
+	for i in 8:
+		karts.append(_kart())
+	session.demarrer(track, karts)
+	assert_almost_eq(_joueur().progress.distance, 0.0, 0.01,
+		"en pole, le joueur est posé sur la ligne")
+	assert_gt(wrapf(-session.entries[1].progress.distance, 0.0, track.track_curve.length), 0.5,
+		"et le premier adversaire derrière lui")
+
+
+# --- Arrivée et classement final ---------------------------------------------
+
+## Fait rouler ce concurrent jusqu'à ce qu'il boucle un tour de plus.
+func _faire_boucler(entree: RaceEntry) -> void:
+	var vise := entree.tours_comptes + 1
+	var d := entree.progress.distance
+	var garde := 0
+	while entree.tours_comptes < vise and garde < 10000:
+		d += 0.5
+		garde += 1
+		session.avancer(entree, track.track_curve.position_at(d), 1.0 / 60.0)
+
+
+func test_l_ordre_d_arrivee_prime_sur_la_distance() -> void:
+	_monter(2)
+	session.lap_count = 1
+	_faire_boucler(session.entries[0])
+	_faire_boucler(session.entries[1])
+	assert_eq(session.entries[0].place_finale, 1)
+	assert_eq(session.entries[1].place_finale, 2)
+
+	# Le second continue de rouler bien plus loin que le vainqueur.
+	session.entries[1].progress.total += 500.0
+	session.classer()
+	assert_eq(session.entries[0].position, 1,
+		"le vainqueur reste premier, même dépassé après la ligne")
+
+
+func test_le_temps_de_course_s_arrete_a_l_arrivee() -> void:
+	session.lap_count = 1
+	_faire_boucler(_joueur())
+	var fige := _joueur().temps_course
+	assert_gt(fige, 1.0)
+	for i in 30:
+		session.avancer(_joueur(), track.track_curve.position_at(10.0), 1.0 / 60.0)
+	assert_almost_eq(_joueur().temps_course, fige, 0.0001)
+
+
+func test_la_course_se_termine_quand_tout_le_monde_a_fini() -> void:
+	_monter(2)
+	session.lap_count = 1
+	watch_signals(session)
+	_faire_boucler(session.entries[0])
+	assert_false(session.terminee, "il reste quelqu'un en piste")
+	_faire_boucler(session.entries[1])
+	assert_true(session.terminee)
+	assert_signal_emit_count(session, "course_terminee", 1)
+	assert_signal_emit_count(session, "arrivee", 2)
+
+
+func test_le_joueur_passe_en_pilote_automatique_apres_l_arrivee() -> void:
+	session.lap_count = 1
+	var manette := PlayerInput.new()
+	karts[0].changer_pilote(manette)
+	assert_true(karts[0].est_pilote_par_le_joueur())
+
+	_faire_boucler(_joueur())
+
+	assert_false(karts[0].est_pilote_par_le_joueur(),
+		"le tour d'honneur se fait sans les mains")
+	var pilote := karts[0].get_node_or_null("PiloteAutomatique") as AIInput
+	assert_not_null(pilote)
+	assert_eq(pilote.track, track.track_curve,
+		"le kart consulte son pilote avant la prochaine image de la session : "
+		+ "il doit déjà savoir où viser")
+	manette.free()
+
+
+func test_le_classement_rend_les_concurrents_dans_l_ordre() -> void:
+	_monter(3)
+	session.entries[0].progress.total = 10.0
+	session.entries[1].progress.total = 30.0
+	session.entries[2].progress.total = 20.0
+	session.classer()
+	var ordre := session.classement()
+	assert_eq(ordre[0], session.entries[1])
+	assert_eq(ordre[1], session.entries[2])
+	assert_eq(ordre[2], session.entries[0])
+
+
+func test_chaque_concurrent_a_un_nom() -> void:
+	_demonter()
+	track = Track.new()
+	track.half_width = 9.0
+	track.track_curve = TrackCurve.new(_anneau(), 9.0)
+	session = RaceSession.new()
+	session.noms = PackedStringArray(["Vous", "Turbo"])
+	for i in 3:
+		karts.append(_kart())
+	session.demarrer(track, karts)
+	assert_eq(session.entries[0].nom, "Vous")
+	assert_eq(session.entries[1].nom, "Turbo")
+	assert_ne(session.entries[2].nom, "", "un nom manquant ne laisse pas une ligne vide")
+
+
+func test_sur_la_grille_la_place_est_la_case() -> void:
+	_demonter()
+	track = Track.new()
+	track.half_width = 9.0
+	track.track_curve = TrackCurve.new(_anneau(), 9.0)
+	session = RaceSession.new()
+	session.duree_decompte = 3.0
+	session.case_du_joueur = 1
+	for i in 4:
+		karts.append(_kart())
+	session.demarrer(track, karts)
+	# Le bruit de tassement qui trompait le tri sur la distance.
+	session.entries[0].progress.total = -0.002
+	session.entries[3].progress.total = 0.004
+	session.classer()
+	assert_eq(session.entries[0].position, 1, "en pole, on est premier avant le départ")
+	assert_eq(session.entries[3].position, 4)

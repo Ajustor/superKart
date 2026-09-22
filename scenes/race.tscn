@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/tracks/track_01.tscn" id="1_track"]
 [ext_resource type="PackedScene" path="res://scenes/kart/kart.tscn" id="2_kart"]
@@ -6,6 +6,11 @@
 [ext_resource type="Script" path="res://scripts/camera/chase_camera.gd" id="3_camera"]
 [ext_resource type="Script" path="res://scripts/race/race_session.gd" id="4_session"]
 [ext_resource type="Script" path="res://scripts/ui/race_hud.gd" id="5_hud"]
+[ext_resource type="Script" path="res://scripts/race/grid_markings.gd" id="7_grid"]
+[ext_resource type="Script" path="res://scripts/audio/race_sounds.gd" id="8_sounds"]
+[ext_resource type="Script" path="res://scripts/ui/touch_controls.gd" id="9_touch"]
+[ext_resource type="Script" path="res://scripts/ui/pause_menu.gd" id="10_pause"]
+[ext_resource type="Script" path="res://scripts/ui/results_screen.gd" id="11_results"]
 
 [sub_resource type="Environment" id="Env_race"]
 background_mode = 1
@@ -98,9 +103,60 @@ target_path = NodePath("../Kart")
 script = ExtResource("4_session")
 track_path = NodePath("../Track")
 kart_paths = [NodePath("../Kart"), NodePath("../AIKart1"), NodePath("../AIKart2"), NodePath("../AIKart3"), NodePath("../AIKart4"), NodePath("../AIKart5"), NodePath("../AIKart6"), NodePath("../AIKart7")]
+noms = PackedStringArray("Vous", "Turbo", "Zéphyr", "Piston", "Comète", "Bielle", "Rafale", "Gomme")
+
+[node name="GridMarkings" type="Node3D" parent="."]
+script = ExtResource("7_grid")
+session_path = NodePath("../Session")
+
+[node name="RaceSounds" type="Node" parent="."]
+script = ExtResource("8_sounds")
+session_path = NodePath("../Session")
 
 [node name="HUD" type="CanvasLayer" parent="."]
 
 [node name="RaceHUD" type="Control" parent="HUD"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 script = ExtResource("5_hud")
+session_path = NodePath("../../Session")
+
+[node name="TouchControls" type="Control" parent="HUD"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("9_touch")
+
+[node name="ResultsScreen" type="Control" parent="HUD"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("11_results")
+session_path = NodePath("../../Session")
+pause_path = NodePath("../PauseMenu")
+touch_path = NodePath("../TouchControls")
+
+[node name="PauseMenu" type="Control" parent="HUD"]
+process_mode = 3
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("10_pause")
 session_path = NodePath("../../Session")

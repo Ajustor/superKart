@@ -1,4 +1,4 @@
-[gd_scene load_steps=24 format=3]
+[gd_scene load_steps=25 format=3]
 
 [ext_resource type="Script" path="res://scripts/kart/kart.gd" id="1_kart"]
 [ext_resource type="Script" path="res://scripts/kart/player_input.gd" id="2_input"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://scripts/kart/kart_visuals.gd" id="4_visuals"]
 [ext_resource type="Script" path="res://scripts/kart/kart_suspension.gd" id="6_susp"]
 [ext_resource type="Script" path="res://scripts/kart/kart_rumble.gd" id="5_rumble"]
+[ext_resource type="Script" path="res://scripts/audio/engine_sound.gd" id="7_engine"]
 
 [sub_resource type="BoxShape3D" id="Shape_body"]
 size = Vector3(1.1, 0.7, 1.7)
@@ -220,4 +221,8 @@ wheel_paths = [NodePath("../Wheels/WheelFL"), NodePath("../Wheels/WheelFR"), Nod
 
 [node name="Rumble" type="Node" parent="."]
 script = ExtResource("5_rumble")
+kart_path = NodePath("..")
+
+[node name="EngineSound" type="AudioStreamPlayer" parent="."]
+script = ExtResource("7_engine")
 kart_path = NodePath("..")

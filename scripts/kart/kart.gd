@@ -32,6 +32,11 @@ extends CharacterBody3D
 
 var motor: KartMotor
 
+## Faux pendant le décompte : la commande est lue puis ignorée, le kart reste
+## sur sa case. La gravité, elle, continue de s'appliquer — un kart posé dix
+## centimètres au-dessus de la route doit pouvoir s'y asseoir.
+var controle_actif: bool = true
+
 var _input: KartInput
 var _vertical: float = 0.0
 var _was_hopping: bool = false
@@ -60,6 +65,8 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	var cmd := _input.poll(delta)
+	if not controle_actif:
+		cmd.clear()
 	motor.step(cmd, delta)
 
 	# Le saut d'entrée en dérapage, purement vertical.
@@ -155,6 +162,18 @@ func respawn_at(where: Transform3D) -> void:
 		# Une roue qui garde sa vitesse au moment de la téléportation fait
 		# tressauter la caisse à l'arrivée.
 		suspension.reset()
+
+
+## Confie le kart à une autre source de commande. La session s'en sert pour
+## passer le joueur en pilote automatique une fois la ligne franchie.
+func changer_pilote(source: KartInput) -> void:
+	assert(source != null, "un kart sans pilote ne se pilote pas")
+	_input = source
+	_input.kart = self
+
+
+func est_pilote_par_le_joueur() -> bool:
+	return _input is PlayerInput
 
 
 ## Renseigné de l'extérieur par la session de course : le kart ne connaît pas
