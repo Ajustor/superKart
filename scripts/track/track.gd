@@ -36,9 +36,17 @@ const NOM_CORPS := "RoadBody"
 		_reconstruire_si_montee()
 
 ## Rayon minimal, en mètres, en deçà duquel on prévient que le virage n'est pas
-## franchissable. Le kart tourne au mieux à 8,5 m en dérapage et 12,2 m en
-## adhérence : plus serré que ça, il ne passe pas, il s'encastre.
-@export var min_drivable_radius: float = 9.0
+## franchissable.
+##
+## Calé sur le rayon de braquage du kart EN ADHÉRENCE : max_speed / turn_rate,
+## soit 22 / 1,8 = 12,2 m. Le dérapage descend à 8,5 m, mais compter dessus
+## reviendrait à exiger du joueur qu'il dérape à cet endroit précis, et l'IA,
+## elle, ne dérape que dans les virages qu'elle a vus venir.
+##
+## Vérifié par la mesure : à 12,5 m de rayon minimal l'IA boucle ses trois tours
+## sans se bloquer une seule image ; à 9,5 m elle restait coincée 446 images
+## dans la même courbe.
+@export var min_drivable_radius: float = 12.5
 
 @export var road_color: Color = Color(0.36, 0.38, 0.42):
 	set(valeur):
@@ -147,7 +155,7 @@ Le pire : %.1f m de rayon à %.0f m du départ." 		% [pire[1], pire[0]]
 Un point de contrôle sans poignée fait un angle vif : tire ses "
 	texte += "poignées dans l'éditeur, ou lance
   "
-	texte += "godot --headless --script tools/smooth_track_curve.gd"
+	texte += "godot --headless --script tools/shape_track_curve.gd"
 	avertissements.append(texte)
 	return avertissements
 
@@ -159,12 +167,13 @@ Un point de contrôle sans poignée fait un angle vif : tire ses "
 ## grille de départ. Il vaut zéro par défaut pour que les remises en piste
 ## continuent de ramener le kart sur la ligne de course, où il doit être.
 func spawn_at(distance: float, lateral: float = 0.0) -> Transform3D:
-	# Dix centimètres de garde : assez pour ne pas naître encastré dans la
-	# route, trop peu pour que la chute se voie. Un mètre donnait un quart de
-	# seconde de vol plané à chaque départ et à chaque remise en piste.
+	# Décalé et surélevé dans le repère de la CHAUSSÉE : sur une route en dévers,
+	# lever le kart à la verticale du monde le décolle du bitume d'un côté et
+	# l'y enfonce de l'autre. Dix centimètres de garde : assez pour ne pas naître
+	# encastré dans la route, trop peu pour que la chute se voie.
 	var position := track_curve.racing_line_at(distance) \
 		+ track_curve.right_at(distance) * lateral \
-		+ Vector3.UP * 0.1
-	var lacet := track_curve.yaw_at(distance)
-	# Le circuit compte ses caps à la boussole, Godot à l'envers.
-	return Transform3D(Basis(Vector3.UP, -lacet), position)
+		+ track_curve.up_at(distance) * 0.1
+	# Le repère complet plutôt qu'un simple lacet : le kart naît couché sur la
+	# pente, nez en bas dans une descente, plutôt qu'à plat en train de basculer.
+	return Transform3D(track_curve.basis_at(distance), position)
