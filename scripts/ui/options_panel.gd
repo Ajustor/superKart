@@ -9,6 +9,7 @@ signal ferme
 
 var _general: HSlider
 var _effets: HSlider
+var _musique: HSlider
 var _coupe: CheckButton
 var _tactile: OptionButton
 var _auto: CheckButton
@@ -39,6 +40,7 @@ func _ready() -> void:
 	gauche.add_child(_intertitre("Son"))
 	_general = _curseur(gauche, "Volume général")
 	_effets = _curseur(gauche, "Effets et moteur")
+	_musique = _curseur(gauche, "Musique")
 	_coupe = _interrupteur(gauche, "Couper le son")
 
 	gauche.add_child(_intertitre("Affichage"))
@@ -66,6 +68,9 @@ func _ready() -> void:
 		GameSettings.valider())
 	_effets.value_changed.connect(func(v: float) -> void:
 		GameSettings.volume_effets = v
+		GameSettings.valider())
+	_musique.value_changed.connect(func(v: float) -> void:
+		GameSettings.volume_musique = v
 		GameSettings.valider())
 	_coupe.toggled.connect(func(v: bool) -> void:
 		GameSettings.son_coupe = v
@@ -104,6 +109,7 @@ func _sur_visibilite() -> void:
 func _relire() -> void:
 	_general.set_value_no_signal(GameSettings.volume_general)
 	_effets.set_value_no_signal(GameSettings.volume_effets)
+	_musique.set_value_no_signal(GameSettings.volume_musique)
 	_coupe.set_pressed_no_signal(GameSettings.son_coupe)
 	_tactile.select(_tactile.get_item_index(GameSettings.tactile))
 	_auto.set_pressed_no_signal(GameSettings.acceleration_auto)

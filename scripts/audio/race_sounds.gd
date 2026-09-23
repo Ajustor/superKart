@@ -31,6 +31,9 @@ func _ready() -> void:
 	_lecteur = AudioStreamPlayer.new()
 	_lecteur.bus = &"Effets"
 	add_child(_lecteur)
+	var musique := RaceMusic.new()
+	musique.session = _session
+	add_child(musique)
 
 	_bip = Synth.notes([[440.0, 0.18]])
 	_go = Synth.notes([[880.0, 0.5]])

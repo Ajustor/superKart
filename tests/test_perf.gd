@@ -89,3 +89,43 @@ func test_revenir_en_haute_rend_ce_que_le_circuit_avait_prevu() -> void:
 func test_en_automatique_un_pc_est_en_haute() -> void:
 	assert_eq(QualiteGraphique.effectif(QualiteGraphique.Niveau.AUTO), QualiteGraphique.Niveau.HAUTE,
 		"les tests tournent sur un PC ; un téléphone passerait en MOYENNE")
+
+
+# --- Musique -------------------------------------------------------------------------
+
+func test_chaque_style_compose_une_boucle_propre() -> void:
+	for style in Musique.Style.values():
+		var flux := Musique.composer(style)
+		assert_eq(flux.loop_mode, AudioStreamWAV.LOOP_FORWARD, "elle boucle")
+		var secondes := flux.data.size() / 2.0 / Musique.FREQUENCE
+		assert_between(secondes, 8.0, 25.0, "style %d : huit mesures" % style)
+		assert_same(Musique.composer(style), flux, "composée une seule fois")
+		var crete := 0
+		for i in range(0, flux.data.size(), 64):
+			crete = maxi(crete, absi(flux.data.decode_s16(i)))
+		assert_between(crete, 5000, 32000, "style %d : audible, sans écrêter" % style)
+
+
+func test_chaque_circuit_a_son_air() -> void:
+	var styles := {}
+	for info in TrackCatalog.PISTES:
+		var piste: Track = info.scene.instantiate()
+		styles[piste.musique] = true
+		piste.free()
+	assert_eq(styles.size(), TrackCatalog.PISTES.size())
+
+
+func test_la_course_joue_la_musique_du_circuit() -> void:
+	var reglage := RaceSetup.new()
+	reglage.choisir_piste(TrackCatalog.par_id("forteresse_lave"))
+	var course := RaceLauncher.monter(reglage)
+	add_child_autofree(course)
+	await wait_process_frames(3)
+	var musique: RaceMusic = course.find_children("*", "RaceMusic", true, false)[0]
+	var session: RaceSession = course.get_node("Session")
+	while not session.en_course:
+		session.avancer_decompte(0.5)
+	await wait_process_frames(2)
+	await wait_until(func() -> bool: return musique._lecteur.playing, 5.0)
+	assert_true(musique._lecteur.playing, "elle part au vert")
+	assert_same(musique._lecteur.stream, Musique.deja_composee(Musique.Style.FORTERESSE))

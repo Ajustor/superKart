@@ -1,0 +1,200 @@
+class_name Musique
+extends RefCounted
+
+## La musique des circuits, composée par le jeu lui-même : comme les bruitages
+## (Synth), elle est calculée plutôt qu'enregistrée, et le dépôt ne porte
+## aucun fichier audio.
+##
+## Une boucle de huit mesures par style : une basse, une mélodie, un arpège
+## et une batterie, sur une grille d'accords. La mélodie est tirée d'une
+## graine propre au style, toujours la même : chaque circuit a son air, qu'on
+## retrouve d'une course à l'autre.
+##
+## Composer prend du temps (quelques secondes sur téléphone) : c'est fait
+## dans un fil à part, et chaque boucle n'est composée qu'une fois par
+## partie (cache).
+
+enum Style { COLLINES, PLAGE, FORTERESSE, CIEL }
+
+const FREQUENCE := 16000
+const MESURES := 8
+
+## Tempo, tonique (note MIDI), gamme (demi-tons), grille (degrés de la gamme,
+## un accord par mesure, répétée), rythme de la basse, et l'octave de l'arpège.
+const STYLES := {
+	Style.COLLINES: {
+		tempo = 132.0, tonique = 60, gamme = [0, 2, 4, 5, 7, 9, 11],
+		grille = [0, 4, 5, 3], basse = [1, 0, 1, 1, 0, 1, 1, 0], arpege = 12, graine = 11,
+	},
+	Style.PLAGE: {
+		tempo = 118.0, tonique = 62, gamme = [0, 2, 4, 5, 7, 9, 11],
+		grille = [0, 3, 4, 3], basse = [1, 0, 0, 1, 0, 0, 1, 0], arpege = 12, graine = 27,
+	},
+	Style.FORTERESSE: {
+		tempo = 148.0, tonique = 57, gamme = [0, 2, 3, 5, 7, 8, 11],
+		grille = [0, 5, 6, 4], basse = [1, 1, 1, 1, 1, 1, 1, 1], arpege = 0, graine = 5,
+	},
+	Style.CIEL: {
+		tempo = 116.0, tonique = 65, gamme = [0, 2, 4, 6, 7, 9, 11],
+		grille = [0, 2, 3, 4], basse = [1, 0, 0, 0, 1, 0, 0, 0], arpege = 24, graine = 42,
+	},
+}
+
+static var _cache: Dictionary = {}
+
+
+## La boucle d'un style, si elle est déjà composée ; null sinon.
+static func deja_composee(style: int) -> AudioStreamWAV:
+	return _cache.get(style)
+
+
+## Compose la boucle et la garde. Peut tourner dans un autre fil.
+static func composer(style: int) -> AudioStreamWAV:
+	if _cache.has(style):
+		return _cache[style]
+	var s: Dictionary = STYLES[style]
+	var noire := 60.0 / float(s.tempo)
+	var croche := noire * 0.5
+	var double := noire * 0.25
+	var total := int(noire * 4.0 * MESURES * FREQUENCE)
+	var piste := PackedFloat32Array()
+	piste.resize(total)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = s.graine
+	var gamme: Array = s.gamme
+	var grille: Array = s.grille
+
+	for mesure in MESURES:
+		var debut_mesure := mesure * 4.0 * noire
+		var degre: int = grille[mesure % grille.size()]
+		var accord := [_note(s, degre), _note(s, degre + 2), _note(s, degre + 4)]
+		# Basse : la fondamentale, une octave en dessous, sur le rythme du style.
+		var rythme: Array = s.basse
+		for c in 8:
+			if rythme[c] == 1:
+				var hauteur: int = accord[0] - 24 + (12 if c % 4 == 3 else 0)
+				_poser(piste, debut_mesure + c * croche, croche * 0.9, hauteur, 0.30, _triangle)
+		# Arpège : les notes de l'accord en doubles croches, courtes et discrètes.
+		for d in 16:
+			var hauteur: int = accord[d % 3] + int(s.arpege)
+			_poser(piste, debut_mesure + d * double, double * 0.6, hauteur, 0.08, _carre)
+		# Mélodie : des notes de l'accord sur les temps forts, des notes de la
+		# gamme entre deux ; la seconde moitié reprend la première, un peu
+		# changée à la fin — assez de répétition pour qu'on la retienne.
+		var t := 0.0
+		var graine_mesure: int = s.graine * 100 + (mesure % 4) * 7 + (1 if mesure >= 6 else 0)
+		rng.seed = graine_mesure
+		while t < 4.0 * noire - 0.001:
+			var duree := noire if rng.randf() < 0.45 else croche
+			if rng.randf() < 0.12:
+				t += duree
+				continue
+			var fort := fmod(t, noire) < 0.001
+			var hauteur: int
+			if fort:
+				hauteur = accord[rng.randi_range(0, 2)] + 12
+			else:
+				hauteur = _note(s, degre + rng.randi_range(0, gamme.size() - 1)) + 12
+			_poser(piste, debut_mesure + t, duree * 0.85, hauteur, 0.16, _carre_doux)
+			t += duree
+		# Batterie : grosse caisse sur 1 et 3, caisse claire sur 2 et 4,
+		# charleston à chaque croche.
+		for c in 8:
+			var quand := debut_mesure + c * croche
+			if c % 4 == 0:
+				_frapper(piste, quand, 0.12, 0.45, true)
+			elif c % 4 == 2:
+				_frapper(piste, quand, 0.1, 0.22, false)
+			_bruit(piste, quand, 0.03, 0.05)
+
+	var flux := _en_wav(piste)
+	_cache[style] = flux
+	return flux
+
+
+## Le degré `degre` de la gamme du style, en note MIDI (les degrés au-delà de
+## la gamme montent d'une octave).
+static func _note(s: Dictionary, degre: int) -> int:
+	var gamme: Array = s.gamme
+	var octave := floori(float(degre) / gamme.size())
+	return int(s.tonique) + gamme[posmod(degre, gamme.size())] + 12 * octave
+
+
+static func frequence(midi: int) -> float:
+	return 440.0 * pow(2.0, (midi - 69) / 12.0)
+
+
+static func _carre(phase: float) -> float:
+	return 1.0 if phase < 0.5 else -1.0
+
+
+static func _carre_doux(phase: float) -> float:
+	return 0.55 * (1.0 if phase < 0.25 else -1.0) + 0.45 * sin(phase * TAU)
+
+
+static func _triangle(phase: float) -> float:
+	return 4.0 * absf(phase - 0.5) - 1.0
+
+
+## Ajoute une note à la piste : attaque courte, chute douce.
+static func _poser(piste: PackedFloat32Array, debut: float, duree: float, midi: int,
+		volume: float, onde: Callable) -> void:
+	var f := frequence(midi) / FREQUENCE
+	var i0 := int(debut * FREQUENCE)
+	var n := int(duree * FREQUENCE)
+	var phase := 0.0
+	for i in n:
+		var k := i0 + i
+		if k >= piste.size():
+			return
+		var t := float(i) / FREQUENCE
+		var enveloppe := minf(t / 0.004, 1.0) * clampf(1.0 - t / duree, 0.0, 1.0)
+		phase = fmod(phase + f, 1.0)
+		piste[k] += onde.call(phase) * enveloppe * volume
+
+
+## Grosse caisse (sinus qui plonge) ou caisse claire (bruit).
+static func _frapper(piste: PackedFloat32Array, debut: float, duree: float, volume: float,
+		grosse: bool) -> void:
+	if not grosse:
+		_bruit(piste, debut, duree, volume)
+		return
+	var i0 := int(debut * FREQUENCE)
+	var n := int(duree * FREQUENCE)
+	var phase := 0.0
+	for i in n:
+		var k := i0 + i
+		if k >= piste.size():
+			return
+		var t := float(i) / FREQUENCE
+		phase += lerpf(140.0, 45.0, t / duree) / FREQUENCE
+		piste[k] += sin(phase * TAU) * (1.0 - t / duree) * volume
+
+
+static func _bruit(piste: PackedFloat32Array, debut: float, duree: float, volume: float) -> void:
+	var i0 := int(debut * FREQUENCE)
+	var n := int(duree * FREQUENCE)
+	for i in n:
+		var k := i0 + i
+		if k >= piste.size():
+			return
+		piste[k] += randf_range(-1.0, 1.0) * (1.0 - float(i) / n) * volume
+
+
+static func _en_wav(piste: PackedFloat32Array) -> AudioStreamWAV:
+	var donnees := PackedByteArray()
+	donnees.resize(piste.size() * 2)
+	for i in piste.size():
+		# Une légère saturation plutôt qu'un écrêtage sec, là où les voix
+		# s'additionnent.
+		var v := tanh(piste[i])
+		donnees.encode_s16(i * 2, int(v * 30000.0))
+	var flux := AudioStreamWAV.new()
+	flux.format = AudioStreamWAV.FORMAT_16_BITS
+	flux.mix_rate = FREQUENCE
+	flux.stereo = false
+	flux.data = donnees
+	flux.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	flux.loop_begin = 0
+	flux.loop_end = piste.size()
+	return flux

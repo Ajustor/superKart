@@ -22,6 +22,7 @@ script = ExtResource("1_track")
 curve = ExtResource("2_curve")
 rangees_objets = PackedFloat32Array(0.08, 0.5, 0.86)
 motif = 1
+musique = 3
 
 [node name="CurveEditor" type="Path3D" parent="."]
 curve = ExtResource("2_curve")

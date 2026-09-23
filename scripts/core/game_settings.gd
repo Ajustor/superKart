@@ -14,11 +14,13 @@ enum Tactile { AUTO, TOUJOURS, JAMAIS }
 
 const CHEMIN_PAR_DEFAUT := "user://reglages.cfg"
 const BUS_EFFETS := &"Effets"
+const BUS_MUSIQUE := &"Musique"
 
 ## Volumes linéaires, de 0 à 1 : c'est ce que montre un curseur. La conversion
 ## en décibels se fait au seul endroit où l'on parle au mixeur.
 var volume_general: float = 0.8
 var volume_effets: float = 1.0
+var volume_musique: float = 0.6
 var son_coupe: bool = false
 
 var tactile: int = Tactile.AUTO
@@ -69,6 +71,7 @@ func charger() -> void:
 		return
 	volume_general = clampf(float(fichier.get_value("son", "general", volume_general)), 0.0, 1.0)
 	volume_effets = clampf(float(fichier.get_value("son", "effets", volume_effets)), 0.0, 1.0)
+	volume_musique = clampf(float(fichier.get_value("son", "musique", volume_musique)), 0.0, 1.0)
 	son_coupe = bool(fichier.get_value("son", "coupe", son_coupe))
 	tactile = clampi(int(fichier.get_value("commandes", "tactile", tactile)), Tactile.AUTO, Tactile.JAMAIS)
 	acceleration_auto = bool(fichier.get_value("commandes", "acceleration_auto", acceleration_auto))
@@ -90,6 +93,7 @@ func sauver() -> void:
 	var fichier := ConfigFile.new()
 	fichier.set_value("son", "general", volume_general)
 	fichier.set_value("son", "effets", volume_effets)
+	fichier.set_value("son", "musique", volume_musique)
 	fichier.set_value("son", "coupe", son_coupe)
 	fichier.set_value("commandes", "tactile", tactile)
 	fichier.set_value("commandes", "acceleration_auto", acceleration_auto)
@@ -125,6 +129,10 @@ func appliquer() -> void:
 	if effets >= 0:
 		AudioServer.set_bus_volume_db(effets, volume_en_db(volume_effets))
 		AudioServer.set_bus_mute(effets, volume_effets <= 0.0)
+	var musique := AudioServer.get_bus_index(BUS_MUSIQUE)
+	if musique >= 0:
+		AudioServer.set_bus_volume_db(musique, volume_en_db(volume_musique))
+		AudioServer.set_bus_mute(musique, volume_musique <= 0.0)
 	appliquer_graphismes()
 
 

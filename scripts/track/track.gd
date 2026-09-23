@@ -101,6 +101,9 @@ const ARC_EN_CIEL: PackedColorArray = [
 ## liquide, on tombe dans le vide.
 @export var altitude_du_liquide: float = -1000.0
 
+## L'air qui accompagne la course (voir Musique).
+@export var musique: Musique.Style = Musique.Style.COLLINES
+
 var track_curve: TrackCurve
 
 ## En deçà de cette distance avant un trou, un kart remis en piste l'est de

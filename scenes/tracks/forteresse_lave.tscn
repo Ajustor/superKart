@@ -37,6 +37,7 @@ curve = ExtResource("2_curve")
 rangees_objets = PackedFloat32Array(0.05, 0.4, 0.78)
 road_color = Color(0.3, 0.28, 0.31, 1)
 altitude_du_liquide = -4.0
+musique = 2
 
 [node name="CurveEditor" type="Path3D" parent="."]
 curve = ExtResource("2_curve")
