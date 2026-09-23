@@ -24,6 +24,10 @@ var _kart: Kart
 var _body: Node3D
 var _sparks: GPUParticles3D
 var _spark_material: StandardMaterial3D
+var _inclinaison: float = 0.0
+## Le tonneau d'une figure, de 0 à 1 ; négatif hors figure.
+var _figure: float = -1.0
+const DUREE_FIGURE := 0.45
 
 
 func _ready() -> void:
@@ -42,6 +46,7 @@ func _ready() -> void:
 	_spark_material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	_sparks.material_override = _spark_material
 	_sparks.emitting = false
+	_kart.figure.connect(func() -> void: _figure = 0.0)
 
 
 func _process(delta: float) -> void:
@@ -54,7 +59,16 @@ func _update_lean(motor: KartMotor, delta: float) -> void:
 	var lean := 0.0
 	if motor.state == KartMotor.State.DRIFT:
 		lean = -deg_to_rad(max_lean_deg) * float(motor.drift_dir)
-	_body.rotation.z = lerpf(_body.rotation.z, lean, 1.0 - exp(-lean_stiffness * delta))
+	_inclinaison = lerpf(_inclinaison, lean, 1.0 - exp(-lean_stiffness * delta))
+	# Un tonneau complet, vif au début et qui ralentit en fin de tour.
+	var tonneau := 0.0
+	if _figure >= 0.0:
+		_figure += delta / DUREE_FIGURE
+		if _figure >= 1.0:
+			_figure = -1.0
+		else:
+			tonneau = TAU * (1.0 - pow(1.0 - _figure, 2.0))
+	_body.rotation.z = _inclinaison + tonneau
 
 
 ## La recoloration est globale et instantanée : toutes les particules vivantes

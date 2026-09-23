@@ -19,6 +19,7 @@ var _lancer: AudioStreamWAV
 var _choc: AudioStreamWAV
 var _turbo_depart: AudioStreamWAV
 var _calage: AudioStreamWAV
+var _figure: AudioStreamWAV
 ## Un second lecteur pour les objets : un bip de tour ne doit pas couper le
 ## bruit du choc qui tombe à la même image.
 var _lecteur_objets: AudioStreamPlayer
@@ -42,6 +43,7 @@ func _ready() -> void:
 	_turbo_depart = Synth.notes([[523.0, 0.05], [784.0, 0.05], [1047.0, 0.05], [1568.0, 0.18]], 0.45)
 	_calage = Synth.notes([[196.0, 0.08], [0.0, 0.05], [185.0, 0.08], [0.0, 0.05], [147.0, 0.22]], 0.5)
 	_session.depart_du_joueur.connect(_sur_depart_du_joueur)
+	_figure = Synth.notes([[784.0, 0.04], [988.0, 0.04], [1319.0, 0.08]], 0.4)
 	_session.tour_boucle.connect(_sur_tour)
 
 	_lecteur_objets = AudioStreamPlayer.new()
@@ -55,6 +57,11 @@ func _ready() -> void:
 		objets.objet_recu.connect(func(e: RaceEntry, _o: int) -> void: _jouer_objet(e, _boite))
 		objets.objet_utilise.connect(func(e: RaceEntry, _o: int) -> void: _jouer_objet(e, _lancer))
 		objets.kart_touche.connect(func(e: RaceEntry) -> void: _jouer_objet(e, _choc))
+	# En dernier : la grille n'est peut-être pas encore posée, et attendre
+	# plus haut aurait retardé tout le reste.
+	if _session.entries.is_empty():
+		await _session.grille_prete
+	_session.entries[0].kart.figure.connect(func() -> void: _jouer_objet(_session.entries[0], _figure))
 
 
 ## Seulement pour le joueur : entendre sept adversaires ramasser des boîtes ne
