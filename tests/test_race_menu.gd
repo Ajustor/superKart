@@ -128,6 +128,8 @@ func test_les_reglages_survivent_a_un_redemarrage() -> void:
 	avant.acceleration_auto = false
 	avant.vibrations = false
 	avant.mini_carte = false
+	avant.afficher_fps = true
+	avant.qualite = QualiteGraphique.Niveau.BASSE
 	avant.sauver()
 	avant.free()
 
@@ -140,6 +142,8 @@ func test_les_reglages_survivent_a_un_redemarrage() -> void:
 	assert_false(apres.acceleration_auto)
 	assert_false(apres.vibrations)
 	assert_false(apres.mini_carte)
+	assert_true(apres.afficher_fps)
+	assert_eq(apres.qualite, QualiteGraphique.Niveau.BASSE)
 	apres.free()
 
 
@@ -149,6 +153,7 @@ func test_un_fichier_absent_garde_les_valeurs_par_defaut() -> void:
 	assert_almost_eq(r.volume_general, 0.8, 0.001)
 	assert_false(r.son_coupe)
 	assert_true(r.mini_carte, "la mini-carte est là par défaut")
+	assert_false(r.afficher_fps, "le compteur est caché par défaut")
 	r.free()
 
 

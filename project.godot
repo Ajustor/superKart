@@ -18,6 +18,7 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 
 GameSettings="*res://scripts/core/game_settings.gd"
 Reseau="*res://scripts/net/network_manager.gd"
+PerfOverlay="*res://scripts/core/perf_overlay.gd"
 
 [display]
 

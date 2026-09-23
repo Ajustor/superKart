@@ -14,37 +14,45 @@ var _tactile: OptionButton
 var _auto: CheckButton
 var _vibrations: CheckButton
 var _mini_carte: CheckButton
+var _fps: CheckButton
+var _qualite: OptionButton
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UITheme.theme()
-	var colonne := UITheme.panneau_centre(self, 620.0)
+	var colonne := UITheme.panneau_centre(self, 1080.0)
 	colonne.add_child(UITheme.titre("OPTIONS", 38))
+	# Deux colonnes : sur un téléphone tenu en paysage, une seule dépassait
+	# du bas de l'écran.
+	var colonnes := HBoxContainer.new()
+	colonnes.add_theme_constant_override("separation", 36)
+	colonne.add_child(colonnes)
+	var gauche := VBoxContainer.new()
+	var droite := VBoxContainer.new()
+	for c in [gauche, droite]:
+		c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		c.add_theme_constant_override("separation", 10)
+		colonnes.add_child(c)
 
-	colonne.add_child(_intertitre("Son"))
-	_general = _curseur(colonne, "Volume général")
-	_effets = _curseur(colonne, "Effets et moteur")
-	_coupe = _interrupteur(colonne, "Couper le son")
+	gauche.add_child(_intertitre("Son"))
+	_general = _curseur(gauche, "Volume général")
+	_effets = _curseur(gauche, "Effets et moteur")
+	_coupe = _interrupteur(gauche, "Couper le son")
 
-	colonne.add_child(_intertitre("Commandes"))
-	var ligne := HBoxContainer.new()
-	var etiquette := Label.new()
-	etiquette.text = "Commandes tactiles"
-	etiquette.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	ligne.add_child(etiquette)
-	_tactile = OptionButton.new()
-	_tactile.add_item("Automatique", GameSettings.Tactile.AUTO)
-	_tactile.add_item("Toujours", GameSettings.Tactile.TOUJOURS)
-	_tactile.add_item("Jamais", GameSettings.Tactile.JAMAIS)
-	_tactile.custom_minimum_size = Vector2(230, 0)
-	ligne.add_child(_tactile)
-	colonne.add_child(ligne)
-	_auto = _interrupteur(colonne, "Accélération automatique (tactile)")
-	_vibrations = _interrupteur(colonne, "Vibrations de la manette")
+	gauche.add_child(_intertitre("Affichage"))
+	_qualite = _liste(gauche, "Qualité graphique", {
+		"Automatique": QualiteGraphique.Niveau.AUTO, "Haute": QualiteGraphique.Niveau.HAUTE,
+		"Moyenne": QualiteGraphique.Niveau.MOYENNE, "Basse": QualiteGraphique.Niveau.BASSE})
+	_mini_carte = _interrupteur(gauche, "Mini-carte")
+	_fps = _interrupteur(gauche, "Compteur de FPS")
 
-	colonne.add_child(_intertitre("Affichage"))
-	_mini_carte = _interrupteur(colonne, "Mini-carte")
+	droite.add_child(_intertitre("Commandes"))
+	_tactile = _liste(droite, "Commandes tactiles", {
+		"Automatique": GameSettings.Tactile.AUTO, "Toujours": GameSettings.Tactile.TOUJOURS,
+		"Jamais": GameSettings.Tactile.JAMAIS})
+	_auto = _interrupteur(droite, "Accélération automatique (tactile)")
+	_vibrations = _interrupteur(droite, "Vibrations de la manette")
 
 	var retour := UITheme.bouton("Retour", _fermer)
 	retour.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -72,6 +80,12 @@ func _ready() -> void:
 	_mini_carte.toggled.connect(func(v: bool) -> void:
 		GameSettings.mini_carte = v
 		GameSettings.valider())
+	_qualite.item_selected.connect(func(i: int) -> void:
+		GameSettings.qualite = _qualite.get_item_id(i)
+		GameSettings.valider())
+	_fps.toggled.connect(func(v: bool) -> void:
+		GameSettings.afficher_fps = v
+		GameSettings.valider())
 	visibility_changed.connect(_sur_visibilite)
 
 
@@ -90,6 +104,8 @@ func _relire() -> void:
 	_auto.set_pressed_no_signal(GameSettings.acceleration_auto)
 	_vibrations.set_pressed_no_signal(GameSettings.vibrations)
 	_mini_carte.set_pressed_no_signal(GameSettings.mini_carte)
+	_fps.set_pressed_no_signal(GameSettings.afficher_fps)
+	_qualite.select(_qualite.get_item_index(GameSettings.qualite))
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -126,6 +142,22 @@ func _curseur(colonne: VBoxContainer, texte: String) -> HSlider:
 	ligne.add_child(curseur)
 	colonne.add_child(ligne)
 	return curseur
+
+
+## Une ligne « intitulé … liste déroulante ». `choix` : texte → identifiant.
+func _liste(colonne: VBoxContainer, texte: String, choix: Dictionary) -> OptionButton:
+	var ligne := HBoxContainer.new()
+	var etiquette := Label.new()
+	etiquette.text = texte
+	etiquette.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ligne.add_child(etiquette)
+	var liste := OptionButton.new()
+	for nom in choix:
+		liste.add_item(nom, choix[nom])
+	liste.custom_minimum_size = Vector2(210, 0)
+	ligne.add_child(liste)
+	colonne.add_child(ligne)
+	return liste
 
 
 func _interrupteur(colonne: VBoxContainer, texte: String) -> CheckButton:
