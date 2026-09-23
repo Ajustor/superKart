@@ -17,6 +17,13 @@ static func lancer(arbre: SceneTree, reglage: RaceSetup) -> void:
 	arbre.change_scene_to_node(monter(reglage))
 
 
+## Une course en réseau : même scène, mais la grille vient du plan de l'hôte,
+## et chaque kart est simulé sur la machine de son pilote.
+static func lancer_reseau(arbre: SceneTree, plan: Array, config: Dictionary, moi: int, hote: bool) -> void:
+	arbre.paused = false
+	arbre.change_scene_to_node(monter_reseau(plan, config, moi, hote))
+
+
 static func retour_au_menu(arbre: SceneTree) -> void:
 	arbre.paused = false
 	arbre.change_scene_to_file(SCENE_MENU)
@@ -41,4 +48,72 @@ static func monter(reglage: RaceSetup, rng: RandomNumberGenerator = null) -> Nod
 		rng.randomize()
 	session.case_du_joueur = reglage.case_effective(session.kart_paths.size(), rng)
 	session.id_piste = reglage.piste.id if reglage.piste != null else ""
+	return course
+
+
+## Monte une course en réseau à partir du plan de l'hôte. La scène a toujours
+## le même casting — un kart de joueur, sept karts d'IA du plus rapide au plus
+## lent — et chaque machine le distribue à sa façon :
+## - le kart de joueur est toujours le pilote local : c'est lui que suivent la
+##   caméra, le HUD, le son et les vibrations ;
+## - chaque IA du plan prend le kart d'IA de son niveau ;
+## - les autres humains prennent les karts d'IA restants, qui ne sont alors
+##   plus pilotés ici mais recopiés depuis le réseau.
+static func monter_reseau(plan: Array, config: Dictionary, moi: int, hote: bool) -> Node:
+	var reglage := RaceSetup.new()
+	var piste := TrackCatalog.par_id(str(config.get("piste", "")))
+	if piste != null:
+		reglage.choisir_piste(piste)
+	reglage.tours = int(config.get("tours", reglage.tours))
+	var course := monter(reglage)
+	var session := course.get_node("Session") as RaceSession
+
+	var libres: Array[String] = []
+	for i in range(1, Lobby.PLACES):
+		libres.append("AIKart%d" % i)
+	var noeuds := {}  # gid -> nom de nœud
+	var local_gid := -1
+	for place in plan:
+		if place.peer == moi:
+			local_gid = place.gid
+			noeuds[place.gid] = "Kart"
+		elif place.niveau_ia > 0:
+			noeuds[place.gid] = "AIKart%d" % place.niveau_ia
+			libres.erase(noeuds[place.gid])
+	for place in plan:
+		if not noeuds.has(place.gid):
+			noeuds[place.gid] = libres.pop_front()
+
+	# Le joueur local d'abord : le HUD suit toujours la première entrée.
+	var ordre: Array = [local_gid]
+	for place in plan:
+		if place.gid != local_gid:
+			ordre.append(place.gid)
+	var chemins: Array[NodePath] = []
+	var cases: Array[int] = []
+	var noms := PackedStringArray()
+	for gid in ordre:
+		var place: Dictionary = plan[gid]
+		chemins.append(NodePath("../" + noeuds[gid]))
+		cases.append(gid)
+		noms.append("Vous" if gid == local_gid else place.nom)
+		var kart := course.get_node(noeuds[gid]) as Kart
+		# Simulé ici : le joueur local, et l'IA quand on est l'hôte.
+		kart.simule = gid == local_gid or (hote and place.niveau_ia > 0)
+	session.kart_paths = chemins
+	session.cases_imposees = cases
+	session.noms = noms
+	session.arbitre = hote
+	session.attente_depart = true
+	# Pas de record en réseau : les temps dépendent de qui roule devant qui.
+	session.id_piste = ""
+
+	var objets := course.get_node_or_null("Objets") as ItemManager
+	if objets != null:
+		objets.autorite = hote
+
+	var sync := RaceSync.new()
+	sync.name = "RaceSync"
+	sync.configurer(plan, moi, hote)
+	course.add_child(sync)
 	return course

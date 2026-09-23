@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/tracks/track_01.tscn" id="1_track"]
 [ext_resource type="PackedScene" path="res://scenes/kart/kart.tscn" id="2_kart"]
@@ -12,6 +12,7 @@
 [ext_resource type="Script" path="res://scripts/ui/pause_menu.gd" id="10_pause"]
 [ext_resource type="Script" path="res://scripts/ui/results_screen.gd" id="11_results"]
 [ext_resource type="Script" path="res://scripts/items/item_manager.gd" id="12_items"]
+[ext_resource type="Script" path="res://scripts/race/kart_collisions.gd" id="14_bump"]
 [ext_resource type="Resource" path="res://resources/items/item_table.tres" id="13_table"]
 
 [sub_resource type="Environment" id="Env_race"]
@@ -106,6 +107,10 @@ script = ExtResource("4_session")
 track_path = NodePath("../Track")
 kart_paths = [NodePath("../Kart"), NodePath("../AIKart1"), NodePath("../AIKart2"), NodePath("../AIKart3"), NodePath("../AIKart4"), NodePath("../AIKart5"), NodePath("../AIKart6"), NodePath("../AIKart7")]
 noms = PackedStringArray("Vous", "Turbo", "Zéphyr", "Piston", "Comète", "Bielle", "Rafale", "Gomme")
+
+[node name="KartCollisions" type="Node" parent="."]
+script = ExtResource("14_bump")
+session_path = NodePath("../Session")
 
 [node name="GridMarkings" type="Node3D" parent="."]
 script = ExtResource("7_grid")

@@ -17,6 +17,7 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 [autoload]
 
 GameSettings="*res://scripts/core/game_settings.gd"
+Reseau="*res://scripts/net/network_manager.gd"
 
 [display]
 

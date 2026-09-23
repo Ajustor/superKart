@@ -63,6 +63,12 @@ static func theme() -> Theme:
 	t.set_stylebox("grabber_area_highlight", "HSlider", _boite(ACCENT.lerp(Color.WHITE, 0.2), Color.TRANSPARENT, 4, 4))
 	t.set_stylebox("focus", "HSlider", _boite(Color.TRANSPARENT, ACCENT, 4, 2))
 
+	t.set_stylebox("normal", "LineEdit", _boite(Color(0.12, 0.13, 0.17), Color(1, 1, 1, 0.15), 8, 10))
+	t.set_stylebox("focus", "LineEdit", _boite(Color.TRANSPARENT, ACCENT, 8, 10))
+	t.set_color("font_color", "LineEdit", TEXTE)
+	t.set_color("font_placeholder_color", "LineEdit", TEXTE_DOUX.darkened(0.3))
+	t.set_color("caret_color", "LineEdit", ACCENT)
+
 	t.set_font_size("font_size", "PopupMenu", 26)
 	_cache = t
 	return t

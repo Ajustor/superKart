@@ -7,6 +7,7 @@ extends Control
 var _accueil: Control
 var _selection: Control
 var _options: OptionsPanel
+var _multi: MultiplayerPanel
 
 var _boutons_piste: Array[Button] = []
 var _description: Label
@@ -25,7 +26,11 @@ func _ready() -> void:
 	_options = OptionsPanel.new()
 	add_child(_options)
 	_options.ferme.connect(_montrer.bind(_accueil))
-	_montrer(_accueil)
+	_multi = MultiplayerPanel.new()
+	add_child(_multi)
+	_multi.ferme.connect(_montrer.bind(_accueil))
+	# De retour d'une course en réseau : on revient droit au salon.
+	_montrer(_multi if Reseau.actif() else _accueil)
 
 
 func _fond() -> void:
@@ -45,7 +50,7 @@ func _fond() -> void:
 
 
 func _montrer(ecran: Control) -> void:
-	for e in [_accueil, _selection, _options]:
+	for e in [_accueil, _selection, _options, _multi]:
 		e.visible = e == ecran
 	# Le focus clavier/manette : sans lui, un joueur à la manette ne peut rien
 	# faire dans le menu.
@@ -80,6 +85,9 @@ func _ecran_accueil() -> Control:
 	jouer.name = "Jouer"
 	jouer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	colonne.add_child(jouer)
+	var multi := UITheme.bouton("Multijoueur", func() -> void: _montrer(_multi))
+	multi.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	colonne.add_child(multi)
 	var options := UITheme.bouton("Options", func() -> void: _montrer(_options))
 	options.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	colonne.add_child(options)

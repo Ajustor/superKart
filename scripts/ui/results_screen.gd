@@ -56,10 +56,16 @@ func _ready() -> void:
 	boutons.alignment = BoxContainer.ALIGNMENT_CENTER
 	boutons.add_theme_constant_override("separation", 16)
 	_rejouer = UITheme.bouton("Rejouer", func() -> void:
-		RaceLauncher.lancer(get_tree(), GameSettings.course))
+		if Reseau.actif():
+			Reseau.retour_salon()
+		else:
+			RaceLauncher.lancer(get_tree(), GameSettings.course))
 	boutons.add_child(_rejouer)
 	boutons.add_child(UITheme.bouton("Menu principal", func() -> void:
-		RaceLauncher.retour_au_menu(get_tree())))
+		if Reseau.actif():
+			Reseau.abandonner()
+		else:
+			RaceLauncher.retour_au_menu(get_tree())))
 	colonne.add_child(boutons)
 
 	_session.arrivee.connect(_sur_arrivee)
@@ -92,6 +98,10 @@ func _process(delta: float) -> void:
 
 
 func _ouvrir() -> void:
+	# En réseau, c'est l'hôte qui ramène tout le monde au salon.
+	if Reseau.actif():
+		_rejouer.text = "Retour au salon"
+		_rejouer.visible = Reseau.est_hote()
 	var pause := get_node_or_null(pause_path) as PauseMenu
 	if pause != null:
 		pause.fermer()
@@ -101,7 +111,8 @@ func _ouvrir() -> void:
 		tactile.hide()
 	_remplir()
 	show()
-	_rejouer.grab_focus()
+	if _rejouer.visible:
+		_rejouer.grab_focus()
 
 
 func _remplir() -> void:

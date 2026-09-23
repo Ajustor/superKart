@@ -73,6 +73,19 @@ const GRID_COLUMN_STAGGER := 2.5
 ## Noms des concurrents, dans l'ordre de kart_paths.
 @export var noms: PackedStringArray = []
 
+## En réseau : la case de chaque concurrent, dans l'ordre de kart_paths,
+## décidée par l'hôte. Vide en solo, où case_du_joueur suffit.
+var cases_imposees: Array[int] = []
+
+## Faux sur un client en réseau : l'hôte décide des arrivées et du
+## classement, et RaceSync les recopie ici. Le client compte quand même ses
+## tours, pour le chrono et les annonces.
+var arbitre: bool = true
+
+## Vrai tant que le départ n'est pas donné. En réseau, le décompte attend que
+## toutes les machines aient chargé la course.
+var attente_depart: bool = false
+
 var entries: Array[RaceEntry] = []
 
 ## Faux pendant le décompte, vrai dès le vert, et le reste après l'arrivée :
@@ -143,6 +156,8 @@ func demarrer(piste: Track, pilotes: Array[Kart]) -> void:
 	_derniere_seconde_annoncee = -1
 
 	var cases := cases_attribuees(pilotes.size(), case_du_joueur)
+	if cases_imposees.size() == pilotes.size():
+		cases = cases_imposees
 	for i in pilotes.size():
 		var case_ := case_de_grille(cases[i])
 		var place := _track.spawn_at(case_.x, case_.y)
@@ -210,7 +225,7 @@ func transformee_de_case(index: int) -> Transform3D:
 ## Fait avancer le décompte et lâche les karts au vert. Séparé de
 ## _physics_process pour que les tests le pilotent à la main.
 func avancer_decompte(delta: float) -> void:
-	if en_course or entries.is_empty():
+	if en_course or entries.is_empty() or attente_depart:
 		return
 	decompte_restant = maxf(decompte_restant - delta, 0.0)
 	if decompte_restant > 0.0:
@@ -251,9 +266,14 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 		if entree.progress.lap > entree.tours_comptes:
 			entree.tours_comptes = entree.progress.lap
 			entree.timer.complete_lap()
-			if entree.tours_comptes >= lap_count:
+			if entree.tours_comptes >= lap_count and arbitre:
 				_franchir_l_arrivee(entree, point)
 			tour_boucle.emit(entree)
+
+	# Un kart piloté sur une autre machine : celle-ci s'occupe de sa physique,
+	# de ses sauts et de ses remises en piste. Ici, on ne fait que le suivre.
+	if not entree.kart.simule:
+		return
 
 	# Une seule projection par image et par kart : is_off_track la referait
 	# entièrement, et la remise en piste une troisième fois.
@@ -299,10 +319,22 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 		entree.kart.respawn_at(_track.spawn_at(reprise))
 
 
+## En réseau, sur un client : l'hôte annonce une arrivée, on la recopie.
+func appliquer_arrivee(entree: RaceEntry, place: int, temps: float) -> void:
+	if entree.finished:
+		return
+	entree.temps_course = temps
+	_arriver(entree, place, entree.kart.global_position if entree.kart.is_inside_tree() else Vector3.ZERO)
+
+
 func _franchir_l_arrivee(entree: RaceEntry, point: Vector3) -> void:
+	_arriver(entree, _arrives + 1, point)
+
+
+func _arriver(entree: RaceEntry, place: int, point: Vector3) -> void:
 	entree.finished = true
 	_arrives += 1
-	entree.place_finale = _arrives
+	entree.place_finale = place
 	if entree.kart.est_pilote_par_le_joueur():
 		_passer_en_pilote_automatique(entree, point)
 	arrivee.emit(entree)
@@ -340,6 +372,9 @@ func classer() -> void:
 	if not en_course:
 		for entree in entries:
 			entree.position = entree.case_de_grille + 1
+		return
+	# Sur un client en réseau, les places viennent de l'hôte.
+	if not arbitre:
 		return
 	var ordre := entries.duplicate()
 	ordre.sort_custom(func(a: RaceEntry, b: RaceEntry) -> bool:

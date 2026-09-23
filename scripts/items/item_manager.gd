@@ -49,6 +49,10 @@ const MAX_BANANES := 16
 @export var session_path: NodePath
 @export var table: ItemTable
 
+## Faux sur un client en réseau : l'hôte décide des ramassages, des lancers
+## et des chocs ; ici on ne fait qu'afficher ce qu'il envoie.
+var autorite: bool = true
+
 var boites: Array[Boite] = []
 var bananes: Array[Banane] = []
 var carapaces: Array[Carapace] = []
@@ -123,6 +127,9 @@ func poser_rangee(distance: float) -> void:
 
 func _physics_process(delta: float) -> void:
 	if _session == null:
+		return
+	if not autorite:
+		_prolonger_carapaces(delta)
 		return
 	var positions: Array[Vector3] = []
 	for entree in _session.entries:
@@ -354,6 +361,80 @@ func _nourrir_ia(positions: Array[Vector3]) -> void:
 		for autre in _session.entries:
 			if autre.position == entree.position + 1:
 				cerveau.ecart_poursuivant = entree.progress.total - autre.progress.total
+
+
+# --- Réseau ------------------------------------------------------------------
+# L'hôte photographie ce qui est sur la piste ; les clients s'y conforment.
+# Les boîtes ne bougent pas : un masque de bits suffit à dire lesquelles sont
+# là. Bananes et carapaces sont peu nombreuses, on envoie leurs positions.
+
+func instantane() -> Dictionary:
+	var masque := 0
+	for i in boites.size():
+		if boites[i].disponible():
+			masque |= 1 << i
+	var b := PackedVector3Array()
+	for banane in bananes:
+		b.append(banane.position)
+	var c := PackedVector3Array()
+	var directions := PackedVector3Array()
+	var rouges := PackedByteArray()
+	for carapace in carapaces:
+		c.append(carapace.position)
+		directions.append(carapace.direction)
+		rouges.append(1 if carapace.rouge else 0)
+	return {boites = masque, bananes = b, carapaces = c, directions = directions, rouges = rouges}
+
+
+## `avance` : l'âge de la photo, en secondes. Les carapaces ont roulé
+## pendant ce temps-là ; on les montre où elles sont maintenant.
+func appliquer_instantane(etat: Dictionary, avance: float = 0.0) -> void:
+	var masque: int = etat.get("boites", 0)
+	for i in boites.size():
+		boites[i].attente = 0.0 if masque & (1 << i) else REAPPARITION
+		if boites[i].noeud != null:
+			boites[i].noeud.visible = boites[i].disponible()
+
+	var b: PackedVector3Array = etat.get("bananes", PackedVector3Array())
+	while bananes.size() > b.size():
+		_retirer_banane(bananes.size() - 1)
+	for i in b.size():
+		if i >= bananes.size():
+			var nouvelle := Banane.new()
+			nouvelle.noeud = _visuel_banane()
+			add_child(nouvelle.noeud)
+			bananes.append(nouvelle)
+		bananes[i].position = b[i]
+		bananes[i].noeud.position = b[i]
+
+	var c: PackedVector3Array = etat.get("carapaces", PackedVector3Array())
+	var rouges: PackedByteArray = etat.get("rouges", PackedByteArray())
+	var directions: PackedVector3Array = etat.get("directions", PackedVector3Array())
+	# Une carapace qui change de couleur à la même place de la liste est une
+	# autre carapace : on refait son visuel.
+	for i in range(carapaces.size() - 1, -1, -1):
+		if i >= c.size() or carapaces[i].rouge != (rouges[i] == 1):
+			_retirer_carapace(i)
+	for i in c.size():
+		if i >= carapaces.size():
+			var nouvelle := Carapace.new()
+			nouvelle.rouge = rouges[i] == 1
+			nouvelle.noeud = _visuel_carapace(nouvelle.rouge)
+			add_child(nouvelle.noeud)
+			carapaces.append(nouvelle)
+		carapaces[i].direction = directions[i] if i < directions.size() else Vector3.ZERO
+		carapaces[i].position = c[i] + carapaces[i].direction * VITESSE_CARAPACE * avance
+		carapaces[i].noeud.position = carapaces[i].position
+
+
+## Chez un client, entre deux photos de l'hôte, les carapaces continuent tout
+## droit : à 36 m/s, une carapace figée un trentième de seconde ferait des
+## bonds d'un mètre. La photo suivante corrige virages et rebonds.
+func _prolonger_carapaces(delta: float) -> void:
+	for c in carapaces:
+		c.position += c.direction * VITESSE_CARAPACE * delta
+		if c.noeud != null:
+			c.noeud.position = c.position
 
 
 ## Un point de la chaussée, à `hauteur` au-dessus du bitume, dévers compris.
