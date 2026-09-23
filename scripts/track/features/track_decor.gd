@@ -13,7 +13,7 @@ extends TrackFeature
 ## Tous les objets d'une rangée forment une seule MultiMesh : cinquante
 ## palmiers coûtent un appel de dessin, pas cinquante — ça compte sur mobile.
 
-enum Objet { PALMIER, PHARE, PILIER_DE_FEU, ETOILE, CHAMPIGNON, ROCHER }
+enum Objet { PALMIER, PHARE, PILIER_DE_FEU, ETOILE, CHAMPIGNON, ROCHER, SAPIN, LAMPADAIRE, CRISTAL, IMMEUBLE }
 
 @export var objet: Objet = Objet.PALMIER:
 	set(valeur):
@@ -121,6 +121,14 @@ static func maillage_de(quoi: Objet) -> ArrayMesh:
 			_champignon(mat)
 		Objet.ROCHER:
 			_rocher(mat)
+		Objet.SAPIN:
+			_sapin(mat)
+		Objet.LAMPADAIRE:
+			_lampadaire(mat, brille)
+		Objet.CRISTAL:
+			_cristal(brille)
+		Objet.IMMEUBLE:
+			_immeuble(mat, brille)
 	var maillage := ArrayMesh.new()
 	if not mat.vide():
 		mat.dans(maillage, _materiau(false))
@@ -206,6 +214,48 @@ static func _champignon(m: _Assemblage) -> void:
 		var ou := Vector3(cos(angle) * 1.75, 3.9, sin(angle) * 1.75)
 		m.boule(ou, 0.5, Color(0.98, 0.98, 0.98))
 	m.boule(Vector3.UP * 4.75, 0.6, Color(0.98, 0.98, 0.98))
+
+
+static func _sapin(m: _Assemblage) -> void:
+	m.cylindre(Vector3.ZERO, Vector3.UP * 1.2, 0.3, 0.25, Color(0.4, 0.26, 0.15))
+	# Trois étages de branches, chacun coiffé de neige.
+	for i in 3:
+		var base := Vector3.UP * (1.0 + 1.3 * i)
+		var rayon := 2.1 - 0.55 * i
+		m.cone(base, rayon, 2.0, Color(0.12, 0.38, 0.2).darkened(0.08 * i))
+		m.cone(base + Vector3.UP * 1.3, rayon * 0.38, 0.75, Color(0.95, 0.97, 1.0))
+
+
+static func _lampadaire(m: _Assemblage, b: _Assemblage) -> void:
+	var metal := Color(0.2, 0.22, 0.26)
+	m.cylindre(Vector3.ZERO, Vector3.UP * 6.0, 0.14, 0.1, metal)
+	m.cylindre(Vector3.UP * 6.0, Vector3(1.2, 6.3, 0.0), 0.08, 0.08, metal)
+	m.pave(Vector3(1.3, 6.2, 0.0), Vector3(0.7, 0.2, 0.4), metal)
+	b.pave(Vector3(1.3, 6.05, 0.0), Vector3(0.6, 0.12, 0.34), Color(1.0, 0.85, 0.45))
+
+
+static func _cristal(b: _Assemblage) -> void:
+	# Une grappe de prismes lumineux qui pointent en éventail.
+	var teintes := [Color(0.4, 0.9, 1.0), Color(0.7, 0.45, 1.0), Color(0.4, 1.0, 0.75)]
+	for i in 5:
+		var angle := TAU * float(i) / 5.0
+		var pied := Vector3(cos(angle), 0.0, sin(angle)) * 0.5
+		var pointe := pied * 2.2 + Vector3.UP * (2.2 + 0.4 * (i % 3))
+		b.cylindre(pied, pointe, 0.35, 0.02, teintes[i % 3], 6)
+	b.cylindre(Vector3.ZERO, Vector3.UP * 3.2, 0.45, 0.02, teintes[0], 6)
+
+
+static func _immeuble(m: _Assemblage, b: _Assemblage) -> void:
+	# Une tour sombre, ses fenêtres allumées en bandes.
+	m.pave(Vector3(0, 9.0, 0), Vector3(8.0, 18.0, 8.0), Color(0.12, 0.13, 0.2))
+	var teintes := [Color(1.0, 0.8, 0.35), Color(0.4, 0.85, 1.0), Color(1.0, 0.4, 0.75)]
+	for etage in 7:
+		var y := 2.5 + etage * 2.3
+		var teinte: Color = teintes[etage % 3]
+		for face in 4:
+			var dir := Vector3.FORWARD.rotated(Vector3.UP, face * PI * 0.5)
+			var cote := dir.cross(Vector3.UP)
+			b.pave(Vector3(0, y, 0) + dir * 4.02, (Vector3(6.0, 0.9, 0.0) if absf(dir.x) < 0.5 else Vector3(0.0, 0.9, 6.0)) + Vector3(0.05, 0, 0.05), teinte)
 
 
 static func _rocher(m: _Assemblage) -> void:

@@ -1,0 +1,135 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/track/track.gd" id="1_track"]
+[ext_resource type="Curve3D" path="res://resources/tracks/mine_scintillante_curve.tres" id="2_curve"]
+[ext_resource type="Script" path="res://scripts/track/features/track_decor.gd" id="s_decor"]
+[ext_resource type="Script" path="res://scripts/track/features/track_gap.gd" id="s_gap"]
+[ext_resource type="Script" path="res://scripts/track/features/track_ramp.gd" id="s_ramp"]
+[ext_resource type="Script" path="res://scripts/track/features/track_wall.gd" id="s_wall"]
+
+[sub_resource type="Environment" id="Env"]
+background_mode = 1
+background_color = Color(0.03, 0.02, 0.04, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.5, 0.42, 0.55, 1)
+ambient_light_energy = 0.75
+fog_enabled = true
+fog_light_color = Color(0.12, 0.08, 0.18, 1)
+fog_density = 0.006
+glow_enabled = true
+glow_intensity = 0.8
+glow_hdr_threshold = 0.8
+
+[sub_resource type="StandardMaterial3D" id="Mat_sol"]
+albedo_color = Color(0.16, 0.12, 0.14, 1)
+roughness = 1.0
+
+[sub_resource type="PlaneMesh" id="Sol"]
+material = SubResource("Mat_sol")
+size = Vector2(1000, 1000)
+
+[node name="Track" type="Node3D"]
+script = ExtResource("1_track")
+curve = ExtResource("2_curve")
+rangees_objets = PackedFloat32Array(0.08, 0.42, 0.78)
+road_color = Color(0.38, 0.3, 0.24, 1)
+altitude_du_liquide = -16.5
+musique = 5
+
+[node name="CurveEditor" type="Path3D" parent="."]
+curve = ExtResource("2_curve")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.766, -0.492, 0.414, 0, 0.643, 0.766, -0.643, -0.587, 0.492, 0, 60, 0)
+light_color = Color(0.8, 0.7, 1, 1)
+light_energy = 0.5
+shadow_enabled = true
+
+[node name="FondDeLaMine" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -16.5, -60)
+mesh = SubResource("Sol")
+
+[node name="GalerieDescente" type="Node3D" parent="."]
+script = ExtResource("s_wall")
+debut = 90.0
+longueur = 190.0
+hauteur = 2.5
+epaisseur = 0.8
+couleur = Color(0.45, 0.3, 0.15, 1)
+couleur_bis = Color(0.3, 0.2, 0.1, 1)
+
+[node name="GalerieRemontee" type="Node3D" parent="."]
+script = ExtResource("s_wall")
+debut = 420.0
+longueur = 200.0
+hauteur = 2.5
+epaisseur = 0.8
+couleur = Color(0.45, 0.3, 0.15, 1)
+couleur_bis = Color(0.3, 0.2, 0.1, 1)
+
+[node name="RampeGouffre" type="Node3D" parent="."]
+script = ExtResource("s_ramp")
+debut = 636.0
+longueur = 12.0
+largeur = 18.0
+hauteur = 1.8
+couleur = Color(0.55, 0.4, 0.2, 1)
+
+[node name="Gouffre" type="Node3D" parent="."]
+script = ExtResource("s_gap")
+debut = 648.0
+longueur = 13.0
+
+[node name="CristauxDuFond" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 8
+debut = 280.0
+longueur = 140.0
+decalage = 15.0
+espacement = 14.0
+echelle = 1.4
+graine = 3
+
+[node name="CristauxDescente" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 8
+debut = 95.0
+longueur = 180.0
+decalage = 20.0
+espacement = 30.0
+echelle = 2.0
+graine = 7
+
+[node name="CristauxRemontee" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 8
+debut = 430.0
+longueur = 190.0
+decalage = 20.0
+espacement = 30.0
+echelle = 2.0
+graine = 9
+
+[node name="Lanternes" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 7
+debut = 0.0
+longueur = 720.0
+decalage = 11.5
+espacement = 40.0
+symetrique = false
+graine = 2
+
+[node name="Rochers" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 5
+debut = 270.0
+longueur = 160.0
+decalage = 26.0
+espacement = 20.0
+echelle = 2.5
+hauteur = -2.5
+graine = 5

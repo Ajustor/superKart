@@ -14,7 +14,7 @@ extends RefCounted
 ## dans un fil à part, et chaque boucle n'est composée qu'une fois par
 ## partie (cache).
 
-enum Style { COLLINES, PLAGE, FORTERESSE, CIEL }
+enum Style { COLLINES, PLAGE, FORTERESSE, CIEL, JARDIN, MINE, VILLE, NEIGE }
 
 const FREQUENCE := 16000
 const MESURES := 8
@@ -37,6 +37,26 @@ const STYLES := {
 	Style.CIEL: {
 		tempo = 116.0, tonique = 65, gamme = [0, 2, 4, 6, 7, 9, 11],
 		grille = [0, 2, 3, 4], basse = [1, 0, 0, 0, 1, 0, 0, 0], arpege = 24, graine = 42,
+	},
+	# Sautillant, en majeur, une basse qui rebondit comme les champignons.
+	Style.JARDIN: {
+		tempo = 140.0, tonique = 67, gamme = [0, 2, 4, 5, 7, 9, 11],
+		grille = [0, 3, 0, 4], basse = [1, 0, 1, 0, 1, 0, 1, 1], arpege = 12, graine = 73,
+	},
+	# Mystérieux : mineur naturel, lent, arpège grave qui résonne dans la galerie.
+	Style.MINE: {
+		tempo = 104.0, tonique = 55, gamme = [0, 2, 3, 5, 7, 8, 10],
+		grille = [0, 5, 3, 4], basse = [1, 0, 0, 1, 0, 0, 1, 0], arpege = 0, graine = 19,
+	},
+	# La nuit en ville : dorien, rapide, basse en croches continues.
+	Style.VILLE: {
+		tempo = 156.0, tonique = 58, gamme = [0, 2, 3, 5, 7, 9, 10],
+		grille = [0, 3, 6, 4], basse = [1, 1, 0, 1, 1, 0, 1, 1], arpege = 12, graine = 88,
+	},
+	# Clochettes de neige : majeur, aigu, arpège très haut.
+	Style.NEIGE: {
+		tempo = 124.0, tonique = 64, gamme = [0, 2, 4, 5, 7, 9, 11],
+		grille = [0, 5, 3, 4], basse = [1, 0, 0, 1, 1, 0, 0, 0], arpege = 24, graine = 57,
 	},
 }
 

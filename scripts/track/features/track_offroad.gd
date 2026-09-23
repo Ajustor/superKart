@@ -10,7 +10,7 @@ extends TrackFeature
 ## ainsi qu'on dessine un raccourci — plus court que la route, plus lent à
 ## parcourir, et d'autant plus payant qu'on y entre avec un champignon.
 
-enum Sol { HERBE, SABLE, BOUE }
+enum Sol { HERBE, SABLE, BOUE, NEIGE }
 
 @export var sol: Sol = Sol.HERBE:
 	set(valeur):
@@ -41,5 +41,7 @@ func _materiau() -> StandardMaterial3D:
 			m.albedo_color = Color(0.86, 0.76, 0.5)
 		Sol.BOUE:
 			m.albedo_color = Color(0.4, 0.28, 0.16)
+		Sol.NEIGE:
+			m.albedo_color = Color(0.92, 0.95, 1.0)
 	m.roughness = 1.0
 	return m

@@ -9,6 +9,10 @@ const PISTES: Array[TrackInfo] = [
 	preload("res://resources/tracks/plage_palmiers_info.tres"),
 	preload("res://resources/tracks/forteresse_lave_info.tres"),
 	preload("res://resources/tracks/ruban_celeste_info.tres"),
+	preload("res://resources/tracks/jardin_champignon_info.tres"),
+	preload("res://resources/tracks/mine_scintillante_info.tres"),
+	preload("res://resources/tracks/ville_neon_info.tres"),
+	preload("res://resources/tracks/station_neiges_info.tres"),
 ]
 
 

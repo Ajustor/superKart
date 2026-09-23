@@ -71,6 +71,75 @@ const CIRCUITS := {
 		Vector3(-105, 22, -110),
 		Vector3(-65, 20, -75),
 	],
+	# Un jardin de champignons géants : des bosses qui roulent, un S entre
+	# les chapeaux, et un champignon rebondissant au milieu du parcours.
+	"jardin_champignon": [
+		Vector3(0, 0, 0),
+		Vector3(90, 0, 0),
+		Vector3(140, 2, -30),
+		Vector3(150, 5, -90),
+		Vector3(110, 7, -130),
+		Vector3(60, 4, -110),
+		Vector3(15, 2, -140),
+		Vector3(-20, 0, -195),
+		Vector3(-80, 0, -205),
+		Vector3(-125, 3, -155),
+		Vector3(-105, 5, -100),
+		Vector3(-140, 3, -45),
+		Vector3(-105, 0, -5),
+		Vector3(-55, 0, 0),
+	],
+	# Une mine : on descend dans les galeries entre des parois, on longe les
+	# cristaux au fond, on saute un gouffre et on remonte au jour.
+	"mine_scintillante": [
+		Vector3(0, 0, 0),
+		Vector3(80, 0, 0),
+		Vector3(130, -4, -40),
+		Vector3(125, -10, -100),
+		Vector3(70, -14, -125),
+		Vector3(10, -14, -95),
+		Vector3(-45, -14, -130),
+		Vector3(-110, -12, -125),
+		Vector3(-145, -7, -65),
+		Vector3(-115, -2, -12),
+		Vector3(-60, 0, 0),
+	],
+	# Une ville la nuit : des rues à angle droit entre les tours, et une
+	# avenue coupée par des travaux qu'on franchit d'un saut.
+	"ville_neon": [
+		Vector3(0, 0, 0),
+		Vector3(80, 0, 0),
+		Vector3(125, 0, -30),
+		Vector3(130, 0, -75),
+		Vector3(100, 0, -115),
+		Vector3(55, 0, -115),
+		Vector3(25, 0, -140),
+		Vector3(20, 0, -180),
+		Vector3(-10, 0, -215),
+		Vector3(-55, 0, -215),
+		Vector3(-85, 0, -180),
+		Vector3(-90, 0, -90),
+		Vector3(-85, 0, -35),
+		Vector3(-45, 0, 0),
+	],
+	# Une station de ski : départ au sommet, une longue descente à bosses
+	# jusqu'au fond de la vallée, et la remontée par le col.
+	"station_neiges": [
+		Vector3(0, 30, 0),
+		Vector3(80, 30, 0),
+		Vector3(130, 27, -30),
+		Vector3(140, 21, -90),
+		Vector3(100, 15, -130),
+		Vector3(40, 11, -120),
+		Vector3(-10, 7, -150),
+		Vector3(-40, 3, -200),
+		Vector3(-100, 0, -210),
+		Vector3(-150, 4, -170),
+		Vector3(-160, 11, -100),
+		Vector3(-150, 19, -40),
+		Vector3(-110, 27, -5),
+		Vector3(-60, 30, 0),
+	],
 }
 
 
