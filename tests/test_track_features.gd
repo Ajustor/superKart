@@ -370,3 +370,135 @@ func test_un_element_qui_deborde_du_centre_du_virage_est_signale() -> void:
 	depassements.sort()
 	assert_almost_eq(depassements[0], 0.0, 0.001, "côté extérieur, rien à signaler")
 	assert_gt(depassements[1], 4.0, "côté intérieur, cinq mètres de trop")
+
+
+# --- Trous ---------------------------------------------------------------------------
+
+func _trou(debut: float, longueur: float) -> TrackGap:
+	var trou := TrackGap.new()
+	trou.debut = debut
+	trou.longueur = longueur
+	track.add_child(trou)
+	return trou
+
+
+func test_les_troncons_de_route_evitent_les_trous() -> void:
+	var t := TrackBuilder.troncons(100.0, [Vector2(20, 30), Vector2(60, 65)] as Array[Vector2])
+	assert_eq(t, [Vector2(0, 20), Vector2(30, 60), Vector2(65, 100)] as Array[Vector2])
+
+
+func test_sans_trou_un_seul_troncon() -> void:
+	assert_eq(TrackBuilder.troncons(100.0, [] as Array[Vector2]), [Vector2(0, 100)] as Array[Vector2])
+
+
+func test_la_route_n_est_pas_construite_au_dessus_du_trou() -> void:
+	_trou(100.0, 20.0)
+	var maillage := TrackBuilder.build(track.track_curve, 2.0, track.trous())
+	var sommets: PackedVector3Array = maillage.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	for s in sommets:
+		var d := track.track_curve.distance_of(s)
+		assert_false(d > 100.5 and d < 119.5, "un sommet de route au-dessus du vide, à %.1f m" % d)
+
+
+func test_un_trou_sur_la_ligne_d_arrivee_se_coupe_en_deux() -> void:
+	var trou := _trou(_longueur() - 5.0, 10.0)
+	var p := trou.portions(_longueur())
+	assert_eq(p.size(), 2)
+	assert_almost_eq(p[1].y, 5.0, 0.001)
+
+
+func test_au_dessus_du_trou_il_n_y_a_pas_de_sol() -> void:
+	_trou(100.0, 20.0)
+	assert_false(track.sol_praticable(110.0, 0.0), "la route n'existe plus ici")
+	assert_true(track.sol_praticable(125.0, 0.0), "elle reprend après")
+
+
+func test_tomber_dans_le_trou_remet_en_piste_apres() -> void:
+	_trou(100.0, 20.0)
+	assert_almost_eq(track.point_de_reprise(95.0), 124.0, 0.001,
+		"reposé avant le trou, à l'arrêt, il retomberait sans fin")
+	assert_almost_eq(track.point_de_reprise(110.0), 124.0, 0.001)
+	assert_almost_eq(track.point_de_reprise(200.0), 200.0, 0.001, "loin du trou, rien ne change")
+
+
+func test_la_session_ne_retient_pas_une_position_au_dessus_du_vide() -> void:
+	_trou(100.0, 20.0)
+	_session()
+	session.avancer(session.entries[0], _point(90.0), 1.0 / 60.0)
+	session.avancer(session.entries[0], _point(105.0), 1.0 / 60.0)
+	assert_almost_eq(session.entries[0].derniere_en_piste, 90.0, 1.0,
+		"la dernière position sûre est avant le trou, pas dedans")
+
+
+func test_la_chute_dans_le_trou_repose_le_kart_apres() -> void:
+	_trou(100.0, 20.0)
+	_session()
+	session.avancer(session.entries[0], _point(95.0), 1.0 / 60.0)
+	var sous_le_vide := _point(108.0) + Vector3.DOWN * (RaceSession.FALL_DEPTH + 2.0)
+	session.avancer(session.entries[0], sous_le_vide, 1.0 / 60.0)
+	assert_almost_eq(session.entries[0].derniere_en_piste, 124.0, 0.5)
+
+
+func test_un_trou_sans_elan_est_signale() -> void:
+	var trou := _trou(100.0, 20.0)
+	assert_false(trou.a_un_elan(track))
+	var rampe := TrackRamp.new()
+	rampe.debut = 85.0
+	rampe.longueur = 12.0
+	track.add_child(rampe)
+	assert_true(trou.a_un_elan(track), "une rampe qui finit juste avant suffit")
+
+
+# --- Rampes -------------------------------------------------------------------------
+
+func test_la_rampe_monte_du_pied_au_sommet() -> void:
+	var rampe := TrackRamp.new()
+	rampe.hauteur = 2.0
+	rampe.profil = TrackRamp.Profil.DROIT
+	assert_almost_eq(rampe.hauteur_a(0.0), 0.0, 0.001)
+	assert_almost_eq(rampe.hauteur_a(0.5), 1.0, 0.001)
+	assert_almost_eq(rampe.hauteur_a(1.0), 2.0, 0.001)
+	rampe.profil = TrackRamp.Profil.INCURVE
+	assert_lt(rampe.hauteur_a(0.5), 1.0, "incurvée : douce au pied")
+	rampe.free()
+
+
+func test_la_rampe_incurvee_sort_plus_raide() -> void:
+	var rampe := TrackRamp.new()
+	rampe.hauteur = 2.0
+	rampe.longueur = 10.0
+	rampe.profil = TrackRamp.Profil.DROIT
+	var droit := rampe.angle_de_sortie()
+	rampe.profil = TrackRamp.Profil.INCURVE
+	assert_gt(rampe.angle_de_sortie(), droit * 1.5)
+	assert_almost_eq(rampe.vitesse_verticale(20.0), 20.0 * sin(deg_to_rad(rampe.angle_de_sortie())), 0.001)
+	rampe.free()
+
+
+func test_une_rampe_est_solide() -> void:
+	var rampe := _poser(TrackRamp.new())
+	assert_eq(rampe.find_children("*", "StaticBody3D", true, false).size(), 1)
+
+
+func test_la_session_donne_son_elan_au_kart_sur_la_rampe() -> void:
+	var rampe := TrackRamp.new()
+	rampe.debut = 60.0
+	rampe.longueur = 10.0
+	_poser(rampe)
+	_session()
+	karts[0].motor.speed = 20.0
+	session.avancer(session.entries[0], _point(65.0), 1.0 / 60.0)
+	assert_almost_eq(karts[0].elan_de_rampe, rampe.vitesse_verticale(20.0), 0.001)
+	session.avancer(session.entries[0], _point(71.5), 1.0 / 60.0)
+	assert_gt(karts[0].elan_de_rampe, 0.0, "encore un peu après le sommet : c'est là qu'on le franchit")
+	session.avancer(session.entries[0], _point(90.0), 1.0 / 60.0)
+	assert_eq(karts[0].elan_de_rampe, 0.0, "et plus du tout ailleurs")
+
+
+func test_un_decollage_de_rampe_met_le_kart_en_vol() -> void:
+	_session()
+	karts[0].vient_de_decoller = true
+	karts[0].au_sol = false
+	session.avancer(session.entries[0], _point(60.0), 1.0 / 60.0)
+	assert_true(session.entries[0].en_vol)
+	assert_false(karts[0].vient_de_decoller, "l'indicateur est consommé")

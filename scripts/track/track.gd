@@ -60,6 +60,10 @@ const NOM_CORPS := "RoadBody"
 
 var track_curve: TrackCurve
 
+## En deçà de cette distance avant un trou, un kart remis en piste l'est de
+## l'autre côté : il faut plus d'élan que ça pour sauter.
+const ELAN_AVANT_UN_TROU := 60.0
+
 
 func _ready() -> void:
 	# En jeu, un circuit sans courbe est une erreur de montage. Dans l'éditeur
@@ -80,7 +84,7 @@ func _reconstruire() -> void:
 
 	track_curve = TrackCurve.new(curve, half_width)
 
-	var maillage := TrackBuilder.build(track_curve, segment_length)
+	var maillage := TrackBuilder.build(track_curve, segment_length, trous())
 
 	var materiau := StandardMaterial3D.new()
 	materiau.albedo_color = road_color
@@ -116,11 +120,62 @@ func elements() -> Array[TrackFeature]:
 	return trouves
 
 
+## Refait la route et tout ce qui est posé dessus. Les trous l'appellent quand
+## on les règle : c'est la route elle-même qui change.
+func reconstruire() -> void:
+	if is_node_ready():
+		_reconstruire()
+
+
+## Les portions sans route, pour TrackBuilder.
+func trous() -> Array[Vector2]:
+	var portions: Array[Vector2] = []
+	for element in elements():
+		if element is TrackGap and not element.is_queued_for_deletion():
+			portions.append_array(element.portions(track_curve.length))
+	return portions
+
+
+## Le trou qui couvre cette distance, ou null.
+func trou_en(distance: float) -> TrackGap:
+	for element in elements():
+		if element is TrackGap and element.couvre(distance, track_curve.length):
+			return element
+	return null
+
+
+## Où remettre en piste un kart dont la dernière position sûre est `distance`.
+## Si c'est juste avant un trou — ou dedans —, de l'autre côté : reposé avant,
+## à l'arrêt, il n'aurait aucun élan pour sauter et retomberait sans fin.
+func point_de_reprise(distance: float) -> float:
+	for element in elements():
+		if not element is TrackGap:
+			continue
+		var trou := element as TrackGap
+		var avant := wrapf(trou.debut - distance, -track_curve.length * 0.5, track_curve.length * 0.5)
+		if avant >= -trou.longueur and avant <= ELAN_AVANT_UN_TROU:
+			return wrapf(trou.fin() + 4.0, 0.0, track_curve.length)
+	return distance
+
+
 ## Le tremplin sous ce point du circuit, ou null.
 func tremplin_en(distance: float, lateral: float) -> TrackJump:
 	for element in elements():
 		if element is TrackJump and element.contient(distance, lateral, track_curve.length):
 			return element
+	return null
+
+
+## La rampe sous ce point, ou null. Comptée deux mètres au-delà de son
+## sommet : c'est au moment de le franchir que le kart doit encore la savoir
+## sous ses roues.
+func rampe_en(distance: float, lateral: float) -> TrackRamp:
+	for element in elements():
+		if element is TrackRamp:
+			var rampe := element as TrackRamp
+			var dans := wrapf(distance - rampe.debut, 0.0, track_curve.length)
+			if dans <= rampe.longueur + 2.0 and absf(lateral - rampe.decalage) <= rampe.largeur * 0.5:
+				return rampe
 	return null
 
 
@@ -134,7 +189,9 @@ func en_zone_hors_piste(distance: float, lateral: float) -> bool:
 
 ## Y a-t-il du sol sous ce point : la route, ou une zone hors-piste ?
 func sol_praticable(distance: float, lateral: float) -> bool:
-	return absf(lateral) <= track_curve.half_width or en_zone_hors_piste(distance, lateral)
+	if en_zone_hors_piste(distance, lateral):
+		return true
+	return absf(lateral) <= track_curve.half_width and trou_en(distance) == null
 
 
 ## L'écart à l'axe de chaque mur présent à cette distance.

@@ -112,6 +112,12 @@ func _appliquer_deplacement(distance_milieu: float, lateral: float, longueur_tou
 func _modifie() -> void:
 	if _aimantage or not is_node_ready():
 		return
+	_apres_modification()
+
+
+## Ce qu'un réglage ou un déplacement doit refaire. L'élément seul, par défaut ;
+## un trou, lui, doit faire refaire la route.
+func _apres_modification() -> void:
 	reconstruire()
 
 
@@ -143,7 +149,7 @@ func _aimanter() -> void:
 	_aimantage = true
 	_appliquer_deplacement(d, lateral, c.length)
 	_aimantage = false
-	reconstruire()
+	_apres_modification()
 	notify_property_list_changed()
 
 
@@ -197,10 +203,14 @@ func depassement_du_centre(c: TrackCurve) -> float:
 
 ## Les distances des sections d'une bande, d'environ `pas` mètres.
 func _sections(pas: float = 1.0) -> PackedFloat32Array:
-	var n := maxi(int(ceil(longueur / pas)), 1)
+	return sections_entre(debut, longueur, pas)
+
+
+static func sections_entre(de: float, sur: float, pas: float = 1.0) -> PackedFloat32Array:
+	var n := maxi(int(ceil(sur / pas)), 1)
 	var d := PackedFloat32Array()
 	for i in n + 1:
-		d.append(debut + longueur * float(i) / float(n))
+		d.append(de + sur * float(i) / float(n))
 	return d
 
 
@@ -228,6 +238,12 @@ static func point(c: TrackCurve, distance: float, lateral: float, hauteur: float
 ## chaussée inclinée au plat. Les UV comptent en mètres : u le long du tracé,
 ## v en travers.
 func _nappe(c: TrackCurve, gauche: float, droite: float, hauteur: float) -> ArrayMesh:
+	return nappe(c, debut, longueur, gauche, droite, hauteur)
+
+
+## La même, pour n'importe quelle portion du tracé.
+static func nappe(c: TrackCurve, de: float, sur: float, gauche: float, droite: float,
+		hauteur: float) -> ArrayMesh:
 	var colonnes := PackedFloat32Array([gauche])
 	for bord in [-c.half_width, c.half_width]:
 		if gauche < bord and bord < droite:
@@ -236,12 +252,12 @@ func _nappe(c: TrackCurve, gauche: float, droite: float, hauteur: float) -> Arra
 
 	var outil := SurfaceTool.new()
 	outil.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var sections := _sections()
+	var sections := sections_entre(de, sur)
 	for i in sections.size() - 1:
 		var d0 := sections[i]
 		var d1 := sections[i + 1]
-		var u0 := d0 - debut
-		var u1 := d1 - debut
+		var u0 := d0 - de
+		var u1 := d1 - de
 		for j in colonnes.size() - 1:
 			var a := colonnes[j]
 			var b := colonnes[j + 1]
