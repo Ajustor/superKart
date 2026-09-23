@@ -29,6 +29,9 @@ var acceleration_auto: bool = true
 
 var vibrations: bool = true
 
+## Diriger au joystick sur écran tactile ; sinon, deux flèches.
+var joystick: bool = true
+
 ## La mini-carte en haut à droite pendant la course.
 var mini_carte: bool = true
 
@@ -70,6 +73,7 @@ func charger() -> void:
 	tactile = clampi(int(fichier.get_value("commandes", "tactile", tactile)), Tactile.AUTO, Tactile.JAMAIS)
 	acceleration_auto = bool(fichier.get_value("commandes", "acceleration_auto", acceleration_auto))
 	vibrations = bool(fichier.get_value("commandes", "vibrations", vibrations))
+	joystick = bool(fichier.get_value("commandes", "joystick", joystick))
 	mini_carte = bool(fichier.get_value("affichage", "mini_carte", mini_carte))
 	afficher_fps = bool(fichier.get_value("affichage", "fps", afficher_fps))
 	qualite = clampi(int(fichier.get_value("affichage", "qualite", qualite)),
@@ -90,6 +94,7 @@ func sauver() -> void:
 	fichier.set_value("commandes", "tactile", tactile)
 	fichier.set_value("commandes", "acceleration_auto", acceleration_auto)
 	fichier.set_value("commandes", "vibrations", vibrations)
+	fichier.set_value("commandes", "joystick", joystick)
 	fichier.set_value("affichage", "mini_carte", mini_carte)
 	fichier.set_value("affichage", "fps", afficher_fps)
 	fichier.set_value("affichage", "qualite", qualite)

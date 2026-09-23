@@ -16,6 +16,7 @@ var _vibrations: CheckButton
 var _mini_carte: CheckButton
 var _fps: CheckButton
 var _qualite: OptionButton
+var _joystick: CheckButton
 
 
 func _ready() -> void:
@@ -51,6 +52,7 @@ func _ready() -> void:
 	_tactile = _liste(droite, "Commandes tactiles", {
 		"Automatique": GameSettings.Tactile.AUTO, "Toujours": GameSettings.Tactile.TOUJOURS,
 		"Jamais": GameSettings.Tactile.JAMAIS})
+	_joystick = _interrupteur(droite, "Direction au joystick (tactile)")
 	_auto = _interrupteur(droite, "Accélération automatique (tactile)")
 	_vibrations = _interrupteur(droite, "Vibrations de la manette")
 
@@ -80,6 +82,9 @@ func _ready() -> void:
 	_mini_carte.toggled.connect(func(v: bool) -> void:
 		GameSettings.mini_carte = v
 		GameSettings.valider())
+	_joystick.toggled.connect(func(v: bool) -> void:
+		GameSettings.joystick = v
+		GameSettings.valider())
 	_qualite.item_selected.connect(func(i: int) -> void:
 		GameSettings.qualite = _qualite.get_item_id(i)
 		GameSettings.valider())
@@ -105,6 +110,7 @@ func _relire() -> void:
 	_vibrations.set_pressed_no_signal(GameSettings.vibrations)
 	_mini_carte.set_pressed_no_signal(GameSettings.mini_carte)
 	_fps.set_pressed_no_signal(GameSettings.afficher_fps)
+	_joystick.set_pressed_no_signal(GameSettings.joystick)
 	_qualite.select(_qualite.get_item_index(GameSettings.qualite))
 
 
