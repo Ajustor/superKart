@@ -16,6 +16,10 @@ var finished: bool = false
 ## Nom affiché au classement et à l'écran de résultats.
 var nom: String = ""
 
+## Piloté par un humain, ici ou sur une autre machine. La mini-carte les
+## distingue de l'IA.
+var humain: bool = false
+
 ## Temps de course cumulé, décompte exclu. S'arrête à l'arrivée.
 var temps_course: float = 0.0
 

@@ -73,6 +73,10 @@ const GRID_COLUMN_STAGGER := 2.5
 ## Noms des concurrents, dans l'ordre de kart_paths.
 @export var noms: PackedStringArray = []
 
+## Qui est piloté par un humain, dans l'ordre de kart_paths. Vide en solo :
+## seul le premier, le joueur, l'est.
+var humains: Array[bool] = []
+
 ## En réseau : la case de chaque concurrent, dans l'ordre de kart_paths,
 ## décidée par l'hôte. Vide en solo, où case_du_joueur suffit.
 var cases_imposees: Array[int] = []
@@ -166,6 +170,7 @@ func demarrer(piste: Track, pilotes: Array[Kart]) -> void:
 		var entree := RaceEntry.new(pilotes[i], _track.track_curve, case_.x)
 		entree.nom = noms[i] if i < noms.size() else "Pilote %d" % (i + 1)
 		entree.case_de_grille = cases[i]
+		entree.humain = humains[i] if i < humains.size() else i == 0
 		entries.append(entree)
 		# L'IA décide à partir des valeurs de l'image précédente : sans
 		# amorçage, sa toute première décision viserait l'origine du monde.
@@ -313,7 +318,8 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 	# droit d'être loin de la route ; il n'a pas celui d'y atterrir à côté.
 	var perdu := ecart > _demi_largeur + OFF_TRACK_RESPAWN_MARGIN \
 		and not entree.en_vol and not _track.sol_praticable(d, lateral)
-	if point.y < sol - FALL_DEPTH or perdu:
+	var noye := point.y < _track.altitude_du_liquide
+	if point.y < sol - FALL_DEPTH or perdu or noye:
 		var reprise := _track.point_de_reprise(entree.derniere_en_piste)
 		entree.derniere_en_piste = reprise
 		entree.kart.respawn_at(_track.spawn_at(reprise))

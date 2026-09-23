@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="TrackInfo" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/race/track_info.gd" id="1_info"]
+[ext_resource type="PackedScene" path="res://scenes/tracks/plage_palmiers.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_info")
+id = "plage_palmiers"
+nom = "Plage aux Palmiers"
+description = "Du sable, des palmiers et la mer à perte de vue. Une dune à franchir d'un bond, un lacet autour du phare et un bras de mer à sauter."
+scene = ExtResource("2_scene")
+tours = 3

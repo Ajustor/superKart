@@ -13,6 +13,7 @@ var _coupe: CheckButton
 var _tactile: OptionButton
 var _auto: CheckButton
 var _vibrations: CheckButton
+var _mini_carte: CheckButton
 
 
 func _ready() -> void:
@@ -42,6 +43,9 @@ func _ready() -> void:
 	_auto = _interrupteur(colonne, "Accélération automatique (tactile)")
 	_vibrations = _interrupteur(colonne, "Vibrations de la manette")
 
+	colonne.add_child(_intertitre("Affichage"))
+	_mini_carte = _interrupteur(colonne, "Mini-carte")
+
 	var retour := UITheme.bouton("Retour", _fermer)
 	retour.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	colonne.add_child(retour)
@@ -65,6 +69,9 @@ func _ready() -> void:
 	_vibrations.toggled.connect(func(v: bool) -> void:
 		GameSettings.vibrations = v
 		GameSettings.valider())
+	_mini_carte.toggled.connect(func(v: bool) -> void:
+		GameSettings.mini_carte = v
+		GameSettings.valider())
 	visibility_changed.connect(_sur_visibilite)
 
 
@@ -82,6 +89,7 @@ func _relire() -> void:
 	_tactile.select(_tactile.get_item_index(GameSettings.tactile))
 	_auto.set_pressed_no_signal(GameSettings.acceleration_auto)
 	_vibrations.set_pressed_no_signal(GameSettings.vibrations)
+	_mini_carte.set_pressed_no_signal(GameSettings.mini_carte)
 
 
 func _unhandled_input(event: InputEvent) -> void:

@@ -1,0 +1,171 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/track/track.gd" id="1_track"]
+[ext_resource type="Curve3D" path="res://resources/tracks/plage_palmiers_curve.tres" id="2_curve"]
+[ext_resource type="Script" path="res://scripts/track/features/track_jump.gd" id="4_jump"]
+[ext_resource type="Script" path="res://scripts/track/features/track_offroad.gd" id="5_offroad"]
+[ext_resource type="Script" path="res://scripts/track/features/track_ramp.gd" id="6_ramp"]
+[ext_resource type="Script" path="res://scripts/track/features/track_gap.gd" id="7_gap"]
+[ext_resource type="Script" path="res://scripts/track/features/track_decor.gd" id="8_decor"]
+
+[sub_resource type="ProceduralSkyMaterial" id="Ciel_plage"]
+sky_top_color = Color(0.18, 0.45, 0.88, 1)
+sky_horizon_color = Color(0.68, 0.86, 0.97, 1)
+ground_bottom_color = Color(0.08, 0.32, 0.52, 1)
+ground_horizon_color = Color(0.5, 0.78, 0.9, 1)
+sun_angle_max = 20.0
+
+[sub_resource type="Sky" id="Sky_plage"]
+sky_material = SubResource("Ciel_plage")
+
+[sub_resource type="Environment" id="Env_plage"]
+background_mode = 2
+sky = SubResource("Sky_plage")
+ambient_light_source = 2
+ambient_light_color = Color(0.62, 0.72, 0.82, 1)
+ambient_light_energy = 0.45
+
+[sub_resource type="StandardMaterial3D" id="Mat_mer"]
+albedo_color = Color(0.1, 0.52, 0.78, 1)
+roughness = 0.35
+
+[sub_resource type="PlaneMesh" id="Mer"]
+material = SubResource("Mat_mer")
+size = Vector2(1400, 1400)
+
+[node name="Track" type="Node3D"]
+script = ExtResource("1_track")
+curve = ExtResource("2_curve")
+rangees_objets = PackedFloat32Array(0.06, 0.44, 0.83)
+road_color = Color(0.4, 0.4, 0.43, 1)
+bordures = true
+altitude_du_liquide = -2.0
+
+[node name="CurveEditor" type="Path3D" parent="."]
+curve = ExtResource("2_curve")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_plage")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.766, -0.492, 0.414, 0, 0.643, 0.766, -0.643, -0.587, 0.492, 0, 40, 0)
+light_color = Color(1, 0.96, 0.86, 1)
+light_energy = 0.9
+shadow_enabled = true
+
+[node name="Mer" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, -2.5, -150)
+mesh = SubResource("Mer")
+
+[node name="PlageAvant" type="Node3D" parent="."]
+script = ExtResource("5_offroad")
+debut = 0.0
+longueur = 760.0
+decalage = 12.5
+largeur = 7.0
+sol = 1
+
+[node name="PlageAvantGauche" type="Node3D" parent="."]
+script = ExtResource("5_offroad")
+debut = 0.0
+longueur = 760.0
+decalage = -12.5
+largeur = 7.0
+sol = 1
+
+[node name="PlageApres" type="Node3D" parent="."]
+script = ExtResource("5_offroad")
+debut = 796.0
+longueur = 236.0
+decalage = 12.5
+largeur = 7.0
+sol = 1
+
+[node name="PlageApresGauche" type="Node3D" parent="."]
+script = ExtResource("5_offroad")
+debut = 796.0
+longueur = 236.0
+decalage = -12.5
+largeur = 7.0
+sol = 1
+
+[node name="RaccourciCrique" type="Node3D" parent="."]
+script = ExtResource("5_offroad")
+debut = 380.0
+longueur = 95.0
+decalage = 20.0
+largeur = 14.0
+sol = 1
+
+[node name="TremplinDune" type="Node3D" parent="."]
+script = ExtResource("4_jump")
+debut = 262.0
+longueur = 4.0
+largeur = 10.0
+impulsion = 9.0
+duree_turbo = 0.8
+
+[node name="RampeBrasDeMer" type="Node3D" parent="."]
+script = ExtResource("6_ramp")
+debut = 766.0
+longueur = 12.0
+largeur = 18.0
+hauteur = 1.8
+
+[node name="BrasDeMer" type="Node3D" parent="."]
+script = ExtResource("7_gap")
+debut = 778.0
+longueur = 12.0
+
+[node name="Phare" type="Node3D" parent="."]
+script = ExtResource("8_decor")
+objet = 1
+espacement = 0.0
+symetrique = false
+debut = 570.0
+longueur = 40.0
+decalage = -32.0
+
+[node name="PalmiersAvant" type="Node3D" parent="."]
+script = ExtResource("8_decor")
+debut = 20.0
+longueur = 340.0
+decalage = 17.0
+espacement = 24.0
+graine = 3
+
+[node name="PalmiersCrique" type="Node3D" parent="."]
+script = ExtResource("8_decor")
+debut = 370.0
+longueur = 110.0
+decalage = -17.0
+espacement = 24.0
+symetrique = false
+graine = 5
+
+[node name="PalmiersPhare" type="Node3D" parent="."]
+script = ExtResource("8_decor")
+debut = 490.0
+longueur = 260.0
+decalage = 17.0
+espacement = 24.0
+graine = 9
+
+[node name="PalmiersApres" type="Node3D" parent="."]
+script = ExtResource("8_decor")
+debut = 810.0
+longueur = 200.0
+decalage = 17.0
+espacement = 24.0
+graine = 7
+
+[node name="Rochers" type="Node3D" parent="."]
+script = ExtResource("8_decor")
+objet = 5
+debut = 0.0
+longueur = 1000.0
+decalage = 30.0
+espacement = 45.0
+hauteur = -2.8
+echelle = 1.8
+graine = 11

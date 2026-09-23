@@ -36,6 +36,9 @@ l'écart est rattrapé en quelques images plutôt que d'un bond. Le champignon,
 qui ne touche que le kart qui le prend, part tout de suite sans attendre la
 réponse de l'hôte.
 
+Sur la mini-carte, en haut à droite, votre kart est le gros point jaune, les
+autres joueurs sont bleu clair et l'IA rouge.
+
 Les chocs entre karts suivent la même règle : chaque machine applique le choc
 à son propre kart, et le kart d'en face encaisse le sien sur sa machine.
 
