@@ -127,6 +127,7 @@ func test_les_reglages_survivent_a_un_redemarrage() -> void:
 	avant.tactile = avant.Tactile.JAMAIS
 	avant.acceleration_auto = false
 	avant.vibrations = false
+	avant.mini_carte = false
 	avant.sauver()
 	avant.free()
 
@@ -138,6 +139,7 @@ func test_les_reglages_survivent_a_un_redemarrage() -> void:
 	assert_eq(apres.tactile, apres.Tactile.JAMAIS)
 	assert_false(apres.acceleration_auto)
 	assert_false(apres.vibrations)
+	assert_false(apres.mini_carte)
 	apres.free()
 
 
@@ -146,6 +148,7 @@ func test_un_fichier_absent_garde_les_valeurs_par_defaut() -> void:
 	r.charger()
 	assert_almost_eq(r.volume_general, 0.8, 0.001)
 	assert_false(r.son_coupe)
+	assert_true(r.mini_carte, "la mini-carte est là par défaut")
 	r.free()
 
 

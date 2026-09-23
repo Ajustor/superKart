@@ -79,6 +79,24 @@ func test_le_hud_montre_la_carte() -> void:
 	assert_gt(carte.size.x, 100.0, "posée à sa taille")
 
 
+## Sans passer par valider() : il écrirait le fichier de réglages de celui qui
+## lance les tests.
+func test_le_reglage_masque_la_carte_en_pleine_course() -> void:
+	var avant: bool = GameSettings.mini_carte
+	var course := RaceLauncher.monter(RaceSetup.new())
+	add_child_autofree(course)
+	await wait_process_frames(3)
+	var carte: MiniMap = course.find_children("*", "MiniMap", true, false)[0]
+	GameSettings.mini_carte = false
+	GameSettings.changed.emit()
+	assert_false(carte.visible, "masquée dès qu'on décoche, même depuis la pause")
+	GameSettings.mini_carte = true
+	GameSettings.changed.emit()
+	assert_true(carte.visible)
+	GameSettings.mini_carte = avant
+	GameSettings.changed.emit()
+
+
 func test_les_humains_sont_reperes() -> void:
 	var session := RaceSession.new()
 	session.duree_decompte = 0.0

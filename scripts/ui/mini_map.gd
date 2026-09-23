@@ -9,6 +9,9 @@ extends Control
 ## d'un coup d'œil. Le joueur est le gros point jaune ; les autres humains
 ## sont bleu clair, l'IA rouge. Là où la route passe sur un pont, le pont est
 ## dessiné par-dessus la route qu'il enjambe.
+##
+## Elle se masque dans les options (Affichage → Mini-carte), y compris depuis
+## la pause : elle suit le réglage sans attendre la course suivante.
 
 ## Distance entre deux points du tracé dessiné, en mètres.
 const PAS := 4.0
@@ -38,6 +41,12 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# L'écran change de taille (rotation d'un téléphone) : on recadre.
 	resized.connect(func() -> void: _preparee = false)
+	_suivre_le_reglage()
+	GameSettings.changed.connect(_suivre_le_reglage)
+
+
+func _suivre_le_reglage() -> void:
+	visible = GameSettings.mini_carte
 
 
 ## Haut de la carte : sous l'emplacement d'objet de RaceHUD.
@@ -156,7 +165,7 @@ func _preparer() -> void:
 
 
 func _process(_delta: float) -> void:
-	if session == null or session.entries.is_empty():
+	if not visible or session == null or session.entries.is_empty():
 		return
 	if not _preparee:
 		_preparer()

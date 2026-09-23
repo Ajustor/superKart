@@ -29,6 +29,9 @@ var acceleration_auto: bool = true
 
 var vibrations: bool = true
 
+## La mini-carte en haut à droite pendant la course.
+var mini_carte: bool = true
+
 ## Le nom affiché aux autres joueurs en réseau.
 var pseudo: String = ""
 
@@ -61,6 +64,7 @@ func charger() -> void:
 	tactile = clampi(int(fichier.get_value("commandes", "tactile", tactile)), Tactile.AUTO, Tactile.JAMAIS)
 	acceleration_auto = bool(fichier.get_value("commandes", "acceleration_auto", acceleration_auto))
 	vibrations = bool(fichier.get_value("commandes", "vibrations", vibrations))
+	mini_carte = bool(fichier.get_value("affichage", "mini_carte", mini_carte))
 	pseudo = str(fichier.get_value("reseau", "pseudo", pseudo))
 	derniere_adresse = str(fichier.get_value("reseau", "adresse", derniere_adresse))
 	_records.clear()
@@ -77,6 +81,7 @@ func sauver() -> void:
 	fichier.set_value("commandes", "tactile", tactile)
 	fichier.set_value("commandes", "acceleration_auto", acceleration_auto)
 	fichier.set_value("commandes", "vibrations", vibrations)
+	fichier.set_value("affichage", "mini_carte", mini_carte)
 	fichier.set_value("reseau", "pseudo", pseudo)
 	fichier.set_value("reseau", "adresse", derniere_adresse)
 	for cle in _records:
