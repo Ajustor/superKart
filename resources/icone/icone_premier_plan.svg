@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<defs>
+  <radialGradient id="ciel" cx="50%" cy="38%" r="75%">
+    <stop offset="0" stop-color="#3f6fd1"/>
+    <stop offset="0.55" stop-color="#1d3677"/>
+    <stop offset="1" stop-color="#0b1330"/>
+  </radialGradient>
+  <linearGradient id="caisse" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#ff5a45"/>
+    <stop offset="1" stop-color="#c41d1d"/>
+  </linearGradient>
+  <linearGradient id="casque" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#ffe27a"/>
+    <stop offset="1" stop-color="#f0a800"/>
+  </linearGradient>
+</defs>
+<g transform="translate(256 256) scale(0.7) translate(-236 -284)">
+<g stroke-linecap="round" fill="none" stroke="#ffffff">
+  <line x1="28" y1="232" x2="118" y2="232" stroke-width="14" opacity="0.85"/>
+  <line x1="52" y1="276" x2="112" y2="276" stroke-width="12" opacity="0.6"/>
+  <line x1="18" y1="318" x2="96" y2="318" stroke-width="10" opacity="0.45"/>
+</g>
+<ellipse cx="275" cy="392" rx="170" ry="16" fill="#000000" opacity="0.35"/>
+<!-- aileron arrière -->
+<path d="M122,236 L176,236 L184,262 L130,262 Z" fill="#16161c"/>
+<rect x="148" y="258" width="12" height="40" fill="#16161c"/>
+<!-- caisse -->
+<path d="M120,318 C120,290 142,282 170,280 L300,276 C352,274 404,290 444,318
+         L452,340 C452,352 444,358 430,358 L136,358 C124,358 118,348 120,318 Z"
+      fill="url(#caisse)" stroke="#16161c" stroke-width="8" stroke-linejoin="round"/>
+<path d="M300,292 C348,292 392,302 426,322" fill="none" stroke="#ffffff" stroke-width="10"
+      stroke-linecap="round" opacity="0.9"/>
+<!-- pilote -->
+<path d="M214,282 C214,246 238,232 262,232 C286,232 298,250 300,280 Z" fill="#1f5fd6"
+      stroke="#16161c" stroke-width="8" stroke-linejoin="round"/>
+<circle cx="262" cy="194" r="50" fill="url(#casque)" stroke="#16161c" stroke-width="8"/>
+<path d="M252,180 L300,178 C310,178 314,186 313,196 C312,206 306,212 296,212 L252,212
+         C244,212 240,206 240,196 C240,186 244,180 252,180 Z" fill="#16161c"/>
+<path d="M258,190 L296,189" fill="none" stroke="#7fd3ff" stroke-width="6" stroke-linecap="round"/>
+<!-- volant -->
+<line x1="300" y1="270" x2="326" y2="236" stroke="#16161c" stroke-width="10" stroke-linecap="round"/>
+<!-- roues -->
+<g stroke="#16161c" stroke-width="8">
+  <circle cx="172" cy="352" r="54" fill="#23232b"/>
+  <circle cx="172" cy="352" r="22" fill="#cfd3dc"/>
+  <circle cx="384" cy="356" r="48" fill="#23232b"/>
+  <circle cx="384" cy="356" r="19" fill="#cfd3dc"/>
+</g>
+</g></svg>
