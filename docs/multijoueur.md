@@ -31,6 +31,9 @@ Chaque joueur simule **son** kart : le pilotage reste aussi vif qu'en solo,
 quelle que soit la latence. Les autres karts sont affichés avec 100 ms de
 retard, interpolés entre deux positions reçues, pour rester lisses.
 
+Les chocs entre karts suivent la même règle : chaque machine applique le choc
+à son propre kart, et le kart d'en face encaisse le sien sur sa machine.
+
 Un joueur qui quitte en pleine course laisse son kart à l'IA ; si c'est l'hôte
 qui part, tout le monde revient au menu.
 

@@ -15,6 +15,9 @@ extends CharacterBody3D
 @export var stats: KartStats
 @export var input_path: NodePath
 
+const COUCHE_DECOR := 1
+const COUCHE_KARTS := 2
+
 ## Vitesse de redressement de la caisse vers la normale du sol, en 1/s. Brute,
 ## la normale saute d'une facette à l'autre du maillage extrudé et la caisse
 ## tremblerait à chaque segment.
@@ -87,6 +90,13 @@ func _ready() -> void:
 	# 20°, la route se dérobe de 13 cm par image, bien plus que les 10 cm par
 	# défaut. Une fois en l'air, is_on_floor() tombe et la pente ne le porte plus.
 	floor_snap_length = 0.6
+
+	# Les karts ne se voient pas dans la physique : ils ne se bloquent plus
+	# comme des murs, et ne montent plus l'un sur l'autre. Leurs chocs sont
+	# résolus à part, par KartCollisions. Couche 2 pour les karts, masque 1
+	# pour ne heurter que le décor.
+	collision_layer = COUCHE_KARTS
+	collision_mask = COUCHE_DECOR
 
 
 func _physics_process(delta: float) -> void:
