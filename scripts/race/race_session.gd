@@ -194,6 +194,12 @@ static func cases_attribuees(concurrents: int, case_joueur: int) -> Array[int]:
 	return cases
 
 
+## Le circuit monté. ItemManager en a besoin pour faire rebondir les
+## carapaces sur ses murs.
+func circuit() -> Track:
+	return _track
+
+
 ## Transformée de la case donnée sur le circuit monté. Le marquage au sol s'en
 ## sert pour peindre la grille exactement là où les karts sont posés.
 func transformee_de_case(index: int) -> Transform3D:
@@ -251,9 +257,20 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 
 	# Une seule projection par image et par kart : is_off_track la referait
 	# entièrement, et la remise en piste une troisième fois.
-	var ecart := absf(_track.track_curve.lateral_offset(point))
-	var dehors := ecart > _demi_largeur
+	var d := entree.progress.distance
+	var lateral := _track.track_curve.lateral_offset(point)
+	var ecart := absf(lateral)
+	# Hors du bitume, ou sur une zone hors-piste posée sur la route.
+	var dehors := ecart > _demi_largeur or _track.en_zone_hors_piste(d, lateral)
 	entree.kart.set_offroad(dehors)
+
+	if entree.en_vol and entree.kart.au_sol:
+		entree.en_vol = false
+	var tremplin := _track.tremplin_en(d, lateral)
+	if tremplin != null and entree.kart.sauter(tremplin.impulsion):
+		entree.en_vol = true
+		entree.kart.motor.accorder_turbo(tremplin.duree_turbo, tremplin.force_turbo)
+
 	if not dehors:
 		# On remet en piste là où le kart roulait encore, pas là où la courbe
 		# projette son point de sortie. Dans l'épingle la courbe se replie sur
@@ -266,7 +283,12 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 	# L'altitude de la route sous le kart, et non une constante : sur une piste
 	# à plusieurs niveaux, « en bas » ne veut rien dire dans l'absolu.
 	var sol := _track.track_curve.position_at(entree.progress.distance).y
-	if point.y < sol - FALL_DEPTH or ecart > _demi_largeur + OFF_TRACK_RESPAWN_MARGIN:
+	# Trop loin du bitume, et sans rien sous les roues : ni zone hors-piste, ni
+	# saut en cours. Un kart qui survole un virage depuis un tremplin a le
+	# droit d'être loin de la route ; il n'a pas celui d'y atterrir à côté.
+	var perdu := ecart > _demi_largeur + OFF_TRACK_RESPAWN_MARGIN \
+		and not entree.en_vol and not _track.sol_praticable(d, lateral)
+	if point.y < sol - FALL_DEPTH or perdu:
 		entree.kart.respawn_at(_track.spawn_at(entree.derniere_en_piste))
 
 

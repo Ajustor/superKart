@@ -70,6 +70,10 @@ extends Resource
 ## glisse encore un peu, il ne se plante pas sur place.
 @export var stun_deceleration: float = 20.0
 
+## Part de la vitesse perdue contre un mur pris de face. De biais, la perte
+## suit l'angle : un mur frôlé ne coûte presque rien.
+@export var wall_speed_loss: float = 0.7
+
 @export_group("Objets")
 ## Le champignon pousse comme un mini-turbo de palier 2, mais plus longtemps :
 ## c'est un objet qu'on a eu de la chance de tirer, il doit se sentir.

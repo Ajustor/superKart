@@ -98,8 +98,52 @@ func _reconstruire() -> void:
 	corps.add_child(forme)
 	add_child(corps)
 
+	# Les éléments posés sur le tracé le suivent : retoucher la courbe
+	# déplace les murs, les tremplins et les zones avec elle.
+	for element in elements():
+		element.reconstruire()
+
 	if Engine.is_editor_hint():
 		update_configuration_warnings()
+
+
+## Les murs, tremplins et zones hors-piste posés sur ce circuit.
+func elements() -> Array[TrackFeature]:
+	var trouves: Array[TrackFeature] = []
+	for enfant in get_children():
+		if enfant is TrackFeature:
+			trouves.append(enfant)
+	return trouves
+
+
+## Le tremplin sous ce point du circuit, ou null.
+func tremplin_en(distance: float, lateral: float) -> TrackJump:
+	for element in elements():
+		if element is TrackJump and element.contient(distance, lateral, track_curve.length):
+			return element
+	return null
+
+
+## Ce point est-il dans une zone hors-piste posée sur le tracé ?
+func en_zone_hors_piste(distance: float, lateral: float) -> bool:
+	for element in elements():
+		if element is TrackOffroad and element.contient(distance, lateral, track_curve.length):
+			return true
+	return false
+
+
+## Y a-t-il du sol sous ce point : la route, ou une zone hors-piste ?
+func sol_praticable(distance: float, lateral: float) -> bool:
+	return absf(lateral) <= track_curve.half_width or en_zone_hors_piste(distance, lateral)
+
+
+## L'écart à l'axe de chaque mur présent à cette distance.
+func murs_en(distance: float) -> PackedFloat32Array:
+	var lignes := PackedFloat32Array()
+	for element in elements():
+		if element is TrackWall and element.couvre(distance, track_curve.length):
+			lignes.append_array(element.lignes(track_curve.half_width))
+	return lignes
 
 
 ## Les setters tirent avant `_ready` pendant le chargement de la scène, quand

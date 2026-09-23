@@ -56,6 +56,7 @@ var rng := RandomNumberGenerator.new()
 
 var _session: RaceSession
 var _piste: TrackCurve
+var _circuit: Track
 var _materiaux: Dictionary = {}
 
 
@@ -100,6 +101,7 @@ func _ready() -> void:
 func preparer(session: RaceSession, rangees: PackedFloat32Array) -> void:
 	_session = session
 	_piste = session.entries[0].progress.track
+	_circuit = session.circuit()
 	if table == null:
 		table = ItemTable.new()
 	for f in rangees:
@@ -257,6 +259,7 @@ func _deplacer(c: Carapace, positions: Array[Vector3], delta: float) -> void:
 		if vers.length_squared() > 0.0001:
 			c.direction = vers.normalized()
 
+	var ancien := _piste.lateral_offset(c.position)
 	var suivante := c.position + c.direction * VITESSE_CARAPACE * delta
 	var nd := _piste.distance_of(suivante)
 	var ecart := _piste.lateral_offset(suivante)
@@ -270,9 +273,29 @@ func _deplacer(c: Carapace, positions: Array[Vector3], delta: float) -> void:
 		if c.direction.dot(normale) > 0.0:
 			c.direction = (c.direction - 2.0 * c.direction.dot(normale) * normale).normalized()
 		ecart = clampf(ecart, -limite, limite)
+	ecart = _rebondir_sur_les_murs(c, nd, ancien, ecart)
 	c.position = _au_sol(nd, ecart, HAUTEUR_CARAPACE)
 	if c.noeud != null:
 		c.noeud.position = c.position
+
+
+## Une carapace qui franchirait un mur du circuit entre deux images rebondit
+## dessus, exactement comme sur le bord de la route. Rend l'écart corrigé.
+func _rebondir_sur_les_murs(c: Carapace, distance: float, avant: float, apres: float) -> float:
+	if _circuit == null:
+		return apres
+	for mur in _circuit.murs_en(distance):
+		var cote := signf(avant - mur)
+		if cote == 0.0 or signf(apres - mur) == cote:
+			continue
+		# La normale du mur, tournée vers le côté d'où vient la carapace.
+		var normale := _piste.right_at(distance) * cote
+		normale.y = 0.0
+		normale = normale.normalized()
+		if c.direction.dot(normale) < 0.0:
+			c.direction = (c.direction - 2.0 * c.direction.dot(normale) * normale).normalized()
+		return mur + cote * MARGE_BORD
+	return apres
 
 
 func _carapace_touche(c: Carapace, positions: Array[Vector3]) -> bool:

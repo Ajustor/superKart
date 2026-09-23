@@ -41,6 +41,10 @@ var controle_actif: bool = true
 ## par ItemManager : le kart ne sait pas ce qu'il tient, il transmet la demande.
 var demande_objet: bool = false
 
+## Vrai tant que le kart touche le sol. La session s'en sert pour ne pas
+## remettre en piste un kart qui survole le décor au milieu d'un saut.
+var au_sol: bool = true
+
 var _input: KartInput
 var _vertical: float = 0.0
 var _was_hopping: bool = false
@@ -81,7 +85,7 @@ func _physics_process(delta: float) -> void:
 		_vertical = stats.hop_impulse
 	_was_hopping = hopping
 
-	var au_sol := is_on_floor()
+	au_sol = is_on_floor()
 	if au_sol and _vertical <= 0.0:
 		_vertical = 0.0
 	else:
@@ -111,8 +115,30 @@ func _physics_process(delta: float) -> void:
 		velocity -= contact * ground_grip_push
 
 	move_and_slide()
+	_encaisser_les_murs()
 
 	_orienter_la_caisse()
+
+
+## Transmet au moteur les chocs que move_and_slide vient de résoudre. Seuls
+## les murs comptent : une normale qui pointe vers le haut est un sol, même
+## en pente.
+func _encaisser_les_murs() -> void:
+	for i in get_slide_collision_count():
+		var n := get_slide_collision(i).get_normal()
+		if n.y < 0.6:
+			motor.heurter_mur(n)
+
+
+## Fait décoller le kart : un tremplin l'appelle. Refusé s'il est déjà en l'air
+## ou en train de monter, sans quoi une zone de saut de quelques mètres le
+## relancerait à chaque image qu'il passe au-dessus.
+func sauter(impulsion: float) -> bool:
+	if not au_sol or _vertical > 0.0:
+		return false
+	_vertical = impulsion
+	au_sol = false
+	return true
 
 
 ## Lisse la normale du sol sous le kart. En l'air, elle revient doucement à la

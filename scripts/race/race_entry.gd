@@ -33,6 +33,10 @@ var case_de_grille: int = 0
 ## qui se vide et se remplit selon les règles de la course, pas de la physique.
 var inventaire := KartInventory.new()
 
+## Vrai depuis qu'un tremplin l'a fait décoller, jusqu'à ce qu'il retouche le
+## sol. En vol, survoler le vide n'est pas une sortie de route.
+var en_vol: bool = false
+
 ## Place au classement, 1 = premier. Zéro tant qu'aucun classement n'a été
 ## calculé : afficher « 0e » est une erreur visible, afficher « 1er » à tort
 ## ne l'est pas.

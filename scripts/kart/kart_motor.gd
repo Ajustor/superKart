@@ -248,10 +248,44 @@ func _update_stun(delta: float) -> void:
 ## La poussée du champignon. Même mécanique que le mini-turbo, et même règle :
 ## un turbo plus fort ou plus long déjà en cours n'est pas amputé.
 func boost_objet() -> void:
-	if state == State.STUNNED:
+	accorder_turbo(stats.mushroom_duration, stats.mushroom_speed_multiplier)
+
+
+## Un turbo venu d'ailleurs que d'une glisse : champignon, tremplin.
+func accorder_turbo(duree: float, multiplicateur: float) -> void:
+	if state == State.STUNNED or duree <= 0.0:
 		return
-	boost_timer = maxf(boost_timer, stats.mushroom_duration)
-	boost_multiplier = maxf(boost_multiplier, stats.mushroom_speed_multiplier)
+	boost_timer = maxf(boost_timer, duree)
+	boost_multiplier = maxf(boost_multiplier, multiplicateur)
+
+
+## Choc contre un mur, dont `normale` est la normale horizontale, tournée
+## vers le kart. La vitesse qui rentre dans le mur est perdue, celle qui le
+## longe est gardée : on frotte un mur de biais, on s'arrête contre un mur de
+## face. La trajectoire se couche le long du mur.
+##
+## Sans ça, move_and_slide arrêtait bien la caisse, mais le moteur ignorait le
+## choc : il croyait rouler à 22 m/s contre un mur, et repartait d'un coup dès
+## qu'on s'en écartait.
+func heurter_mur(normale: Vector3) -> void:
+	var n := Vector3(normale.x, 0.0, normale.z)
+	if n.length_squared() < 0.0001 or speed <= 0.0:
+		return
+	n = n.normalized()
+	var marche := Vector3(sin(velocity_dir), 0.0, -cos(velocity_dir))
+	var enfoncement := -marche.dot(n)
+	if enfoncement <= 0.0:
+		return  # on s'éloigne déjà du mur
+	var longe := marche + n * enfoncement
+	speed *= 1.0 - stats.wall_speed_loss * enfoncement
+	if state == State.DRIFT or state == State.HOP:
+		# Une glisse contre un mur est une glisse ratée.
+		_drift_locked_out = true
+		_end_drift()
+	if longe.length_squared() > 0.0001 and enfoncement < 0.95:
+		velocity_dir = atan2(longe.x, -longe.z)
+		if state == State.GRIP:
+			heading = velocity_dir
 
 
 ## Remet le moteur à neuf au cap donné, sans changer d'objet. Les nœuds de
