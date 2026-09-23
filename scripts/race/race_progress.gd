@@ -6,12 +6,11 @@ extends RefCounted
 ## augmente en avançant et diminue en reculant, donc faire demi-tour ne permet
 ## pas de gagner un tour.
 ##
-## « Avancement » et non « distance parcourue » : `total` part de zéro au
-## départ et mesure la progression le long de l'axe, pas les kilomètres au
-## compteur — zigzaguer d'un bord à l'autre use les pneus sans avancer d'un
-## mètre de plus. C'est ce que le classement doit trier, et c'est ce qui rend
-## une grille décalée équitable : sinon le kart posé vingt mètres avant la
-## ligne bouclerait son premier tour en vingt mètres.
+## « Avancement » et non « distance parcourue » : `total` mesure la
+## progression le long de l'axe, pas les kilomètres au compteur — zigzaguer
+## d'un bord à l'autre use les pneus sans avancer d'un mètre de plus. C'est ce
+## que le classement doit trier. La session le fait partir de la case de
+## grille, en négatif : chaque tour se boucle sur la ligne peinte.
 ##
 ## Comme TrackCurve et KartMotor, cette classe ne connaît ni la scène ni les
 ## nœuds : on lui donne un point, elle met son état à jour.

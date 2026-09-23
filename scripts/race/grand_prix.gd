@@ -72,19 +72,18 @@ func place_de(pilote: String) -> int:
 	return classement().find(pilote) + 1
 
 
-## Les cases de départ (0 = pole) dans l'ordre de `noms`, rangées selon le
-## classement de la coupe : le meneur part en tête. Vide avant la première
+## Les cases de départ (0 = pole) dans l'ordre de `noms` : chacun repart de
+## la place où il a fini la course précédente. Vide avant la première
 ## course, où c'est le choix du joueur qui compte.
 func cases(noms: PackedStringArray) -> Array[int]:
 	var cases_: Array[int] = []
-	if manche == 0 or points.is_empty():
+	if manche == 0 or dernieres_places.is_empty():
 		return cases_
-	var ordre := classement()
-	var suivante := ordre.size()
+	var suivante := dernieres_places.size()
 	for pilote in noms:
-		var i := ordre.find(pilote)
-		if i < 0:
-			i = suivante
+		var place := int(dernieres_places.get(pilote, 0))
+		if place <= 0:
+			place = suivante + 1
 			suivante += 1
-		cases_.append(i)
+		cases_.append(place - 1)
 	return cases_

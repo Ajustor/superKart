@@ -353,25 +353,45 @@ func test_le_lanceur_ne_glisse_pas_sur_sa_propre_banane_en_la_posant() -> void:
 	assert_eq(karts[0].motor.state, KartMotor.State.STUNNED)
 
 
-func test_la_carapace_verte_reste_sur_la_route() -> void:
+## Tirée en travers, sans mur : elle quitte la route et disparaît. Elle
+## rebondissait sur le bord du bitume, comme s'il y avait un mur invisible.
+func test_la_carapace_verte_sort_de_la_route_sans_mur() -> void:
 	_monter(1)
-	# Tirée en travers : elle doit rebondir sur les bords au lieu de partir
-	# dans le vide.
 	var d := 60.0
 	var travers := _piste().right_at(d)
 	var c := objets.lancer_carapace(_sur_route(d), travers, session.entries[0], null)
 	var p := _positions_neutres()
-	var rebonds := 0
 	var avant := c.direction
-	for i in 120:
+	for i in 60:
 		objets.avancer(p, 1.0 / 60.0)
 		if objets.carapaces.is_empty():
 			break
-		assert_lt(absf(_piste().lateral_offset(c.position)), 9.0, "image %d" % i)
+		assert_gt(c.direction.dot(avant), 0.0, "pas de rebond sans mur (image %d)" % i)
+	assert_true(objets.carapaces.is_empty(), "sortie de la route, elle est perdue")
+
+
+func test_la_carapace_verte_rebondit_sur_un_mur() -> void:
+	_monter(1)
+	var mur := TrackWall.new()
+	mur.debut = 20.0
+	mur.longueur = 120.0
+	mur.cote = TrackWall.Cote.LES_DEUX
+	track.add_child(mur)
+	var d := 60.0
+	var c := objets.lancer_carapace(_sur_route(d), _piste().right_at(d), session.entries[0], null)
+	var p := _positions_neutres()
+	var rebonds := 0
+	var avant := c.direction
+	for i in 60:
+		objets.avancer(p, 1.0 / 60.0)
+		if objets.carapaces.is_empty():
+			break
+		assert_lt(absf(_piste().lateral_offset(c.position)), 9.5, "image %d" % i)
 		if c.direction.dot(avant) < 0.0:
 			rebonds += 1
 		avant = c.direction
-	assert_gt(rebonds, 0, "tirée en travers, elle a forcément touché un bord")
+	assert_gt(rebonds, 0, "entre deux murs, elle rebondit")
+	assert_false(objets.carapaces.is_empty(), "et reste en jeu")
 
 
 func test_la_carapace_verte_touche_le_kart_qu_elle_croise() -> void:

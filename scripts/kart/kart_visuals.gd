@@ -27,6 +27,9 @@ var _spark_material: StandardMaterial3D
 var _inclinaison: float = 0.0
 ## Le tonneau d'une figure, de 0 à 1 ; négatif hors figure.
 var _figure: float = -1.0
+## Le train de roues : il fait le tonneau avec la caisse. La suspension place
+## chaque roue dans ce repère, le tonneau tourne le repère entier.
+var _roues: Node3D
 const DUREE_FIGURE := 0.45
 var _poussiere: CPUParticles3D
 var _flammes: CPUParticles3D
@@ -36,6 +39,7 @@ var _matiere_flammes: StandardMaterial3D
 func _ready() -> void:
 	_kart = get_node(kart_path) as Kart
 	_body = get_node(body_path) as Node3D
+	_roues = _kart.get_node_or_null("Wheels") as Node3D if _kart != null else null
 	_sparks = get_node(sparks_path) as GPUParticles3D
 	assert(_kart != null and _body != null and _sparks != null,
 		"KartVisuals a besoin du kart, de la caisse et des particules")
@@ -79,6 +83,22 @@ func _update_lean(motor: KartMotor, delta: float) -> void:
 		else:
 			tonneau = TAU * (1.0 - pow(1.0 - _figure, 2.0))
 	_body.rotation.z = _inclinaison + tonneau
+	_tourner_les_roues(tonneau)
+
+
+## Les roues suivent le tonneau, autour du même pivot que la caisse : sans
+## ça, la caisse faisait sa vrille au-dessus de quatre roues restées à plat.
+## L'inclinaison du dérapage, elle, ne touche que la caisse.
+func _tourner_les_roues(tonneau: float) -> void:
+	if _roues == null:
+		return
+	if tonneau == 0.0:
+		if _roues.transform != Transform3D.IDENTITY:
+			_roues.transform = Transform3D.IDENTITY
+		return
+	var pivot := _body.position
+	var rotation_ := Basis(Vector3.BACK, tonneau)
+	_roues.transform = Transform3D(rotation_, pivot - rotation_ * pivot)
 
 
 ## La recoloration est globale et instantanée : toutes les particules vivantes

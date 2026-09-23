@@ -30,9 +30,12 @@ const VITESSE_CARAPACE := 36.0
 const DUREE_VERTE := 6.0
 const DUREE_ROUGE := 8.0
 const HAUTEUR_CARAPACE := 0.45
-## Marge gardée entre une carapace verte et le bord de la route, où elle
-## rebondit : le circuit n'a pas de murs, le bord du bitume en tient lieu.
+## Marge gardée entre une carapace et le mur sur lequel elle rebondit (ou le
+## bord du bitume, pour la rouge qui suit la route).
 const MARGE_BORD := 0.6
+## Au-delà de cette distance du bord, une carapace verte sortie de la route
+## est perdue : elle file dans le décor et disparaît.
+const SORTIE_HORS_PISTE := 8.0
 ## En deçà de cette avance sur la piste, la carapace rouge quitte la route pour
 ## foncer droit sur sa cible.
 const APPROCHE_ROUGE := 14.0
@@ -249,14 +252,14 @@ func _avancer_carapaces(positions: Array[Vector3], delta: float) -> void:
 		if c.age > (DUREE_ROUGE if c.rouge else DUREE_VERTE):
 			_retirer_carapace(i)
 			continue
-		_deplacer(c, positions, delta)
-		if _carapace_touche(c, positions):
+		if not _deplacer(c, positions, delta) or _carapace_touche(c, positions):
 			_retirer_carapace(i)
 			continue
 		i += 1
 
 
-func _deplacer(c: Carapace, positions: Array[Vector3], delta: float) -> void:
+## Rend faux quand la carapace est perdue hors de la route.
+func _deplacer(c: Carapace, positions: Array[Vector3], delta: float) -> bool:
 	var d := _piste.distance_of(c.position)
 	if c.cible != null:
 		var ou_est_la_cible := positions[_session.entries.find(c.cible)]
@@ -278,9 +281,10 @@ func _deplacer(c: Carapace, positions: Array[Vector3], delta: float) -> void:
 	var nd := _piste.distance_of(suivante)
 	var ecart := _piste.lateral_offset_at(suivante, nd)
 	var limite := _piste.half_width - MARGE_BORD
-	if absf(ecart) > limite:
-		# Le bord de la route fait office de mur : on renvoie la composante qui
-		# sort, comme une bille sur une bande.
+	if c.rouge and absf(ecart) > limite:
+		# La rouge suit la route : le bord la renvoie, comme une bille sur une
+		# bande. La verte, elle, ne rebondit que sur de vrais murs — sans mur,
+		# elle quitte la route.
 		var normale := _piste.right_at(nd) * signf(ecart)
 		normale.y = 0.0
 		normale = normale.normalized()
@@ -288,13 +292,16 @@ func _deplacer(c: Carapace, positions: Array[Vector3], delta: float) -> void:
 			c.direction = (c.direction - 2.0 * c.direction.dot(normale) * normale).normalized()
 		ecart = clampf(ecart, -limite, limite)
 	ecart = _rebondir_sur_les_murs(c, nd, ancien, ecart)
+	if absf(ecart) > _piste.half_width + SORTIE_HORS_PISTE:
+		return false
 	c.position = _au_sol(nd, ecart, HAUTEUR_CARAPACE)
 	if c.noeud != null:
 		c.noeud.position = c.position
+	return true
 
 
 ## Une carapace qui franchirait un mur du circuit entre deux images rebondit
-## dessus, exactement comme sur le bord de la route. Rend l'écart corrigé.
+## dessus. Rend l'écart corrigé.
 func _rebondir_sur_les_murs(c: Carapace, distance: float, avant: float, apres: float) -> float:
 	if _circuit == null:
 		return apres

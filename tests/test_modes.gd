@@ -134,14 +134,18 @@ func test_a_egalite_la_derniere_course_departage() -> void:
 	assert_eq(gp.place_de("Gomme") + 1, gp.place_de("Vous"))
 
 
-func test_la_grille_suit_le_classement_de_la_coupe() -> void:
+func test_chacun_repart_de_sa_place_d_arrivee() -> void:
 	var gp := GrandPrix.new(0)
 	assert_eq(gp.cases(PackedStringArray(NOMS)).size(), 0, "première course : le choix du joueur")
-	var ordre := PackedStringArray(["Piston", "Vous", "Turbo", "Zéphyr", "Comète", "Bielle", "Rafale", "Gomme"])
+	gp.compter(PackedStringArray(NOMS))
+	# Deuxième course : le joueur finit sixième, mais il est mieux classé
+	# que ça dans la coupe aux points.
+	var ordre := PackedStringArray(["Piston", "Turbo", "Zéphyr", "Comète", "Bielle", "Vous", "Rafale", "Gomme"])
 	gp.compter(ordre)
+	assert_lt(gp.place_de("Vous"), 6, "mieux classé dans la coupe")
 	var cases := gp.cases(PackedStringArray(NOMS))
-	assert_eq(cases[0], 1, "le joueur, deuxième de la coupe, part en deuxième case")
-	assert_eq(cases[NOMS.find("Piston")], 0, "le meneur part en pole")
+	assert_eq(cases[0], 5, "mais il repart de sa place d'arrivée : sixième case")
+	assert_eq(cases[NOMS.find("Piston")], 0, "le vainqueur de la course part en pole")
 	var distinctes := {}
 	for c in cases:
 		distinctes[c] = true

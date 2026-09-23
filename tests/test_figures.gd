@@ -73,3 +73,23 @@ func test_une_bosse_n_est_pas_un_saut() -> void:
 	kart._figures(_commande(true), 0.5)
 	assert_false(kart.figure_faite)
 	assert_true(c.drift, "hors saut, le dérapage passe comme d'habitude")
+
+
+## La caisse faisait sa vrille au-dessus de quatre roues restées à plat.
+func test_les_roues_font_le_tonneau_avec_la_caisse() -> void:
+	var kart := (load("res://scenes/kart/kart.tscn") as PackedScene).instantiate() as Kart
+	add_child_autofree(kart)
+	await wait_process_frames(2)
+	var roues := kart.get_node("Wheels") as Node3D
+	var caisse := kart.get_node("Body") as Node3D
+	var visuels := kart.get_node("Visuals") as KartVisuals
+	kart.figure.emit()
+	visuels._update_lean(kart.motor, KartVisuals.DUREE_FIGURE * 0.25)
+	var roulis_roues := roues.transform.basis.get_euler().z
+	assert_ne(roulis_roues, 0.0, "les roues tournent pendant la figure")
+	assert_almost_eq(wrapf(roulis_roues - caisse.rotation.z, -PI, PI), 0.0, 0.05,
+		"du même angle que la caisse (hors dérapage)")
+	# Le pivot est celui de la caisse : son centre ne se déplace pas.
+	assert_almost_eq(roues.transform * caisse.position, caisse.position, Vector3.ONE * 0.001)
+	visuels._update_lean(kart.motor, KartVisuals.DUREE_FIGURE)
+	assert_eq(roues.transform, Transform3D.IDENTITY, "à plat une fois la figure finie")

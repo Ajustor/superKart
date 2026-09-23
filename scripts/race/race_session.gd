@@ -193,10 +193,12 @@ func demarrer(piste: Track, pilotes: Array[Kart]) -> void:
 		pilotes[i].respawn_at(place)
 		pilotes[i].controle_actif = en_course
 		var entree := RaceEntry.new(pilotes[i], _track.track_curve, case_.x)
-		# Tous partent avec le même retard : le recul de la pole. Chacun
-		# parcourt toujours la même distance, et le tour se boucle sur la
-		# ligne peinte pour la pole, pas six mètres avant.
-		entree.progress.total = -RECUL_GRILLE
+		# L'avancement part de la case elle-même, en négatif : le tour se
+		# boucle pour chacun en franchissant la ligne peinte. Donner à tous le
+		# même retard faisait boucler les derniers de la grille jusqu'à
+		# dix-sept mètres avant la ligne. Partir de plus loin coûte quelques
+		# mètres, comme dans Mario Kart.
+		entree.progress.total = case_.x
 		entree.nom = noms[i] if i < noms.size() else "Pilote %d" % (i + 1)
 		entree.case_de_grille = cases[i]
 		entree.humain = humains[i] if i < humains.size() else i == 0

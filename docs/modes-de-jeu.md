@@ -34,8 +34,8 @@ course.
 - Ceux qui n'ont pas franchi la ligne quand le joueur passe à la suite
   prennent la place qu'ils occupaient.
 - À égalité de points, le mieux placé à la dernière course passe devant.
-- Première course : le joueur choisit sa case. Ensuite, la grille suit le
-  classement de la coupe, le meneur en pole.
+- Première course : le joueur choisit sa case. Ensuite, chacun repart de la
+  place où il a fini la course précédente (le vainqueur en pole).
 - L'écran de résultats ajoute une colonne « Coupe » (le total, cette course
   comprise) et un bouton « Course suivante », puis « Podium ».
 - Le podium (`PodiumScreen`) enregistre le meilleur trophée par coupe et par
