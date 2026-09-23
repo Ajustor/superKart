@@ -29,6 +29,12 @@ var acceleration_auto: bool = true
 
 var vibrations: bool = true
 
+## Le nom affiché aux autres joueurs en réseau.
+var pseudo: String = ""
+
+## La dernière adresse tapée pour rejoindre une partie.
+var derniere_adresse: String = ""
+
 ## La dernière course réglée dans le menu. Rejouer la reprend telle quelle.
 var course := RaceSetup.new()
 
@@ -55,6 +61,8 @@ func charger() -> void:
 	tactile = clampi(int(fichier.get_value("commandes", "tactile", tactile)), Tactile.AUTO, Tactile.JAMAIS)
 	acceleration_auto = bool(fichier.get_value("commandes", "acceleration_auto", acceleration_auto))
 	vibrations = bool(fichier.get_value("commandes", "vibrations", vibrations))
+	pseudo = str(fichier.get_value("reseau", "pseudo", pseudo))
+	derniere_adresse = str(fichier.get_value("reseau", "adresse", derniere_adresse))
 	_records.clear()
 	if fichier.has_section("records"):
 		for cle in fichier.get_section_keys("records"):
@@ -69,6 +77,8 @@ func sauver() -> void:
 	fichier.set_value("commandes", "tactile", tactile)
 	fichier.set_value("commandes", "acceleration_auto", acceleration_auto)
 	fichier.set_value("commandes", "vibrations", vibrations)
+	fichier.set_value("reseau", "pseudo", pseudo)
+	fichier.set_value("reseau", "adresse", derniere_adresse)
 	for cle in _records:
 		fichier.set_value("records", cle, _records[cle])
 	var err := fichier.save(chemin)

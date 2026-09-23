@@ -13,6 +13,7 @@ var _menu: Control
 var _options: OptionsPanel
 var _bouton_pause: Button
 var _reprendre: Button
+var _recommencer: Button
 
 ## Coupée quand l'écran de résultats s'affiche : il a ses propres boutons.
 var disponible: bool = true
@@ -46,13 +47,17 @@ func _ready() -> void:
 	colonne.add_child(UITheme.titre("PAUSE", 48))
 	_reprendre = UITheme.bouton("Reprendre", fermer)
 	colonne.add_child(_reprendre)
-	colonne.add_child(UITheme.bouton("Recommencer", func() -> void:
-		RaceLauncher.lancer(get_tree(), GameSettings.course)))
+	_recommencer = UITheme.bouton("Recommencer", func() -> void:
+		RaceLauncher.lancer(get_tree(), GameSettings.course))
+	colonne.add_child(_recommencer)
 	colonne.add_child(UITheme.bouton("Options", func() -> void:
 		_menu.hide()
 		_options.show()))
 	colonne.add_child(UITheme.bouton("Menu principal", func() -> void:
-		RaceLauncher.retour_au_menu(get_tree())))
+		if Reseau.actif():
+			Reseau.abandonner()
+		else:
+			RaceLauncher.retour_au_menu(get_tree())))
 
 	_options = OptionsPanel.new()
 	add_child(_options)
@@ -71,16 +76,24 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _options.visible:
 		return  # l'écran d'options se ferme lui-même
 	get_viewport().set_input_as_handled()
-	if get_tree().paused:
+	if _voile.visible:
 		fermer()
 	else:
 		ouvrir()
 
 
+## En réseau, le monde ne s'arrête pas pour un seul joueur : le menu s'ouvre
+## par-dessus la course, qui continue.
+func _en_reseau() -> bool:
+	return Reseau.actif()
+
+
 func ouvrir() -> void:
-	if not disponible or get_tree().paused:
+	if not disponible or get_tree().paused or _voile.visible:
 		return
-	get_tree().paused = true
+	if not _en_reseau():
+		get_tree().paused = true
+	_recommencer.visible = not _en_reseau()
 	_bouton_pause.hide()
 	_voile.show()
 	_menu.show()

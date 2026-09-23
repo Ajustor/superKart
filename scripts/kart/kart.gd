@@ -37,6 +37,10 @@ var motor: KartMotor
 ## centimètres au-dessus de la route doit pouvoir s'y asseoir.
 var controle_actif: bool = true
 
+## Faux pour un kart piloté sur une autre machine, en réseau : il n'est pas
+## simulé ici, RaceSync le pose là où son propriétaire dit qu'il est.
+var simule: bool = true
+
 ## Vrai l'image où le pilote a demandé son objet. Posé ici, lu et remis à faux
 ## par ItemManager : le kart ne sait pas ce qu'il tient, il transmet la demande.
 var demande_objet: bool = false
@@ -86,6 +90,8 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if not simule:
+		return
 	var cmd := _input.poll(delta)
 	if not controle_actif:
 		cmd.clear()
