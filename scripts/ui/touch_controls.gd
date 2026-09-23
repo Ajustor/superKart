@@ -143,6 +143,7 @@ func _appliquer() -> void:
 	for action in voulues:
 		if not _tenues.has(action):
 			Input.action_press(action)
+			PlayerInput.noter_appui(action)
 			_tenues[action] = true
 	queue_redraw()
 

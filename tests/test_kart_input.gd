@@ -37,3 +37,44 @@ func test_poll_renvoie_toujours_la_meme_instance() -> void:
 	assert_eq(premier, second,
 		"la commande est réutilisée d'une frame à l'autre : aucune allocation dans la boucle")
 	source.free()
+
+
+# --- Appuis brefs ------------------------------------------------------------------
+
+func _joueur() -> PlayerInput:
+	var p := PlayerInput.new()
+	add_child_autofree(p)
+	return p
+
+
+## Sur un téléphone qui rame, un tap commence et finit entre deux pas de
+## physique : au moment de lire, le bouton est déjà relâché.
+func test_un_tap_tactile_entre_deux_pas_n_est_pas_perdu() -> void:
+	var p := _joueur()
+	Input.action_press(&"use_item")
+	PlayerInput.noter_appui(&"use_item")
+	Input.action_release(&"use_item")
+	assert_true(p.poll(1.0 / 60.0).use_item, "l'objet part quand même")
+	assert_false(p.poll(1.0 / 60.0).use_item, "et une seule fois")
+
+
+func test_un_appui_clavier_bref_est_retenu() -> void:
+	var p := _joueur()
+	var appui := InputEventAction.new()
+	appui.action = &"drift"
+	appui.pressed = true
+	p._input(appui)
+	assert_true(p.poll(1.0 / 60.0).drift, "le saut de dérapage part")
+	assert_false(p.poll(1.0 / 60.0).drift, "puis rien : le bouton n'est plus tenu")
+
+
+func test_un_appui_fait_au_menu_ne_lance_rien_au_depart() -> void:
+	PlayerInput.noter_appui(&"use_item")
+	var p := _joueur()
+	assert_false(p.poll(1.0 / 60.0).use_item)
+
+
+func test_seuls_les_appuis_brefs_sont_retenus() -> void:
+	var p := _joueur()
+	PlayerInput.noter_appui(&"throttle")
+	assert_eq(p.poll(1.0 / 60.0).throttle, 0.0, "les gaz se tiennent, ils ne se tapent pas")
