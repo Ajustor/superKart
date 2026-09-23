@@ -31,6 +31,10 @@ const COURBE := 1.4
 var _doigts: Dictionary = {}     ## index du doigt -> action tenue
 var _tenues: Dictionary = {}     ## action -> true, telles qu'envoyées à Input
 
+## Vrai pendant le décompte : voir RaceSession.
+static var gaz_auto_retenus := false
+var _gaz_auto_retenus_vus := false
+
 var _doigt_joystick := -1
 var _centre_joystick := Vector2.ZERO
 var _pouce := Vector2.ZERO
@@ -138,6 +142,12 @@ static func action_au_point(point: Vector2, taille: Vector2, joystick: bool = fa
 	return meilleure
 
 
+func _process(_delta: float) -> void:
+	# Le vert vient de tomber : l'accélération automatique reprend.
+	if visible and gaz_auto_retenus != _gaz_auto_retenus_vus:
+		_appliquer()
+
+
 func _input(event: InputEvent) -> void:
 	if not visible:
 		return
@@ -202,7 +212,8 @@ func _appliquer() -> void:
 	var voulues := {}
 	for action in _doigts.values():
 		voulues[action] = true
-	if visible and GameSettings.acceleration_auto and not voulues.has(&"brake"):
+	_gaz_auto_retenus_vus = gaz_auto_retenus
+	if visible and GameSettings.acceleration_auto and not gaz_auto_retenus and not voulues.has(&"brake"):
 		voulues[&"throttle"] = true
 	_diriger()
 

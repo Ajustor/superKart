@@ -52,6 +52,10 @@ var demande_objet: bool = false
 ## remettre en piste un kart qui survole le décor au milieu d'un saut.
 var au_sol: bool = true
 
+## Le pilote tient-il les gaz ? Lu même quand le kart ne répond pas encore,
+## pendant le décompte : c'est ce que regarde le turbo au départ.
+var gaz_tenu: bool = false
+
 ## Posé à vrai l'image où le kart quitte le sol en montant — sommet d'une
 ## rampe, rebord —, lu et remis à faux par la session.
 var vient_de_decoller: bool = false
@@ -103,6 +107,7 @@ func _physics_process(delta: float) -> void:
 	if not simule:
 		return
 	var cmd := _input.poll(delta)
+	gaz_tenu = cmd.throttle > 0.5
 	if not controle_actif:
 		cmd.clear()
 	# Un kart sonné ne lance rien : il a les mains prises.

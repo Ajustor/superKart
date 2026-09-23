@@ -571,3 +571,57 @@ func test_sur_la_grille_la_place_est_la_case() -> void:
 	session.classer()
 	assert_eq(session.entries[0].position, 1, "en pole, on est premier avant le départ")
 	assert_eq(session.entries[3].position, 4)
+
+
+# --- Turbo au départ -----------------------------------------------------------------
+
+## Un décompte de trois secondes, le joueur prenant les gaz à `gaz_a` secondes
+## du vert (-1 : jamais).
+func _decompter(gaz_a: float) -> void:
+	_monter_avec_decompte(1, 3.0)
+	var pas := 1.0 / 60.0
+	while not session.en_course:
+		karts[0].gaz_tenu = gaz_a >= 0.0 and session.decompte_restant <= gaz_a + pas * 0.5
+		session.avancer_decompte(pas)
+
+
+func test_les_gaz_au_bon_moment_font_partir_en_trombe() -> void:
+	_decompter(1.0)
+	assert_gt(karts[0].motor.boost_timer, 0.0, "turbo au départ")
+	assert_true(karts[0].controle_actif)
+
+
+func test_les_gaz_des_le_premier_feu_font_caler() -> void:
+	_decompter(2.8)
+	assert_false(karts[0].controle_actif, "calé au vert")
+	assert_eq(karts[0].motor.boost_timer, 0.0)
+	var pas := 1.0 / 60.0
+	var t := 0.0
+	while not karts[0].controle_actif and t < 2.0:
+		session._relancer_les_cales(pas)
+		t += pas
+	assert_almost_eq(t, RaceSession.CALAGE, 0.05, "il repart après un court instant")
+
+
+func test_sans_gaz_ou_trop_tard_le_depart_est_normal() -> void:
+	_decompter(-1.0)
+	assert_eq(karts[0].motor.boost_timer, 0.0)
+	assert_true(karts[0].controle_actif)
+	_decompter(0.1)
+	assert_eq(karts[0].motor.boost_timer, 0.0, "accélérer au vert, c'est trop tard pour le turbo")
+
+
+func test_la_fenetre_du_turbo() -> void:
+	assert_eq(RaceSession.resultat_du_depart(-1.0), RaceSession.Depart.NORMAL)
+	assert_eq(RaceSession.resultat_du_depart(0.1), RaceSession.Depart.NORMAL)
+	assert_eq(RaceSession.resultat_du_depart(0.5), RaceSession.Depart.TURBO)
+	assert_eq(RaceSession.resultat_du_depart(1.4), RaceSession.Depart.TURBO)
+	assert_eq(RaceSession.resultat_du_depart(2.0), RaceSession.Depart.CALE)
+
+
+func test_le_tactile_retient_ses_gaz_automatiques_pendant_le_decompte() -> void:
+	_monter_avec_decompte(1, 3.0)
+	assert_true(TouchControls.gaz_auto_retenus, "sinon le joueur tactile calerait à chaque course")
+	while not session.en_course:
+		session.avancer_decompte(0.1)
+	assert_false(TouchControls.gaz_auto_retenus, "au vert, l'accélération automatique reprend")

@@ -17,6 +17,8 @@ var _arrivee: AudioStreamWAV
 var _boite: AudioStreamWAV
 var _lancer: AudioStreamWAV
 var _choc: AudioStreamWAV
+var _turbo_depart: AudioStreamWAV
+var _calage: AudioStreamWAV
 ## Un second lecteur pour les objets : un bip de tour ne doit pas couper le
 ## bruit du choc qui tombe à la même image.
 var _lecteur_objets: AudioStreamPlayer
@@ -36,6 +38,10 @@ func _ready() -> void:
 
 	_session.decompte.connect(func(_s: int) -> void: _jouer(_bip))
 	_session.depart.connect(func() -> void: _jouer(_go))
+	# Après le « go » : une montée pour le turbo, un raté pour le calage.
+	_turbo_depart = Synth.notes([[523.0, 0.05], [784.0, 0.05], [1047.0, 0.05], [1568.0, 0.18]], 0.45)
+	_calage = Synth.notes([[196.0, 0.08], [0.0, 0.05], [185.0, 0.08], [0.0, 0.05], [147.0, 0.22]], 0.5)
+	_session.depart_du_joueur.connect(_sur_depart_du_joueur)
 	_session.tour_boucle.connect(_sur_tour)
 
 	_lecteur_objets = AudioStreamPlayer.new()
@@ -58,6 +64,13 @@ func _jouer_objet(entree: RaceEntry, son: AudioStream) -> void:
 		return
 	_lecteur_objets.stream = son
 	_lecteur_objets.play()
+
+
+func _sur_depart_du_joueur(resultat: int) -> void:
+	if resultat == RaceSession.Depart.TURBO:
+		_jouer_objet(_session.entries[0], _turbo_depart)
+	elif resultat == RaceSession.Depart.CALE:
+		_jouer_objet(_session.entries[0], _calage)
 
 
 func _sur_tour(entree: RaceEntry) -> void:

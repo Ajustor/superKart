@@ -65,12 +65,20 @@ func _ready() -> void:
 		_depuis_depart = 0.0
 		_annoncer("GO !"))
 	_session.tour_boucle.connect(_sur_tour)
+	_session.depart_du_joueur.connect(_sur_depart_du_joueur)
 
 
 func _placer_la_carte() -> void:
 	var cadre := MiniMap.cadre(size)
 	_carte.position = cadre.position
 	_carte.size = cadre.size
+
+
+func _sur_depart_du_joueur(resultat: int) -> void:
+	if resultat == RaceSession.Depart.TURBO:
+		_annoncer("TURBO !")
+	elif resultat == RaceSession.Depart.CALE:
+		_annoncer("CALÉ !")
 
 
 func _sur_tour(entree: RaceEntry) -> void:
