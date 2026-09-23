@@ -64,7 +64,19 @@ func _ready() -> void:
 	# plus haut aurait retardé tout le reste.
 	if _session.entries.is_empty():
 		await _session.grille_prete
-	_session.entries[0].kart.figure.connect(func() -> void: _jouer_objet(_session.entries[0], _figure))
+	var joueur := _session.entries[0]
+	joueur.kart.figure.connect(func() -> void: _jouer_objet(joueur, _figure))
+	# Un « ding » à chaque palier de glisse, plus aigu de palier en palier,
+	# puis un souffle au lâcher.
+	var dings := [
+		Synth.notes([[1047.0, 0.07]], 0.3),
+		Synth.notes([[1319.0, 0.07]], 0.33),
+		Synth.notes([[1568.0, 0.05], [2093.0, 0.08]], 0.36),
+	]
+	var souffle := Synth.notes([[392.0, 0.03], [523.0, 0.03], [784.0, 0.1]], 0.35)
+	joueur.kart.motor.palier_atteint.connect(func(p: int) -> void:
+		_jouer_objet(joueur, dings[mini(p, 3) - 1]))
+	joueur.kart.motor.mini_turbo.connect(func(_p: int) -> void: _jouer_objet(joueur, souffle))
 
 
 ## Seulement pour le joueur : entendre sept adversaires ramasser des boîtes ne

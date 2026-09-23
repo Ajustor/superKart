@@ -143,12 +143,39 @@ func test_le_sens_de_glisse_est_verrouille_a_l_entree() -> void:
 	assert_eq(motor.drift_dir, -1, "le sens ne change pas en cours de glisse")
 
 
-func test_pas_de_derapage_sans_braquage() -> void:
+func test_sans_braquage_ce_n_est_qu_un_saut() -> void:
 	cmd.throttle = 1.0
 	_run(5.0)
 	cmd.drift = true
+	motor.step(cmd, 1.0 / 60.0)
+	assert_eq(motor.state, KartMotor.State.HOP, "un appui fait toujours sauter, comme dans Mario Kart")
 	_run(0.5)
-	assert_eq(motor.state, KartMotor.State.GRIP, "le dérapage exige un braquage")
+	assert_eq(motor.state, KartMotor.State.GRIP, "sans direction à l'atterrissage, pas de glisse")
+
+
+func test_le_cote_se_choisit_pendant_le_saut() -> void:
+	cmd.throttle = 1.0
+	_run(5.0)
+	cmd.drift = true
+	motor.step(cmd, 1.0 / 60.0)
+	cmd.steer = -1.0          # on braque une fois en l'air
+	_run(stats.hop_duration + 0.1)
+	assert_eq(motor.state, KartMotor.State.DRIFT)
+	assert_eq(motor.drift_dir, -1, "le braquage pendant le saut décide du côté")
+
+
+func test_bouton_tenu_sans_braquer_le_kart_ne_sautille_pas() -> void:
+	cmd.throttle = 1.0
+	_run(5.0)
+	cmd.drift = true
+	var sauts := 0
+	var avant := motor.state
+	for i in 120:
+		motor.step(cmd, 1.0 / 60.0)
+		if motor.state == KartMotor.State.HOP and avant != KartMotor.State.HOP:
+			sauts += 1
+		avant = motor.state
+	assert_eq(sauts, 1, "un seul saut par appui")
 
 
 func test_pas_de_derapage_sous_la_vitesse_minimale() -> void:
@@ -187,9 +214,8 @@ func test_en_derapage_la_caisse_se_decale_du_vecteur_vitesse() -> void:
 
 func test_l_angle_de_glisse_reste_dans_la_fourchette() -> void:
 	_enter_drift(1)
-	# On reste au-dessus de -0.8 : au-delà, le contre-braquage annule la glisse
-	# et l'angle retombe à zéro (cf. Task 8).
-	for braquage in [-0.7, -0.3, 0.0, 0.5, 1.0]:
+	# Le contre-braquage ne casse plus la glisse : toute la plage compte.
+	for braquage in [-1.0, -0.7, -0.3, 0.0, 0.5, 1.0]:
 		cmd.steer = braquage
 		_run(0.5)
 		var degres := rad_to_deg(motor.drift_angle)
@@ -301,13 +327,36 @@ func test_le_derapage_a_gauche_est_le_miroir_du_droit() -> void:
 		"à gauche, la caisse se décale du côté opposé")
 
 
-func test_le_contre_braquage_annule_le_derapage_sans_turbo() -> void:
+func test_le_contre_braquage_elargit_la_glisse_sans_la_casser() -> void:
 	_enter_drift(1)
-	_run(stats.drift_tiers[2] + 0.5)
 	cmd.steer = -1.0
-	_run(0.2)
-	assert_eq(motor.state, KartMotor.State.GRIP, "contre-braquer casse la glisse")
-	assert_eq(motor.boost_timer, 0.0, "une glisse cassée ne rapporte rien, même chargée à fond")
+	var depart := motor.velocity_dir
+	_run(0.5)
+	assert_eq(motor.state, KartMotor.State.DRIFT, "contre-braquer élargit, comme dans Mario Kart")
+	assert_gt(motor.velocity_dir, depart, "la glisse tourne toujours du même côté, plus large")
+
+
+func test_serrer_le_virage_charge_plus_vite() -> void:
+	_enter_drift(1)
+	cmd.steer = 1.0
+	motor.drift_charge = 0.0
+	_run(0.5)
+	var serre := motor.drift_charge
+	cmd.steer = -1.0
+	motor.drift_charge = 0.0
+	_run(0.5)
+	assert_gt(serre, motor.drift_charge * 1.5, "vers l'intérieur, le mini-turbo se charge nettement plus vite")
+
+
+func test_chaque_palier_franchi_est_annonce() -> void:
+	watch_signals(motor)
+	_enter_drift(1)
+	cmd.steer = 1.0
+	_run(stats.drift_tiers[2] + 0.2)
+	assert_signal_emit_count(motor, "palier_atteint", 3, "un signal par palier, pas un par image")
+	cmd.drift = false
+	motor.step(cmd, 1.0 / 60.0)
+	assert_signal_emitted_with_parameters(motor, "mini_turbo", [3])
 
 
 func test_tomber_sous_la_vitesse_minimale_annule_le_derapage() -> void:
@@ -353,7 +402,9 @@ func test_un_palier_sans_duree_de_turbo_n_en_est_pas_un() -> void:
 
 func test_une_glisse_cassee_exige_de_relacher_avant_d_en_relancer_une() -> void:
 	_enter_drift(1)
-	cmd.steer = -1.0
+	# Un mur pris de face casse la glisse.
+	var devant := Vector3(sin(motor.velocity_dir), 0.0, -cos(motor.velocity_dir))
+	motor.heurter_mur(-devant)
 	_run(0.5)
 	assert_eq(motor.state, KartMotor.State.GRIP,
 		"bouton toujours tenu : la glisse cassée ne se relance pas")
