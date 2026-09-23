@@ -28,6 +28,7 @@ var _inclinaison: float = 0.0
 ## Le tonneau d'une figure, de 0 à 1 ; négatif hors figure.
 var _figure: float = -1.0
 const DUREE_FIGURE := 0.45
+var _poussiere: CPUParticles3D
 
 
 func _ready() -> void:
@@ -47,12 +48,16 @@ func _ready() -> void:
 	_sparks.material_override = _spark_material
 	_sparks.emitting = false
 	_kart.figure.connect(func() -> void: _figure = 0.0)
+	_poussiere = _creer_poussiere()
+	add_child(_poussiere)
 
 
 func _process(delta: float) -> void:
 	var motor := _kart.motor
 	_update_lean(motor, delta)
 	_update_sparks(motor)
+	# De la poussière sous les roues hors piste : on sent qu'on y perd.
+	_poussiere.emitting = motor.on_offroad and _kart.au_sol and absf(motor.speed) > 5.0
 
 
 func _update_lean(motor: KartMotor, delta: float) -> void:
@@ -89,3 +94,37 @@ func _update_sparks(motor: KartMotor) -> void:
 	var color: Color = TIER_COLORS[mini(tier, TIER_COLORS.size()) - 1]
 	if _spark_material.albedo_color != color:
 		_spark_material.albedo_color = color
+
+
+## Peu de particules, calculées par le processeur : quelques nuages beiges
+## qui montent et s'étalent derrière le kart. Assez pour se voir, pas assez
+## pour peser sur un téléphone.
+func _creer_poussiere() -> CPUParticles3D:
+	var p := CPUParticles3D.new()
+	p.emitting = false
+	p.amount = 18
+	p.lifetime = 0.6
+	p.position = Vector3(0.0, 0.15, 0.8)
+	p.direction = Vector3(0.0, 1.0, 1.0)
+	p.spread = 35.0
+	p.initial_velocity_min = 1.5
+	p.initial_velocity_max = 3.0
+	p.gravity = Vector3(0.0, -2.0, 0.0)
+	p.scale_amount_min = 0.35
+	p.scale_amount_max = 0.7
+	var courbe := Curve.new()
+	courbe.add_point(Vector2(0.0, 0.6))
+	courbe.add_point(Vector2(1.0, 1.4))
+	p.scale_amount_curve = courbe
+	var forme := SphereMesh.new()
+	forme.radius = 0.25
+	forme.height = 0.5
+	forme.radial_segments = 6
+	forme.rings = 3
+	var matiere := StandardMaterial3D.new()
+	matiere.albedo_color = Color(0.72, 0.62, 0.45, 0.55)
+	matiere.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	matiere.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	forme.material = matiere
+	p.mesh = forme
+	return p

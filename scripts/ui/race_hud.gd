@@ -126,6 +126,7 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	if _session == null or _session.entries.is_empty():
 		return
+	_dessiner_vitesse()
 	_dessiner_objet()
 	_dessiner_feux()
 
@@ -168,3 +169,24 @@ func _dessiner_feux() -> void:
 	for i in 3:
 		var c := centre + Vector2((i - 1) * ecart, 0)
 		draw_circle(c, RAYON_FEU, couleur if i < allumes else Color(0.2, 0.2, 0.22))
+
+
+## Des traits de vitesse sur les bords de l'écran pendant un turbo : ils
+## pointent vers le centre, là où va le kart, et se redistribuent à chaque
+## image, ce qui les fait défiler. Le centre reste libre : on y regarde la route.
+const TRAITS_DE_VITESSE := 26
+
+func _dessiner_vitesse() -> void:
+	var moteur := _session.entries[0].kart.motor
+	if moteur.boost_timer <= 0.0:
+		return
+	var force := clampf(moteur.boost_timer / 0.4, 0.0, 1.0)
+	var centre := size * 0.5
+	var rayon := centre.length()
+	for i in TRAITS_DE_VITESSE:
+		var angle := randf() * TAU
+		var dir := Vector2(cos(angle), sin(angle))
+		var debut := randf_range(0.62, 0.85) * rayon
+		var longueur := randf_range(0.08, 0.16) * rayon
+		draw_line(centre + dir * debut, centre + dir * (debut + longueur),
+			Color(1, 1, 1, 0.35 * force), randf_range(2.0, 4.0))
