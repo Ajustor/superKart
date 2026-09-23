@@ -29,6 +29,10 @@ var place_finale: int = 0
 ## que personne n'a bougé.
 var case_de_grille: int = 0
 
+## L'emplacement d'objet. Ici plutôt que sur le kart : c'est un état de course,
+## qui se vide et se remplit selon les règles de la course, pas de la physique.
+var inventaire := KartInventory.new()
+
 ## Place au classement, 1 = premier. Zéro tant qu'aucun classement n'a été
 ## calculé : afficher « 0e » est une erreur visible, afficher « 1er » à tort
 ## ne l'est pas.

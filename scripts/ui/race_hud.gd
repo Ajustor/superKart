@@ -15,6 +15,11 @@ extends Control
 const DUREE_ANNONCE := 1.2
 const RAYON_FEU := 26.0
 
+## L'emplacement d'objet, en haut à droite, à gauche du bouton pause.
+const CASE_OBJET := 92.0
+## Pendant la roulette, un pictogramme différent toutes les ... secondes.
+const PAS_ROULETTE := 0.08
+
 var _session: RaceSession
 var _label: Label
 var _annonce: Label
@@ -96,11 +101,35 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
-## Les feux de départ : trois rouges qui s'allument une seconde après l'autre,
-## puis trois verts au départ, qui s'effacent peu après.
 func _draw() -> void:
 	if _session == null or _session.entries.is_empty():
 		return
+	_dessiner_objet()
+	_dessiner_feux()
+
+
+## L'emplacement d'objet. Pendant la roulette les pictogrammes défilent ; ensuite
+## l'objet tiré reste affiché, avec le nombre de charges s'il y en a plusieurs.
+func _dessiner_objet() -> void:
+	var inventaire := _session.entries[0].inventaire
+	var cadre := Rect2(Vector2(size.x - 104.0 - CASE_OBJET, 16.0), Vector2(CASE_OBJET, CASE_OBJET))
+	draw_rect(cadre, Color(0.05, 0.05, 0.07, 0.7))
+	draw_rect(cadre, Color(1, 1, 1, 0.6), false, 3.0)
+	if inventaire.est_vide():
+		return
+	var montre := inventaire.objet
+	if inventaire.roulette > 0.0:
+		var pas := int(Time.get_ticks_msec() / (PAS_ROULETTE * 1000.0))
+		montre = ItemKind.TIRABLES[pas % ItemKind.TIRABLES.size()]
+	ItemIcons.dessiner(self, montre, cadre.get_center(), CASE_OBJET * 0.4)
+	if inventaire.roulette <= 0.0 and inventaire.charges > 1:
+		draw_string(ThemeDB.fallback_font, cadre.position + Vector2(CASE_OBJET - 30.0, CASE_OBJET - 8.0),
+			"×%d" % inventaire.charges, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color.WHITE)
+
+
+## Les feux de départ : trois rouges qui s'allument une seconde après l'autre,
+## puis trois verts au départ, qui s'effacent peu après.
+func _dessiner_feux() -> void:
 	var allumes := 0
 	var couleur := Color(0.95, 0.12, 0.1)
 	if not _session.en_course:
