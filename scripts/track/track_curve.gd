@@ -32,8 +32,19 @@ var half_width: float
 var length: float
 
 
+## Pas de cuisson de la courbe, en mètres. Godot cuit par défaut tous les
+## 20 cm, et get_closest_offset parcourt TOUS les points cuits : 37 µs par
+## projection sur le Ruban Céleste, plusieurs fois par kart et par image — un
+## gros morceau de la physique sur téléphone. Au mètre, la projection coûte
+## cinq fois moins, la longueur du tour bouge d'un millimètre, et la corde
+## d'un virage de 25 m de rayon s'écarte de l'arc de 5 mm.
+const PAS_DE_CUISSON := 1.0
+
+
 func _init(track_curve: Curve3D, track_half_width: float) -> void:
-	curve = track_curve
+	# Une copie : la courbe de la scène reste celle que l'éditeur dessine.
+	curve = track_curve.duplicate()
+	curve.bake_interval = PAS_DE_CUISSON
 	half_width = track_half_width
 	length = curve.get_baked_length()
 	assert(length > 0.0, "un TrackCurve a besoin d'une courbe de longueur non nulle")
@@ -150,8 +161,13 @@ func distance_of(point: Vector3) -> float:
 ## dévers, aplatir le vecteur sous-estimait l'écart et laissait le kart déborder
 ## du bitume sans que rien ne le signale.
 func lateral_offset(point: Vector3) -> float:
-	var d := distance_of(point)
-	return (point - position_at(d)).dot(right_at(d))
+	return lateral_offset_at(point, distance_of(point))
+
+
+## La même, quand on connaît déjà la distance du point le long du tracé :
+## une projection de moins.
+func lateral_offset_at(point: Vector3, distance: float) -> float:
+	return (point - position_at(distance)).dot(right_at(distance))
 
 
 func is_off_track(point: Vector3) -> bool:

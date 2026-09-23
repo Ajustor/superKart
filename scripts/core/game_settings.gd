@@ -29,8 +29,17 @@ var acceleration_auto: bool = true
 
 var vibrations: bool = true
 
+## Diriger au joystick sur écran tactile ; sinon, deux flèches.
+var joystick: bool = true
+
 ## La mini-carte en haut à droite pendant la course.
 var mini_carte: bool = true
+
+## Le compteur de performances (PerfOverlay), en haut de l'écran.
+var afficher_fps: bool = false
+
+## Voir QualiteGraphique.
+var qualite: int = QualiteGraphique.Niveau.AUTO
 
 ## Le nom affiché aux autres joueurs en réseau.
 var pseudo: String = ""
@@ -64,7 +73,11 @@ func charger() -> void:
 	tactile = clampi(int(fichier.get_value("commandes", "tactile", tactile)), Tactile.AUTO, Tactile.JAMAIS)
 	acceleration_auto = bool(fichier.get_value("commandes", "acceleration_auto", acceleration_auto))
 	vibrations = bool(fichier.get_value("commandes", "vibrations", vibrations))
+	joystick = bool(fichier.get_value("commandes", "joystick", joystick))
 	mini_carte = bool(fichier.get_value("affichage", "mini_carte", mini_carte))
+	afficher_fps = bool(fichier.get_value("affichage", "fps", afficher_fps))
+	qualite = clampi(int(fichier.get_value("affichage", "qualite", qualite)),
+		QualiteGraphique.Niveau.AUTO, QualiteGraphique.Niveau.BASSE)
 	pseudo = str(fichier.get_value("reseau", "pseudo", pseudo))
 	derniere_adresse = str(fichier.get_value("reseau", "adresse", derniere_adresse))
 	_records.clear()
@@ -81,7 +94,10 @@ func sauver() -> void:
 	fichier.set_value("commandes", "tactile", tactile)
 	fichier.set_value("commandes", "acceleration_auto", acceleration_auto)
 	fichier.set_value("commandes", "vibrations", vibrations)
+	fichier.set_value("commandes", "joystick", joystick)
 	fichier.set_value("affichage", "mini_carte", mini_carte)
+	fichier.set_value("affichage", "fps", afficher_fps)
+	fichier.set_value("affichage", "qualite", qualite)
 	fichier.set_value("reseau", "pseudo", pseudo)
 	fichier.set_value("reseau", "adresse", derniere_adresse)
 	for cle in _records:
@@ -109,6 +125,19 @@ func appliquer() -> void:
 	if effets >= 0:
 		AudioServer.set_bus_volume_db(effets, volume_en_db(volume_effets))
 		AudioServer.set_bus_mute(effets, volume_effets <= 0.0)
+	appliquer_graphismes()
+
+
+## La résolution 3D vaut pour tout le jeu ; ombres, lueur et brouillard pour
+## la scène en cours. Une course qui démarre les règle elle-même
+## (RaceLauncher) : elle n'est pas encore dans l'arbre quand on la monte.
+func appliquer_graphismes() -> void:
+	if not is_inside_tree():
+		return
+	var fenetre := get_tree().root
+	fenetre.scaling_3d_scale = QualiteGraphique.echelle_3d(qualite)
+	if get_tree().current_scene != null:
+		QualiteGraphique.appliquer_a(get_tree().current_scene, qualite)
 
 
 ## linear_to_db(0) vaut -inf, que le mixeur n'aime pas : le silence passe par

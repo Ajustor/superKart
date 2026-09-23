@@ -21,6 +21,12 @@ var _arrets: Array[int] = []
 var _ou: Dictionary = {}
 var _arrets_ou: Dictionary = {}
 var _temps := 0.0
+## Durée réelle de chaque image, en ms. Lancé avec --fixed-fps, le moteur
+## enchaîne les images sans attendre : c'est tout ce que coûte une image, la
+## physique comme le reste. Les moniteurs de Performance, eux, ne se
+## rafraîchissent qu'une fois par seconde.
+var _images: PackedFloat32Array = []
+var _derniere := 0
 
 
 func _initialize() -> void:
@@ -50,6 +56,10 @@ func _physics_process(delta: float) -> bool:
 	if _precedent.is_empty():
 		_brancher()
 	_temps += delta
+	var maintenant := Time.get_ticks_usec()
+	if _session.en_course and _derniere > 0:
+		_images.append((maintenant - _derniere) / 1000.0)
+	_derniere = maintenant
 	for i in _session.entries.size():
 		var e := _session.entries[i]
 		var p := e.kart.global_position
@@ -105,4 +115,17 @@ func _bilan() -> void:
 	for k in pires.slice(0, 6):
 		arrets.append("%d m ×%d" % [k, _arrets_ou[k]])
 	print("arrêts par endroit : %s" % (", ".join(arrets) if not arrets.is_empty() else "aucun"))
+	print("durée d'une image (ms) : %s" % _resume(_images))
 	print("ARRIVÉS %d/%d" % [arrives, _session.entries.size()])
+
+
+## Moyenne, 95e centile et pire valeur.
+func _resume(valeurs: PackedFloat32Array) -> String:
+	if valeurs.is_empty():
+		return "—"
+	var tries := valeurs.duplicate()
+	tries.sort()
+	var somme := 0.0
+	for v in tries:
+		somme += v
+	return "moy %.2f, 95e %.2f, pire %.1f" % [somme / tries.size(), tries[int(tries.size() * 0.95)], tries[tries.size() - 1]]

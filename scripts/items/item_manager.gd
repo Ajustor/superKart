@@ -266,10 +266,10 @@ func _deplacer(c: Carapace, positions: Array[Vector3], delta: float) -> void:
 		if vers.length_squared() > 0.0001:
 			c.direction = vers.normalized()
 
-	var ancien := _piste.lateral_offset(c.position)
+	var ancien := _piste.lateral_offset_at(c.position, d)
 	var suivante := c.position + c.direction * VITESSE_CARAPACE * delta
 	var nd := _piste.distance_of(suivante)
-	var ecart := _piste.lateral_offset(suivante)
+	var ecart := _piste.lateral_offset_at(suivante, nd)
 	var limite := _piste.half_width - MARGE_BORD
 	if absf(ecart) > limite:
 		# Le bord de la route fait office de mur : on renvoie la composante qui

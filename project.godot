@@ -18,6 +18,7 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 
 GameSettings="*res://scripts/core/game_settings.gd"
 Reseau="*res://scripts/net/network_manager.gd"
+PerfOverlay="*res://scripts/core/perf_overlay.gd"
 
 [display]
 
@@ -75,6 +76,15 @@ pause={
 , Object(InputEventJoypadButton,"resource_local_to_scene":false,"resource_name":"","device":-1,"button_index":6,"pressure":0.0,"pressed":false,"script":null)
 ]
 }
+
+[input_devices]
+
+buffering/agile_event_flushing=true
+
+[physics]
+
+common/max_physics_steps_per_frame=3
+3d/physics_engine="Jolt Physics"
 
 [rendering]
 

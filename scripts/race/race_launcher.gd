@@ -54,6 +54,8 @@ static func monter(reglage: RaceSetup, rng: RandomNumberGenerator = null) -> Nod
 			if nouvelle.has_node(nom) and course.has_node(nom):
 				course.get_node(nom).free()
 
+	QualiteGraphique.appliquer_a(course, GameSettings.qualite)
+
 	var session := course.get_node("Session") as RaceSession
 	session.lap_count = maxi(reglage.tours, 1)
 	if rng == null:

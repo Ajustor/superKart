@@ -35,12 +35,21 @@ var _vers_carte := Transform2D.IDENTITY
 var _largeur_route := 4.0
 var _depart: PackedVector2Array = []
 var _preparee := false
+## Les points des karts, sur un calque à part : eux seuls bougent. La route,
+## avec ses traits lissés, n'est redessinée que quand la carte change de
+## taille — la redessiner à chaque image coûtait pour rien sur téléphone.
+var _points: Control
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# L'écran change de taille (rotation d'un téléphone) : on recadre.
 	resized.connect(func() -> void: _preparee = false)
+	_points = Control.new()
+	_points.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_points.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_points.draw.connect(_dessiner_les_karts)
+	add_child(_points)
 	_suivre_le_reglage()
 	GameSettings.changed.connect(_suivre_le_reglage)
 
@@ -169,7 +178,8 @@ func _process(_delta: float) -> void:
 		return
 	if not _preparee:
 		_preparer()
-	queue_redraw()
+		queue_redraw()
+	_points.queue_redraw()
 
 
 func _draw() -> void:
@@ -187,6 +197,10 @@ func _draw() -> void:
 				draw_polyline(_traits[i], ROUTE, _largeur_route, true)
 	draw_line(_depart[0], _depart[1], BORD, 3.0, true)
 
+
+func _dessiner_les_karts() -> void:
+	if not _preparee:
+		return
 	# Les autres d'abord, le joueur par-dessus tout le monde.
 	for i in range(session.entries.size() - 1, -1, -1):
 		var e := session.entries[i]
@@ -195,8 +209,8 @@ func _draw() -> void:
 		var p := e.kart.global_position
 		var ou := _vers_carte * Vector2(p.x, p.z)
 		if i == 0:
-			draw_circle(ou, 7.5, Color.WHITE)
-			draw_circle(ou, 5.5, MOI)
+			_points.draw_circle(ou, 7.5, Color.WHITE)
+			_points.draw_circle(ou, 5.5, MOI)
 		else:
-			draw_circle(ou, 5.0, BORD)
-			draw_circle(ou, 3.8, HUMAIN if e.humain else IA)
+			_points.draw_circle(ou, 5.0, BORD)
+			_points.draw_circle(ou, 3.8, HUMAIN if e.humain else IA)

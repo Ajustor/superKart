@@ -283,7 +283,7 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 	# Une seule projection par image et par kart : is_off_track la referait
 	# entièrement, et la remise en piste une troisième fois.
 	var d := entree.progress.distance
-	var lateral := _track.track_curve.lateral_offset(point)
+	var lateral := _track.track_curve.lateral_offset_at(point, d)
 	var ecart := absf(lateral)
 	# Hors du bitume, ou sur une zone hors-piste posée sur la route.
 	var dehors := ecart > _demi_largeur or _track.en_zone_hors_piste(d, lateral)
