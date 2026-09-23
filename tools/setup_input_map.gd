@@ -44,6 +44,11 @@ func _init() -> void:
 	_action("use_item", [
 		_touche(KEY_CTRL),
 		_axe(JOY_AXIS_TRIGGER_LEFT, 1.0), _bouton(JOY_BUTTON_LEFT_SHOULDER)])
+	# Échap et Start, les deux touches que la main cherche d'instinct pour
+	# suspendre une partie. Rien d'autre : une pause qu'on déclenche par
+	# accident en pleine course coûte plus cher qu'une pause qu'on cherche.
+	_action("pause", [
+		_touche(KEY_ESCAPE), _bouton(JOY_BUTTON_START)])
 
 	var err := ProjectSettings.save()
 	if err != OK:

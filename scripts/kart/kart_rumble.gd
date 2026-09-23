@@ -38,6 +38,17 @@ func _ready() -> void:
 	assert(_kart != null, "kart_path doit pointer vers un Kart")
 	_rafraichir_manette()
 	Input.joy_connection_changed.connect(_sur_branchement)
+	enabled = GameSettings.vibrations
+	GameSettings.changed.connect(_sur_reglages)
+
+
+## Couper les vibrations en pleine secousse doit l'arrêter tout de suite, pas
+## à la prochaine consigne.
+func _sur_reglages() -> void:
+	if enabled == GameSettings.vibrations:
+		return
+	enabled = GameSettings.vibrations
+	_couper()
 
 
 func _exit_tree() -> void:

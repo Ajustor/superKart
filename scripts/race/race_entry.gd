@@ -13,6 +13,22 @@ var progress: RaceProgress
 var timer := RaceTimer.new()
 var finished: bool = false
 
+## Nom affiché au classement et à l'écran de résultats.
+var nom: String = ""
+
+## Temps de course cumulé, décompte exclu. S'arrête à l'arrivée.
+var temps_course: float = 0.0
+
+## Ordre d'arrivée, 1 = vainqueur. Zéro tant que la ligne n'est pas franchie
+## pour la dernière fois : c'est lui, et non la distance parcourue, qui classe
+## ceux qui ont fini — un kart arrivé deuxième continue de rouler et finirait
+## sinon par dépasser le vainqueur au classement.
+var place_finale: int = 0
+
+## Case occupée sur la grille, 0 = pole position. Classe les concurrents tant
+## que personne n'a bougé.
+var case_de_grille: int = 0
+
 ## Place au classement, 1 = premier. Zéro tant qu'aucun classement n'a été
 ## calculé : afficher « 0e » est une erreur visible, afficher « 1er » à tort
 ## ne l'est pas.
