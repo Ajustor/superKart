@@ -176,7 +176,7 @@ func test_chaque_concurrent_a_son_propre_etat() -> void:
 		session.avancer(session.entries[1], track.track_curve.position_at(float(i) * 0.5), 1.0 / 60.0)
 
 	assert_gt(session.entries[1].progress.total, 5.0, "celui qui roule avance")
-	assert_almost_eq(session.entries[0].progress.total, 0.0, 0.001,
+	assert_almost_eq(session.entries[0].progress.total, -RaceSession.RECUL_GRILLE, 0.001,
 		"et les autres restent où ils sont")
 	assert_almost_eq(session.entries[2].timer.current, 0.0, 0.001,
 		"un chrono par concurrent, pas un pour tous")
@@ -216,14 +216,14 @@ func test_la_grille_part_en_amont_de_la_ligne() -> void:
 		# Les cases sont à des distances négatives, donc enroulées près de la
 		# fin du tour. wrapf les relit en « combien de mètres avant la ligne ».
 		var recul := wrapf(-session.entries[i].progress.distance, 0.0, L)
-		assert_between(recul, 0.0, 20.0,
-			"la case %d doit être entre la ligne et vingt mètres en amont" % i)
+		assert_between(recul, RaceSession.RECUL_GRILLE, 30.0,
+			"la case %d doit être derrière la ligne, à moins de trente mètres" % i)
 
 
 func test_tout_le_monde_part_a_zero_de_distance_parcourue() -> void:
 	_monter(8)
 	for entree in session.entries:
-		assert_almost_eq(entree.progress.total, 0.0, 0.001,
+		assert_almost_eq(entree.progress.total, -RaceSession.RECUL_GRILLE, 0.001,
 			"la grille décale la position, jamais la distance à parcourir")
 
 
@@ -442,7 +442,7 @@ func test_l_ia_la_plus_rapide_part_devant() -> void:
 		"les adversaires gardent leur ordre autour de la case du joueur")
 
 
-func test_la_pole_position_est_sur_la_ligne() -> void:
+func test_la_pole_position_est_juste_derriere_la_ligne() -> void:
 	_demonter()
 	track = Track.new()
 	track.half_width = 9.0
@@ -453,8 +453,9 @@ func test_la_pole_position_est_sur_la_ligne() -> void:
 	for i in 8:
 		karts.append(_kart())
 	session.demarrer(track, karts)
-	assert_almost_eq(_joueur().progress.distance, 0.0, 0.01,
-		"en pole, le joueur est posé sur la ligne")
+	var recul := wrapf(-_joueur().progress.distance, 0.0, track.track_curve.length)
+	assert_almost_eq(recul, RaceSession.RECUL_GRILLE, 0.01,
+		"en pole, le joueur est posé quelques mètres derrière la ligne")
 	assert_gt(wrapf(-session.entries[1].progress.distance, 0.0, track.track_curve.length), 0.5,
 		"et le premier adversaire derrière lui")
 
@@ -625,3 +626,13 @@ func test_le_tactile_retient_ses_gaz_automatiques_pendant_le_decompte() -> void:
 	while not session.en_course:
 		session.avancer_decompte(0.1)
 	assert_false(TouchControls.gaz_auto_retenus, "au vert, l'accélération automatique reprend")
+
+
+## La pole recule derrière la ligne, mais le tour se boucle toujours sur la
+## ligne peinte : pas six mètres avant, sous le nez du portique.
+func test_la_pole_boucle_son_tour_sur_la_ligne() -> void:
+	var L := track.track_curve.length
+	_rouler(-RaceSession.RECUL_GRILLE, L - 0.5)
+	assert_eq(_joueur().progress.lap, 0, "pas encore la ligne")
+	_rouler(L - 0.5, L + 0.5)
+	assert_eq(_joueur().progress.lap, 1, "la ligne franchie")

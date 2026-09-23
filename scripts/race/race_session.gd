@@ -48,8 +48,13 @@ const IA_REACTION_TURBO := 0.3
 const FALL_DEPTH := 12.0
 const OFF_TRACK_RESPAWN_MARGIN := 3.0
 
-## Distance de départ le long de l'axe, pour la première case de grille.
+## Distance de la ligne de départ le long de l'axe.
 const DEPART := 0.0
+
+## Recul de la première case derrière la ligne, en mètres. À zéro, le kart en
+## pole avait le nez sur la peinture et le portique lui cachait le reste :
+## c'était trop proche.
+const RECUL_GRILLE := 6.0
 
 ## Deux colonnes, comme une vraie grille : huit karts en file indienne
 ## s'étireraient sur trente mètres et le dernier ne verrait jamais le premier.
@@ -188,6 +193,10 @@ func demarrer(piste: Track, pilotes: Array[Kart]) -> void:
 		pilotes[i].respawn_at(place)
 		pilotes[i].controle_actif = en_course
 		var entree := RaceEntry.new(pilotes[i], _track.track_curve, case_.x)
+		# Tous partent avec le même retard : le recul de la pole. Chacun
+		# parcourt toujours la même distance, et le tour se boucle sur la
+		# ligne peinte pour la pole, pas six mètres avant.
+		entree.progress.total = -RECUL_GRILLE
 		entree.nom = noms[i] if i < noms.size() else "Pilote %d" % (i + 1)
 		entree.case_de_grille = cases[i]
 		entree.humain = humains[i] if i < humains.size() else i == 0
@@ -201,11 +210,12 @@ func demarrer(piste: Track, pilotes: Array[Kart]) -> void:
 
 
 ## Distance le long de l'axe (x) et décalage latéral (y) de la case donnée,
-## 0 = pole position. Deux colonnes décalées, rangées de cinq mètres.
+## 0 = pole position, quelques mètres derrière la ligne. Deux colonnes
+## décalées, rangées de cinq mètres.
 static func case_de_grille(index: int) -> Vector2:
 	var rangee := index / GRID_COLUMNS
 	var colonne := index % GRID_COLUMNS
-	var distance := DEPART \
+	var distance := DEPART - RECUL_GRILLE \
 		- float(rangee) * GRID_ROW_SPACING \
 		- float(colonne) * GRID_COLUMN_STAGGER
 	# -1 pour la colonne de gauche, +1 pour celle de droite.
