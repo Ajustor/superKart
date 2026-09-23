@@ -539,3 +539,24 @@ func test_le_moteur_ne_depend_pas_du_pas_de_temps() -> void:
 			"%s doit être stable entre 30 et 60 Hz" % champ)
 		assert_almost_eq(rapide[champ], normal[champ], 0.15,
 			"%s doit être stable entre 120 et 60 Hz" % champ)
+
+
+## Mesuré : le bond montait à 12,5 cm, invisible derrière le kart — on
+## croyait que le bouton ne faisait rien.
+func test_le_bond_se_voit_et_retombe_a_temps() -> void:
+	var v := stats.hop_impulse
+	var g := stats.hop_gravity
+	assert_almost_eq(v * v / (2.0 * g), stats.hop_height, 0.001, "il monte à sa hauteur")
+	assert_gte(stats.hop_height, 0.3, "assez haut pour se voir")
+	assert_almost_eq(2.0 * v / g, stats.hop_duration, 0.001,
+		"et retombe au moment où la glisse commence")
+
+
+func test_on_bondit_meme_a_l_arret() -> void:
+	motor.speed = 2.0
+	cmd.drift = true
+	cmd.steer = 1.0
+	motor.step(cmd, 1.0 / 60.0)
+	assert_eq(motor.state, KartMotor.State.HOP, "comme dans Mario Kart, le bond ne demande pas de vitesse")
+	_run(stats.hop_duration + 0.1)
+	assert_ne(motor.state, KartMotor.State.DRIFT, "la glisse, elle, en demande")

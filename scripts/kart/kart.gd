@@ -169,7 +169,9 @@ func _physics_process(delta: float) -> void:
 	if au_sol and _vertical <= 0.0:
 		_vertical = 0.0
 	else:
-		_vertical -= stats.gravity * delta
+		# Pendant le bond du dérapage, sa gravité à lui : plus haut, aussi court.
+		var gravite := stats.hop_gravity if motor.state == KartMotor.State.HOP else stats.gravity
+		_vertical -= gravite * delta
 
 	# La normale BRUTE pilote la trajectoire, la lissée ne sert qu'à l'œil.
 	# Les confondre coûtait cher : à 10 d'amortissement, la normale lissée a

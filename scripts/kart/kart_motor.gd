@@ -143,8 +143,8 @@ func _try_enter_drift(cmd: KartCommand) -> void:
 		return
 	if _drift_locked_out:
 		return
-	if speed < stats.min_drift_speed:
-		return
+	# Le bond se fait à toute vitesse, même à l'arrêt, comme dans Mario Kart :
+	# c'est la glisse qui demande de la vitesse, vérifiée à l'atterrissage.
 	var braque := absf(cmd.steer) >= STEER_DEADZONE
 	if not braque and _derapage_avant:
 		return
@@ -160,16 +160,19 @@ func _update_hop(cmd: KartCommand, delta: float) -> void:
 	hop_timer -= delta
 	if hop_timer > 0.0:
 		return
-	if cmd.drift and drift_dir != 0:
+	if cmd.drift and drift_dir != 0 and speed >= stats.min_drift_speed:
 		state = State.DRIFT
 		hop_timer = 0.0
 		drift_charge = 0.0
 		drift_angle = 0.0
 		palier_courant = 0
 	else:
-		# Un simple saut. Bouton encore tenu : il faudra le relâcher pour en
-		# refaire un, sans quoi le kart sautillerait tout seul.
-		if cmd.drift:
+		# Un simple saut. Braqué mais trop lent pour glisser, bouton encore
+		# tenu : il faudra le relâcher pour en refaire un, sans quoi le kart
+		# sautillerait tout seul. Sans braquage, pas besoin : un bouton tenu
+		# sans braquer ne relance pas de bond, et braquer ensuite doit lancer
+		# la glisse (bouton tenu dès le départ, avant d'avoir la vitesse).
+		if cmd.drift and drift_dir != 0:
 			_drift_locked_out = true
 		_end_drift()
 
