@@ -62,3 +62,23 @@ godot --headless --path . -s tools/essai_reseau.gd -- client
 ```
 
 Les deux journaux doivent donner le même classement et les mêmes temps.
+
+## Mesurer le retard
+
+Même principe, mais chaque instance note où elle affiche le kart de l'autre,
+et un script compare avec où il était vraiment au même instant. Le second
+argument ajoute un retard artificiel à chaque envoi, en millisecondes :
+
+```
+godot --headless --path . -s tools/mesure_latence.gd -- hote 40 &
+godot --headless --path . -s tools/mesure_latence.gd -- client 40
+python3 tools/mesure_latence.py
+```
+
+| retard ajouté | avant (retard fixe de 100 ms) | maintenant (prédiction) |
+|---|---|---|
+| 0 ms | 2,1 m, soit ~96 ms | 0,27 m, soit ~13 ms |
+| 40 ms par sens | 3,2 m, soit ~145 ms | 0,13 m, soit ~6 ms |
+
+(écart médian entre la position affichée et la vraie, et le retard que cela
+représente à la vitesse du kart.)
