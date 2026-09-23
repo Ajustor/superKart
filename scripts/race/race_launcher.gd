@@ -62,8 +62,38 @@ static func monter(reglage: RaceSetup, rng: RandomNumberGenerator = null) -> Nod
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
 	session.case_du_joueur = reglage.case_effective(session.kart_paths.size(), rng)
-	session.id_piste = reglage.piste.id if reglage.piste != null else ""
+	session.id_piste = reglage.cle_record()
+
+	match reglage.mode:
+		RaceSetup.Mode.GRAND_PRIX:
+			if reglage.grand_prix != null:
+				session.cases_imposees = reglage.grand_prix.cases(session.noms)
+		RaceSetup.Mode.CONTRE_LA_MONTRE:
+			_seul_en_piste(course, session)
+	Cylindree.appliquer(course, reglage.classe_effective())
 	return course
+
+
+## Le contre-la-montre : le kart du joueur seul, sans boîtes, trois
+## champignons en poche, et son fantôme s'il en a un.
+static func _seul_en_piste(course: Node, session: RaceSession) -> void:
+	var joueur := session.kart_paths[0]
+	for chemin in session.kart_paths.slice(1):
+		var kart := session.get_node_or_null(chemin)
+		if kart != null:
+			kart.get_parent().remove_child(kart)
+			kart.free()
+	var seul: Array[NodePath] = [joueur]
+	session.kart_paths = seul
+	session.noms = PackedStringArray([session.noms[0] if not session.noms.is_empty() else "Vous"])
+	session.case_du_joueur = 1
+	var objets := course.get_node_or_null("Objets") as ItemManager
+	if objets != null:
+		objets.contre_la_montre = true
+	var fantome := FantomeCourse.new()
+	fantome.name = "Fantome"
+	fantome.session_path = NodePath("../Session")
+	course.add_child(fantome)
 
 
 ## Monte une course en réseau à partir du plan de l'hôte. La scène a toujours

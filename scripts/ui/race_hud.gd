@@ -104,7 +104,9 @@ func _process(delta: float) -> void:
 	var lignes := PackedStringArray()
 	# maxi(..., 1) couvre la toute première image, avant que classer() n'ait
 	# tourné : afficher « 0e » serait un bug visible.
-	lignes.append("%s / %d" % [RaceScoring.ordinal(maxi(moi.position, 1)), _session.entries.size()])
+	# Seul en piste (contre-la-montre), la place ne dit rien.
+	if _session.entries.size() > 1:
+		lignes.append("%s / %d" % [RaceScoring.ordinal(maxi(moi.position, 1)), _session.entries.size()])
 	lignes.append("TOUR %d/%d" % [tour, _session.lap_count])
 	lignes.append(RaceTimer.format(moi.timer.current))
 	if moi.timer.has_best:

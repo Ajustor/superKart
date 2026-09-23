@@ -58,6 +58,9 @@ var chemin: String = CHEMIN_PAR_DEFAUT
 ## un record en un tour ne se compare pas à un record en cinq.
 var _records: Dictionary = {}
 
+## Meilleure place obtenue dans chaque coupe, par cylindrée (1 = or).
+var _trophees: Dictionary = {}
+
 
 func _ready() -> void:
 	charger()
@@ -83,6 +86,12 @@ func charger() -> void:
 		QualiteGraphique.Niveau.AUTO, QualiteGraphique.Niveau.BASSE)
 	pseudo = str(fichier.get_value("reseau", "pseudo", pseudo))
 	derniere_adresse = str(fichier.get_value("reseau", "adresse", derniere_adresse))
+	course.classe = clampi(int(fichier.get_value("course", "cylindree", course.classe)),
+		Cylindree.Classe.CC50, Cylindree.Classe.CC150)
+	_trophees.clear()
+	if fichier.has_section("trophees"):
+		for cle in fichier.get_section_keys("trophees"):
+			_trophees[cle] = int(fichier.get_value("trophees", cle))
 	_records.clear()
 	if fichier.has_section("records"):
 		for cle in fichier.get_section_keys("records"):
@@ -104,8 +113,11 @@ func sauver() -> void:
 	fichier.set_value("affichage", "qualite", qualite)
 	fichier.set_value("reseau", "pseudo", pseudo)
 	fichier.set_value("reseau", "adresse", derniere_adresse)
+	fichier.set_value("course", "cylindree", course.classe)
 	for cle in _records:
 		fichier.set_value("records", cle, _records[cle])
+	for cle in _trophees:
+		fichier.set_value("trophees", cle, _trophees[cle])
 	var err := fichier.save(chemin)
 	if err != OK:
 		push_warning("réglages non enregistrés (%s) : erreur %d" % [chemin, err])
@@ -183,5 +195,28 @@ func proposer_record(id_piste: String, tours: int, temps: float) -> bool:
 	if actuel > 0.0 and temps >= actuel:
 		return false
 	_records[cle_de_record(id_piste, tours)] = temps
+	sauver()
+	return true
+
+
+static func cle_de_trophee(coupe: int, classe: int) -> String:
+	return "coupe%d_%s" % [coupe, Cylindree.nom(classe)]
+
+
+## Meilleure place obtenue dans cette coupe et cette cylindrée : 1, 2 ou 3
+## pour un trophée, 0 si le podium n'a jamais été atteint.
+func trophee(coupe: int, classe: int) -> int:
+	return int(_trophees.get(cle_de_trophee(coupe, classe), 0))
+
+
+## Garde la place si elle est sur le podium et meilleure que la précédente,
+## et dit si c'est le cas.
+func proposer_trophee(coupe: int, classe: int, place: int) -> bool:
+	if place < 1 or place > 3:
+		return false
+	var actuel := trophee(coupe, classe)
+	if actuel > 0 and place >= actuel:
+		return false
+	_trophees[cle_de_trophee(coupe, classe)] = place
 	sauver()
 	return true

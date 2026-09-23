@@ -89,6 +89,11 @@ extends Resource
 @export_group("Saut")
 @export var gravity: float = 30.0
 
+## Multiplie l'impulsion des tremplins. Les cylindrées (Cylindree) le règlent
+## avec la gravité pour que chaque saut garde la même trajectoire à toutes
+## les vitesses : sinon, en 50cc, on tombait dans les trous.
+@export var echelle_des_tremplins: float = 1.0
+
 ## Calé pour que l'atterrissage coïncide avec le début de la glisse.
 ## Dérivé plutôt qu'exporté : régler hop_duration sans réajuster cette
 ## valeur à la main recréerait un kart qui retombe en pleine glisse.

@@ -45,12 +45,15 @@ func _ready() -> void:
 	reglage.choisir_piste(piste)
 	if args.size() > 1:
 		reglage.tours = int(args[1])
+	# Troisième argument facultatif : la cylindrée (50, 100 ou 150).
+	if args.size() > 2:
+		reglage.classe = Cylindree.NOMS.find("%scc" % args[2])
 	var course := RaceLauncher.monter(reglage)
 	get_tree().root.add_child.call_deferred(course)
 	_session = course.get_node("Session")
 	# Des temps d'IA n'ont rien à faire dans les records du joueur.
 	_session.id_piste = ""
-	print("%s — %s, %d tours" % [piste.id, piste.nom, reglage.tours])
+	print("%s — %s, %d tours, %s" % [piste.id, piste.nom, reglage.tours, Cylindree.nom(reglage.classe)])
 
 
 func _physics_process(delta: float) -> void:

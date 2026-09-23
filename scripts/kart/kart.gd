@@ -212,7 +212,7 @@ func _encaisser_les_murs() -> void:
 func sauter(impulsion: float) -> bool:
 	if not au_sol or _vertical > 0.0:
 		return false
-	_vertical = impulsion
+	_vertical = impulsion * stats.echelle_des_tremplins
 	au_sol = false
 	en_saut = true
 	return true

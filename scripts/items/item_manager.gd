@@ -53,6 +53,9 @@ const MAX_BANANES := 16
 ## et des chocs ; ici on ne fait qu'afficher ce qu'il envoie.
 var autorite: bool = true
 
+## Contre-la-montre : pas de boîtes sur la route, trois champignons au départ.
+var contre_la_montre: bool = false
+
 var boites: Array[Boite] = []
 var bananes: Array[Banane] = []
 var carapaces: Array[Carapace] = []
@@ -108,6 +111,10 @@ func preparer(session: RaceSession, rangees: PackedFloat32Array) -> void:
 	_circuit = session.circuit()
 	if table == null:
 		table = ItemTable.new()
+	if contre_la_montre:
+		for entree in session.entries:
+			entree.inventaire.recevoir(ItemKind.TRIPLE_MUSHROOM, 0.0)
+		return
 	for f in rangees:
 		poser_rangee(f * _piste.length)
 
