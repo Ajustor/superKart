@@ -28,8 +28,13 @@ de sa box vers sa machine, et donner son adresse IP publique aux autres.
 | départ | donne quand tout le monde a chargé (10 s au plus) | attend |
 
 Chaque joueur simule **son** kart : le pilotage reste aussi vif qu'en solo,
-quelle que soit la latence. Les autres karts sont affichés avec 100 ms de
-retard, interpolés entre deux positions reçues, pour rester lisses.
+quelle que soit la latence. Les autres karts sont montrés là où ils sont
+**maintenant** : chaque état reçu est prolongé du temps qu'il a mis à arriver
+(mesuré par ENet), en ligne droite ou en virage selon ce que faisait le kart.
+Quand un état contredit la prédiction (l'autre a freiné, a été touché),
+l'écart est rattrapé en quelques images plutôt que d'un bond. Le champignon,
+qui ne touche que le kart qui le prend, part tout de suite sans attendre la
+réponse de l'hôte.
 
 Les chocs entre karts suivent la même règle : chaque machine applique le choc
 à son propre kart, et le kart d'en face encaisse le sien sur sa machine.
@@ -41,8 +46,9 @@ qui part, tout le monde revient au menu.
 
 - Port de jeu : **UDP 8910** (ENet).
 - Annonces sur le réseau local : diffusion **UDP 8911**, une fois par seconde.
-- Envois : l'état des karts 30 fois par seconde, le classement et les objets
-  10 fois par seconde.
+- Envois : l'état des karts à chaque image de physique (60 fois par seconde),
+  relayé par l'hôte dès réception ; les objets sur la piste 30 fois par
+  seconde ; le classement 10 fois par seconde.
 - Le protocole porte un numéro de version (`Reseau.VERSION`) : un joueur dont
   le jeu n'est pas à la même version est refusé avec un message clair.
 

@@ -148,16 +148,25 @@ func _etat_en(x: float) -> PackedFloat32Array:
 
 func test_on_interpole_entre_deux_etats() -> void:
 	var t := SnapshotBuffer.new()
+	t.retard = 0.1
 	t.ajouter(1.0, _etat_en(0.0))
 	t.ajouter(1.1, _etat_en(1.0))
-	var milieu := t.echantillonner(1.05 + SnapshotBuffer.RETARD)
+	var milieu := t.echantillonner(1.05 + t.retard)
 	assert_almost_eq(KartSnapshot.position(milieu).x, 0.5, 0.01)
+
+
+func test_sans_retard_on_montre_le_present() -> void:
+	var t := SnapshotBuffer.new()
+	t.ajouter(1.0, _etat_en(0.0))
+	# Reçu 80 ms après avoir été pris : le kart a roulé entre-temps.
+	var la := t.echantillonner(1.08)
+	assert_almost_eq(KartSnapshot.position(la).x, 0.8, 0.01, "on le montre où il est, pas où il était")
 
 
 func test_faute_de_nouvelles_on_prolonge_puis_on_attend() -> void:
 	var t := SnapshotBuffer.new()
 	t.ajouter(1.0, _etat_en(0.0))
-	var un_peu_plus_tard := t.echantillonner(1.1 + SnapshotBuffer.RETARD)
+	var un_peu_plus_tard := t.echantillonner(1.1)
 	assert_almost_eq(KartSnapshot.position(un_peu_plus_tard).x, 1.0, 0.05, "il continue sur sa lancée")
 	var bien_plus_tard := t.echantillonner(5.0)
 	assert_almost_eq(KartSnapshot.position(bien_plus_tard).x, 10.0 * SnapshotBuffer.EXTRAPOLATION_MAX, 0.05,
@@ -169,6 +178,58 @@ func test_un_paquet_en_retard_est_jete() -> void:
 	t.ajouter(2.0, _etat_en(5.0))
 	t.ajouter(1.0, _etat_en(0.0))
 	assert_almost_eq(KartSnapshot.position(t.dernier()).x, 5.0, 0.001, "remonter le temps ferait reculer le kart")
+
+
+func test_un_kart_qui_tourne_est_prolonge_en_virage() -> void:
+	var k := _kart()
+	k.motor.speed = 10.0
+	var t := SnapshotBuffer.new()
+	# Il tourne à droite à 1 rad/s : deux états à un dixième de seconde.
+	for i in 2:
+		k.motor.velocity_dir = 0.1 * i
+		k.transform = Transform3D(Basis(Vector3.UP, -0.1 * i), Vector3.ZERO)
+		t.ajouter(0.1 * i, KartSnapshot.capturer(0, k))
+	var plus_tard := t.echantillonner(0.1 + SnapshotBuffer.EXTRAPOLATION_MAX)
+	var cap := plus_tard[KartSnapshot.CAP_MARCHE]
+	assert_almost_eq(cap, 0.1 + SnapshotBuffer.EXTRAPOLATION_MAX, 0.001, "il continue de tourner")
+	assert_gt(KartSnapshot.position(plus_tard).x, 0.1, "vers la droite")
+	# La caisse tourne avec sa trajectoire.
+	var devant := -Basis(KartSnapshot.rotation(plus_tard)).z
+	assert_almost_eq(devant.x, sin(cap), 0.001)
+	assert_almost_eq(devant.z, -cos(cap), 0.001)
+
+
+func test_un_arc_prolonge_garde_sa_longueur() -> void:
+	var d := _etat_en(0.0)
+	var droit := KartSnapshot.prolonger(d, 0.5)
+	var courbe := KartSnapshot.prolonger(d, 0.5, 2.0)
+	assert_almost_eq(KartSnapshot.position(droit).x, 5.0, 0.001)
+	# Un radian d'arc sur un cercle de 5 m de rayon (10 m/s à 2 rad/s) :
+	# la corde fait 2 · 5 · sin(0,5).
+	assert_almost_eq(KartSnapshot.position(courbe).length(), 2.0 * 5.0 * sin(0.5), 0.001)
+
+
+func test_une_prediction_dementie_est_rattrapee_en_douceur() -> void:
+	var t := SnapshotBuffer.new()
+	t.ajouter(1.0, _etat_en(0.0))
+	var avant := KartSnapshot.position(t.echantillonner(1.1))
+	# Le kart avait en fait freiné : il est un mètre moins loin que prévu.
+	var freine := _etat_en(0.0)
+	freine[KartSnapshot.VITESSE] = 0.0
+	t.ajouter(1.05, freine, 1.1)
+	var juste_apres := KartSnapshot.position(t.echantillonner(1.1))
+	assert_almost_eq(juste_apres.x, avant.x, 0.001, "pas de saut à la réception")
+	var bien_apres := KartSnapshot.position(t.echantillonner(1.6))
+	assert_almost_eq(bien_apres.x, 0.0, 0.01, "l'écart est rattrapé")
+
+
+func test_une_remise_en_piste_se_voit_tout_de_suite() -> void:
+	var t := SnapshotBuffer.new()
+	t.ajouter(1.0, _etat_en(0.0))
+	t.echantillonner(1.02)
+	t.ajouter(1.02, _etat_en(60.0), 1.02)
+	assert_almost_eq(KartSnapshot.position(t.echantillonner(1.02)).x, 60.0, 0.001,
+		"rattraper 60 m en douceur, ce serait voir le kart traverser le décor")
 
 
 # --- Annonces sur le réseau local -------------------------------------------------------
@@ -369,6 +430,15 @@ func test_les_objets_de_l_hote_se_recopient_chez_le_client() -> void:
 	assert_eq(client.carapaces.size(), 1)
 	assert_true(client.carapaces[0].rouge)
 	assert_almost_eq(client.bananes[0].position.distance_to(hote.bananes[0].position), 0.0, 0.001)
+
+	# Entre deux photos, la carapace continue sa route chez le client.
+	var recue := client.carapaces[0].position
+	client._prolonger_carapaces(0.1)
+	assert_almost_eq(client.carapaces[0].position.distance_to(recue), ItemManager.VITESSE_CARAPACE * 0.1, 0.001)
+	# Une photo vieille de 50 ms la montre déjà 50 ms plus loin.
+	client.appliquer_instantane(hote.instantane(), 0.05)
+	assert_almost_eq(client.carapaces[0].position.distance_to(hote.carapaces[0].position),
+		ItemManager.VITESSE_CARAPACE * 0.05, 0.001)
 
 	# La banane est ramassée, la carapace a disparu : le client suit.
 	hote._retirer_banane(0)

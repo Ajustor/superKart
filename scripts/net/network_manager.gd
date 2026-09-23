@@ -16,7 +16,7 @@ signal deconnecte(raison: String)
 const PORT := 8910
 ## Monté à chaque changement du protocole : un client d'une autre version est
 ## refusé poliment plutôt que de désynchroniser la course en silence.
-const VERSION := 1
+const VERSION := 2
 
 var lobby := Lobby.new()
 var config: Dictionary = {piste = "", tours = 3}

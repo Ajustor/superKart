@@ -6,15 +6,21 @@ extends RefCounted
 ## lisent les étincelles, l'inclinaison de la caisse et le son : un kart
 ## distant qui glisse doit se voir glisser.
 ##
-## Un tableau de flottants plutôt qu'un dictionnaire : seize nombres par kart,
-## trente fois par seconde, huit karts — un dictionnaire enverrait ses clés à
-## chaque fois.
+## Un tableau de flottants plutôt qu'un dictionnaire : dix-sept nombres par
+## kart, soixante fois par seconde, huit karts — un dictionnaire enverrait ses
+## clés à chaque fois.
+##
+## AGE dit depuis combien de secondes l'état existe déjà au moment où il part :
+## zéro pour la machine qui simule le kart, le temps passé chez l'hôte quand
+## celui-ci le relaie. Le destinataire y ajoute le trajet pour savoir de quand
+## date ce qu'il reçoit, et donc de combien le prolonger.
 
-const TAILLE := 16
+const TAILLE := 17
 
 enum {
 	GID, PX, PY, PZ, QX, QY, QZ, QW,
 	VITESSE, CAP_MARCHE, CAP_CAISSE, ETAT, SENS_GLISSE, CHARGE, TURBO, FORCE_TURBO,
+	AGE,
 }
 
 
@@ -27,7 +33,7 @@ static func capturer(gid: int, kart: Kart) -> PackedFloat32Array:
 	return PackedFloat32Array([
 		gid, t.origin.x, t.origin.y, t.origin.z, q.x, q.y, q.z, q.w,
 		m.speed, m.velocity_dir, m.heading, m.state, m.drift_dir, m.drift_charge,
-		m.boost_timer, m.boost_multiplier,
+		m.boost_timer, m.boost_multiplier, 0.0,
 	])
 
 
@@ -88,13 +94,32 @@ static func melanger(a: PackedFloat32Array, b: PackedFloat32Array, t: float) -> 
 	return r
 
 
-## Prolonge un état de `duree` secondes dans le sens de la marche : quand un
-## paquet tarde, le kart distant continue de rouler au lieu de se figer.
-static func prolonger(d: PackedFloat32Array, duree: float) -> PackedFloat32Array:
+## Prolonge un état de `duree` secondes : le kart continue sur sa lancée, et
+## continue de tourner s'il tournait — `rotation`, en radians par seconde. Un
+## kart prolongé en ligne droite au milieu d'un virage sortirait de la route.
+static func prolonger(d: PackedFloat32Array, duree: float, rotation_y: float = 0.0) -> PackedFloat32Array:
 	var r := d.duplicate()
 	var cap := d[CAP_MARCHE]
-	var p := position(d) + Vector3(sin(cap), 0.0, -cos(cap)) * d[VITESSE] * duree
+	var tourne := rotation_y * duree
+	var chemin: Vector3
+	if absf(tourne) < 0.001:
+		chemin = Vector3(sin(cap), 0.0, -cos(cap)) * duree
+	else:
+		# L'arc de cercle parcouru à vitesse et rotation constantes : la
+		# direction de marche (sin c, -cos c) intégrée sur la durée.
+		chemin = Vector3(cos(cap) - cos(cap + tourne), 0.0, sin(cap) - sin(cap + tourne)) / rotation_y
+	var p := position(d) + chemin * d[VITESSE]
 	r[PX] = p.x
 	r[PY] = p.y
 	r[PZ] = p.z
+	if absf(tourne) >= 0.001:
+		# Les caps comptent dans le sens inverse de la rotation autour de Y :
+		# un cap qui croît tourne la caisse vers la droite, vers -Y.
+		var q := Quaternion(Vector3.UP, -tourne) * rotation(d)
+		r[QX] = q.x
+		r[QY] = q.y
+		r[QZ] = q.z
+		r[QW] = q.w
+		r[CAP_MARCHE] = cap + tourne
+		r[CAP_CAISSE] = d[CAP_CAISSE] + tourne
 	return r

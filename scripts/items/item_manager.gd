@@ -126,7 +126,10 @@ func poser_rangee(distance: float) -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if _session == null or not autorite:
+	if _session == null:
+		return
+	if not autorite:
+		_prolonger_carapaces(delta)
 		return
 	var positions: Array[Vector3] = []
 	for entree in _session.entries:
@@ -374,14 +377,18 @@ func instantane() -> Dictionary:
 	for banane in bananes:
 		b.append(banane.position)
 	var c := PackedVector3Array()
+	var directions := PackedVector3Array()
 	var rouges := PackedByteArray()
 	for carapace in carapaces:
 		c.append(carapace.position)
+		directions.append(carapace.direction)
 		rouges.append(1 if carapace.rouge else 0)
-	return {boites = masque, bananes = b, carapaces = c, rouges = rouges}
+	return {boites = masque, bananes = b, carapaces = c, directions = directions, rouges = rouges}
 
 
-func appliquer_instantane(etat: Dictionary) -> void:
+## `avance` : l'âge de la photo, en secondes. Les carapaces ont roulé
+## pendant ce temps-là ; on les montre où elles sont maintenant.
+func appliquer_instantane(etat: Dictionary, avance: float = 0.0) -> void:
 	var masque: int = etat.get("boites", 0)
 	for i in boites.size():
 		boites[i].attente = 0.0 if masque & (1 << i) else REAPPARITION
@@ -402,6 +409,7 @@ func appliquer_instantane(etat: Dictionary) -> void:
 
 	var c: PackedVector3Array = etat.get("carapaces", PackedVector3Array())
 	var rouges: PackedByteArray = etat.get("rouges", PackedByteArray())
+	var directions: PackedVector3Array = etat.get("directions", PackedVector3Array())
 	# Une carapace qui change de couleur à la même place de la liste est une
 	# autre carapace : on refait son visuel.
 	for i in range(carapaces.size() - 1, -1, -1):
@@ -414,8 +422,19 @@ func appliquer_instantane(etat: Dictionary) -> void:
 			nouvelle.noeud = _visuel_carapace(nouvelle.rouge)
 			add_child(nouvelle.noeud)
 			carapaces.append(nouvelle)
-		carapaces[i].position = c[i]
-		carapaces[i].noeud.position = c[i]
+		carapaces[i].direction = directions[i] if i < directions.size() else Vector3.ZERO
+		carapaces[i].position = c[i] + carapaces[i].direction * VITESSE_CARAPACE * avance
+		carapaces[i].noeud.position = carapaces[i].position
+
+
+## Chez un client, entre deux photos de l'hôte, les carapaces continuent tout
+## droit : à 36 m/s, une carapace figée un trentième de seconde ferait des
+## bonds d'un mètre. La photo suivante corrige virages et rebonds.
+func _prolonger_carapaces(delta: float) -> void:
+	for c in carapaces:
+		c.position += c.direction * VITESSE_CARAPACE * delta
+		if c.noeud != null:
+			c.noeud.position = c.position
 
 
 ## Un point de la chaussée, à `hauteur` au-dessus du bitume, dévers compris.
