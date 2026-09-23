@@ -9,7 +9,20 @@ var _selection: Control
 var _options: OptionsPanel
 var _multi: MultiplayerPanel
 
+const NOMS_MODES := {
+	RaceSetup.Mode.GRAND_PRIX: "Grand Prix",
+	RaceSetup.Mode.COURSE: "Course libre",
+	RaceSetup.Mode.CONTRE_LA_MONTRE: "Contre-la-montre",
+}
+
 var _boutons_piste: Array[Button] = []
+var _boutons_mode: Dictionary = {}
+var _boutons_coupe: Array[Button] = []
+var _coupe: int = 0
+var _classe: OptionButton
+var _coupes: HBoxContainer
+var _circuits: GridContainer
+var _reglages: HBoxContainer
 var _description: Label
 var _record: Label
 var _tours: OptionButton
@@ -103,30 +116,64 @@ func _ecran_selection() -> Control:
 	var ecran := Control.new()
 	ecran.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(ecran)
-	var colonne := UITheme.panneau_centre(ecran, 760.0)
-	colonne.add_child(UITheme.titre("CHOIX DE LA COURSE", 40))
-
+	var colonne := UITheme.panneau_centre(ecran, 980.0)
+	colonne.add_child(UITheme.titre("CHOIX DE LA COURSE", 34))
 	var reglage := GameSettings.course
+
+	# Le mode et la cylindrée, sur une ligne.
+	var haut := HBoxContainer.new()
+	haut.add_theme_constant_override("separation", 10)
+	colonne.add_child(haut)
+	var groupe_modes := ButtonGroup.new()
+	for mode in [RaceSetup.Mode.GRAND_PRIX, RaceSetup.Mode.COURSE, RaceSetup.Mode.CONTRE_LA_MONTRE]:
+		var b := _bascule(NOMS_MODES[mode], groupe_modes, Vector2(210, 56), 22)
+		b.pressed.connect(_choisir_mode.bind(mode))
+		haut.add_child(b)
+		_boutons_mode[mode] = b
+	_classe = OptionButton.new()
+	for c in Cylindree.NOMS.size():
+		_classe.add_item(Cylindree.nom(c), c)
+	_classe.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_classe.item_selected.connect(func(i: int) -> void:
+		reglage.classe = _classe.get_item_id(i)
+		GameSettings.sauver()
+		_rafraichir())
+	haut.add_child(_classe)
+
+	# Les coupes, pour le Grand Prix.
+	_coupes = HBoxContainer.new()
+	_coupes.add_theme_constant_override("separation", 12)
+	var groupe_coupes := ButtonGroup.new()
+	for i in TrackCatalog.COUPES.size():
+		var b := _bascule("", groupe_coupes, Vector2(470, 124), 20)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.button_pressed = i == _coupe
+		b.pressed.connect(func() -> void:
+			_coupe = i
+			_rafraichir())
+		_coupes.add_child(b)
+		_boutons_coupe.append(b)
+	colonne.add_child(_coupes)
+
+	# Les circuits, pour une course seule ou le contre-la-montre.
+	_circuits = GridContainer.new()
+	_circuits.columns = 4
+	_circuits.add_theme_constant_override("h_separation", 8)
+	_circuits.add_theme_constant_override("v_separation", 8)
 	var groupe := ButtonGroup.new()
-	var liste := HFlowContainer.new()
-	liste.add_theme_constant_override("h_separation", 12)
-	colonne.add_child(liste)
 	for piste in TrackCatalog.PISTES:
-		var b := Button.new()
-		b.text = piste.nom
-		b.toggle_mode = true
-		b.button_group = groupe
-		b.custom_minimum_size = Vector2(300, 72)
+		var b := _bascule(piste.nom, groupe, Vector2(234, 58), 20)
 		b.button_pressed = piste == reglage.piste
 		b.pressed.connect(_choisir_piste.bind(piste))
-		liste.add_child(b)
+		_circuits.add_child(b)
 		_boutons_piste.append(b)
+	colonne.add_child(_circuits)
 
 	_description = Label.new()
 	_description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_description.add_theme_color_override("font_color", UITheme.TEXTE_DOUX)
-	_description.add_theme_font_size_override("font_size", 22)
-	_description.custom_minimum_size = Vector2(0, 60)
+	_description.add_theme_font_size_override("font_size", 20)
+	_description.custom_minimum_size = Vector2(0, 52)
 	colonne.add_child(_description)
 
 	_tours = OptionButton.new()
@@ -134,26 +181,33 @@ func _ecran_selection() -> Control:
 		_tours.add_item("%d tour%s" % [n, "s" if n > 1 else ""], n)
 	_tours.item_selected.connect(func(i: int) -> void:
 		reglage.tours = _tours.get_item_id(i)
-		_rafraichir_record())
-	colonne.add_child(_ligne("Nombre de tours", _tours))
+		_rafraichir())
 
 	_depart = OptionButton.new()
-	_depart.add_item("Tirée au sort", RaceSetup.CASE_ALEATOIRE)
+	_depart.add_item("Case tirée au sort", RaceSetup.CASE_ALEATOIRE)
 	for n in range(1, RaceSetup.CONCURRENTS + 1):
 		var texte := "%s case" % RaceScoring.ordinal(n)
 		if n == 1:
-			texte = "1re case (pole position)"
+			texte = "1re case (pole)"
 		elif n == RaceSetup.CONCURRENTS:
-			texte += " (fond de grille)"
+			texte += " (fond)"
 		_depart.add_item(texte, n)
 	_depart.item_selected.connect(func(i: int) -> void:
 		reglage.case_de_depart = _depart.get_item_id(i))
 	_depart.select(_depart.get_item_index(reglage.case_de_depart))
-	colonne.add_child(_ligne("Position de départ", _depart))
+
+	_reglages = HBoxContainer.new()
+	_reglages.add_theme_constant_override("separation", 12)
+	_tours.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_depart.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_reglages.add_child(_tours)
+	_reglages.add_child(_depart)
+	colonne.add_child(_reglages)
 
 	_record = Label.new()
 	_record.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_record.add_theme_color_override("font_color", UITheme.ACCENT)
+	_record.add_theme_font_size_override("font_size", 22)
 	colonne.add_child(_record)
 
 	var boutons := HBoxContainer.new()
@@ -162,14 +216,44 @@ func _ecran_selection() -> Control:
 	var retour := UITheme.bouton("Retour", _montrer.bind(_accueil))
 	retour.custom_minimum_size.x = 220
 	boutons.add_child(retour)
-	_demarrer = UITheme.bouton("Démarrer !", func() -> void:
-		RaceLauncher.lancer(get_tree(), GameSettings.course))
+	_demarrer = UITheme.bouton("Démarrer !", _lancer)
 	_demarrer.custom_minimum_size.x = 260
 	boutons.add_child(_demarrer)
 	colonne.add_child(boutons)
 
+	_classe.select(_classe.get_item_index(reglage.classe))
+	# Une coupe laissée en plan (menu principal en pleine manche) ne reprend
+	# pas : on revient au choix de la coupe.
+	if reglage.mode == RaceSetup.Mode.GRAND_PRIX and reglage.grand_prix != null:
+		_coupe = reglage.grand_prix.coupe
+		_boutons_coupe[_coupe].button_pressed = true
+	_choisir_mode(reglage.mode)
 	_choisir_piste(reglage.piste, reglage.tours)
 	return ecran
+
+
+func _bascule(texte: String, groupe: ButtonGroup, taille: Vector2, police: int) -> Button:
+	var b := Button.new()
+	b.text = texte
+	b.toggle_mode = true
+	b.button_group = groupe
+	b.custom_minimum_size = taille
+	b.add_theme_font_size_override("font_size", police)
+	return b
+
+
+func _choisir_mode(mode: RaceSetup.Mode) -> void:
+	var reglage := GameSettings.course
+	reglage.mode = mode
+	_boutons_mode[mode].button_pressed = true
+	_coupes.visible = mode == RaceSetup.Mode.GRAND_PRIX
+	_circuits.visible = not _coupes.visible
+	_classe.visible = mode != RaceSetup.Mode.CONTRE_LA_MONTRE
+	_tours.visible = mode == RaceSetup.Mode.COURSE
+	_depart.visible = mode != RaceSetup.Mode.CONTRE_LA_MONTRE
+	if mode == RaceSetup.Mode.CONTRE_LA_MONTRE and reglage.piste != null:
+		reglage.tours = reglage.piste.tours
+	_rafraichir()
 
 
 func _choisir_piste(piste: TrackInfo, tours: int = 0) -> void:
@@ -178,20 +262,62 @@ func _choisir_piste(piste: TrackInfo, tours: int = 0) -> void:
 		return
 	var reglage := GameSettings.course
 	reglage.choisir_piste(piste)
-	if tours > 0:
+	if tours > 0 and reglage.mode == RaceSetup.Mode.COURSE:
 		reglage.tours = tours
-	_description.text = piste.description
 	_tours.select(_tours.get_item_index(reglage.tours))
-	_rafraichir_record()
+	_rafraichir()
+
+
+func _lancer() -> void:
+	var reglage := GameSettings.course
+	if reglage.mode == RaceSetup.Mode.GRAND_PRIX:
+		reglage.commencer_grand_prix(_coupe)
+	RaceLauncher.lancer(get_tree(), reglage)
+
+
+## Remet à jour tout ce qui dépend du réglage : le texte des coupes, la
+## description, le record.
+func _rafraichir() -> void:
+	var reglage := GameSettings.course
+	for i in _boutons_coupe.size():
+		var coupe: Dictionary = TrackCatalog.COUPES[i]
+		var noms := PackedStringArray()
+		for id in coupe.pistes:
+			noms.append(TrackCatalog.par_id(id).nom)
+		var texte := "%s\n%s" % [coupe.nom, " · ".join(noms)]
+		var trophee := GameSettings.trophee(i, reglage.classe)
+		if trophee > 0:
+			texte += "\n%s en %s" % [PodiumScreen.MEDAILLES[trophee - 1], Cylindree.nom(reglage.classe)]
+		_boutons_coupe[i].text = texte
+		_boutons_coupe[i].autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+	match reglage.mode:
+		RaceSetup.Mode.GRAND_PRIX:
+			_description.text = "Quatre courses de trois tours contre sept pilotes. Les points s'additionnent, et les trois premiers de la coupe montent sur le podium."
+			_record.text = ""
+		RaceSetup.Mode.CONTRE_LA_MONTRE:
+			_description.text = "Seul en piste en 150cc, trois champignons en poche. Battez votre record : votre meilleur parcours revient courir contre vous, en fantôme."
+			_rafraichir_record()
+		_:
+			_description.text = reglage.piste.description if reglage.piste != null else ""
+			_rafraichir_record()
 
 
 func _rafraichir_record() -> void:
 	var reglage := GameSettings.course
-	var meilleur := GameSettings.record(reglage.piste.id, reglage.tours)
+	if reglage.piste == null:
+		_record.text = ""
+		return
+	var meilleur := GameSettings.record(reglage.cle_record(), reglage.tours)
+	var ou := reglage.piste.nom
+	if reglage.mode == RaceSetup.Mode.COURSE:
+		ou = "%s, %s" % [ou, Cylindree.nom(reglage.classe)]
 	if meilleur > 0.0:
-		_record.text = "Record : %s" % RaceTimer.format(meilleur)
+		_record.text = "Record (%s) : %s" % [ou, RaceTimer.format(meilleur)]
+		if reglage.mode == RaceSetup.Mode.CONTRE_LA_MONTRE and Fantome.charger(reglage.cle_record()) != null:
+			_record.text += "  ·  fantôme prêt"
 	else:
-		_record.text = "Pas encore de record en %d tour%s" % [reglage.tours, "s" if reglage.tours > 1 else ""]
+		_record.text = "Pas encore de record (%s, %d tour%s)" % [ou, reglage.tours, "s" if reglage.tours > 1 else ""]
 
 
 func _unhandled_input(event: InputEvent) -> void:

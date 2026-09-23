@@ -1,9 +1,18 @@
 class_name RaceSetup
 extends RefCounted
 
-## Ce que le joueur a choisi au menu : le circuit, le nombre de tours et sa
-## case de départ. Rien ici ne touche à la scène — c'est RaceLauncher qui en
-## tire une course.
+## Ce que le joueur a choisi au menu : le mode, la cylindrée, le circuit, le
+## nombre de tours et sa case de départ. Rien ici ne touche à la scène — c'est
+## RaceLauncher qui en tire une course.
+
+enum Mode {
+	## Une course seule, contre l'IA, sur le circuit de son choix.
+	COURSE,
+	## Une coupe de quatre courses, aux points (GrandPrix).
+	GRAND_PRIX,
+	## Seul en piste, trois champignons, contre son propre fantôme.
+	CONTRE_LA_MONTRE,
+}
 
 ## Case de départ tirée au sort au lancement de chaque course.
 const CASE_ALEATOIRE := 0
@@ -12,8 +21,13 @@ const CASE_ALEATOIRE := 0
 ## cases proposées. RaceLauncher, lui, relit la scène.
 const CONCURRENTS := 8
 
+var mode: Mode = Mode.COURSE
+var classe: int = Cylindree.Classe.CC150
 var piste: TrackInfo
 var tours: int = 3
+
+## La coupe en cours, en mode GRAND_PRIX.
+var grand_prix: GrandPrix
 
 ## 1 = pole position. CASE_ALEATOIRE pour laisser le sort décider.
 var case_de_depart: int = CASE_ALEATOIRE
@@ -35,3 +49,37 @@ func case_effective(concurrents: int, rng: RandomNumberGenerator) -> int:
 	if case_de_depart == CASE_ALEATOIRE:
 		return rng.randi_range(1, concurrents)
 	return clampi(case_de_depart, 1, concurrents)
+
+
+## Commence une coupe : la première manche devient la course à lancer.
+func commencer_grand_prix(coupe: int) -> void:
+	mode = Mode.GRAND_PRIX
+	grand_prix = GrandPrix.new(coupe, classe)
+	preparer_manche()
+
+
+## Règle la course sur la manche courante de la coupe.
+func preparer_manche() -> void:
+	if grand_prix == null:
+		return
+	classe = grand_prix.classe
+	choisir_piste(grand_prix.piste())
+
+
+## La cylindrée réellement courue : le contre-la-montre se court en 150cc,
+## comme dans Mario Kart, pour que les records se comparent.
+func classe_effective() -> int:
+	return Cylindree.Classe.CC150 if mode == Mode.CONTRE_LA_MONTRE else classe
+
+
+## Clé des records de ce réglage. En 150cc, c'est l'identifiant du circuit
+## seul, comme avant l'arrivée des cylindrées : les records déjà enregistrés
+## restent valables. Le contre-la-montre a ses propres records.
+func cle_record() -> String:
+	if piste == null:
+		return ""
+	if mode == Mode.CONTRE_LA_MONTRE:
+		return "%s@clm" % piste.id
+	if classe == Cylindree.Classe.CC150:
+		return piste.id
+	return "%s@%s" % [piste.id, Cylindree.nom(classe)]

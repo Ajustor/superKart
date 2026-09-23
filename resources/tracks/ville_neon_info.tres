@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="TrackInfo" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/race/track_info.gd" id="1_info"]
+[ext_resource type="PackedScene" path="res://scenes/tracks/ville_neon.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_info")
+id = "ville_neon"
+nom = "Ville Néon"
+description = "La ville la nuit, entre les tours illuminées : des rues à angle droit, des bordures fluo et une avenue en travaux à franchir d'un saut."
+scene = ExtResource("2_scene")
+tours = 3

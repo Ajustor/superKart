@@ -35,6 +35,14 @@ var hop_timer: float = 0.0
 ## Temps restant en tête-à-queue. Un compteur et non une machine à états de
 ## plus, comme le prévoyait la spec : l'état STUNNED existait déjà.
 var stun_timer: float = 0.0
+## Un palier de charge vient d'être franchi pendant la glisse : les
+## étincelles changent de couleur, un son l'annonce.
+signal palier_atteint(palier: int)
+## Une glisse relâchée assez chargée : le mini-turbo part.
+signal mini_turbo(palier: int)
+
+var palier_courant: int = 0
+var _derapage_avant: bool = false
 var _drift_locked_out: bool = false   ## une glisse cassée bloque jusqu'au relâchement
 
 
@@ -49,6 +57,11 @@ func _plancher_de_turbo() -> float:
 
 
 func step(cmd: KartCommand, delta: float) -> void:
+	_pas(cmd, delta)
+	_derapage_avant = cmd.drift
+
+
+func _pas(cmd: KartCommand, delta: float) -> void:
 	boost_timer = maxf(boost_timer - delta, 0.0)
 	if boost_timer == 0.0:
 		# Sans ça, la force d'un palier 3 terminé s'appliquerait au turbo
@@ -119,36 +132,52 @@ func _update_grip_steering(cmd: KartCommand, delta: float) -> void:
 	heading = velocity_dir
 
 
+## Un appui sur DRIFT fait toujours sauter le kart, braquage ou pas : c'est
+## pendant le saut qu'on choisit son côté, comme dans Mario Kart. Sans
+## direction à l'atterrissage, ce n'était qu'un saut.
+##
+## Tenu sans braquer, le bouton ne refait pas sauter en boucle : seul un
+## nouvel appui, ou un braquage bouton tenu, lance un saut.
 func _try_enter_drift(cmd: KartCommand) -> void:
 	if not cmd.drift:
 		return
 	if _drift_locked_out:
 		return
-	if absf(cmd.steer) < STEER_DEADZONE:
-		return
 	if speed < stats.min_drift_speed:
+		return
+	var braque := absf(cmd.steer) >= STEER_DEADZONE
+	if not braque and _derapage_avant:
 		return
 	state = State.HOP
 	hop_timer = stats.hop_duration
-	drift_dir = 1 if cmd.steer > 0.0 else -1
+	drift_dir = (1 if cmd.steer > 0.0 else -1) if braque else 0
 
 
 func _update_hop(cmd: KartCommand, delta: float) -> void:
+	# Le côté se choisit jusqu'à l'atterrissage : le dernier braquage l'emporte.
+	if absf(cmd.steer) >= STEER_DEADZONE:
+		drift_dir = 1 if cmd.steer > 0.0 else -1
 	hop_timer -= delta
 	if hop_timer > 0.0:
 		return
-	if cmd.drift:
+	if cmd.drift and drift_dir != 0:
 		state = State.DRIFT
 		hop_timer = 0.0
 		drift_charge = 0.0
 		drift_angle = 0.0
+		palier_courant = 0
 	else:
+		# Un simple saut. Bouton encore tenu : il faudra le relâcher pour en
+		# refaire un, sans quoi le kart sautillerait tout seul.
+		if cmd.drift:
+			_drift_locked_out = true
 		_end_drift()
 
 
 ## Retour en adhérence, sans turbo. Utilisé par les annulations.
 func _end_drift() -> void:
 	state = State.GRIP
+	palier_courant = 0
 	drift_dir = 0
 	drift_charge = 0.0
 	drift_angle = 0.0
@@ -175,7 +204,12 @@ func _update_drift(cmd: KartCommand, delta: float) -> void:
 	velocity_dir += float(drift_dir) * stats.drift_turn_rate * courbure * delta
 	heading = velocity_dir + float(drift_dir) * drift_angle
 
-	drift_charge += delta
+	# Serrer le virage charge plus vite ; contre-braquer, plus lentement.
+	drift_charge += delta * lerpf(stats.charge_au_contre_braquage, 1.0, t)
+	var palier := tier_for_charge(drift_charge)
+	if palier > palier_courant:
+		palier_courant = palier
+		palier_atteint.emit(palier)
 
 	if not cmd.drift:
 		_release_drift()
@@ -187,8 +221,10 @@ func _update_drift(cmd: KartCommand, delta: float) -> void:
 
 
 ## Une glisse cassée ne rapporte rien, quel que soit son niveau de charge.
-func _drift_is_broken(inward: float) -> bool:
-	return speed < stats.min_drift_speed or inward < -0.8
+## Seule la vitesse la casse (ou un mur) : contre-braquer élargit la glisse,
+## il ne l'interrompt pas — c'est ce qui permet de la tenir tout un virage.
+func _drift_is_broken(_inward: float) -> bool:
+	return speed < stats.min_drift_speed
 
 
 ## Nombre de paliers franchis pour une charge donnée. 0 = aucun turbo.
@@ -213,6 +249,7 @@ func _release_drift() -> void:
 		# turbo encore en cours.
 		boost_timer = maxf(boost_timer, stats.boost_durations[tier - 1])
 		boost_multiplier = maxf(boost_multiplier, stats.boost_speed_multipliers[tier - 1])
+		mini_turbo.emit(tier)
 	_end_drift()
 
 

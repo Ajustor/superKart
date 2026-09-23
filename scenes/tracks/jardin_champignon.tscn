@@ -1,0 +1,119 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/track/track.gd" id="1_track"]
+[ext_resource type="Curve3D" path="res://resources/tracks/jardin_champignon_curve.tres" id="2_curve"]
+[ext_resource type="Script" path="res://scripts/track/features/track_decor.gd" id="s_decor"]
+[ext_resource type="Script" path="res://scripts/track/features/track_jump.gd" id="s_jump"]
+[ext_resource type="Script" path="res://scripts/track/features/track_offroad.gd" id="s_offroad"]
+
+[sub_resource type="ProceduralSkyMaterial" id="Ciel"]
+sky_top_color = Color(0.25, 0.55, 0.95, 1)
+sky_horizon_color = Color(0.75, 0.9, 1.0, 1)
+ground_bottom_color = Color(0.2, 0.45, 0.15, 1)
+ground_horizon_color = Color(0.55, 0.8, 0.45, 1)
+
+[sub_resource type="Sky" id="Sky"]
+sky_material = SubResource("Ciel")
+
+[sub_resource type="Environment" id="Env"]
+background_mode = 2
+sky = SubResource("Sky")
+ambient_light_source = 2
+ambient_light_color = Color(0.65, 0.75, 0.6, 1)
+ambient_light_energy = 0.5
+
+[sub_resource type="StandardMaterial3D" id="Mat_sol"]
+albedo_color = Color(0.3, 0.62, 0.22, 1)
+roughness = 0.9
+
+[sub_resource type="PlaneMesh" id="Sol"]
+material = SubResource("Mat_sol")
+size = Vector2(1400, 1400)
+
+[node name="Track" type="Node3D"]
+script = ExtResource("1_track")
+curve = ExtResource("2_curve")
+rangees_objets = PackedFloat32Array(0.1, 0.45, 0.8)
+road_color = Color(0.55, 0.42, 0.3, 1)
+bordures = true
+couleur_bordure = Color(0.95, 0.25, 0.25, 1)
+altitude_du_liquide = -2.5
+musique = 4
+
+[node name="CurveEditor" type="Path3D" parent="."]
+curve = ExtResource("2_curve")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.766, -0.492, 0.414, 0, 0.643, 0.766, -0.643, -0.587, 0.492, 0, 60, 0)
+light_color = Color(1, 0.97, 0.88, 1)
+light_energy = 0.95
+shadow_enabled = true
+
+[node name="Prairie" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.5, -100)
+mesh = SubResource("Sol")
+
+[node name="HerbeDroite" type="Node3D" parent="."]
+script = ExtResource("s_offroad")
+debut = 0.0
+longueur = 855.0
+decalage = 12.5
+largeur = 7.0
+
+[node name="HerbeGauche" type="Node3D" parent="."]
+script = ExtResource("s_offroad")
+debut = 0.0
+longueur = 855.0
+decalage = -12.5
+largeur = 7.0
+
+[node name="ChampignonRebond" type="Node3D" parent="."]
+script = ExtResource("s_jump")
+debut = 392.0
+longueur = 4.0
+largeur = 10.0
+impulsion = 11.0
+duree_turbo = 0.8
+
+[node name="ChampignonRebondBis" type="Node3D" parent="."]
+script = ExtResource("s_jump")
+debut = 650.0
+longueur = 4.0
+largeur = 10.0
+impulsion = 9.0
+duree_turbo = 0.6
+
+[node name="ChampignonsGeants" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 4
+debut = 10.0
+longueur = 840.0
+decalage = 20.0
+espacement = 28.0
+echelle = 2.2
+graine = 4
+
+[node name="ChampignonsLointains" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 4
+debut = 0.0
+longueur = 850.0
+decalage = 42.0
+espacement = 45.0
+echelle = 4.0
+hauteur = -2.5
+graine = 12
+
+[node name="Rochers" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 5
+debut = 30.0
+longueur = 800.0
+decalage = 30.0
+espacement = 60.0
+hauteur = -2.5
+echelle = 1.5
+graine = 6

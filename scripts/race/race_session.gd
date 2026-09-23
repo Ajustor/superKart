@@ -21,6 +21,22 @@ signal tour_boucle(entree: RaceEntry)
 signal arrivee(entree: RaceEntry)
 ## Tout le monde a fini.
 signal course_terminee
+## Le départ du joueur : Depart.NORMAL, TURBO ou CALE.
+signal depart_du_joueur(resultat: int)
+
+## Le turbo au départ, comme dans Mario Kart : tenir les gaz à partir du
+## bon moment du décompte fait partir en trombe ; les tenir dès le début
+## fait caler. Les instants sont comptés en secondes avant le vert.
+enum Depart { NORMAL, TURBO, CALE }
+## Commencer à accélérer plus tôt que ça : calé.
+const DEPART_TROP_TOT := 1.5
+## Commencer entre les deux : turbo. Plus tard : départ normal.
+const DEPART_TURBO_DES := 0.25
+const DEPART_TURBO_DUREE := 1.0
+const DEPART_TURBO_FORCE := 1.35
+const CALAGE := 0.8
+## Une IA qui réagit au moins aussi vite réussit son départ.
+const IA_REACTION_TURBO := 0.3
 
 ## Profondeur sous la route, en mètres, au-delà de laquelle on considère que le
 ## kart est tombé dans le vide.
@@ -32,8 +48,13 @@ signal course_terminee
 const FALL_DEPTH := 12.0
 const OFF_TRACK_RESPAWN_MARGIN := 3.0
 
-## Distance de départ le long de l'axe, pour la première case de grille.
+## Distance de la ligne de départ le long de l'axe.
 const DEPART := 0.0
+
+## Recul de la première case derrière la ligne, en mètres. À zéro, le kart en
+## pole avait le nez sur la peinture et le portique lui cachait le reste :
+## c'était trop proche.
+const RECUL_GRILLE := 6.0
 
 ## Deux colonnes, comme une vraie grille : huit karts en file indienne
 ## s'étireraient sur trente mètres et le dernier ne verrait jamais le premier.
@@ -157,6 +178,10 @@ func demarrer(piste: Track, pilotes: Array[Kart]) -> void:
 	terminee = false
 	decompte_restant = maxf(duree_decompte, 0.0)
 	en_course = decompte_restant <= 0.0
+	# Pendant le décompte, l'accélération automatique du tactile se retient :
+	# elle tiendrait les gaz dès le premier feu, et le joueur calerait à
+	# chaque course. C'est à lui de toucher GAZ au bon moment.
+	TouchControls.gaz_auto_retenus = not en_course
 	_derniere_seconde_annoncee = -1
 
 	var cases := cases_attribuees(pilotes.size(), case_du_joueur)
@@ -168,6 +193,10 @@ func demarrer(piste: Track, pilotes: Array[Kart]) -> void:
 		pilotes[i].respawn_at(place)
 		pilotes[i].controle_actif = en_course
 		var entree := RaceEntry.new(pilotes[i], _track.track_curve, case_.x)
+		# Tous partent avec le même retard : le recul de la pole. Chacun
+		# parcourt toujours la même distance, et le tour se boucle sur la
+		# ligne peinte pour la pole, pas six mètres avant.
+		entree.progress.total = -RECUL_GRILLE
 		entree.nom = noms[i] if i < noms.size() else "Pilote %d" % (i + 1)
 		entree.case_de_grille = cases[i]
 		entree.humain = humains[i] if i < humains.size() else i == 0
@@ -181,11 +210,12 @@ func demarrer(piste: Track, pilotes: Array[Kart]) -> void:
 
 
 ## Distance le long de l'axe (x) et décalage latéral (y) de la case donnée,
-## 0 = pole position. Deux colonnes décalées, rangées de cinq mètres.
+## 0 = pole position, quelques mètres derrière la ligne. Deux colonnes
+## décalées, rangées de cinq mètres.
 static func case_de_grille(index: int) -> Vector2:
 	var rangee := index / GRID_COLUMNS
 	var colonne := index % GRID_COLUMNS
-	var distance := DEPART \
+	var distance := DEPART - RECUL_GRILLE \
 		- float(rangee) * GRID_ROW_SPACING \
 		- float(colonne) * GRID_COLUMN_STAGGER
 	# -1 pour la colonne de gauche, +1 pour celle de droite.
@@ -233,6 +263,11 @@ func avancer_decompte(delta: float) -> void:
 	if en_course or entries.is_empty() or attente_depart:
 		return
 	decompte_restant = maxf(decompte_restant - delta, 0.0)
+	for entree in entries:
+		if not entree.kart.gaz_tenu:
+			entree.gaz_depuis = -1.0
+		elif entree.gaz_depuis < 0.0:
+			entree.gaz_depuis = decompte_restant
 	if decompte_restant > 0.0:
 		var seconde := ceili(decompte_restant)
 		if seconde != _derniere_seconde_annoncee:
@@ -240,16 +275,65 @@ func avancer_decompte(delta: float) -> void:
 			decompte.emit(seconde)
 		return
 	en_course = true
+	TouchControls.gaz_auto_retenus = false
 	for entree in entries:
 		entree.kart.controle_actif = true
 	depart.emit()
+	for i in entries.size():
+		var resultat := _partir(entries[i])
+		if i == 0:
+			depart_du_joueur.emit(resultat)
+
+
+## Ce que vaut le départ de qui a commencé à tenir les gaz `gaz_depuis`
+## secondes avant le vert (-1 : pas de gaz au vert).
+static func resultat_du_depart(gaz_depuis: float) -> int:
+	if gaz_depuis < 0.0:
+		return Depart.NORMAL
+	if gaz_depuis > DEPART_TROP_TOT:
+		return Depart.CALE
+	if gaz_depuis >= DEPART_TURBO_DES:
+		return Depart.TURBO
+	return Depart.NORMAL
+
+
+func _partir(entree: RaceEntry) -> int:
+	if not entree.kart.simule:
+		return Depart.NORMAL
+	var cerveau := entree.kart.pilote() as AIInput
+	var resultat := resultat_du_depart(entree.gaz_depuis)
+	if cerveau != null:
+		# L'IA ne lit pas le décompte : les plus vives réussissent leur départ,
+		# les autres partent normalement. Aucune ne cale.
+		resultat = Depart.TURBO if cerveau.reaction_delay <= IA_REACTION_TURBO else Depart.NORMAL
+	match resultat:
+		Depart.TURBO:
+			entree.kart.motor.accorder_turbo(DEPART_TURBO_DUREE, DEPART_TURBO_FORCE)
+		Depart.CALE:
+			entree.cale_restant = CALAGE
+			entree.kart.controle_actif = false
+	return resultat
 
 
 func _physics_process(delta: float) -> void:
 	avancer_decompte(delta)
+	_relancer_les_cales(delta)
 	for entree in entries:
 		avancer(entree, entree.kart.global_position, delta)
 	classer()
+
+
+func _relancer_les_cales(delta: float) -> void:
+	for entree in entries:
+		if entree.cale_restant <= 0.0:
+			continue
+		entree.cale_restant -= delta
+		if entree.cale_restant <= 0.0 and en_course and not entree.finished:
+			entree.kart.controle_actif = true
+
+
+func _exit_tree() -> void:
+	TouchControls.gaz_auto_retenus = false
 
 
 ## Le point est passé plutôt que lu sur le kart : global_position exige

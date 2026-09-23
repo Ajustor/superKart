@@ -87,3 +87,24 @@ déclenchement manuel.
   pas du NDK.
 - L'éditeur et les modèles d'export sont mis en cache par version : seul le
   premier run d'une version paie le téléchargement (~1,4 Go).
+
+## Icône
+
+Elle est dessinée en code par `tools/icone.py` (des SVG dans
+`resources/icone/`). `tools/icone_png.gd` en tire les images attendues par
+chaque plateforme :
+
+| Fichier | Sert à |
+| --- | --- |
+| `icone.svg` | icône du projet et de la fenêtre (`application/config/icon`) |
+| `icone_192.png` | icône Android classique |
+| `icone_premier_plan_432.png` + `icone_fond_432.png` | icône adaptative Android (le kart est ramené dans la zone sûre de 66 %) |
+| `icone.ico` | fenêtre et barre des tâches Windows (`config/windows_native_icon`) |
+
+Pour la retoucher : modifier `tools/icone.py`, puis relancer
+`python3 tools/icone.py` et
+`godot --headless --path . -s tools/icone_png.gd`.
+
+L'icône du fichier `.exe` lui-même, dans l'explorateur, n'est pas changée : il
+faudrait `application/modify_resources=true`, donc rcedit (et Wine sur le
+runner Linux). La fenêtre du jeu et la barre des tâches affichent bien l'icône.

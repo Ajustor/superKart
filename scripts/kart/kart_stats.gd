@@ -39,6 +39,12 @@ extends Resource
 ## l'atterrissage, puisque hop_impulse est dérivée de cette durée.
 @export var hop_duration: float = 0.20
 
+## La charge du mini-turbo monte plus vite quand on serre le virage : braquer
+## vers l'intérieur la fait monter à plein régime (1), contre-braquer au
+## ralenti. C'est le cœur du dérapage de Mario Kart : la glisse serrée est
+## plus difficile à tenir, elle rapporte plus vite.
+@export var charge_au_contre_braquage: float = 0.55
+
 @export_group("Dérapage — apparence")
 ## Ces trois-là ne touchent que l'angle affiché de la caisse, pas la
 ## trajectoire : c'est drift_turn_rate qui pilote le virage.
@@ -82,6 +88,11 @@ extends Resource
 
 @export_group("Saut")
 @export var gravity: float = 30.0
+
+## Multiplie l'impulsion des tremplins. Les cylindrées (Cylindree) le règlent
+## avec la gravité pour que chaque saut garde la même trajectoire à toutes
+## les vitesses : sinon, en 50cc, on tombait dans les trous.
+@export var echelle_des_tremplins: float = 1.0
 
 ## Calé pour que l'atterrissage coïncide avec le début de la glisse.
 ## Dérivé plutôt qu'exporté : régler hop_duration sans réajuster cette

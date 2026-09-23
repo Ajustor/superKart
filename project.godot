@@ -13,6 +13,8 @@ config_version=5
 config/name="Karting"
 run/main_scene="res://scenes/ui/main_menu.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://resources/icone/icone.svg"
+config/windows_native_icon="res://resources/icone/icone.ico"
 
 [autoload]
 

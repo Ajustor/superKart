@@ -1,0 +1,96 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/track/track.gd" id="1_track"]
+[ext_resource type="Curve3D" path="res://resources/tracks/ville_neon_curve.tres" id="2_curve"]
+[ext_resource type="Script" path="res://scripts/track/features/track_decor.gd" id="s_decor"]
+[ext_resource type="Script" path="res://scripts/track/features/track_gap.gd" id="s_gap"]
+[ext_resource type="Script" path="res://scripts/track/features/track_ramp.gd" id="s_ramp"]
+
+[sub_resource type="Environment" id="Env"]
+background_mode = 1
+background_color = Color(0.04, 0.02, 0.1, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.45, 0.4, 0.7, 1)
+ambient_light_energy = 0.7
+glow_enabled = true
+glow_intensity = 0.9
+glow_bloom = 0.15
+glow_hdr_threshold = 0.7
+
+[sub_resource type="StandardMaterial3D" id="Mat_sol"]
+albedo_color = Color(0.08, 0.08, 0.12, 1)
+roughness = 0.4
+metallic = 0.3
+
+[sub_resource type="PlaneMesh" id="Sol"]
+material = SubResource("Mat_sol")
+size = Vector2(1200, 1200)
+
+[node name="Track" type="Node3D"]
+script = ExtResource("1_track")
+curve = ExtResource("2_curve")
+rangees_objets = PackedFloat32Array(0.08, 0.45, 0.82)
+road_color = Color(0.18, 0.18, 0.22, 1)
+bordures = true
+couleur_bordure = Color(1, 0.2, 0.8, 1)
+couleur_bordure_bis = Color(0.2, 0.9, 1, 1)
+altitude_du_liquide = -2.0
+musique = 6
+
+[node name="CurveEditor" type="Path3D" parent="."]
+curve = ExtResource("2_curve")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.766, -0.492, 0.414, 0, 0.643, 0.766, -0.643, -0.587, 0.492, 0, 60, 0)
+light_color = Color(0.6, 0.6, 1, 1)
+light_energy = 0.45
+shadow_enabled = true
+
+[node name="Bitume" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.0, -100)
+mesh = SubResource("Sol")
+
+[node name="RampeTravaux" type="Node3D" parent="."]
+script = ExtResource("s_ramp")
+debut = 550.0
+longueur = 12.0
+largeur = 18.0
+hauteur = 1.8
+couleur = Color(1, 0.6, 0.1, 1)
+
+[node name="Travaux" type="Node3D" parent="."]
+script = ExtResource("s_gap")
+debut = 562.0
+longueur = 14.0
+
+[node name="Lampadaires" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 7
+debut = 0.0
+longueur = 740.0
+decalage = 12.0
+espacement = 25.0
+graine = 1
+
+[node name="Immeubles" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 9
+debut = 0.0
+longueur = 740.0
+decalage = 26.0
+espacement = 22.0
+graine = 3
+
+[node name="Tours" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 9
+debut = 10.0
+longueur = 730.0
+decalage = 48.0
+espacement = 30.0
+echelle = 1.6
+hauteur = -2.0
+graine = 8

@@ -123,6 +123,7 @@ func test_les_reglages_survivent_a_un_redemarrage() -> void:
 	var avant := _reglages()
 	avant.volume_general = 0.35
 	avant.volume_effets = 0.6
+	avant.volume_musique = 0.25
 	avant.son_coupe = true
 	avant.tactile = avant.Tactile.JAMAIS
 	avant.acceleration_auto = false
@@ -137,6 +138,7 @@ func test_les_reglages_survivent_a_un_redemarrage() -> void:
 	apres.charger()
 	assert_almost_eq(apres.volume_general, 0.35, 0.001)
 	assert_almost_eq(apres.volume_effets, 0.6, 0.001)
+	assert_almost_eq(apres.volume_musique, 0.25, 0.001)
 	assert_true(apres.son_coupe)
 	assert_eq(apres.tactile, apres.Tactile.JAMAIS)
 	assert_false(apres.acceleration_auto)

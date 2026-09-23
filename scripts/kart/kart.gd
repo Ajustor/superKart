@@ -52,6 +52,29 @@ var demande_objet: bool = false
 ## remettre en piste un kart qui survole le décor au milieu d'un saut.
 var au_sol: bool = true
 
+## Le pilote tient-il les gaz ? Lu même quand le kart ne répond pas encore,
+## pendant le décompte : c'est ce que regarde le turbo au départ.
+var gaz_tenu: bool = false
+
+## Une figure en l'air : un appui sur DRIFT pendant un vrai saut — tremplin
+## ou rampe, pas une bosse ni le petit bond du dérapage — fait faire un
+## tonneau au kart, et l'atterrissage donne un turbo. Le risque, c'est le
+## moment : trop près du sol, il n'y a pas le temps.
+signal figure
+## Temps en l'air avant qu'une figure soit possible, en secondes.
+const FIGURE_APRES := 0.12
+const FIGURE_TURBO := 0.7
+const FIGURE_FORCE := 1.25
+## Une IA au moins aussi vive fait ses figures : sinon le joueur gagnerait
+## un turbo à chaque saut sur des adversaires qui n'en font jamais.
+const IA_REACTION_FIGURE := 0.3
+
+## En l'air à cause d'un tremplin ou d'une rampe.
+var en_saut: bool = false
+var figure_faite: bool = false
+var _en_l_air: float = 0.0
+var _derapage_avant: bool = false
+
 ## Posé à vrai l'image où le kart quitte le sol en montant — sommet d'une
 ## rampe, rebord —, lu et remis à faux par la session.
 var vient_de_decoller: bool = false
@@ -103,8 +126,10 @@ func _physics_process(delta: float) -> void:
 	if not simule:
 		return
 	var cmd := _input.poll(delta)
+	gaz_tenu = cmd.throttle > 0.5
 	if not controle_actif:
 		cmd.clear()
+	_figures(cmd, delta)
 	# Un kart sonné ne lance rien : il a les mains prises.
 	demande_objet = cmd.use_item and motor.state != KartMotor.State.STUNNED
 	motor.step(cmd, delta)
@@ -117,6 +142,8 @@ func _physics_process(delta: float) -> void:
 
 	var etait_au_sol := au_sol
 	au_sol = is_on_floor()
+	if en_saut and au_sol and _en_l_air > 0.0:
+		_atterrir()
 	# Le sol vient de se dérober sous un kart qui montait une rampe : il garde
 	# sa vitesse verticale au lieu de la perdre d'un coup. Sans ça, une rampe
 	# ne faisait pas sauter : le kart arrivait au sommet, et tombait du
@@ -134,6 +161,7 @@ func _physics_process(delta: float) -> void:
 	if elan_de_rampe > DECOLLAGE_MIN and etait_au_sol and not au_sol and _vertical <= 0.0:
 		_vertical = elan_de_rampe
 		vient_de_decoller = true
+		en_saut = true
 	if au_sol and _vertical <= 0.0:
 		_vertical = 0.0
 	else:
@@ -184,9 +212,37 @@ func _encaisser_les_murs() -> void:
 func sauter(impulsion: float) -> bool:
 	if not au_sol or _vertical > 0.0:
 		return false
-	_vertical = impulsion
+	_vertical = impulsion * stats.echelle_des_tremplins
 	au_sol = false
+	en_saut = true
 	return true
+
+
+func _figures(cmd: KartCommand, delta: float) -> void:
+	var appui := cmd.drift and not _derapage_avant
+	_derapage_avant = cmd.drift
+	if not en_saut or au_sol:
+		return
+	_en_l_air += delta
+	if not figure_faite and _en_l_air >= FIGURE_APRES and (appui or _figure_de_l_ia()):
+		figure_faite = true
+		figure.emit()
+	# Pas de bond de dérapage en plein vol : il relançait le kart vers le
+	# haut, un double saut qui allongeait n'importe quel tremplin.
+	cmd.drift = false
+
+
+func _figure_de_l_ia() -> bool:
+	var cerveau := _input as AIInput
+	return cerveau != null and cerveau.reaction_delay <= IA_REACTION_FIGURE and _en_l_air >= 0.25
+
+
+func _atterrir() -> void:
+	if figure_faite:
+		motor.accorder_turbo(FIGURE_TURBO, FIGURE_FORCE)
+	en_saut = false
+	figure_faite = false
+	_en_l_air = 0.0
 
 
 ## Lisse la normale du sol sous le kart. En l'air, elle revient doucement à la
@@ -230,6 +286,9 @@ func _orienter_la_caisse() -> void:
 ## Remet le kart à un état neutre à la position donnée. Le terrain d'essai
 ## s'en sert ; la remise en piste du circuit aussi.
 func respawn_at(where: Transform3D) -> void:
+	en_saut = false
+	figure_faite = false
+	_en_l_air = 0.0
 	global_transform = where
 	velocity = Vector3.ZERO
 	_vertical = 0.0

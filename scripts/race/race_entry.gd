@@ -20,6 +20,13 @@ var nom: String = ""
 ## distingue de l'IA.
 var humain: bool = false
 
+## Pendant le décompte : le temps qu'il restait avant le vert quand le pilote
+## a commencé à tenir les gaz sans les lâcher. -1 : il ne les tient pas.
+var gaz_depuis: float = -1.0
+
+## Calé au départ pour avoir accéléré trop tôt : secondes avant de repartir.
+var cale_restant: float = 0.0
+
 ## Temps de course cumulé, décompte exclu. S'arrête à l'arrivée.
 var temps_course: float = 0.0
 

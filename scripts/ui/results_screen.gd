@@ -18,6 +18,8 @@ var _grille: GridContainer
 var _resume: Label
 var _record: Label
 var _rejouer: Button
+var _podium: PodiumScreen
+var _manche_comptee := false
 var _attente: float = -1.0
 var _rafraichissement: float = 0.0
 
@@ -47,7 +49,7 @@ func _ready() -> void:
 	colonne.add_child(_record)
 
 	_grille = GridContainer.new()
-	_grille.columns = 5
+	_grille.columns = _colonnes().size()
 	_grille.add_theme_constant_override("h_separation", 28)
 	_grille.add_theme_constant_override("v_separation", 0)
 	colonne.add_child(_grille)
@@ -55,11 +57,10 @@ func _ready() -> void:
 	var boutons := HBoxContainer.new()
 	boutons.alignment = BoxContainer.ALIGNMENT_CENTER
 	boutons.add_theme_constant_override("separation", 16)
-	_rejouer = UITheme.bouton("Rejouer", func() -> void:
-		if Reseau.actif():
-			Reseau.retour_salon()
-		else:
-			RaceLauncher.lancer(get_tree(), GameSettings.course))
+	_rejouer = UITheme.bouton("Rejouer", _sur_rejouer)
+	var gp := _grand_prix()
+	if gp != null:
+		_rejouer.text = "Podium" if gp.manche == gp.manches() - 1 else "Course suivante"
 	boutons.add_child(_rejouer)
 	boutons.add_child(UITheme.bouton("Menu principal", func() -> void:
 		if Reseau.actif():
@@ -71,12 +72,77 @@ func _ready() -> void:
 	_session.arrivee.connect(_sur_arrivee)
 
 
+## La coupe en cours, si cette course en est une manche.
+func _grand_prix() -> GrandPrix:
+	if Reseau.actif():
+		return null
+	var reglage := GameSettings.course
+	if reglage.mode != RaceSetup.Mode.GRAND_PRIX:
+		return null
+	return reglage.grand_prix
+
+
+func _contre_la_montre() -> bool:
+	return not Reseau.actif() and GameSettings.course.mode == RaceSetup.Mode.CONTRE_LA_MONTRE
+
+
+func _colonnes() -> PackedStringArray:
+	if _contre_la_montre():
+		return PackedStringArray(["", "Pilote", "Temps", "Meilleur tour"])
+	if _grand_prix() != null:
+		return PackedStringArray(["", "Pilote", "Temps", "Meilleur tour", "Points", "Coupe"])
+	return PackedStringArray(["", "Pilote", "Temps", "Meilleur tour", "Points"])
+
+
+func _sur_rejouer() -> void:
+	if Reseau.actif():
+		Reseau.retour_salon()
+		return
+	var gp := _grand_prix()
+	if gp == null:
+		RaceLauncher.lancer(get_tree(), GameSettings.course)
+		return
+	_compter_manche(gp)
+	if gp.terminee():
+		_montrer_podium(gp)
+	else:
+		GameSettings.course.preparer_manche()
+		RaceLauncher.lancer(get_tree(), GameSettings.course)
+
+
+## Ceux qui roulent encore prennent la place qu'ils occupent : on ne les
+## attend pas pour passer à la suite.
+func _compter_manche(gp: GrandPrix) -> void:
+	if _manche_comptee:
+		return
+	_manche_comptee = true
+	var ordre := PackedStringArray()
+	for entree in _session.classement():
+		ordre.append(entree.nom)
+	gp.compter(ordre)
+
+
+func _montrer_podium(gp: GrandPrix) -> void:
+	if _podium == null:
+		_podium = PodiumScreen.new()
+		add_child(_podium)
+	for enfant in get_children():
+		if enfant != _podium and enfant is CanvasItem:
+			(enfant as CanvasItem).hide()
+	var moi := _session.entries[0].nom
+	var place := gp.place_de(moi)
+	GameSettings.proposer_trophee(gp.coupe, gp.classe, place)
+	_podium.montrer(gp, moi)
+
+
 func _sur_arrivee(entree: RaceEntry) -> void:
 	if entree == _session.entries[0]:
 		_attente = DELAI
 		if _session.id_piste != "" and GameSettings.proposer_record(
 				_session.id_piste, _session.lap_count, entree.temps_course):
 			_record.text = "Nouveau record du circuit !"
+			if _contre_la_montre():
+				_record.text = "Nouveau record ! Votre fantôme vous attendra."
 			_record.show()
 	if visible:
 		_remplir()
@@ -117,14 +183,24 @@ func _ouvrir() -> void:
 
 func _remplir() -> void:
 	var moi := _session.entries[0]
-	_resume.text = "%s  ·  %s  ·  %d points" % [
-		RaceScoring.ordinal(moi.place_finale), RaceTimer.format(moi.temps_course),
-		RaceScoring.points_pour(moi.place_finale)]
+	var gp := _grand_prix()
+	if _contre_la_montre():
+		var record := GameSettings.record(_session.id_piste, _session.lap_count)
+		_resume.text = "Temps : %s" % RaceTimer.format(moi.temps_course)
+		if record > 0.0 and not _record.visible:
+			_resume.text += "  ·  record : %s" % RaceTimer.format(record)
+	else:
+		_resume.text = "%s  ·  %s  ·  %d points" % [
+			RaceScoring.ordinal(moi.place_finale), RaceTimer.format(moi.temps_course),
+			RaceScoring.points_pour(moi.place_finale)]
+		if gp != null:
+			_resume.text = "%s, course %d/%d  ·  %s" % [gp.nom(), gp.manche + 1, gp.manches(), _resume.text]
 
 	for enfant in _grille.get_children():
 		_grille.remove_child(enfant)
 		enfant.queue_free()
-	for titre in ["", "Pilote", "Temps", "Meilleur tour", "Points"]:
+	var colonnes := _colonnes()
+	for titre in colonnes:
 		_cellule(titre, UITheme.TEXTE_DOUX, 18)
 
 	for entree in _session.classement():
@@ -140,7 +216,14 @@ func _remplir() -> void:
 		_cellule(RaceTimer.format(entree.timer.best) if entree.timer.has_best else "—", couleur)
 		# Des points provisoires pour ceux qui courent encore : leur place
 		# peut encore changer, la couleur éteinte le dit.
-		_cellule(str(RaceScoring.points_pour(entree.position)), couleur)
+		if colonnes.size() > 4:
+			_cellule(str(RaceScoring.points_pour(entree.position)), couleur)
+		if gp != null:
+			# Le total de la coupe, cette course comprise.
+			var total := int(gp.points.get(entree.nom, 0))
+			if not _manche_comptee:
+				total += RaceScoring.points_pour(entree.position)
+			_cellule(str(total), couleur)
 
 
 func _cellule(texte: String, couleur: Color, taille: int = 22) -> void:

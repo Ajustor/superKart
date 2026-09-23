@@ -14,11 +14,13 @@ enum Tactile { AUTO, TOUJOURS, JAMAIS }
 
 const CHEMIN_PAR_DEFAUT := "user://reglages.cfg"
 const BUS_EFFETS := &"Effets"
+const BUS_MUSIQUE := &"Musique"
 
 ## Volumes linéaires, de 0 à 1 : c'est ce que montre un curseur. La conversion
 ## en décibels se fait au seul endroit où l'on parle au mixeur.
 var volume_general: float = 0.8
 var volume_effets: float = 1.0
+var volume_musique: float = 0.6
 var son_coupe: bool = false
 
 var tactile: int = Tactile.AUTO
@@ -56,6 +58,9 @@ var chemin: String = CHEMIN_PAR_DEFAUT
 ## un record en un tour ne se compare pas à un record en cinq.
 var _records: Dictionary = {}
 
+## Meilleure place obtenue dans chaque coupe, par cylindrée (1 = or).
+var _trophees: Dictionary = {}
+
 
 func _ready() -> void:
 	charger()
@@ -69,6 +74,7 @@ func charger() -> void:
 		return
 	volume_general = clampf(float(fichier.get_value("son", "general", volume_general)), 0.0, 1.0)
 	volume_effets = clampf(float(fichier.get_value("son", "effets", volume_effets)), 0.0, 1.0)
+	volume_musique = clampf(float(fichier.get_value("son", "musique", volume_musique)), 0.0, 1.0)
 	son_coupe = bool(fichier.get_value("son", "coupe", son_coupe))
 	tactile = clampi(int(fichier.get_value("commandes", "tactile", tactile)), Tactile.AUTO, Tactile.JAMAIS)
 	acceleration_auto = bool(fichier.get_value("commandes", "acceleration_auto", acceleration_auto))
@@ -80,6 +86,12 @@ func charger() -> void:
 		QualiteGraphique.Niveau.AUTO, QualiteGraphique.Niveau.BASSE)
 	pseudo = str(fichier.get_value("reseau", "pseudo", pseudo))
 	derniere_adresse = str(fichier.get_value("reseau", "adresse", derniere_adresse))
+	course.classe = clampi(int(fichier.get_value("course", "cylindree", course.classe)),
+		Cylindree.Classe.CC50, Cylindree.Classe.CC150)
+	_trophees.clear()
+	if fichier.has_section("trophees"):
+		for cle in fichier.get_section_keys("trophees"):
+			_trophees[cle] = int(fichier.get_value("trophees", cle))
 	_records.clear()
 	if fichier.has_section("records"):
 		for cle in fichier.get_section_keys("records"):
@@ -90,6 +102,7 @@ func sauver() -> void:
 	var fichier := ConfigFile.new()
 	fichier.set_value("son", "general", volume_general)
 	fichier.set_value("son", "effets", volume_effets)
+	fichier.set_value("son", "musique", volume_musique)
 	fichier.set_value("son", "coupe", son_coupe)
 	fichier.set_value("commandes", "tactile", tactile)
 	fichier.set_value("commandes", "acceleration_auto", acceleration_auto)
@@ -100,8 +113,11 @@ func sauver() -> void:
 	fichier.set_value("affichage", "qualite", qualite)
 	fichier.set_value("reseau", "pseudo", pseudo)
 	fichier.set_value("reseau", "adresse", derniere_adresse)
+	fichier.set_value("course", "cylindree", course.classe)
 	for cle in _records:
 		fichier.set_value("records", cle, _records[cle])
+	for cle in _trophees:
+		fichier.set_value("trophees", cle, _trophees[cle])
 	var err := fichier.save(chemin)
 	if err != OK:
 		push_warning("réglages non enregistrés (%s) : erreur %d" % [chemin, err])
@@ -125,6 +141,10 @@ func appliquer() -> void:
 	if effets >= 0:
 		AudioServer.set_bus_volume_db(effets, volume_en_db(volume_effets))
 		AudioServer.set_bus_mute(effets, volume_effets <= 0.0)
+	var musique := AudioServer.get_bus_index(BUS_MUSIQUE)
+	if musique >= 0:
+		AudioServer.set_bus_volume_db(musique, volume_en_db(volume_musique))
+		AudioServer.set_bus_mute(musique, volume_musique <= 0.0)
 	appliquer_graphismes()
 
 
@@ -175,5 +195,28 @@ func proposer_record(id_piste: String, tours: int, temps: float) -> bool:
 	if actuel > 0.0 and temps >= actuel:
 		return false
 	_records[cle_de_record(id_piste, tours)] = temps
+	sauver()
+	return true
+
+
+static func cle_de_trophee(coupe: int, classe: int) -> String:
+	return "coupe%d_%s" % [coupe, Cylindree.nom(classe)]
+
+
+## Meilleure place obtenue dans cette coupe et cette cylindrée : 1, 2 ou 3
+## pour un trophée, 0 si le podium n'a jamais été atteint.
+func trophee(coupe: int, classe: int) -> int:
+	return int(_trophees.get(cle_de_trophee(coupe, classe), 0))
+
+
+## Garde la place si elle est sur le podium et meilleure que la précédente,
+## et dit si c'est le cas.
+func proposer_trophee(coupe: int, classe: int, place: int) -> bool:
+	if place < 1 or place > 3:
+		return false
+	var actuel := trophee(coupe, classe)
+	if actuel > 0 and place >= actuel:
+		return false
+	_trophees[cle_de_trophee(coupe, classe)] = place
 	sauver()
 	return true

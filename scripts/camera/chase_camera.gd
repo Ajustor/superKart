@@ -13,8 +13,23 @@ extends Camera3D
 @export var drift_roll_deg: float = 6.0
 @export var roll_stiffness: float = 6.0
 
+## Degrés de champ en plus pendant un turbo : la route s'étire, on sent la
+## poussée même quand la vitesse de pointe est déjà atteinte.
+@export var fov_turbo: float = 8.0
+## Une perte de vitesse plus brutale que ça en une image est un choc : mur,
+## autre kart, objet. Freiner à fond n'en retire que 0,4 m/s.
+const CHOC_MIN := 1.5
+const SECOUSSE_PAR_MS := 0.035
+const SECOUSSE_MAX := 0.45
+const AMORTI_SECOUSSE := 9.0
+
 var _kart: Kart
 var _roll: float = 0.0
+var _fov_turbo: float = 0.0
+var _vitesse_avant: float = 0.0
+var _en_l_air: bool = false
+## Amplitude de la secousse, en mètres ; retombe d'elle-même.
+var secousse: float = 0.0
 
 ## Faux jusqu'à la première image : la caméra se pose alors directement derrière
 ## le kart. Sans ça elle partait de l'origine du monde et traversait le décor
@@ -48,7 +63,11 @@ func _physics_process(delta: float) -> void:
 	var plafond_turbo: float = multiplicateurs[multiplicateurs.size() - 1] if not multiplicateurs.is_empty() else 1.0
 	var ceiling := _kart.stats.max_speed * plafond_turbo
 	var ratio := clampf(motor.speed / ceiling, 0.0, 1.0)
-	fov = lerpf(fov_min, fov_max, ratio)
+	var turbo := 1.0 if motor.boost_timer > 0.0 else 0.0
+	_fov_turbo = lerpf(_fov_turbo, turbo, 1.0 - exp(-8.0 * delta))
+	fov = lerpf(fov_min, fov_max, ratio) + fov_turbo * _fov_turbo
+
+	_secouer(motor, delta)
 
 	# Léger roulis dans la glisse, qui accentue la lecture du dérapage.
 	# Le roulis est suivi à part : look_at() vient de réécrire la base, donc
@@ -58,3 +77,21 @@ func _physics_process(delta: float) -> void:
 		target_roll = deg_to_rad(drift_roll_deg) * float(motor.drift_dir)
 	_roll = lerpf(_roll, target_roll, 1.0 - exp(-roll_stiffness * delta))
 	rotation.z = _roll
+
+
+## Une secousse à chaque choc, et à l'atterrissage d'un vrai saut. Mesurée
+## sur ce que le kart perd de vitesse d'une image à l'autre : pas besoin que
+## chaque source de choc prévienne la caméra.
+func _secouer(motor: KartMotor, delta: float) -> void:
+	var chute := _vitesse_avant - motor.speed
+	_vitesse_avant = motor.speed
+	if chute > CHOC_MIN:
+		secousse = minf(secousse + chute * SECOUSSE_PAR_MS, SECOUSSE_MAX)
+	if _en_l_air and _kart.au_sol:
+		secousse = minf(secousse + 0.12, SECOUSSE_MAX)
+	_en_l_air = _kart.en_saut and not _kart.au_sol
+	secousse *= exp(-AMORTI_SECOUSSE * delta)
+	# Par le décalage de l'objectif et non la position : le suivi à ressort
+	# repartirait sinon de la position secouée, et la secousse traînerait.
+	h_offset = randf_range(-1.0, 1.0) * secousse if secousse > 0.005 else 0.0
+	v_offset = randf_range(-1.0, 1.0) * secousse if secousse > 0.005 else 0.0
