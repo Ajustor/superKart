@@ -48,6 +48,11 @@ const NOM_CORPS := "RoadBody"
 ## dans la même courbe.
 @export var min_drivable_radius: float = 12.5
 
+## Où poser les rangées de boîtes à objets, en fraction de la longueur du
+## tour. Propre à chaque circuit : une rangée se pose sur une ligne droite, là
+## où l'on a le temps de viser une boîte, jamais au milieu d'une épingle.
+@export var rangees_objets: PackedFloat32Array = PackedFloat32Array([0.2, 0.5, 0.78])
+
 @export var road_color: Color = Color(0.36, 0.38, 0.42):
 	set(valeur):
 		road_color = valeur

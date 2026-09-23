@@ -72,6 +72,16 @@ var track: TrackCurve
 var distance: float = 0.0
 var position := Vector3.ZERO
 
+## Renseignés par ItemManager : l'objet prêt dans l'emplacement (NONE sinon),
+## si l'IA mène la course, et l'avance qu'elle a sur son poursuivant, en mètres.
+var objet_pret: int = ItemKind.NONE
+var en_tete: bool = false
+var ecart_poursuivant: float = INF
+
+## Écart, en mètres, sous lequel une IA en tête lâche la banane qu'elle garde
+## en protection : le poursuivant est assez près pour rouler dessus.
+const ALERTE_POURSUIVANT := 12.0
+
 var _depuis_decision: float = 0.0
 var _steer_decide: float = 0.0
 var _drift_decide: bool = false
@@ -100,8 +110,20 @@ func _fill(delta: float) -> void:
 		_drift_decide = _veut_deraper()
 
 	command.throttle = 1.0
+	command.use_item = veut_utiliser_objet()
 	command.drift = _drift_decide
 	command.steer = _brider_pour_tenir_la_glisse(_steer_decide)
+
+
+## La politique d'objets de la spec, volontairement simple : utiliser dès que
+## c'est prêt, sauf garder une banane en protection quand on est en tête, et la
+## lâcher quand un poursuivant approche.
+func veut_utiliser_objet() -> bool:
+	if objet_pret == ItemKind.NONE:
+		return false
+	if objet_pret == ItemKind.BANANA and en_tete:
+		return ecart_poursuivant < ALERTE_POURSUIVANT
+	return true
 
 
 ## Écart de cap entre la direction du kart et celle du point de mire, en

@@ -37,6 +37,10 @@ var motor: KartMotor
 ## centimètres au-dessus de la route doit pouvoir s'y asseoir.
 var controle_actif: bool = true
 
+## Vrai l'image où le pilote a demandé son objet. Posé ici, lu et remis à faux
+## par ItemManager : le kart ne sait pas ce qu'il tient, il transmet la demande.
+var demande_objet: bool = false
+
 var _input: KartInput
 var _vertical: float = 0.0
 var _was_hopping: bool = false
@@ -67,6 +71,8 @@ func _physics_process(delta: float) -> void:
 	var cmd := _input.poll(delta)
 	if not controle_actif:
 		cmd.clear()
+	# Un kart sonné ne lance rien : il a les mains prises.
+	demande_objet = cmd.use_item and motor.state != KartMotor.State.STUNNED
 	motor.step(cmd, delta)
 
 	# Le saut d'entrée en dérapage, purement vertical.
@@ -170,6 +176,12 @@ func changer_pilote(source: KartInput) -> void:
 	assert(source != null, "un kart sans pilote ne se pilote pas")
 	_input = source
 	_input.kart = self
+
+
+## La source de commande actuelle. ItemManager s'en sert pour dire à l'IA ce
+## qu'elle tient.
+func pilote() -> KartInput:
+	return _input
 
 
 func est_pilote_par_le_joueur() -> bool:

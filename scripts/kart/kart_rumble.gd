@@ -24,6 +24,9 @@ extends Node
 ## texture de sol, pas un choc.
 @export var offroad_weak: float = 0.45
 
+## Force de la secousse pendant un tête-à-queue, sur le moteur lourd.
+@export var stun_strong: float = 0.7
+
 var _kart: Kart
 var _manette: int = -1
 var _pulse_restant: float = 0.0
@@ -87,6 +90,11 @@ func _process(delta: float) -> void:
 	if _pulse_restant > 0.0:
 		fort = _pulse_force
 		faible = _pulse_force * boost_weak_share
+	elif motor.state == KartMotor.State.STUNNED:
+		# Le tête-à-queue secoue fort sur toute sa durée : c'est un choc, pas
+		# une texture de sol.
+		fort = stun_strong
+		faible = stun_strong * 0.6
 	elif motor.on_offroad:
 		faible = offroad_weak
 

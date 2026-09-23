@@ -31,6 +31,10 @@ var drift_dir: int = 0          ## -1 gauche, +1 droite, 0 hors dérapage
 var drift_charge: float = 0.0
 var drift_angle: float = 0.0    ## écart caisse / trajectoire, en radians
 var hop_timer: float = 0.0
+
+## Temps restant en tête-à-queue. Un compteur et non une machine à états de
+## plus, comme le prévoyait la spec : l'état STUNNED existait déjà.
+var stun_timer: float = 0.0
 var _drift_locked_out: bool = false   ## une glisse cassée bloque jusqu'au relâchement
 
 
@@ -50,6 +54,12 @@ func step(cmd: KartCommand, delta: float) -> void:
 		# Sans ça, la force d'un palier 3 terminé s'appliquerait au turbo
 		# suivant, même accordé par une glisse à peine chargée.
 		boost_multiplier = _plancher_de_turbo()
+	if state == State.STUNNED:
+		_update_stun(delta)
+		if not cmd.drift:
+			_drift_locked_out = false
+		return
+
 	_update_speed(cmd, delta)
 
 	match state:
@@ -206,6 +216,44 @@ func _release_drift() -> void:
 	_end_drift()
 
 
+## Tête-à-queue : les commandes sont ignorées, la caisse pivote sur elle-même
+## et le kart ralentit sur sa lancée. Rend faux si le kart tournait déjà —
+## un kart sonné ne se fait pas sonner une deuxième fois, sans quoi deux
+## bananes rapprochées le cloueraient au sol.
+func stun() -> bool:
+	if state == State.STUNNED:
+		return false
+	_end_drift()
+	state = State.STUNNED
+	stun_timer = stats.stun_duration
+	# Un turbo en cours s'éteint : sinon le kart touché repartirait plein
+	# pot en tournant sur lui-même.
+	boost_timer = 0.0
+	boost_multiplier = _plancher_de_turbo()
+	return true
+
+
+func _update_stun(delta: float) -> void:
+	stun_timer = maxf(stun_timer - delta, 0.0)
+	speed = move_toward(speed, 0.0, stats.stun_deceleration * delta)
+	# La caisse tourne, la trajectoire non : c'est ce qui fait un tête-à-queue
+	# et non un virage.
+	var vitesse_rotation := TAU * stats.stun_spin_turns / maxf(stats.stun_duration, 0.001)
+	heading += vitesse_rotation * delta
+	if stun_timer <= 0.0:
+		state = State.GRIP
+		heading = velocity_dir
+
+
+## La poussée du champignon. Même mécanique que le mini-turbo, et même règle :
+## un turbo plus fort ou plus long déjà en cours n'est pas amputé.
+func boost_objet() -> void:
+	if state == State.STUNNED:
+		return
+	boost_timer = maxf(boost_timer, stats.mushroom_duration)
+	boost_multiplier = maxf(boost_multiplier, stats.mushroom_speed_multiplier)
+
+
 ## Remet le moteur à neuf au cap donné, sans changer d'objet. Les nœuds de
 ## présentation gardent des références au moteur : le remplacer les
 ## détacherait en silence, sans erreur et sans test pour l'attraper.
@@ -221,4 +269,5 @@ func reset(yaw: float) -> void:
 	drift_charge = 0.0
 	drift_angle = 0.0
 	hop_timer = 0.0
+	stun_timer = 0.0
 	_drift_locked_out = false

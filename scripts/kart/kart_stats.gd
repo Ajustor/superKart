@@ -62,6 +62,20 @@ extends Resource
 @export var offroad_speed_multiplier: float = 0.6
 @export var stun_duration: float = 1.2
 
+## Tours complets que fait la caisse pendant le tête-à-queue. Un seul : assez
+## pour que la sanction se voie, pas assez pour qu'on perde le nord.
+@export var stun_spin_turns: float = 1.0
+
+## Freinage pendant le tête-à-queue, en u/s². Plus doux que le frein : le kart
+## glisse encore un peu, il ne se plante pas sur place.
+@export var stun_deceleration: float = 20.0
+
+@export_group("Objets")
+## Le champignon pousse comme un mini-turbo de palier 2, mais plus longtemps :
+## c'est un objet qu'on a eu de la chance de tirer, il doit se sentir.
+@export var mushroom_duration: float = 1.3
+@export var mushroom_speed_multiplier: float = 1.4
+
 @export_group("Saut")
 @export var gravity: float = 30.0
 

@@ -58,6 +58,9 @@ static func boutons(taille: Vector2) -> Array[Dictionary]:
 		{action = &"throttle", centre = Vector2(taille.x - marge - r * 1.15, bas - r * 0.15), rayon = r * 1.15, texte = "GAZ"},
 		{action = &"brake", centre = Vector2(taille.x - marge - r * 3.6, bas + r * 0.2), rayon = r * 0.8, texte = "FREIN"},
 		{action = &"drift", centre = Vector2(taille.x - marge - r * 1.15, bas - r * 2.75), rayon = r * 0.95, texte = "DRIFT"},
+		# Au-dessus du frein, à portée du même pouce que le dérapage : on lance
+		# un objet entre deux glisses, pas pendant qu'on freine.
+		{action = &"use_item", centre = Vector2(taille.x - marge - r * 3.45, bas - r * 2.2), rayon = r * 0.85, texte = "OBJET"},
 	]
 	return liste
 
