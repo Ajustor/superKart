@@ -151,7 +151,13 @@ func _reconstruire() -> void:
 	var corps := StaticBody3D.new()
 	corps.name = NOM_CORPS
 	var forme := CollisionShape3D.new()
-	forme.shape = maillage.create_trimesh_shape()
+	# La collision n'a que faire des couleurs : les sept bandes de
+	# l'arc-en-ciel y feraient sept fois plus de triangles à tester, à chaque
+	# roue et chaque image.
+	var pour_la_collision := maillage
+	if arc_en_ciel:
+		pour_la_collision = TrackBuilder.build(track_curve, segment_length, trous())
+	forme.shape = pour_la_collision.create_trimesh_shape()
 	corps.add_child(forme)
 	add_child(corps)
 
