@@ -22,6 +22,8 @@ var _joueurs: VBoxContainer
 var _adresses: Label
 var _piste: OptionButton
 var _tours: OptionButton
+var _mode: OptionButton
+var _classe: OptionButton
 var _lancer: Button
 var _attente: Label
 
@@ -138,6 +140,20 @@ func _ecran_salon() -> Control:
 	_joueurs = VBoxContainer.new()
 	colonne.add_child(_joueurs)
 
+	# Une course seule, ou une des coupes. L'id est l'index de la coupe plus
+	# un : un id de -1 veut dire « prends l'index » pour OptionButton.
+	_mode = OptionButton.new()
+	_mode.add_item("Course seule", Reseau.SANS_COUPE + 1)
+	for i in TrackCatalog.COUPES.size():
+		_mode.add_item("Grand Prix : %s" % TrackCatalog.COUPES[i].nom, i + 1)
+	_mode.item_selected.connect(func(_i: int) -> void: _envoyer_config())
+	colonne.add_child(_ligne("Mode", _mode))
+	_classe = OptionButton.new()
+	for c in Cylindree.NOMS.size():
+		_classe.add_item(Cylindree.nom(c), c)
+	_classe.item_selected.connect(func(_i: int) -> void: _envoyer_config())
+	colonne.add_child(_ligne("Cylindrée", _classe))
+
 	_piste = OptionButton.new()
 	for i in TrackCatalog.PISTES.size():
 		_piste.add_item(TrackCatalog.PISTES[i].nom, i)
@@ -242,8 +258,14 @@ func _rafraichir_salon() -> void:
 	if index >= 0:
 		_piste.select(index)
 	_tours.select(_tours.get_item_index(int(Reseau.config.get("tours", 3))))
-	_piste.disabled = not hote
-	_tours.disabled = not hote
+	_mode.select(_mode.get_item_index(int(Reseau.config.get("coupe", Reseau.SANS_COUPE)) + 1))
+	_classe.select(_classe.get_item_index(int(Reseau.config.get("cylindree", Cylindree.Classe.CC150))))
+	var en_coupe := int(Reseau.config.get("coupe", Reseau.SANS_COUPE)) != Reseau.SANS_COUPE
+	_mode.disabled = not hote
+	_classe.disabled = not hote
+	# En coupe, les circuits et les tours sont ceux de la coupe.
+	_piste.disabled = not hote or en_coupe
+	_tours.disabled = not hote or en_coupe
 	_lancer.visible = hote
 	_attente.visible = not hote
 
@@ -257,7 +279,8 @@ static func adresses_texte() -> String:
 
 func _envoyer_config() -> void:
 	var piste: TrackInfo = TrackCatalog.PISTES[_piste.get_selected_id()]
-	Reseau.choisir_config(piste.id, _tours.get_selected_id())
+	Reseau.choisir_config(piste.id, _tours.get_selected_id(), _classe.get_selected_id(),
+		_mode.get_selected_id() - 1)
 
 
 func _ligne(texte: String, controle: Control) -> HBoxContainer:

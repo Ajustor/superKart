@@ -87,3 +87,20 @@ func cases(noms: PackedStringArray) -> Array[int]:
 			suivante += 1
 		cases_.append(place - 1)
 	return cases_
+
+
+## Ce qui voyage sur le réseau : l'hôte tient la coupe, et l'envoie à chaque
+## course pour que tous affichent les mêmes points.
+func en_dictionnaire() -> Dictionary:
+	return {coupe = coupe, classe = classe, manche = manche, points = points,
+		dernieres_places = dernieres_places}
+
+
+static func depuis(d: Dictionary) -> GrandPrix:
+	var gp := GrandPrix.new(int(d.get("coupe", 0)), int(d.get("classe", Cylindree.Classe.CC150)))
+	gp.manche = int(d.get("manche", 0))
+	for pilote in d.get("points", {}):
+		gp.points[str(pilote)] = int(d.points[pilote])
+	for pilote in d.get("dernieres_places", {}):
+		gp.dernieres_places[str(pilote)] = int(d.dernieres_places[pilote])
+	return gp

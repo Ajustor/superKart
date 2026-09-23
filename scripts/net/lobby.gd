@@ -25,7 +25,9 @@ func ajouter(peer: int, nom: String) -> String:
 	var propre := nettoyer(nom)
 	var final := propre
 	var n := 2
-	while noms().has(final):
+	# Pas le nom d'un pilote IA non plus : les points d'une coupe se tiennent
+	# par nom, un joueur « Turbo » partagerait ceux de l'IA.
+	while noms().has(final) or NOMS_IA.has(final):
 		final = "%s %d" % [propre, n]
 		n += 1
 	joueurs[peer] = final
@@ -96,4 +98,26 @@ func plan_de_course(rng: RandomNumberGenerator) -> Array:
 		if plan[gid] == null:
 			plan[gid] = {gid = gid, peer = 0, nom = NOMS_IA[niveau - 1], niveau_ia = niveau}
 			niveau += 1
+	return plan
+
+
+## La grille d'une manche de coupe : les mêmes pilotes qu'un plan ordinaire,
+## mais chacun repart de sa place d'arrivée à la course précédente. Ceux
+## qui n'y étaient pas (un joueur parti, remplacé) ferment la grille.
+func plan_de_coupe(gp: GrandPrix, rng: RandomNumberGenerator) -> Array:
+	var base := plan_de_course(rng)
+	if gp == null or gp.dernieres_places.is_empty():
+		return base
+	var pilotes := base.duplicate()
+	pilotes.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var pa := int(gp.dernieres_places.get(a.nom, 99))
+		var pb := int(gp.dernieres_places.get(b.nom, 99))
+		if pa != pb:
+			return pa < pb
+		return int(a.gid) < int(b.gid))
+	var plan := []
+	for gid in pilotes.size():
+		var place: Dictionary = pilotes[gid].duplicate()
+		place.gid = gid
+		plan.append(place)
 	return plan

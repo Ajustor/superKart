@@ -180,6 +180,8 @@ func _entree_locale() -> RaceEntry:
 
 @rpc("any_peer", "reliable")
 func _charge() -> void:
+	if not is_inside_tree():
+		return
 	_sur_charge(multiplayer.get_remote_sender_id())
 
 
@@ -240,13 +242,18 @@ func _vider_la_file(maintenant: float) -> void:
 
 @rpc("any_peer", "unreliable_ordered")
 func _karts(paquet: PackedFloat32Array) -> void:
+	# Entre deux manches d'une coupe, les états de l'autre machine arrivent
+	# encore pendant que la course change : hors de l'arbre, ou pas encore
+	# prête, celle-ci les ignore.
+	if not is_inside_tree() or tampons.is_empty():
+		return
 	var expediteur := multiplayer.get_remote_sender_id()
 	var maintenant := _maintenant()
 	var trajet := _trajet(expediteur)
 	var a_relayer := PackedFloat32Array()
 	for etat in KartSnapshot.decouper(paquet):
 		var gid := int(etat[KartSnapshot.GID])
-		if not proprietaires.has(gid) or proprietaires[gid] == _moi:
+		if not proprietaires.has(gid) or proprietaires[gid] == _moi or not tampons.has(gid):
 			continue
 		# Un client ne peut parler que pour son propre kart : il ne déplace
 		# pas les autres, même par erreur.
@@ -300,7 +307,7 @@ func _classement(photo: Array) -> void:
 
 @rpc("authority", "unreliable_ordered")
 func _objets(etat: Dictionary) -> void:
-	if objets != null:
+	if objets != null and is_inside_tree():
 		# Les carapaces sont déjà plus loin que sur la photo : elle a voyagé.
 		objets.appliquer_instantane(etat, _trajet(1))
 
@@ -336,7 +343,7 @@ func _inventaire_fige() -> bool:
 
 @rpc("any_peer", "reliable")
 func _demande_objet(gid: int) -> void:
-	if not _hote or proprietaires.get(gid, -1) != multiplayer.get_remote_sender_id():
+	if not is_inside_tree() or not _hote or proprietaires.get(gid, -1) != multiplayer.get_remote_sender_id():
 		return
 	entrees[gid].kart.demande_objet = true
 

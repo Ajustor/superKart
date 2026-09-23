@@ -12,15 +12,24 @@ signal salon_change
 signal erreur(message: String)
 signal connecte
 signal deconnecte(raison: String)
+## La dernière manche d'une coupe est comptée : chacun montre le podium.
+signal podium
 
 const PORT := 8910
 ## Monté à chaque changement du protocole : un client d'une autre version est
 ## refusé poliment plutôt que de désynchroniser la course en silence.
-const VERSION := 2
+const VERSION := 3
+
+## Pas de coupe : une course seule.
+const SANS_COUPE := -1
 
 var lobby := Lobby.new()
-var config: Dictionary = {piste = "", tours = 3}
+var config: Dictionary = {piste = "", tours = 3, cylindree = Cylindree.Classe.CC150, coupe = SANS_COUPE}
 var en_course: bool = false
+
+## La coupe en cours, la même sur toutes les machines : l'hôte la tient et
+## l'envoie à chaque manche. Null en course seule.
+var grand_prix: GrandPrix
 
 ## Le dernier plan de course lancé : qui occupe quelle place de la grille.
 var plan: Array = []
@@ -98,6 +107,7 @@ func quitter() -> void:
 	lobby = Lobby.new()
 	en_course = false
 	plan = []
+	grand_prix = null
 
 
 ## Les adresses sous lesquelles les autres peuvent joindre cet appareil : à
@@ -113,10 +123,15 @@ static func adresses_locales() -> PackedStringArray:
 
 # --- Le salon ------------------------------------------------------------------
 
-func choisir_config(piste: String, tours: int) -> void:
+func choisir_config(piste: String, tours: int, cylindree: int = Cylindree.Classe.CC150,
+		coupe: int = SANS_COUPE) -> void:
 	if not est_hote():
 		return
-	config = {piste = piste, tours = clampi(tours, 1, 9)}
+	config = {
+		piste = piste, tours = clampi(tours, 1, 9),
+		cylindree = clampi(cylindree, Cylindree.Classe.CC50, Cylindree.Classe.CC150),
+		coupe = clampi(coupe, SANS_COUPE, TrackCatalog.COUPES.size() - 1),
+	}
 	_diffuser_salon()
 
 
@@ -208,15 +223,59 @@ func lancer_course() -> void:
 		return
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
-	var nouveau_plan := lobby.plan_de_course(rng)
-	_lancer.rpc(nouveau_plan, config)
-	_lancer(nouveau_plan, config)
+	var coupe := int(config.get("coupe", SANS_COUPE))
+	if coupe == SANS_COUPE:
+		_lancer_pour_tous(lobby.plan_de_course(rng), config)
+		return
+	var gp := GrandPrix.new(coupe, int(config.get("cylindree", Cylindree.Classe.CC150)))
+	_lancer_pour_tous(lobby.plan_de_course(rng), config_de_manche(config, gp))
+
+
+## Les réglages d'une manche : le circuit de la coupe, trois tours, et l'état
+## de la coupe pour que chacun affiche les mêmes points.
+static func config_de_manche(base: Dictionary, gp: GrandPrix) -> Dictionary:
+	var c := base.duplicate()
+	var piste := gp.piste()
+	c.piste = piste.id
+	# tours_coupe : pour les essais seulement, des manches courtes.
+	c.tours = int(base.get("tours_coupe", piste.tours))
+	c.cylindree = gp.classe
+	c.coupe = gp.coupe
+	c.gp = gp.en_dictionnaire()
+	return c
+
+
+## L'hôte compte la manche qui s'achève (les noms dans l'ordre d'arrivée),
+## puis lance la suivante — ou le podium.
+func manche_suivante(ordre_d_arrivee: PackedStringArray) -> void:
+	if not est_hote() or grand_prix == null:
+		return
+	grand_prix.compter(ordre_d_arrivee)
+	if grand_prix.terminee():
+		_podium.rpc(grand_prix.en_dictionnaire())
+		_podium(grand_prix.en_dictionnaire())
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	_lancer_pour_tous(lobby.plan_de_coupe(grand_prix, rng), config_de_manche(config, grand_prix))
+
+
+func _lancer_pour_tous(nouveau_plan: Array, reglages: Dictionary) -> void:
+	_lancer.rpc(nouveau_plan, reglages)
+	_lancer(nouveau_plan, reglages)
+
+
+@rpc("authority", "reliable")
+func _podium(etat: Dictionary) -> void:
+	grand_prix = GrandPrix.depuis(etat)
+	podium.emit()
 
 
 @rpc("authority", "reliable")
 func _lancer(nouveau_plan: Array, reglages: Dictionary) -> void:
 	plan = nouveau_plan
 	config = reglages
+	grand_prix = GrandPrix.depuis(reglages.gp) if reglages.has("gp") else null
 	en_course = true
 	decouverte.arreter_annonce()
 	RaceLauncher.lancer_reseau(get_tree(), plan, config, mon_id(), est_hote())
@@ -233,6 +292,8 @@ func retour_salon() -> void:
 @rpc("authority", "reliable")
 func _retour() -> void:
 	en_course = false
+	grand_prix = null
+	config.erase("gp")
 	_annoncer()
 	RaceLauncher.retour_au_menu(get_tree())
 

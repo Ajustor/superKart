@@ -70,16 +70,25 @@ func _ready() -> void:
 	colonne.add_child(boutons)
 
 	_session.arrivee.connect(_sur_arrivee)
+	# En réseau, c'est l'hôte qui compte la dernière manche : chacun montre
+	# le podium quand il le dit.
+	Reseau.podium.connect(_sur_podium)
 
 
-## La coupe en cours, si cette course en est une manche.
+## La coupe en cours, si cette course en est une manche. En réseau, celle
+## que l'hôte a envoyée avec la course.
 func _grand_prix() -> GrandPrix:
 	if Reseau.actif():
-		return null
+		return Reseau.grand_prix
 	var reglage := GameSettings.course
 	if reglage.mode != RaceSetup.Mode.GRAND_PRIX:
 		return null
 	return reglage.grand_prix
+
+
+func _sur_podium() -> void:
+	if Reseau.grand_prix != null:
+		_montrer_podium(Reseau.grand_prix)
 
 
 func _contre_la_montre() -> bool:
@@ -95,10 +104,15 @@ func _colonnes() -> PackedStringArray:
 
 
 func _sur_rejouer() -> void:
-	if Reseau.actif():
-		Reseau.retour_salon()
-		return
 	var gp := _grand_prix()
+	if Reseau.actif():
+		if gp != null:
+			# L'hôte compte, puis lance la manche suivante pour tous.
+			_manche_comptee = true
+			Reseau.manche_suivante(_ordre_d_arrivee())
+		else:
+			Reseau.retour_salon()
+		return
 	if gp == null:
 		RaceLauncher.lancer(get_tree(), GameSettings.course)
 		return
@@ -116,10 +130,16 @@ func _compter_manche(gp: GrandPrix) -> void:
 	if _manche_comptee:
 		return
 	_manche_comptee = true
+	gp.compter(_ordre_d_arrivee())
+
+
+## Les noms dans l'ordre du classement : ceux sous lesquels la coupe compte,
+## les mêmes sur toutes les machines en réseau.
+func _ordre_d_arrivee() -> PackedStringArray:
 	var ordre := PackedStringArray()
 	for entree in _session.classement():
-		ordre.append(entree.nom)
-	gp.compter(ordre)
+		ordre.append(_session.nom_reel(entree))
+	return ordre
 
 
 func _montrer_podium(gp: GrandPrix) -> void:
@@ -129,9 +149,10 @@ func _montrer_podium(gp: GrandPrix) -> void:
 	for enfant in get_children():
 		if enfant != _podium and enfant is CanvasItem:
 			(enfant as CanvasItem).hide()
-	var moi := _session.entries[0].nom
-	var place := gp.place_de(moi)
-	GameSettings.proposer_trophee(gp.coupe, gp.classe, place)
+	var moi := _session.nom_reel(_session.entries[0])
+	# Les trophées, comme les records, ne se gagnent qu'en solo.
+	if not Reseau.actif():
+		GameSettings.proposer_trophee(gp.coupe, gp.classe, gp.place_de(moi))
 	_podium.montrer(gp, moi)
 
 
@@ -166,7 +187,11 @@ func _process(delta: float) -> void:
 func _ouvrir() -> void:
 	# En réseau, c'est l'hôte qui ramène tout le monde au salon.
 	if Reseau.actif():
-		_rejouer.text = "Retour au salon"
+		var gp := _grand_prix()
+		if gp == null:
+			_rejouer.text = "Retour au salon"
+		else:
+			_rejouer.text = "Podium" if gp.manche == gp.manches() - 1 else "Course suivante"
 		_rejouer.visible = Reseau.est_hote()
 	var pause := get_node_or_null(pause_path) as PauseMenu
 	if pause != null:
@@ -220,7 +245,7 @@ func _remplir() -> void:
 			_cellule(str(RaceScoring.points_pour(entree.position)), couleur)
 		if gp != null:
 			# Le total de la coupe, cette course comprise.
-			var total := int(gp.points.get(entree.nom, 0))
+			var total := int(gp.points.get(_session.nom_reel(entree), 0))
 			if not _manche_comptee:
 				total += RaceScoring.points_pour(entree.position)
 			_cellule(str(total), couleur)

@@ -49,15 +49,28 @@ func _ready() -> void:
 	_message.add_theme_color_override("font_color", UITheme.ACCENT)
 	colonne.add_child(_message)
 
-	_menu = UITheme.bouton("Menu principal", func() -> void:
-		GameSettings.course.mode = RaceSetup.Mode.COURSE
-		GameSettings.course.grand_prix = null
-		RaceLauncher.retour_au_menu(get_tree()))
+	_menu = UITheme.bouton("Menu principal", _sortir)
 	_menu.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	colonne.add_child(_menu)
 
 
+## En réseau, l'hôte ramène tout le monde au salon ; les autres peuvent
+## partir sans l'attendre.
+func _sortir() -> void:
+	if Reseau.actif():
+		if Reseau.est_hote():
+			Reseau.retour_salon()
+		else:
+			Reseau.abandonner()
+		return
+	GameSettings.course.mode = RaceSetup.Mode.COURSE
+	GameSettings.course.grand_prix = null
+	RaceLauncher.retour_au_menu(get_tree())
+
+
 func montrer(gp: GrandPrix, moi: String) -> void:
+	if Reseau.actif():
+		_menu.text = "Retour au salon" if Reseau.est_hote() else "Quitter la partie"
 	var classement := gp.classement()
 	_titre.text = "%s  ·  %s" % [gp.nom().to_upper(), Cylindree.nom(gp.classe)]
 

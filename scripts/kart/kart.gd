@@ -72,6 +72,10 @@ const IA_REACTION_FIGURE := 0.3
 ## En l'air à cause d'un tremplin ou d'une rampe.
 var en_saut: bool = false
 var figure_faite: bool = false
+## Figures faites depuis le départ. Voyage sur le réseau (KartSnapshot) : un
+## compteur plutôt qu'un événement, pour qu'un paquet perdu ne fasse pas
+## manquer le tonneau d'un kart distant.
+var figures: int = 0
 var _en_l_air: float = 0.0
 var _derapage_avant: bool = false
 
@@ -226,6 +230,7 @@ func _figures(cmd: KartCommand, delta: float) -> void:
 	_en_l_air += delta
 	if not figure_faite and _en_l_air >= FIGURE_APRES and (appui or _figure_de_l_ia()):
 		figure_faite = true
+		figures += 1
 		figure.emit()
 	# Pas de bond de dérapage en plein vol : il relançait le kart vers le
 	# haut, un double saut qui allongeait n'importe quel tremplin.

@@ -94,6 +94,11 @@ const GRID_COLUMN_STAGGER := 2.5
 ## Noms des concurrents, dans l'ordre de kart_paths.
 @export var noms: PackedStringArray = []
 
+## Les vrais noms, dans l'ordre de kart_paths, là où `noms` affiche « Vous »
+## pour le joueur local. En réseau, c'est sous ce nom que la coupe compte ses
+## points, le même sur toutes les machines. Vide en solo : `noms` suffit.
+var noms_reels: PackedStringArray = []
+
 ## Qui est piloté par un humain, dans l'ordre de kart_paths. Vide en solo :
 ## seul le premier, le joueur, l'est.
 var humains: Array[bool] = []
@@ -244,6 +249,14 @@ static func cases_attribuees(concurrents: int, case_joueur: int) -> Array[int]:
 		cases.append(libre)
 		libre += 1
 	return cases
+
+
+## Le nom sous lequel ce concurrent compte dans une coupe.
+func nom_reel(entree: RaceEntry) -> String:
+	var i := entries.find(entree)
+	if i >= 0 and i < noms_reels.size():
+		return noms_reels[i]
+	return entree.nom
 
 
 ## Le circuit monté. ItemManager en a besoin pour faire rebondir les

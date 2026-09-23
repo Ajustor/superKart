@@ -110,6 +110,7 @@ static func monter_reseau(plan: Array, config: Dictionary, moi: int, hote: bool)
 	if piste != null:
 		reglage.choisir_piste(piste)
 	reglage.tours = int(config.get("tours", reglage.tours))
+	reglage.classe = int(config.get("cylindree", Cylindree.Classe.CC150))
 	var course := monter(reglage)
 	var session := course.get_node("Session") as RaceSession
 
@@ -137,12 +138,14 @@ static func monter_reseau(plan: Array, config: Dictionary, moi: int, hote: bool)
 	var chemins: Array[NodePath] = []
 	var cases: Array[int] = []
 	var noms := PackedStringArray()
+	var noms_reels := PackedStringArray()
 	var humains: Array[bool] = []
 	for gid in ordre:
 		var place: Dictionary = plan[gid]
 		chemins.append(NodePath("../" + noeuds[gid]))
 		cases.append(gid)
 		noms.append("Vous" if gid == local_gid else place.nom)
+		noms_reels.append(place.nom)
 		humains.append(place.peer != 0)
 		var kart := course.get_node(noeuds[gid]) as Kart
 		# Simulé ici : le joueur local, et l'IA quand on est l'hôte.
@@ -150,6 +153,7 @@ static func monter_reseau(plan: Array, config: Dictionary, moi: int, hote: bool)
 	session.kart_paths = chemins
 	session.cases_imposees = cases
 	session.noms = noms
+	session.noms_reels = noms_reels
 	session.humains = humains
 	session.arbitre = hote
 	session.attente_depart = true
