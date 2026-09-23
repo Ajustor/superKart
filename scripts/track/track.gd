@@ -15,6 +15,22 @@ extends Node3D
 
 const NOM_MAILLAGE := "RoadMesh"
 const NOM_CORPS := "RoadBody"
+const NOM_BORDURES := "Bordures"
+
+## L'allure de la chaussée.
+enum Motif {
+	## Un ruban uni, de la couleur `road_color`.
+	UNI,
+	## Sept bandes de couleur dans le sens de la longueur, qui brillent un peu
+	## dans le noir.
+	ARC_EN_CIEL,
+}
+
+const ARC_EN_CIEL: PackedColorArray = [
+	Color(0.95, 0.2, 0.25), Color(1.0, 0.55, 0.15), Color(1.0, 0.9, 0.2),
+	Color(0.3, 0.85, 0.35), Color(0.2, 0.7, 1.0), Color(0.35, 0.35, 0.95),
+	Color(0.75, 0.35, 0.95),
+]
 
 @export var curve: Curve3D:
 	set(valeur):
@@ -58,6 +74,33 @@ const NOM_CORPS := "RoadBody"
 		road_color = valeur
 		_reconstruire_si_montee()
 
+@export var motif: Motif = Motif.UNI:
+	set(valeur):
+		motif = valeur
+		_reconstruire_si_montee()
+
+## Bordures rouges et blanches sur les deux rives.
+@export var bordures: bool = false:
+	set(valeur):
+		bordures = valeur
+		_reconstruire_si_montee()
+
+@export var couleur_bordure: Color = Color(0.85, 0.12, 0.12):
+	set(valeur):
+		couleur_bordure = valeur
+		_reconstruire_si_montee()
+
+@export var couleur_bordure_bis: Color = Color(0.95, 0.95, 0.95):
+	set(valeur):
+		couleur_bordure_bis = valeur
+		_reconstruire_si_montee()
+
+## Altitude d'une étendue d'eau ou de lave sous le circuit. Un kart qui passe
+## en dessous est remis en piste tout de suite, sans attendre d'être tombé de
+## douze mètres : on ne nage pas dans la lave. Très bas par défaut : pas de
+## liquide, on tombe dans le vide.
+@export var altitude_du_liquide: float = -1000.0
+
 var track_curve: TrackCurve
 
 ## En deçà de cette distance avant un trou, un kart remis en piste l'est de
@@ -84,10 +127,20 @@ func _reconstruire() -> void:
 
 	track_curve = TrackCurve.new(curve, half_width)
 
-	var maillage := TrackBuilder.build(track_curve, segment_length, trous())
+	var arc_en_ciel := motif == Motif.ARC_EN_CIEL
+	var maillage := TrackBuilder.build(track_curve, segment_length, trous(),
+		ARC_EN_CIEL if arc_en_ciel else PackedColorArray())
 
 	var materiau := StandardMaterial3D.new()
 	materiau.albedo_color = road_color
+	if arc_en_ciel:
+		materiau.albedo_color = Color.WHITE
+		materiau.vertex_color_use_as_albedo = true
+		materiau.roughness = 0.35
+		# Une lueur blanche discrète : dans le noir, la route se voit de loin
+		# sans que ses couleurs se délavent.
+		materiau.emission_enabled = true
+		materiau.emission = Color(0.22, 0.22, 0.3)
 	maillage.surface_set_material(0, materiau)
 
 	var affichage := MeshInstance3D.new()
@@ -101,6 +154,16 @@ func _reconstruire() -> void:
 	forme.shape = maillage.create_trimesh_shape()
 	corps.add_child(forme)
 	add_child(corps)
+
+	if bordures:
+		var bandes := MeshInstance3D.new()
+		bandes.name = NOM_BORDURES
+		bandes.mesh = TrackBuilder.bordures(track_curve, trous(), 1.0, 3.0,
+			couleur_bordure, couleur_bordure_bis)
+		var peinture := StandardMaterial3D.new()
+		peinture.vertex_color_use_as_albedo = true
+		bandes.material_override = peinture
+		add_child(bandes)
 
 	# Les éléments posés sur le tracé le suivent : retoucher la courbe
 	# déplace les murs, les tremplins et les zones avec elle.
@@ -211,7 +274,7 @@ func _reconstruire_si_montee() -> void:
 
 
 func _vider() -> void:
-	for nom in [NOM_MAILLAGE, NOM_CORPS]:
+	for nom in [NOM_MAILLAGE, NOM_CORPS, NOM_BORDURES]:
 		var ancien := get_node_or_null(NodePath(nom))
 		if ancien != null:
 			# Retiré tout de suite plutôt que seulement mis en file : sinon le

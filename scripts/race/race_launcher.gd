@@ -10,6 +10,8 @@ extends RefCounted
 
 const SCENE_COURSE := "res://scenes/race.tscn"
 const SCENE_MENU := "res://scenes/ui/main_menu.tscn"
+## Les nœuds d'ambiance de race.tscn qu'un circuit peut remplacer par les siens.
+const AMBIANCE := ["WorldEnvironment", "DirectionalLight3D"]
 
 
 static func lancer(arbre: SceneTree, reglage: RaceSetup) -> void:
@@ -37,9 +39,20 @@ static func monter(reglage: RaceSetup, rng: RandomNumberGenerator = null) -> Nod
 	if reglage.piste != null and reglage.piste.scene != null:
 		var ancienne := course.get_node("Track")
 		var nouvelle := reglage.piste.scene.instantiate()
-		ancienne.replace_by(nouvelle)
-		nouvelle.name = "Track"
+		# Pas replace_by : il déménage les enfants de l'ancien circuit dans le
+		# nouveau, et chaque circuit héritait des murs, rampes et trous du
+		# circuit par défaut de race.tscn.
+		var place := ancienne.get_index()
+		course.remove_child(ancienne)
 		ancienne.free()
+		nouvelle.name = "Track"
+		course.add_child(nouvelle)
+		course.move_child(nouvelle, place)
+		# Un circuit peut apporter son ciel et sa lumière : ils remplacent
+		# ceux de la scène de course, qui restent ceux des autres.
+		for nom in AMBIANCE:
+			if nouvelle.has_node(nom) and course.has_node(nom):
+				course.get_node(nom).free()
 
 	var session := course.get_node("Session") as RaceSession
 	session.lap_count = maxi(reglage.tours, 1)

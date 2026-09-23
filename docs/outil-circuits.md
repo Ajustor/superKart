@@ -13,6 +13,24 @@ pose **sur le tracé**, comme enfant du nœud `Track`.
 | `TrackGap` | un trou : la route n'est pas construite sur cette portion, on la franchit en sautant | — |
 | `TrackJump` | une zone de saut peinte : le kart qui passe dessus décolle d'une impulsion fixe, avec un turbo en option | non, c'est une zone |
 | `TrackOffroad` | une zone d'herbe, de sable ou de boue : on y roule, mais au ralenti | oui : elle crée du sol, même à côté de la route |
+| `TrackDecor` | une rangée de décor le long du tracé : palmiers, phare, piliers enflammés, étoiles, champignons géants, rochers. `espacement` 0 pose un objet seul | non : on passe au travers |
+
+## Habiller le circuit
+
+Sur le nœud `Track` lui-même :
+
+- **motif** : `UNI` (la couleur `road_color`) ou `ARC_EN_CIEL`, sept bandes
+  de couleur qui brillent un peu dans le noir ;
+- **bordures** : des bordures rouges et blanches sur les deux rives
+  (`couleur_bordure`, `couleur_bordure_bis`) ;
+- **altitude_du_liquide** : l'altitude d'une mer ou d'un lac de lave sous le
+  circuit. Un kart qui passe dessous est remis en piste tout de suite, sans
+  attendre de tomber de douze mètres. Le liquide lui-même se dessine à part :
+  un `MeshInstance3D` avec un grand `PlaneMesh`, comme la `Mer` de la plage.
+
+Un circuit peut aussi apporter son ciel et sa lumière : un `WorldEnvironment`
+et un `DirectionalLight3D` placés directement sous le nœud `Track`
+remplacent ceux de `race.tscn` le temps de la course.
 
 ## Les poser
 
@@ -79,6 +97,47 @@ déplacer un point de contrôle emmène les murs et les zones avec lui.
   tombe dans le trou et perd du temps : c'est voulu.
 - Au-delà du bord de la route, le sol construit reste à plat, à la hauteur du
   bord : il ne prolonge pas le dévers du virage.
+
+## Créer un nouveau circuit
+
+1. Ajouter ses points dans `tools/build_track_curves.gd`, dans le sens de la
+   marche, altitude comprise. Le premier est la ligne de départ, et le
+   dernier tronçon, qui y ramène, doit être droit : la grille s'y range.
+   Puis :
+   ```
+   godot --headless --path . -s tools/build_track_curves.gd -- <id>
+   godot --headless --path . -s tools/shape_track_curve.gd -- res://resources/tracks/<id>_curve.tres <rayon_min> <devers_max>
+   ```
+2. Lire le profil pour savoir où poser les éléments : rayon et pente tous les
+   10 m, lignes droites (pour les rampes), et portions qui se frôlent.
+   ```
+   godot --headless --path . -s tools/profil_circuit.gd -- res://resources/tracks/<id>_curve.tres
+   ```
+   Un pont doit passer à au moins vingt mètres au-dessus de la route qu'il
+   croise : plus bas, le classement confond les deux tronçons.
+3. Écrire la scène (`scenes/tracks/<id>.tscn`) et sa fiche
+   (`resources/tracks/<id>_info.tres`), puis l'ajouter à
+   `scripts/race/track_catalog.gd`.
+4. Faire courir huit IA dessus, et regarder :
+   ```
+   godot --headless --fixed-fps 60 --path . -s tools/essai_circuit.gd -- <id>
+   xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 1280x720 \
+       -s tools/capture_circuit.gd -- <id> <dossier> 100 250 400h
+   ```
+   Tout le monde doit arriver ; les remises en piste et les arrêts sont
+   comptés par tranche de 10 m, ce qui montre où ça coince.
+   `tests/test_circuits.gd` vérifie ensuite chaque circuit du catalogue :
+   virages roulables, rampe devant chaque trou, grille et boîtes sur la
+   route, liquide sous la route, pas de tronçons confondus.
+
+## Les circuits
+
+| Circuit | Longueur | Ce qui le distingue |
+|---|---|---|
+| Circuit des Collines | 789 m | le circuit d'origine : collines, épingle, un trou à sauter |
+| Plage aux Palmiers | 1 032 m | bordures, bas-côtés de sable, dune à tremplin (262 m), lacet autour du phare, bras de mer à sauter (766 à 790 m), raccourci de sable à l'intérieur du virage 380 à 475 m |
+| Forteresse de Lave | 773 m | remparts presque partout, montée vers une chicane à 10 m de haut (340 à 470 m), douve de lave à sauter (542 à 566 m), piliers enflammés |
+| Ruban Céleste | 1 099 m | route arc-en-ciel dans la nuit, en huit : le pont (560 à 650 m) passe 20 m au-dessus de la ligne droite de départ ; saut dans le vide (866 à 892 m), garde-fous seulement dans les virages serrés |
 
 ## Exemples sur le circuit 1
 

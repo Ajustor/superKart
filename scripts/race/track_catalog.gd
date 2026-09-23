@@ -6,6 +6,9 @@ extends RefCounted
 
 const PISTES: Array[TrackInfo] = [
 	preload("res://resources/tracks/track_01_info.tres"),
+	preload("res://resources/tracks/plage_palmiers_info.tres"),
+	preload("res://resources/tracks/forteresse_lave_info.tres"),
+	preload("res://resources/tracks/ruban_celeste_info.tres"),
 ]
 
 

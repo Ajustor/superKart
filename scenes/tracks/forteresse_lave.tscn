@@ -1,0 +1,95 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/track/track.gd" id="1_track"]
+[ext_resource type="Curve3D" path="res://resources/tracks/forteresse_lave_curve.tres" id="2_curve"]
+[ext_resource type="Script" path="res://scripts/track/features/track_wall.gd" id="3_wall"]
+[ext_resource type="Script" path="res://scripts/track/features/track_ramp.gd" id="6_ramp"]
+[ext_resource type="Script" path="res://scripts/track/features/track_gap.gd" id="7_gap"]
+[ext_resource type="Script" path="res://scripts/track/features/track_decor.gd" id="8_decor"]
+
+[sub_resource type="Environment" id="Env_forteresse"]
+background_mode = 1
+background_color = Color(0.13, 0.04, 0.04, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.6, 0.38, 0.32, 1)
+ambient_light_energy = 0.7
+fog_enabled = true
+fog_light_color = Color(0.3, 0.08, 0.04, 1)
+fog_density = 0.004
+glow_enabled = true
+glow_intensity = 0.7
+glow_hdr_threshold = 0.8
+
+[sub_resource type="StandardMaterial3D" id="Mat_lave"]
+albedo_color = Color(0.95, 0.3, 0.05, 1)
+roughness = 0.6
+emission_enabled = true
+emission = Color(1, 0.28, 0, 1)
+emission_energy_multiplier = 1.1
+
+[sub_resource type="PlaneMesh" id="Lave"]
+material = SubResource("Mat_lave")
+size = Vector2(1000, 1000)
+
+[node name="Track" type="Node3D"]
+script = ExtResource("1_track")
+curve = ExtResource("2_curve")
+rangees_objets = PackedFloat32Array(0.05, 0.4, 0.78)
+road_color = Color(0.3, 0.28, 0.31, 1)
+altitude_du_liquide = -4.0
+
+[node name="CurveEditor" type="Path3D" parent="."]
+curve = ExtResource("2_curve")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_forteresse")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.766, -0.492, 0.414, 0, 0.643, 0.766, -0.643, -0.587, 0.492, 0, 40, 0)
+light_color = Color(1, 0.72, 0.55, 1)
+light_energy = 0.75
+shadow_enabled = true
+
+[node name="Lave" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, -6, -70)
+mesh = SubResource("Lave")
+
+[node name="Remparts" type="Node3D" parent="."]
+script = ExtResource("3_wall")
+debut = 70.0
+longueur = 462.0
+hauteur = 1.6
+epaisseur = 0.9
+couleur = Color(0.36, 0.34, 0.37, 1)
+couleur_bis = Color(0.27, 0.25, 0.29, 1)
+
+[node name="RempartsRetour" type="Node3D" parent="."]
+script = ExtResource("3_wall")
+debut = 580.0
+longueur = 260.0
+hauteur = 1.6
+epaisseur = 0.9
+couleur = Color(0.36, 0.34, 0.37, 1)
+couleur_bis = Color(0.27, 0.25, 0.29, 1)
+
+[node name="RampeDouve" type="Node3D" parent="."]
+script = ExtResource("6_ramp")
+debut = 542.0
+longueur = 12.0
+largeur = 18.0
+hauteur = 1.8
+couleur = Color(0.45, 0.5, 0.62, 1)
+
+[node name="DouveDeLave" type="Node3D" parent="."]
+script = ExtResource("7_gap")
+debut = 554.0
+longueur = 12.0
+
+[node name="Torches" type="Node3D" parent="."]
+script = ExtResource("8_decor")
+objet = 2
+debut = 0.0
+longueur = 770.0
+decalage = 12.5
+espacement = 32.0
+graine = 4

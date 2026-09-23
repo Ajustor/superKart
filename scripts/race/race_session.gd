@@ -313,7 +313,8 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 	# droit d'être loin de la route ; il n'a pas celui d'y atterrir à côté.
 	var perdu := ecart > _demi_largeur + OFF_TRACK_RESPAWN_MARGIN \
 		and not entree.en_vol and not _track.sol_praticable(d, lateral)
-	if point.y < sol - FALL_DEPTH or perdu:
+	var noye := point.y < _track.altitude_du_liquide
+	if point.y < sol - FALL_DEPTH or perdu or noye:
 		var reprise := _track.point_de_reprise(entree.derniere_en_piste)
 		entree.derniere_en_piste = reprise
 		entree.kart.respawn_at(_track.spawn_at(reprise))

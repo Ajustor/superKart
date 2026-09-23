@@ -90,6 +90,27 @@ func test_le_lanceur_monte_la_course_demandee() -> void:
 	course.free()
 
 
+## Chaque circuit arrive avec ses éléments, et seulement les siens : le
+## premier montage déménageait les murs, rampes et trous du circuit par défaut
+## de race.tscn dans le circuit choisi.
+func test_chaque_circuit_garde_ses_propres_elements() -> void:
+	for piste in TrackCatalog.PISTES:
+		var reglage := RaceSetup.new()
+		reglage.choisir_piste(piste)
+		var course := RaceLauncher.monter(reglage)
+		var monte := course.get_node("Track")
+		var seul := piste.scene.instantiate()
+		var noms_montes := monte.get_children().map(func(n: Node) -> String: return n.name)
+		var noms_seuls := seul.get_children().map(func(n: Node) -> String: return n.name)
+		assert_eq(noms_montes, noms_seuls, "%s : ses éléments, pas ceux d'un autre" % piste.id)
+		assert_eq(course.find_children("*", "WorldEnvironment", true, false).size(), 1,
+			"%s : un seul ciel" % piste.id)
+		assert_eq(course.find_children("*", "DirectionalLight3D", true, false).size(), 1,
+			"%s : un seul soleil" % piste.id)
+		seul.free()
+		course.free()
+
+
 # --- Réglages enregistrés ----------------------------------------------------
 
 func _reglages() -> Node:

@@ -1,0 +1,110 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/track/track.gd" id="1_track"]
+[ext_resource type="Curve3D" path="res://resources/tracks/ruban_celeste_curve.tres" id="2_curve"]
+[ext_resource type="Script" path="res://scripts/track/features/track_wall.gd" id="3_wall"]
+[ext_resource type="Script" path="res://scripts/track/features/track_ramp.gd" id="6_ramp"]
+[ext_resource type="Script" path="res://scripts/track/features/track_gap.gd" id="7_gap"]
+[ext_resource type="Script" path="res://scripts/track/features/track_decor.gd" id="8_decor"]
+
+[sub_resource type="Environment" id="Env_ruban"]
+background_mode = 1
+background_color = Color(0.02, 0.02, 0.07, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.55, 0.55, 0.75, 1)
+ambient_light_energy = 0.8
+glow_enabled = true
+glow_intensity = 0.6
+glow_bloom = 0.1
+
+[node name="Track" type="Node3D"]
+script = ExtResource("1_track")
+curve = ExtResource("2_curve")
+rangees_objets = PackedFloat32Array(0.08, 0.5, 0.86)
+motif = 1
+
+[node name="CurveEditor" type="Path3D" parent="."]
+curve = ExtResource("2_curve")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_ruban")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.766, -0.492, 0.414, 0, 0.643, 0.766, -0.643, -0.587, 0.492, 0, 80, 0)
+light_color = Color(0.8, 0.82, 1, 1)
+light_energy = 0.6
+shadow_enabled = true
+
+[node name="GardeFouEst" type="Node3D" parent="."]
+script = ExtResource("3_wall")
+debut = 170.0
+longueur = 130.0
+cote = 1
+hauteur = 0.8
+epaisseur = 0.4
+couleur = Color(0.45, 0.9, 1, 1)
+couleur_bis = Color(1, 1, 1, 1)
+
+[node name="PontEnHuit" type="Node3D" parent="."]
+script = ExtResource("3_wall")
+debut = 560.0
+longueur = 90.0
+hauteur = 0.8
+epaisseur = 0.4
+couleur = Color(1, 0.85, 0.3, 1)
+couleur_bis = Color(1, 1, 1, 1)
+
+[node name="GardeFouOuest" type="Node3D" parent="."]
+script = ExtResource("3_wall")
+debut = 715.0
+longueur = 90.0
+cote = 0
+hauteur = 0.8
+epaisseur = 0.4
+couleur = Color(0.45, 0.9, 1, 1)
+couleur_bis = Color(1, 1, 1, 1)
+
+[node name="GardeFouArrivee" type="Node3D" parent="."]
+script = ExtResource("3_wall")
+debut = 985.0
+longueur = 50.0
+cote = 0
+hauteur = 0.8
+epaisseur = 0.4
+couleur = Color(0.45, 0.9, 1, 1)
+couleur_bis = Color(1, 1, 1, 1)
+
+[node name="RampeComete" type="Node3D" parent="."]
+script = ExtResource("6_ramp")
+debut = 866.0
+longueur = 12.0
+largeur = 18.0
+hauteur = 1.8
+couleur = Color(0.95, 0.85, 0.3, 1)
+
+[node name="SautDansLeVide" type="Node3D" parent="."]
+script = ExtResource("7_gap")
+debut = 878.0
+longueur = 14.0
+
+[node name="EtoilesProches" type="Node3D" parent="."]
+script = ExtResource("8_decor")
+objet = 3
+debut = 0.0
+longueur = 1090.0
+decalage = 20.0
+espacement = 30.0
+hauteur = 4.0
+echelle = 1.2
+graine = 2
+
+[node name="EtoilesLointaines" type="Node3D" parent="."]
+script = ExtResource("8_decor")
+objet = 3
+debut = 0.0
+longueur = 1090.0
+decalage = 65.0
+espacement = 50.0
+hauteur = 12.0
+echelle = 3.0
+graine = 8
