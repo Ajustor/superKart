@@ -105,17 +105,20 @@ static func monter_reseau(plan: Array, config: Dictionary, moi: int, hote: bool)
 	var chemins: Array[NodePath] = []
 	var cases: Array[int] = []
 	var noms := PackedStringArray()
+	var humains: Array[bool] = []
 	for gid in ordre:
 		var place: Dictionary = plan[gid]
 		chemins.append(NodePath("../" + noeuds[gid]))
 		cases.append(gid)
 		noms.append("Vous" if gid == local_gid else place.nom)
+		humains.append(place.peer != 0)
 		var kart := course.get_node(noeuds[gid]) as Kart
 		# Simulé ici : le joueur local, et l'IA quand on est l'hôte.
 		kart.simule = gid == local_gid or (hote and place.niveau_ia > 0)
 	session.kart_paths = chemins
 	session.cases_imposees = cases
 	session.noms = noms
+	session.humains = humains
 	session.arbitre = hote
 	session.attente_depart = true
 	# Pas de record en réseau : les temps dépendent de qui roule devant qui.

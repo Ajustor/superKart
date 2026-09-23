@@ -7,7 +7,8 @@ extends Control
 ## des yeux.
 ##
 ## S'y ajoutent ce qui n'existe qu'un instant : les feux et le décompte au
-## départ, l'annonce du dernier tour, et l'arrivée.
+## départ, l'annonce du dernier tour, et l'arrivée. Et, sous l'objet, la
+## mini-carte (MiniMap).
 
 @export var session_path: NodePath
 
@@ -25,6 +26,7 @@ var _label: Label
 var _annonce: Label
 var _temps_annonce: float = 0.0
 var _depuis_depart: float = -1.0
+var _carte: MiniMap
 
 
 func _ready() -> void:
@@ -53,10 +55,22 @@ func _ready() -> void:
 	_annonce.position.y -= 80.0
 	add_child(_annonce)
 
+	_carte = MiniMap.new()
+	_carte.session = _session
+	add_child(_carte)
+	_placer_la_carte()
+	resized.connect(_placer_la_carte)
+
 	_session.depart.connect(func() -> void:
 		_depuis_depart = 0.0
 		_annoncer("GO !"))
 	_session.tour_boucle.connect(_sur_tour)
+
+
+func _placer_la_carte() -> void:
+	var cadre := MiniMap.cadre(size)
+	_carte.position = cadre.position
+	_carte.size = cadre.size
 
 
 func _sur_tour(entree: RaceEntry) -> void:
