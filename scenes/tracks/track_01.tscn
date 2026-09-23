@@ -2,6 +2,11 @@
 
 [ext_resource type="Script" uid="uid://bojo1pbj42c3o" path="res://scripts/track/track.gd" id="1_track"]
 [ext_resource type="Curve3D" uid="uid://yhtx47bkwe5a" path="res://resources/tracks/track_01_curve.tres" id="2_curve"]
+[ext_resource type="Script" uid="uid://cshmglettt1u0" path="res://scripts/track/features/track_wall.gd" id="3_wall"]
+[ext_resource type="Script" uid="uid://brb05ooi8vchp" path="res://scripts/track/features/track_jump.gd" id="4_jump"]
+[ext_resource type="Script" uid="uid://c6eaokwi1nmo5" path="res://scripts/track/features/track_offroad.gd" id="5_offroad"]
+[ext_resource type="Script" uid="uid://buiebxrijqyv" path="res://scripts/track/features/track_ramp.gd" id="6_ramp"]
+[ext_resource type="Script" uid="uid://q2ofv6qoojmw" path="res://scripts/track/features/track_gap.gd" id="7_gap"]
 
 [node name="Track" type="Node3D" unique_id=1258864960]
 script = ExtResource("1_track")
@@ -9,3 +14,37 @@ curve = ExtResource("2_curve")
 
 [node name="CurveEditor" type="Path3D" parent="." unique_id=1708648200]
 curve = ExtResource("2_curve")
+
+[node name="MurEpingle" type="Node3D" parent="."]
+script = ExtResource("3_wall")
+debut = 400.0
+longueur = 65.0
+cote = 0
+
+[node name="TremplinMontee" type="Node3D" parent="."]
+script = ExtResource("4_jump")
+debut = 155.0
+longueur = 4.0
+decalage = 3.0
+largeur = 7.0
+impulsion = 9.0
+duree_turbo = 0.8
+
+[node name="RampeLigneDroite" type="Node3D" parent="."]
+script = ExtResource("6_ramp")
+debut = 314.0
+longueur = 12.0
+largeur = 18.0
+hauteur = 1.8
+
+[node name="TrouLigneDroite" type="Node3D" parent="."]
+script = ExtResource("7_gap")
+debut = 326.0
+longueur = 12.0
+
+[node name="RaccourciHerbe" type="Node3D" parent="."]
+script = ExtResource("5_offroad")
+debut = 560.0
+longueur = 45.0
+decalage = 14.0
+largeur = 10.0

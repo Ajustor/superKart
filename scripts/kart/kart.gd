@@ -41,6 +41,24 @@ var controle_actif: bool = true
 ## par ItemManager : le kart ne sait pas ce qu'il tient, il transmet la demande.
 var demande_objet: bool = false
 
+## Vrai tant que le kart touche le sol. La session s'en sert pour ne pas
+## remettre en piste un kart qui survole le décor au milieu d'un saut.
+var au_sol: bool = true
+
+## Posé à vrai l'image où le kart quitte le sol en montant — sommet d'une
+## rampe, rebord —, lu et remis à faux par la session.
+var vient_de_decoller: bool = false
+
+## Vitesse verticale, en m/s, que la rampe sous le kart lui donnerait s'il en
+## quittait le sommet maintenant. Zéro hors d'une rampe. Renseignée par la
+## session, qui connaît la rampe : c'est le seul endroit où perdre le sol en
+## montant veut dire décoller.
+var elan_de_rampe: float = 0.0
+
+## En deçà de cette vitesse verticale, en m/s, un kart qui quitte une rampe ne
+## décolle pas : il en descend.
+const DECOLLAGE_MIN := 2.0
+
 var _input: KartInput
 var _vertical: float = 0.0
 var _was_hopping: bool = false
@@ -81,7 +99,25 @@ func _physics_process(delta: float) -> void:
 		_vertical = stats.hop_impulse
 	_was_hopping = hopping
 
-	var au_sol := is_on_floor()
+	var etait_au_sol := au_sol
+	au_sol = is_on_floor()
+	# Le sol vient de se dérober sous un kart qui montait une rampe : il garde
+	# sa vitesse verticale au lieu de la perdre d'un coup. Sans ça, une rampe
+	# ne faisait pas sauter : le kart arrivait au sommet, et tombait du
+	# rebord comme d'une marche.
+	#
+	# Sur les rampes seulement. Mesuré sur deux tours du circuit 1 : appliqué
+	# partout, 87 décollages parasites dans les côtes, où un kart qui grimpe
+	# à 15° monte déjà à 5,7 m/s et où le contact au sol vacille aux coutures
+	# du maillage.
+	#
+	# Et calculée d'après la rampe, pas lue sur le kart : au sommet,
+	# get_real_velocity() rendait -1,6 m/s, l'appui au sol l'emportant sur la
+	# montée. Un saut calculé est en prime un saut prévisible, qu'on peut
+	# dessiner.
+	if elan_de_rampe > DECOLLAGE_MIN and etait_au_sol and not au_sol and _vertical <= 0.0:
+		_vertical = elan_de_rampe
+		vient_de_decoller = true
 	if au_sol and _vertical <= 0.0:
 		_vertical = 0.0
 	else:
@@ -111,8 +147,30 @@ func _physics_process(delta: float) -> void:
 		velocity -= contact * ground_grip_push
 
 	move_and_slide()
+	_encaisser_les_murs()
 
 	_orienter_la_caisse()
+
+
+## Transmet au moteur les chocs que move_and_slide vient de résoudre. Seuls
+## les murs comptent : une normale qui pointe vers le haut est un sol, même
+## en pente.
+func _encaisser_les_murs() -> void:
+	for i in get_slide_collision_count():
+		var n := get_slide_collision(i).get_normal()
+		if n.y < 0.6:
+			motor.heurter_mur(n)
+
+
+## Fait décoller le kart : un tremplin l'appelle. Refusé s'il est déjà en l'air
+## ou en train de monter, sans quoi une zone de saut de quelques mètres le
+## relancerait à chaque image qu'il passe au-dessus.
+func sauter(impulsion: float) -> bool:
+	if not au_sol or _vertical > 0.0:
+		return false
+	_vertical = impulsion
+	au_sol = false
+	return true
 
 
 ## Lisse la normale du sol sous le kart. En l'air, elle revient doucement à la
