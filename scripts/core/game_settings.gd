@@ -49,6 +49,16 @@ var pseudo: String = ""
 ## La dernière adresse tapée pour rejoindre une partie.
 var derniere_adresse: String = ""
 
+## Sensibilité du joystick tactile : à 1,5, le pouce n'a à parcourir que les
+## deux tiers du chemin pour braquer à fond.
+const SENSIBILITE_MIN := 0.6
+const SENSIBILITE_MAX := 1.8
+var sensibilite_joystick: float = 1.0
+
+## Les commandes changées par le joueur : action -> liste d'événements décrits
+## (voir Touches). Vide : celles du projet.
+var touches: Dictionary = {}
+
 ## La dernière course réglée dans le menu. Rejouer la reprend telle quelle.
 var course := RaceSetup.new()
 
@@ -65,6 +75,7 @@ var _trophees: Dictionary = {}
 func _ready() -> void:
 	charger()
 	appliquer()
+	Touches.appliquer(touches)
 
 
 func charger() -> void:
@@ -80,6 +91,12 @@ func charger() -> void:
 	acceleration_auto = bool(fichier.get_value("commandes", "acceleration_auto", acceleration_auto))
 	vibrations = bool(fichier.get_value("commandes", "vibrations", vibrations))
 	joystick = bool(fichier.get_value("commandes", "joystick", joystick))
+	sensibilite_joystick = clampf(float(fichier.get_value("commandes", "sensibilite", sensibilite_joystick)),
+		SENSIBILITE_MIN, SENSIBILITE_MAX)
+	touches.clear()
+	if fichier.has_section("touches"):
+		for action in fichier.get_section_keys("touches"):
+			touches[action] = fichier.get_value("touches", action)
 	mini_carte = bool(fichier.get_value("affichage", "mini_carte", mini_carte))
 	afficher_fps = bool(fichier.get_value("affichage", "fps", afficher_fps))
 	qualite = clampi(int(fichier.get_value("affichage", "qualite", qualite)),
@@ -108,6 +125,9 @@ func sauver() -> void:
 	fichier.set_value("commandes", "acceleration_auto", acceleration_auto)
 	fichier.set_value("commandes", "vibrations", vibrations)
 	fichier.set_value("commandes", "joystick", joystick)
+	fichier.set_value("commandes", "sensibilite", sensibilite_joystick)
+	for action in touches:
+		fichier.set_value("touches", action, touches[action])
 	fichier.set_value("affichage", "mini_carte", mini_carte)
 	fichier.set_value("affichage", "fps", afficher_fps)
 	fichier.set_value("affichage", "qualite", qualite)
@@ -237,3 +257,17 @@ func _or_partout(classe: int) -> bool:
 		if trophee(i, classe) != 1:
 			return false
 	return true
+
+
+## Remplace une touche et l'enregistre (voir Touches.remplacer).
+func changer_touche(action: StringName, nouveau: InputEvent) -> void:
+	for changee in Touches.remplacer(action, nouveau):
+		touches[String(changee)] = Touches.decrire_action(changee)
+	sauver()
+
+
+## Les commandes d'origine, pour toutes les actions.
+func reinitialiser_touches() -> void:
+	touches.clear()
+	Touches.appliquer(touches)
+	sauver()
