@@ -8,6 +8,7 @@ extends Node
 ## Une vue d'ensemble, prise de haut, puis une vue à hauteur de kart à chaque
 ## distance demandée le long du tracé — ou de haut, si elle finit par « h ».
 
+var _miroir := false
 var _course: Node
 var _camera: Camera3D
 var _vues: Array = []
@@ -22,6 +23,9 @@ func _ready() -> void:
 	_id = args[0]
 	reglage.choisir_piste(TrackCatalog.par_id(_id))
 	_dossier = args[1] if args.size() > 1 else "user://"
+	# « miroir » parmi les vues : le circuit retourné.
+	reglage.miroir = args.has("miroir")
+	_miroir = reglage.miroir
 	_course = RaceLauncher.monter(reglage)
 	get_tree().root.add_child.call_deferred(_course)
 	_camera = Camera3D.new()
@@ -33,6 +37,8 @@ func _ready() -> void:
 			autre.process_mode = Node.PROCESS_MODE_DISABLED
 	_vues.append(["ensemble", -1.0, false])
 	for i in range(2, args.size()):
+		if args[i] == "miroir":
+			continue
 		_vues.append([args[i], float(args[i].trim_suffix("h")), args[i].ends_with("h")])
 
 
@@ -56,7 +62,7 @@ func _process(_delta: float) -> void:
 	elif tic == 7:
 		var vue: Array = _vues.pop_front()
 		var image := get_tree().root.get_viewport().get_texture().get_image()
-		image.save_png("%s/%s_%s.png" % [_dossier, _id, vue[0]])
+		image.save_png("%s/%s%s_%s.png" % [_dossier, _id, "_miroir" if _miroir else "", vue[0]])
 
 
 func _placer(c: TrackCurve, d: float, de_haut: bool) -> void:

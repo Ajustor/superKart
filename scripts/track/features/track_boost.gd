@@ -44,14 +44,7 @@ func _process(delta: float) -> void:
 
 ## Des flèches claires sur fond bleu, en émissif.
 func _materiau() -> StandardMaterial3D:
-	var image := Image.create(32, 32, false, Image.FORMAT_RGB8)
-	var fond := Color(0.1, 0.35, 0.95)
-	var fleche := Color(0.55, 0.95, 1.0)
-	for y in 32:
-		for x in 32:
-			var v := absf(float(y) - 15.5) / 16.0
-			var phase := fposmod(float(x) / 32.0 + v * 0.45, 1.0)
-			image.set_pixel(x, y, fleche if phase < 0.3 and v < 0.8 else fond)
+	var image := TrackFeature.image_de_chevron(Color(0.1, 0.35, 0.95), Color(0.55, 0.95, 1.0))
 	var m := StandardMaterial3D.new()
 	m.albedo_texture = ImageTexture.create_from_image(image)
 	m.uv1_scale = Vector3(1.0 / 2.0, 1.0 / largeur, 1.0)

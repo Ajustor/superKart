@@ -297,6 +297,23 @@ static func _triangle(outil: SurfaceTool, a: Vector3, b: Vector3, c: Vector3,
 	outil.add_vertex(c)
 
 
+## Un motif de flèche pour les éléments qui poussent (tremplins,
+## accélérateurs) : un seul chevron par carreau, pointe vers l'avant (u
+## croissant, le sens de la course), et un large vide derrière. Des chevrons
+## jointifs se lisaient dans un sens comme dans l'autre, et semblaient
+## parfois pointer vers l'arrière.
+static func image_de_chevron(fond: Color, dessin: Color) -> Image:
+	var image := Image.create(32, 32, false, Image.FORMAT_RGB8)
+	for y in 32:
+		for x in 32:
+			var v := absf(float(y) - 15.5) / 16.0
+			# La pointe à x = 26 au milieu, les ailes reculent jusqu'à x = 10.
+			var axe := 26.0 - 16.0 * v
+			var dans := float(x) <= axe and float(x) > axe - 7.0 and v < 0.9
+			image.set_pixel(x, y, dessin if dans else fond)
+	return image
+
+
 ## Affiche un maillage, et lui donne une collision si demandé.
 static func _poser(racine: Node3D, maillage: ArrayMesh, materiau: Material, solide: bool) -> void:
 	var affichage := MeshInstance3D.new()
