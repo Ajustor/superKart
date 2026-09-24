@@ -48,3 +48,35 @@ debut = 560.0
 longueur = 45.0
 decalage = 14.0
 largeur = 10.0
+
+[node name="HerbeDroite" type="Node3D" parent="."]
+script = ExtResource("5_offroad")
+longueur = 310.0
+decalage = 14.0
+largeur = 10.0
+
+[node name="HerbeGauche" type="Node3D" parent="."]
+script = ExtResource("5_offroad")
+longueur = 310.0
+decalage = -14.0
+largeur = 10.0
+
+[node name="HerbeDroiteApres" type="Node3D" parent="."]
+script = ExtResource("5_offroad")
+debut = 342.0
+longueur = 432.0
+decalage = 14.0
+largeur = 10.0
+
+[node name="HerbeGaucheApres" type="Node3D" parent="."]
+script = ExtResource("5_offroad")
+debut = 342.0
+longueur = 432.0
+decalage = -14.0
+largeur = 10.0
+
+[node name="MurInterieurEpingle" type="Node3D" parent="."]
+script = ExtResource("3_wall")
+debut = 375.0
+longueur = 95.0
+cote = 1

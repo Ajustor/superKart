@@ -29,7 +29,12 @@ func _construire(c: TrackCurve, racine: Node3D) -> void:
 	# Deux centimètres au-dessus du bitume : là où la zone recouvre la route,
 	# c'est elle qu'on voit, et la marche est trop petite pour qu'un kart la
 	# sente.
-	TrackFeature._poser(racine, _nappe(c, g, r, 0.02), _materiau(), true)
+	TrackFeature._poser(racine, _nappe(c, g, r, 0.02, true), _materiau(), true)
+	# Un sol plat n'a rien à ombrer : au creux d'un virage en pente, sa bande
+	# tordue projetait des traits d'ombre sur elle-même.
+	for enfant in racine.get_children():
+		if enfant is GeometryInstance3D:
+			(enfant as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
 func _materiau() -> StandardMaterial3D:

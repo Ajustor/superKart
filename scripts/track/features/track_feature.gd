@@ -237,13 +237,18 @@ static func point(c: TrackCurve, distance: float, lateral: float, hauteur: float
 ## aux bords du bitume quand elle les chevauche, là où le sol passe de la
 ## chaussée inclinée au plat. Les UV comptent en mètres : u le long du tracé,
 ## v en travers.
-func _nappe(c: TrackCurve, gauche: float, droite: float, hauteur: float) -> ArrayMesh:
-	return nappe(c, debut, longueur, gauche, droite, hauteur)
+func _nappe(c: TrackCurve, gauche: float, droite: float, hauteur: float,
+		eclairee_d_en_haut := false) -> ArrayMesh:
+	return nappe(c, debut, longueur, gauche, droite, hauteur, eclairee_d_en_haut)
 
 
 ## La même, pour n'importe quelle portion du tracé.
+##
+## `eclairee_d_en_haut` : toutes les normales vers le haut. Pour un sol plat
+## (herbe, sable) : au creux d'un virage en pente, la bande se tord en éventail
+## de facettes, chacune éclairée sous son angle, et le sol paraissait strié.
 static func nappe(c: TrackCurve, de: float, sur: float, gauche: float, droite: float,
-		hauteur: float) -> ArrayMesh:
+		hauteur: float, eclairee_d_en_haut := false) -> ArrayMesh:
 	var colonnes := PackedFloat32Array([gauche])
 	for bord in [-c.half_width, c.half_width]:
 		if gauche < bord and bord < droite:
@@ -269,6 +274,15 @@ static func nappe(c: TrackCurve, de: float, sur: float, gauche: float, droite: f
 			var b1 := point(c, d1, b, hauteur)
 			_triangle(outil, a0, a1, b0, Vector2(u0, va), Vector2(u1, va), Vector2(u0, vb))
 			_triangle(outil, b0, a1, b1, Vector2(u0, vb), Vector2(u1, va), Vector2(u1, vb))
+	if eclairee_d_en_haut:
+		var arrays := outil.commit_to_arrays()
+		var normales := PackedVector3Array()
+		normales.resize((arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size())
+		normales.fill(Vector3.UP)
+		arrays[Mesh.ARRAY_NORMAL] = normales
+		var m := ArrayMesh.new()
+		m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		return m
 	outil.generate_normals()
 	return outil.commit()
 
