@@ -14,6 +14,10 @@ signal connecte
 signal deconnecte(raison: String)
 ## La dernière manche d'une coupe est comptée : chacun montre le podium.
 signal podium
+## Un joueur de plus a fini de charger la course (voir `charges`).
+signal charges_changes
+## L'hôte donne le départ : tout le monde a chargé, ou l'attente a trop duré.
+signal depart
 
 const PORT := 8910
 ## Monté à chaque changement du protocole : un client d'une autre version est
@@ -30,6 +34,13 @@ var en_course: bool = false
 ## La coupe en cours, la même sur toutes les machines : l'hôte la tient et
 ## l'envoie à chaque manche. Null en course seule.
 var grand_prix: GrandPrix
+
+## Le chargement de la course : peer -> prêt. Tenu par l'hôte, recopié chez
+## les autres pour l'écran de chargement. Porté par cet autoload et non par la
+## course : les machines ne finissent pas de charger en même temps, et un
+## message adressé à une course pas encore montée se perdrait.
+var charges: Dictionary = {}
+var depart_donne := false
 
 ## Le dernier plan de course lancé : qui occupe quelle place de la grille.
 var plan: Array = []
@@ -145,6 +156,11 @@ func _sur_depart(peer: int) -> void:
 		return
 	lobby.retirer(peer)
 	_diffuser_salon()
+	# Celui qu'on attendait pour partir s'en va : on part sans lui.
+	if en_course and charges.has(peer):
+		charges.erase(peer)
+		if not depart_donne and not charges.values().has(false):
+			donner_le_depart()
 
 
 func _sur_connexion() -> void:
@@ -277,6 +293,11 @@ func _lancer(nouveau_plan: Array, reglages: Dictionary) -> void:
 	config = reglages
 	grand_prix = GrandPrix.depuis(reglages.gp) if reglages.has("gp") else null
 	en_course = true
+	depart_donne = false
+	charges = {}
+	for place in plan:
+		if int(place.peer) != 0:
+			charges[int(place.peer)] = false
 	decouverte.arreter_annonce()
 	RaceLauncher.lancer_reseau(get_tree(), plan, config, mon_id(), est_hote())
 
@@ -303,3 +324,54 @@ func _retour() -> void:
 func abandonner() -> void:
 	quitter()
 	RaceLauncher.retour_au_menu(get_tree())
+
+
+# --- Chargement et départ ------------------------------------------------------
+
+## Cette machine a fini de charger la course : elle le dit à l'hôte.
+func signaler_charge() -> void:
+	if est_hote():
+		_sur_charge(1)
+	elif actif():
+		_charge.rpc_id(1)
+
+
+@rpc("any_peer", "reliable")
+func _charge() -> void:
+	if multiplayer.is_server():
+		_sur_charge(multiplayer.get_remote_sender_id())
+
+
+func _sur_charge(peer: int) -> void:
+	charges[peer] = true
+	_etats_charges.rpc(charges)
+	charges_changes.emit()
+	# Arrivé après le départ (l'attente avait trop duré) : il part tout de suite.
+	if depart_donne:
+		if peer != 1:
+			_depart.rpc_id(peer)
+		return
+	if not charges.values().has(false):
+		donner_le_depart()
+
+
+## Donne le départ à tous. L'hôte l'appelle quand tout le monde est prêt, ou
+## quand l'attente a trop duré (RaceSync) : un téléphone lent ne bloque pas
+## les autres.
+func donner_le_depart() -> void:
+	if not est_hote() or depart_donne:
+		return
+	_depart.rpc()
+	_depart()
+
+
+@rpc("authority", "reliable")
+func _etats_charges(etats: Dictionary) -> void:
+	charges = etats
+	charges_changes.emit()
+
+
+@rpc("authority", "reliable")
+func _depart() -> void:
+	depart_donne = true
+	depart.emit()

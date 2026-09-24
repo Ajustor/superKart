@@ -1,12 +1,11 @@
-[gd_resource type="Resource" script_class="TrackInfo" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="TrackInfo" format=3]
 
 [ext_resource type="Script" path="res://scripts/race/track_info.gd" id="1_info"]
-[ext_resource type="PackedScene" path="res://scenes/tracks/forteresse_lave.tscn" id="2_scene"]
 
 [resource]
 script = ExtResource("1_info")
 id = "forteresse_lave"
 nom = "Forteresse de Lave"
 description = "Des couloirs de pierre au-dessus d'un lac de lave. Des virages secs entre les remparts, une chicane tout en haut et une douve à franchir d'un saut."
-scene = ExtResource("2_scene")
+chemin_scene = "res://scenes/tracks/forteresse_lave.tscn"
 tours = 3

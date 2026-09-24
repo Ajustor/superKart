@@ -14,16 +14,53 @@ const SCENE_MENU := "res://scenes/ui/main_menu.tscn"
 const AMBIANCE := ["WorldEnvironment", "DirectionalLight3D"]
 
 
+## Passe par l'écran de chargement (EcranChargement) : il s'affiche tout de
+## suite, charge et monte la course derrière lui, et s'efface au départ.
 static func lancer(arbre: SceneTree, reglage: RaceSetup) -> void:
 	arbre.paused = false
-	arbre.change_scene_to_node(monter(reglage))
+	_par_l_ecran(arbre, EcranChargement.pour_reglage(reglage))
 
 
 ## Une course en réseau : même scène, mais la grille vient du plan de l'hôte,
-## et chaque kart est simulé sur la machine de son pilote.
+## et chaque kart est simulé sur la machine de son pilote. L'écran de
+## chargement attend en plus que tous les joueurs soient prêts.
 static func lancer_reseau(arbre: SceneTree, plan: Array, config: Dictionary, moi: int, hote: bool) -> void:
 	arbre.paused = false
-	arbre.change_scene_to_node(monter_reseau(plan, config, moi, hote))
+	var ecran := EcranChargement.new()
+	ecran.fabrique = func() -> Node: return monter_reseau(plan, config, moi, hote)
+	ecran.a_charger = PackedStringArray([SCENE_COURSE])
+	var piste := TrackCatalog.par_id(str(config.get("piste", "")))
+	if piste != null:
+		ecran.a_charger.append(piste.chemin_scene)
+		ecran.titre = piste.nom
+		ecran.description = piste.description
+	var classe := Cylindree.nom(int(config.get("cylindree", Cylindree.Classe.CC150)))
+	ecran.sous_titre = "En ligne · %s · %d tour%s" % [classe, int(config.get("tours", 3)),
+		"s" if int(config.get("tours", 3)) > 1 else ""]
+	if config.has("gp"):
+		var gp := GrandPrix.depuis(config.gp)
+		ecran.sous_titre = "En ligne · %s · course %d/%d · %s" % [gp.nom(), gp.manche + 1, gp.manches(), classe]
+	_par_l_ecran(arbre, ecran)
+
+
+## L'écran devient la scène courante le temps du chargement ; il se glisse
+## ensuite lui-même dans la course.
+##
+## En réseau, l'attente porte le nom de la course et une doublure de RaceSync,
+## sans course : entre deux manches, les états envoyés par l'autre machine
+## juste avant le changement arrivent encore, adressés à « Race/RaceSync ».
+## Sans nœud à ce chemin, Godot les rejette avec une erreur ; la doublure
+## les reçoit et les ignore.
+static func _par_l_ecran(arbre: SceneTree, ecran: EcranChargement) -> void:
+	var attente := Node.new()
+	attente.name = "Chargement"
+	if Reseau.actif():
+		attente.name = "Race"
+		var doublure := RaceSync.new()
+		doublure.name = "RaceSync"
+		attente.add_child(doublure)
+	attente.add_child(ecran)
+	arbre.change_scene_to_node(attente)
 
 
 static func retour_au_menu(arbre: SceneTree) -> void:

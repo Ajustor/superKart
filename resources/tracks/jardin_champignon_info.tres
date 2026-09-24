@@ -1,12 +1,11 @@
-[gd_resource type="Resource" script_class="TrackInfo" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="TrackInfo" format=3]
 
 [ext_resource type="Script" path="res://scripts/race/track_info.gd" id="1_info"]
-[ext_resource type="PackedScene" path="res://scenes/tracks/jardin_champignon.tscn" id="2_scene"]
 
 [resource]
 script = ExtResource("1_info")
 id = "jardin_champignon"
 nom = "Jardin Champignon"
 description = "Un jardin où les champignons dépassent les arbres. Des bosses qui roulent, un S entre les chapeaux et deux champignons qui font rebondir."
-scene = ExtResource("2_scene")
+chemin_scene = "res://scenes/tracks/jardin_champignon.tscn"
 tours = 3

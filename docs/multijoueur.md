@@ -17,6 +17,28 @@ grille sont prises par l'IA.
      bas.
 5. À la fin, l'hôte ramène tout le monde au salon avec **Retour au salon**.
 
+## Chargement
+
+- Chaque course s'ouvre sur un écran de chargement (`EcranChargement`). Il
+  s'affiche tout de suite, puis :
+  1. il charge la scène de course et le circuit dans un fil à part ;
+  2. il monte la course derrière lui ;
+  3. il attend que la musique soit composée et que quelques images soient
+     dessinées, pour que les shaders se compilent derrière l'écran et pas en
+     pleine course.
+- Il affiche la liste des joueurs : ✓ prêt, … en cours de chargement.
+- Le départ est donné quand tous sont prêts, ou au bout de 15 s.
+- Ce rendez-vous passe par l'autoload `Reseau` (`charges`, `depart`), qui
+  existe sur toutes les machines : les machines ne finissent pas de charger
+  en même temps, et un message adressé à une course pas encore montée se
+  perdrait.
+- L'hôte n'envoie l'état de la course (karts, objets, classement) qu'aux
+  machines prêtes.
+- Pendant le chargement, une doublure de `RaceSync` avale les paquets encore
+  en route de la course précédente.
+- Les circuits eux-mêmes ne se chargent plus avec le menu : la fiche d'un
+  circuit ne porte que le chemin de sa scène.
+
 ## Grand Prix en réseau
 
 - L'hôte tient la coupe. À la fin d'une manche, il la compte et lance la
@@ -42,7 +64,7 @@ de sa box vers sa machine, et donner son adresse IP publique aux autres.
 | les karts des autres | affiche | affiche |
 | objets : boîtes, lancers, chocs | décide | affiche, demande à l'hôte |
 | classement, arrivées | décide | recopie |
-| départ | donne quand tout le monde a chargé (10 s au plus) | attend |
+| départ | donne quand tout le monde a chargé (15 s au plus) | attend, derrière l'écran de chargement |
 
 Chaque joueur simule **son** kart : le pilotage reste aussi vif qu'en solo,
 quelle que soit la latence. Les autres karts sont montrés là où ils sont

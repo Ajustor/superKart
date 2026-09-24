@@ -33,8 +33,10 @@ const TRAJET_MAX := 0.2
 ## Le temps laissé à l'hôte pour confirmer un champignon déjà pris ici.
 const CONFIRMATION_MAX := 1.0
 ## Au-delà, le départ est donné même si une machine n'a pas fini de charger :
-## un téléphone lent ne doit pas bloquer tout le monde.
-const ATTENTE_CHARGEMENT_MAX := 10.0
+## un téléphone lent ne doit pas bloquer tout le monde. Compté chez l'hôte à
+## partir de sa propre course montée ; l'écran de chargement y ajoute la
+## musique et la chauffe des shaders, d'où la marge.
+const ATTENTE_CHARGEMENT_MAX := 15.0
 
 var session: RaceSession
 var objets: ItemManager
@@ -51,11 +53,13 @@ var latence_de_test: float = 0.0
 ## [instant d'envoi, destinataire (0 : tout le monde), paquet]
 var _en_attente: Array = []
 
+## Vrai quand un écran de chargement dira lui-même quand cette machine est
+## prête (signaler_charge) ; faux, elle l'est dès que la course est montée.
+var attendre_ecran := false
+
 var _hote: bool = false
 var _moi: int = 1
-var _charges: Dictionary = {}
 var _attente: float = 0.0
-var _depart_donne: bool = false
 var _horloge_objets: float = 0.0
 var _horloge_course: float = 0.0
 ## Champignons pris ici sans attendre l'hôte, dont on attend la confirmation.
@@ -74,12 +78,15 @@ func configurer(plan: Array, moi: int, hote: bool) -> void:
 		var peer: int = place.peer
 		# L'IA est simulée par l'hôte ; un humain par sa propre machine.
 		proprietaires[gid] = peer if peer != 0 else 1
-	for peer in proprietaires.values():
-		_charges[peer] = false
 
 
 func _ready() -> void:
-	session = get_node("../Session") as RaceSession
+	session = get_node_or_null("../Session") as RaceSession
+	# Sans course : c'est la doublure posée sous l'écran de chargement (voir
+	# RaceLauncher), qui n'est là que pour absorber les paquets encore en
+	# route de la course précédente.
+	if session == null:
+		return
 	objets = get_node_or_null("../Objets") as ItemManager
 	if session.entries.is_empty():
 		await session.grille_prete
@@ -92,19 +99,51 @@ func _ready() -> void:
 		objets.objet_recu.connect(_relayer_recu)
 		objets.objet_utilise.connect(_relayer_utilise)
 		objets.kart_touche.connect(_relayer_choc)
-	if _hote:
-		_sur_charge(1)
-	else:
-		_charge.rpc_id(1)
+	# Le départ, comme le chargement, passe par Reseau : il a pu être donné
+	# avant que cette course ne soit montée.
+	Reseau.depart.connect(_partir)
+	if Reseau.depart_donne:
+		_partir()
+	if not attendre_ecran:
+		signaler_charge()
+
+
+## Cette machine est prête : elle le dit à l'hôte (ou se le dit, si c'est lui).
+func signaler_charge() -> void:
+	Reseau.signaler_charge()
+
+
+## Pour l'écran de chargement : chaque joueur humain, par son nom, et s'il est
+## prêt.
+func etats_de_chargement() -> Dictionary:
+	var etats := {}
+	for place in Reseau.plan:
+		if int(place.peer) != 0:
+			etats[str(place.nom)] = bool(Reseau.charges.get(int(place.peer), false))
+	return etats
+
+
+func _partir() -> void:
+	session.attente_depart = false
+
+
+## Les machines dont la course est montée : les seules à qui envoyer ce qui
+## s'y passe. Une course pas encore montée n'a pas de RaceSync pour recevoir.
+func _pairs_prets() -> Array[int]:
+	var prets: Array[int] = []
+	for peer in multiplayer.get_peers():
+		if bool(Reseau.charges.get(peer, false)):
+			prets.append(peer)
+	return prets
 
 
 func _physics_process(delta: float) -> void:
 	if entrees.is_empty() or not Reseau.actif():
 		return
-	if _hote and not _depart_donne:
+	if _hote and not Reseau.depart_donne:
 		_attente += delta
 		if _attente > ATTENTE_CHARGEMENT_MAX:
-			_donner_le_depart()
+			Reseau.donner_le_depart()
 
 	# La demande d'objet du joueur local part vers l'hôte, qui décide.
 	if not _hote:
@@ -122,11 +161,15 @@ func _physics_process(delta: float) -> void:
 		if _horloge_objets >= 1.0 / FREQUENCE_OBJETS:
 			_horloge_objets = 0.0
 			if objets != null:
-				_objets.rpc(objets.instantane())
+				var etat := objets.instantane()
+				for peer in _pairs_prets():
+					_objets.rpc_id(peer, etat)
 		_horloge_course += delta
 		if _horloge_course >= 1.0 / FREQUENCE_COURSE:
 			_horloge_course = 0.0
-			_classement.rpc(_photo_classement())
+			var photo := _photo_classement()
+			for peer in _pairs_prets():
+				_classement.rpc_id(peer, photo)
 	_pousser()
 
 
@@ -176,36 +219,6 @@ func _entree_locale() -> RaceEntry:
 	return session.entries[0] if not session.entries.is_empty() else null
 
 
-# --- Départ ----------------------------------------------------------------------
-
-@rpc("any_peer", "reliable")
-func _charge() -> void:
-	if not is_inside_tree():
-		return
-	_sur_charge(multiplayer.get_remote_sender_id())
-
-
-func _sur_charge(peer: int) -> void:
-	if not _hote:
-		return
-	_charges[peer] = true
-	if not _charges.values().has(false):
-		_donner_le_depart()
-
-
-func _donner_le_depart() -> void:
-	if _depart_donne:
-		return
-	_depart_donne = true
-	_depart.rpc()
-	_depart()
-
-
-@rpc("authority", "reliable")
-func _depart() -> void:
-	_depart_donne = true
-	session.attente_depart = false
-
 
 # --- État des karts ----------------------------------------------------------------
 
@@ -227,10 +240,13 @@ func _envoyer(vers: int, paquet: PackedFloat32Array) -> void:
 	_expedier_karts(vers, paquet)
 
 
+## Seulement vers une machine dont la course est montée : sinon le paquet
+## arriverait sur un nœud qui n'existe pas encore.
 func _expedier_karts(vers: int, paquet: PackedFloat32Array) -> void:
 	if vers == 0:
-		_karts.rpc(paquet)
-	else:
+		for peer in _pairs_prets():
+			_karts.rpc_id(peer, paquet)
+	elif bool(Reseau.charges.get(vers, false)):
 		_karts.rpc_id(vers, paquet)
 
 
@@ -401,7 +417,6 @@ func _effet(gid: int, quoi: String, objet: int) -> void:
 func _sur_depart(peer: int) -> void:
 	if not _hote:
 		return
-	_charges.erase(peer)
 	for gid in proprietaires.keys():
 		if proprietaires[gid] != peer:
 			continue
@@ -415,6 +430,5 @@ func _sur_depart(peer: int) -> void:
 		session.brancher_ia(cerveau)
 		e.kart.simule = true
 		e.kart.controle_actif = session.en_course
-	# Si c'était le dernier que l'on attendait pour partir, on part.
-	if not _depart_donne and not _charges.values().has(false):
-		_donner_le_depart()
+	# Si c'était le dernier que l'on attendait pour partir, Reseau donne le
+	# départ (voir son _sur_depart).

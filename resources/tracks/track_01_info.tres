@@ -1,12 +1,11 @@
-[gd_resource type="Resource" script_class="TrackInfo" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="TrackInfo" format=3]
 
 [ext_resource type="Script" path="res://scripts/race/track_info.gd" id="1_info"]
-[ext_resource type="PackedScene" path="res://scenes/tracks/track_01.tscn" id="2_scene"]
 
 [resource]
 script = ExtResource("1_info")
 id = "circuit_01"
 nom = "Circuit des Collines"
 description = "Une boucle vallonnée, une épingle et une longue descente. Idéal pour apprendre à déraper."
-scene = ExtResource("2_scene")
+chemin_scene = "res://scenes/tracks/track_01.tscn"
 tours = 3
