@@ -61,6 +61,13 @@ var gaz_tenu: bool = false
 ## tonneau au kart, et l'atterrissage donne un turbo. Le risque, c'est le
 ## moment : trop près du sol, il n'y a pas le temps.
 signal figure
+## Retombé au sol : `vitesse` est la vitesse de chute, en m/s.
+signal atterri(vitesse: float)
+## Un autre kart heurté (KartCollisions) : `force`, la vitesse de rapprochement.
+signal bouscule(force: float)
+## En deçà, en m/s, une retombée ne s'entend pas : le contact au sol vacille
+## aux coutures du maillage.
+const ATTERRISSAGE_AUDIBLE := 2.5
 ## Temps en l'air avant qu'une figure soit possible, en secondes.
 const FIGURE_APRES := 0.12
 const FIGURE_TURBO := 0.7
@@ -72,6 +79,10 @@ const IA_REACTION_FIGURE := 0.3
 ## En l'air à cause d'un tremplin ou d'une rampe.
 var en_saut: bool = false
 var figure_faite: bool = false
+## Figures faites depuis le départ. Voyage sur le réseau (KartSnapshot) : un
+## compteur plutôt qu'un événement, pour qu'un paquet perdu ne fasse pas
+## manquer le tonneau d'un kart distant.
+var figures: int = 0
 var _en_l_air: float = 0.0
 var _derapage_avant: bool = false
 
@@ -163,9 +174,13 @@ func _physics_process(delta: float) -> void:
 		vient_de_decoller = true
 		en_saut = true
 	if au_sol and _vertical <= 0.0:
+		if not etait_au_sol and _vertical < -ATTERRISSAGE_AUDIBLE:
+			atterri.emit(-_vertical)
 		_vertical = 0.0
 	else:
-		_vertical -= stats.gravity * delta
+		# Pendant le bond du dérapage, sa gravité à lui : plus haut, aussi court.
+		var gravite := stats.hop_gravity if motor.state == KartMotor.State.HOP else stats.gravity
+		_vertical -= gravite * delta
 
 	# La normale BRUTE pilote la trajectoire, la lissée ne sert qu'à l'œil.
 	# Les confondre coûtait cher : à 10 d'amortissement, la normale lissée a
@@ -226,6 +241,7 @@ func _figures(cmd: KartCommand, delta: float) -> void:
 	_en_l_air += delta
 	if not figure_faite and _en_l_air >= FIGURE_APRES and (appui or _figure_de_l_ia()):
 		figure_faite = true
+		figures += 1
 		figure.emit()
 	# Pas de bond de dérapage en plein vol : il relançait le kart vers le
 	# haut, un double saut qui allongeait n'importe quel tremplin.

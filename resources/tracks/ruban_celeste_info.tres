@@ -1,12 +1,11 @@
-[gd_resource type="Resource" script_class="TrackInfo" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="TrackInfo" format=3]
 
 [ext_resource type="Script" path="res://scripts/race/track_info.gd" id="1_info"]
-[ext_resource type="PackedScene" path="res://scenes/tracks/ruban_celeste.tscn" id="2_scene"]
 
 [resource]
 script = ExtResource("1_info")
 id = "ruban_celeste"
 nom = "Ruban Céleste"
 description = "Une route arc-en-ciel suspendue dans la nuit, sans barrière ou presque. Elle passe au-dessus d'elle-même en huit et finit par un saut dans le vide."
-scene = ExtResource("2_scene")
+chemin_scene = "res://scenes/tracks/ruban_celeste.tscn"
 tours = 3

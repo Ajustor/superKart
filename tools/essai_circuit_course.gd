@@ -4,7 +4,7 @@ extends Node
 ## le tracé se laisse rouler : temps de chacun, remises en piste, images
 ## passées presque à l'arrêt.
 ##
-##   godot --headless --fixed-fps 60 --path . -s tools/essai_circuit.gd -- <id> [tours]
+##   godot --headless --fixed-fps 60 --path . -s tools/essai_circuit.gd -- <id> [tours] [cc] [miroir] [bataille] [kart=N]
 ##
 ## (essai_circuit.gd ne fait que charger ce nœud à la première image : un
 ## script lancé par -s est compilé avant que les autoloads n'existent, et
@@ -48,12 +48,22 @@ func _ready() -> void:
 	# Troisième argument facultatif : la cylindrée (50, 100 ou 150).
 	if args.size() > 2:
 		reglage.classe = Cylindree.NOMS.find("%scc" % args[2])
+	# Quatrième argument facultatif : « miroir ».
+	reglage.miroir = args.has("miroir")
+	# « bataille » : une bataille de ballons plutôt qu'une course.
+	if args.has("bataille"):
+		reglage.mode = RaceSetup.Mode.BATAILLE
+	# « kart=N » n'importe où après : le modèle du kart du joueur (ModeleKart).
+	for a in args:
+		if a.begins_with("kart="):
+			reglage.modele = int(a.trim_prefix("kart="))
 	var course := RaceLauncher.monter(reglage)
 	get_tree().root.add_child.call_deferred(course)
 	_session = course.get_node("Session")
 	# Des temps d'IA n'ont rien à faire dans les records du joueur.
 	_session.id_piste = ""
-	print("%s — %s, %d tours, %s" % [piste.id, piste.nom, reglage.tours, Cylindree.nom(reglage.classe)])
+	print("%s — %s, %d tours, %s%s, kart %s" % [piste.id, piste.nom, reglage.tours, Cylindree.nom(reglage.classe),
+		", miroir" if reglage.miroir else "", ModeleKart.nom(reglage.modele)])
 
 
 func _physics_process(delta: float) -> void:

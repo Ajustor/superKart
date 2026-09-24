@@ -77,8 +77,11 @@ static func encaisser(moi: KartMotor, pos_moi: Vector3, autre: KartMotor, pos_au
 	var v := vitesse(moi)
 	var rapprochement := (v - vitesse(autre)).dot(n)
 	if rapprochement < 0.0:
-		# À masses égales, chacun prend la moitié de l'échange.
-		var nouvelle := v - n * rapprochement * (1.0 + RESTITUTION) * 0.5
+		# À masses égales, chacun prend la moitié de l'échange ; sinon, le
+		# plus léger en prend davantage.
+		var ma := moi.stats.poids if moi.stats != null else 1.0
+		var mb := autre.stats.poids if autre.stats != null else 1.0
+		var nouvelle := v - n * rapprochement * (1.0 + RESTITUTION) * (mb / maxf(ma + mb, 0.001))
 		_poser_vitesse(moi, nouvelle)
 	return choc * part
 

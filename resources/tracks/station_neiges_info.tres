@@ -1,12 +1,11 @@
-[gd_resource type="Resource" script_class="TrackInfo" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="TrackInfo" format=3]
 
 [ext_resource type="Script" path="res://scripts/race/track_info.gd" id="1_info"]
-[ext_resource type="PackedScene" path="res://scenes/tracks/station_neiges.tscn" id="2_scene"]
 
 [resource]
 script = ExtResource("1_info")
 id = "station_neiges"
 nom = "Station des Neiges"
 description = "Départ au sommet : une longue descente à bosses entre les sapins jusqu'au fond de la vallée, puis la remontée par le col."
-scene = ExtResource("2_scene")
+chemin_scene = "res://scenes/tracks/station_neiges.tscn"
 tours = 3

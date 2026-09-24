@@ -10,6 +10,7 @@ extends RefCounted
 
 var coupe: int = 0
 var classe: int = Cylindree.Classe.CC150
+var miroir := false
 
 ## Index de la course à courir, de 0 à manches() - 1. Égal à manches() une
 ## fois la dernière comptée.
@@ -72,19 +73,36 @@ func place_de(pilote: String) -> int:
 	return classement().find(pilote) + 1
 
 
-## Les cases de départ (0 = pole) dans l'ordre de `noms`, rangées selon le
-## classement de la coupe : le meneur part en tête. Vide avant la première
+## Les cases de départ (0 = pole) dans l'ordre de `noms` : chacun repart de
+## la place où il a fini la course précédente. Vide avant la première
 ## course, où c'est le choix du joueur qui compte.
 func cases(noms: PackedStringArray) -> Array[int]:
 	var cases_: Array[int] = []
-	if manche == 0 or points.is_empty():
+	if manche == 0 or dernieres_places.is_empty():
 		return cases_
-	var ordre := classement()
-	var suivante := ordre.size()
+	var suivante := dernieres_places.size()
 	for pilote in noms:
-		var i := ordre.find(pilote)
-		if i < 0:
-			i = suivante
+		var place := int(dernieres_places.get(pilote, 0))
+		if place <= 0:
+			place = suivante + 1
 			suivante += 1
-		cases_.append(i)
+		cases_.append(place - 1)
 	return cases_
+
+
+## Ce qui voyage sur le réseau : l'hôte tient la coupe, et l'envoie à chaque
+## course pour que tous affichent les mêmes points.
+func en_dictionnaire() -> Dictionary:
+	return {coupe = coupe, classe = classe, miroir = miroir, manche = manche, points = points,
+		dernieres_places = dernieres_places}
+
+
+static func depuis(d: Dictionary) -> GrandPrix:
+	var gp := GrandPrix.new(int(d.get("coupe", 0)), int(d.get("classe", Cylindree.Classe.CC150)))
+	gp.manche = int(d.get("manche", 0))
+	gp.miroir = bool(d.get("miroir", false))
+	for pilote in d.get("points", {}):
+		gp.points[str(pilote)] = int(d.points[pilote])
+	for pilote in d.get("dernieres_places", {}):
+		gp.dernieres_places[str(pilote)] = int(d.dernieres_places[pilote])
+	return gp

@@ -34,10 +34,14 @@ extends Resource
 ## glisse à nouveau plus large que de ne rien faire.
 @export var drift_curvature_min: float = 0.68
 
-## Monté de 0,15 à 0,20 s : l'impulsion en découle, et le saut passait de 8 cm,
-## invisible, à 15 cm. Le début de la glisse coïncide toujours avec
-## l'atterrissage, puisque hop_impulse est dérivée de cette durée.
+## Durée du bond d'entrée en dérapage. La glisse commence à l'atterrissage.
 @export var hop_duration: float = 0.20
+
+## Hauteur du bond. Mesuré : avec la gravité ordinaire, le bond de 0,20 s
+## montait à 12,5 cm — invisible derrière le kart, on croyait qu'il ne sautait
+## pas. Le bond a donc sa propre gravité, plus forte : il monte franchement et
+## retombe quand même pile au bout de hop_duration.
+@export var hop_height: float = 0.35
 
 ## La charge du mini-turbo monte plus vite quand on serre le virage : braquer
 ## vers l'intérieur la fait monter à plein régime (1), contre-braquer au
@@ -79,6 +83,9 @@ extends Resource
 ## Part de la vitesse perdue contre un mur pris de face. De biais, la perte
 ## suit l'angle : un mur frôlé ne coûte presque rien.
 @export var wall_speed_loss: float = 0.7
+## Masse relative, pour les chocs entre karts : le plus lourd pousse, le plus
+## léger est poussé (voir ModeleKart).
+@export var poids: float = 1.0
 
 @export_group("Objets")
 ## Le champignon pousse comme un mini-turbo de palier 2, mais plus longtemps :
@@ -94,11 +101,15 @@ extends Resource
 ## les vitesses : sinon, en 50cc, on tombait dans les trous.
 @export var echelle_des_tremplins: float = 1.0
 
-## Calé pour que l'atterrissage coïncide avec le début de la glisse.
-## Dérivé plutôt qu'exporté : régler hop_duration sans réajuster cette
-## valeur à la main recréerait un kart qui retombe en pleine glisse.
+## Impulsion et gravité du bond, calées pour qu'il monte à hop_height et
+## retombe au bout de hop_duration : l'atterrissage coïncide avec le début de
+## la glisse. Dérivées plutôt qu'exportées : régler l'une sans l'autre
+## recréerait un kart qui retombe en pleine glisse.
 var hop_impulse: float:
-	get: return gravity * hop_duration / 2.0
+	get: return 4.0 * hop_height / hop_duration
+
+var hop_gravity: float:
+	get: return 8.0 * hop_height / (hop_duration * hop_duration)
 
 @export_group("Marche arrière")
 @export var max_reverse_speed: float = 7.0

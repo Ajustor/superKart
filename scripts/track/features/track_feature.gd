@@ -237,13 +237,18 @@ static func point(c: TrackCurve, distance: float, lateral: float, hauteur: float
 ## aux bords du bitume quand elle les chevauche, là où le sol passe de la
 ## chaussée inclinée au plat. Les UV comptent en mètres : u le long du tracé,
 ## v en travers.
-func _nappe(c: TrackCurve, gauche: float, droite: float, hauteur: float) -> ArrayMesh:
-	return nappe(c, debut, longueur, gauche, droite, hauteur)
+func _nappe(c: TrackCurve, gauche: float, droite: float, hauteur: float,
+		eclairee_d_en_haut := false) -> ArrayMesh:
+	return nappe(c, debut, longueur, gauche, droite, hauteur, eclairee_d_en_haut)
 
 
 ## La même, pour n'importe quelle portion du tracé.
+##
+## `eclairee_d_en_haut` : toutes les normales vers le haut. Pour un sol plat
+## (herbe, sable) : au creux d'un virage en pente, la bande se tord en éventail
+## de facettes, chacune éclairée sous son angle, et le sol paraissait strié.
 static func nappe(c: TrackCurve, de: float, sur: float, gauche: float, droite: float,
-		hauteur: float) -> ArrayMesh:
+		hauteur: float, eclairee_d_en_haut := false) -> ArrayMesh:
 	var colonnes := PackedFloat32Array([gauche])
 	for bord in [-c.half_width, c.half_width]:
 		if gauche < bord and bord < droite:
@@ -269,6 +274,15 @@ static func nappe(c: TrackCurve, de: float, sur: float, gauche: float, droite: f
 			var b1 := point(c, d1, b, hauteur)
 			_triangle(outil, a0, a1, b0, Vector2(u0, va), Vector2(u1, va), Vector2(u0, vb))
 			_triangle(outil, b0, a1, b1, Vector2(u0, vb), Vector2(u1, va), Vector2(u1, vb))
+	if eclairee_d_en_haut:
+		var arrays := outil.commit_to_arrays()
+		var normales := PackedVector3Array()
+		normales.resize((arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size())
+		normales.fill(Vector3.UP)
+		arrays[Mesh.ARRAY_NORMAL] = normales
+		var m := ArrayMesh.new()
+		m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		return m
 	outil.generate_normals()
 	return outil.commit()
 
@@ -281,6 +295,23 @@ static func _triangle(outil: SurfaceTool, a: Vector3, b: Vector3, c: Vector3,
 	outil.add_vertex(b)
 	outil.set_uv(uc)
 	outil.add_vertex(c)
+
+
+## Un motif de flèche pour les éléments qui poussent (tremplins,
+## accélérateurs) : un seul chevron par carreau, pointe vers l'avant (u
+## croissant, le sens de la course), et un large vide derrière. Des chevrons
+## jointifs se lisaient dans un sens comme dans l'autre, et semblaient
+## parfois pointer vers l'arrière.
+static func image_de_chevron(fond: Color, dessin: Color) -> Image:
+	var image := Image.create(32, 32, false, Image.FORMAT_RGB8)
+	for y in 32:
+		for x in 32:
+			var v := absf(float(y) - 15.5) / 16.0
+			# La pointe à x = 26 au milieu, les ailes reculent jusqu'à x = 10.
+			var axe := 26.0 - 16.0 * v
+			var dans := float(x) <= axe and float(x) > axe - 7.0 and v < 0.9
+			image.set_pixel(x, y, dessin if dans else fond)
+	return image
 
 
 ## Affiche un maillage, et lui donne une collision si demandé.

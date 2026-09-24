@@ -14,6 +14,10 @@ const SIGNATURE := 0x464B5453  # « STKF »
 
 ## Temps de course du parcours enregistré, en secondes.
 var temps: float = 0.0
+## Temps de passage sur la ligne à chaque tour bouclé, depuis le vert : de
+## quoi afficher l'écart au fantôme tour après tour. Vide dans un fantôme
+## enregistré avant qu'on ne les garde.
+var passages := PackedFloat32Array()
 var positions := PackedVector3Array()
 ## Huit nombres par échantillon : l'orientation du kart, puis celle de sa
 ## caisse (qui penche et glisse dans les dérapages).
@@ -66,7 +70,8 @@ func sauver(cle: String) -> bool:
 	if fichier == null:
 		return false
 	fichier.store_32(SIGNATURE)
-	fichier.store_var({version = VERSION, temps = temps, positions = positions, rotations = rotations})
+	fichier.store_var({version = VERSION, temps = temps, positions = positions, rotations = rotations,
+		passages = passages})
 	return true
 
 
@@ -85,6 +90,7 @@ static func charger(cle: String) -> Fantome:
 	f.temps = float(d.get("temps", 0.0))
 	f.positions = d.get("positions", PackedVector3Array())
 	f.rotations = d.get("rotations", PackedFloat32Array())
+	f.passages = d.get("passages", PackedFloat32Array())
 	if f.rotations.size() != f.positions.size() * 8 or f.positions.is_empty():
 		return null
 	return f

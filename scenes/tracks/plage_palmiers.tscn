@@ -1,5 +1,7 @@
 [gd_scene format=3]
 
+[ext_resource type="Shader" path="res://shaders/ciel.gdshader" id="sh_ciel"]
+[ext_resource type="Shader" path="res://shaders/liquide.gdshader" id="sh_liquide"]
 [ext_resource type="Script" path="res://scripts/track/track.gd" id="1_track"]
 [ext_resource type="Curve3D" path="res://resources/tracks/plage_palmiers_curve.tres" id="2_curve"]
 [ext_resource type="Script" path="res://scripts/track/features/track_jump.gd" id="4_jump"]
@@ -8,12 +10,16 @@
 [ext_resource type="Script" path="res://scripts/track/features/track_gap.gd" id="7_gap"]
 [ext_resource type="Script" path="res://scripts/track/features/track_decor.gd" id="8_decor"]
 
-[sub_resource type="ProceduralSkyMaterial" id="Ciel_plage"]
-sky_top_color = Color(0.18, 0.45, 0.88, 1)
-sky_horizon_color = Color(0.68, 0.86, 0.97, 1)
-ground_bottom_color = Color(0.08, 0.32, 0.52, 1)
-ground_horizon_color = Color(0.5, 0.78, 0.9, 1)
-sun_angle_max = 20.0
+[sub_resource type="ShaderMaterial" id="Ciel_plage"]
+shader = ExtResource("sh_ciel")
+shader_parameter/haut = Color(0.18, 0.45, 0.88, 1)
+shader_parameter/horizon = Color(0.68, 0.86, 0.97, 1)
+shader_parameter/sol_horizon = Color(0.5, 0.78, 0.9, 1)
+shader_parameter/sol_bas = Color(0.08, 0.32, 0.52, 1)
+shader_parameter/nuages = 0.3
+shader_parameter/couleur_nuages = Color(1, 1, 1, 1)
+shader_parameter/etoiles = 0.0
+shader_parameter/soleil = 1.0
 
 [sub_resource type="Sky" id="Sky_plage"]
 sky_material = SubResource("Ciel_plage")
@@ -25,9 +31,15 @@ ambient_light_source = 2
 ambient_light_color = Color(0.62, 0.72, 0.82, 1)
 ambient_light_energy = 0.45
 
-[sub_resource type="StandardMaterial3D" id="Mat_mer"]
-albedo_color = Color(0.1, 0.52, 0.78, 1)
-roughness = 0.35
+[sub_resource type="ShaderMaterial" id="Mat_mer"]
+shader = ExtResource("sh_liquide")
+shader_parameter/couleur_profonde = Color(0.05, 0.36, 0.62, 1)
+shader_parameter/couleur_claire = Color(0.3, 0.72, 0.85, 1)
+shader_parameter/echelle = 10.0
+shader_parameter/vitesse = 0.3
+shader_parameter/rides = 0.4
+shader_parameter/lueur = 0.0
+shader_parameter/rugosite = 0.12
 
 [sub_resource type="PlaneMesh" id="Mer"]
 material = SubResource("Mat_mer")

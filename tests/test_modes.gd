@@ -134,14 +134,18 @@ func test_a_egalite_la_derniere_course_departage() -> void:
 	assert_eq(gp.place_de("Gomme") + 1, gp.place_de("Vous"))
 
 
-func test_la_grille_suit_le_classement_de_la_coupe() -> void:
+func test_chacun_repart_de_sa_place_d_arrivee() -> void:
 	var gp := GrandPrix.new(0)
 	assert_eq(gp.cases(PackedStringArray(NOMS)).size(), 0, "première course : le choix du joueur")
-	var ordre := PackedStringArray(["Piston", "Vous", "Turbo", "Zéphyr", "Comète", "Bielle", "Rafale", "Gomme"])
+	gp.compter(PackedStringArray(NOMS))
+	# Deuxième course : le joueur finit sixième, mais il est mieux classé
+	# que ça dans la coupe aux points.
+	var ordre := PackedStringArray(["Piston", "Turbo", "Zéphyr", "Comète", "Bielle", "Vous", "Rafale", "Gomme"])
 	gp.compter(ordre)
+	assert_lt(gp.place_de("Vous"), 6, "mieux classé dans la coupe")
 	var cases := gp.cases(PackedStringArray(NOMS))
-	assert_eq(cases[0], 1, "le joueur, deuxième de la coupe, part en deuxième case")
-	assert_eq(cases[NOMS.find("Piston")], 0, "le meneur part en pole")
+	assert_eq(cases[0], 5, "mais il repart de sa place d'arrivée : sixième case")
+	assert_eq(cases[NOMS.find("Piston")], 0, "le vainqueur de la course part en pole")
 	var distinctes := {}
 	for c in cases:
 		distinctes[c] = true
@@ -276,3 +280,119 @@ func test_la_course_enregistre_le_parcours_du_joueur() -> void:
 	await wait_physics_frames(12)
 	assert_gt(fantome.enregistrement.echantillons(), 0, "il note dès le vert")
 	assert_lt(fantome.enregistrement.echantillons(), 12, "vingt fois par seconde, pas à chaque image")
+
+
+func test_le_fantome_garde_ses_temps_de_passage() -> void:
+	var f := _parcours()
+	f.passages = PackedFloat32Array([31.5, 62.0])
+	assert_true(f.sauver(CLE_FANTOME))
+	var relu := Fantome.charger(CLE_FANTOME)
+	assert_eq(relu.passages, f.passages)
+
+
+func test_l_ecart_au_fantome_s_affiche_a_chaque_tour() -> void:
+	var reglage := RaceSetup.new()
+	reglage.mode = RaceSetup.Mode.CONTRE_LA_MONTRE
+	var course := RaceLauncher.monter(reglage)
+	add_child_autofree(course)
+	var session := course.get_node("Session") as RaceSession
+	await wait_until(func() -> bool: return not session.entries.is_empty(), 2.0)
+	var suivi := course.get_node("Fantome") as FantomeCourse
+	suivi.fantome = _parcours()
+	suivi.fantome.passages = PackedFloat32Array([30.0, 60.0])
+	watch_signals(suivi)
+	suivi._horloge = 29.6
+	suivi._sur_tour(session.entries[0])
+	assert_signal_emitted_with_parameters(suivi, "ecart_au_passage", [1, 29.6 - 30.0])
+	suivi._horloge = 60.25
+	suivi._sur_tour(session.entries[0])
+	assert_signal_emitted_with_parameters(suivi, "ecart_au_passage", [2, 60.25 - 60.0])
+	assert_eq(suivi.enregistrement.passages.size(), 2, "et les passages du joueur sont notés")
+
+
+func test_l_ecart_se_lit_comme_au_chrono() -> void:
+	assert_eq(FantomeCourse.texte_ecart(-0.426), "−0.43 s")
+	assert_eq(FantomeCourse.texte_ecart(1.5), "+1.50 s")
+
+
+# --- Déblocages : 200cc et miroir -----------------------------------------------
+
+func test_la_200cc_braque_plus_vite_pour_garder_ses_virages() -> void:
+	var base := KartStats.new()
+	var s := Cylindree.stats(base, Cylindree.Classe.CC200, false)
+	assert_gt(s.max_speed, base.max_speed)
+	assert_almost_eq(s.max_speed / s.turn_rate, base.max_speed / base.turn_rate, 0.001,
+		"même rayon de braquage qu'en 150cc")
+
+
+func test_l_or_partout_debloque_200cc_puis_miroir() -> void:
+	var r := _reglages()
+	assert_false(r.debloque_200cc())
+	assert_false(r.debloque_miroir())
+	for i in TrackCatalog.COUPES.size():
+		r.proposer_trophee(i, Cylindree.Classe.CC150, 1)
+	assert_true(r.debloque_200cc(), "l'or dans toutes les coupes en 150cc")
+	assert_false(r.debloque_miroir())
+	for i in TrackCatalog.COUPES.size():
+		r.proposer_trophee(i, Cylindree.Classe.CC100, 2 if i == 0 else 1)
+	assert_false(r.debloque_miroir(), "l'argent ne suffit pas")
+	r.proposer_trophee(0, Cylindree.Classe.CC100, 1)
+	assert_true(r.debloque_miroir())
+	r.free()
+
+
+func test_le_miroir_a_ses_propres_records() -> void:
+	var reglage := RaceSetup.new()
+	reglage.choisir_piste(TrackCatalog.PISTES[0])
+	reglage.miroir = true
+	assert_eq(reglage.cle_record(), TrackCatalog.PISTES[0].id + "@miroir")
+	reglage.mode = RaceSetup.Mode.CONTRE_LA_MONTRE
+	assert_eq(reglage.cle_record(), TrackCatalog.PISTES[0].id + "@clm@miroir")
+
+
+func test_le_miroir_retourne_les_virages() -> void:
+	var piste: Track = TrackCatalog.par_id("plage_palmiers").scene.instantiate()
+	var retournee: Track = TrackCatalog.par_id("plage_palmiers").scene.instantiate()
+	Miroir.appliquer(retournee)
+	add_child_autofree(piste)
+	add_child_autofree(retournee)
+	var a := piste.track_curve
+	var b := retournee.track_curve
+	assert_almost_eq(b.length, a.length, 0.5, "même longueur")
+	for d in [50.0, 200.0, 400.0, 700.0]:
+		assert_almost_eq(b.turn_at(d), -a.turn_at(d), 0.02, "à %d m, le virage tourne dans l'autre sens" % d)
+		assert_almost_eq(b.position_at(d).x, -a.position_at(d).x, 0.5)
+		assert_almost_eq(b.tilt_at(d), -a.tilt_at(d), 0.01, "dévers retourné")
+
+
+func test_le_miroir_passe_les_murs_de_l_autre_cote() -> void:
+	var piste: Track = TrackCatalog.par_id("forteresse_lave").scene.instantiate()
+	var avant := {}
+	for e in piste.get_children():
+		if e is TrackFeature:
+			avant[e.name] = [e.decalage, e.cote if e is TrackWall else -1]
+	Miroir.appliquer(piste)
+	for e in piste.get_children():
+		if e is TrackFeature:
+			assert_eq(e.decalage, -float(avant[e.name][0]), str(e.name))
+			if e is TrackWall and int(avant[e.name][1]) == TrackWall.Cote.GAUCHE:
+				assert_eq(e.cote, TrackWall.Cote.DROITE, str(e.name))
+	piste.free()
+
+
+func test_chaque_circuit_reste_roulable_en_miroir() -> void:
+	for info in TrackCatalog.PISTES:
+		var piste: Track = info.scene.instantiate()
+		Miroir.appliquer(piste)
+		add_child_autofree(piste)
+		assert_eq(piste.track_curve.tight_spots(piste.min_drivable_radius, piste.segment_length).size(), 0,
+			"%s en miroir" % info.id)
+		for element in piste.elements():
+			if element is TrackGap:
+				assert_true(element.a_un_elan(piste), "%s en miroir : rampe avant le trou" % info.id)
+
+
+func test_la_coupe_garde_son_miroir_en_reseau() -> void:
+	var gp := GrandPrix.new(0)
+	gp.miroir = true
+	assert_true(GrandPrix.depuis(gp.en_dictionnaire()).miroir)

@@ -1,6 +1,8 @@
 [gd_scene load_steps=17 format=3]
 
-[ext_resource type="PackedScene" path="res://scenes/tracks/track_01.tscn" id="1_track"]
+[ext_resource type="Shader" path="res://shaders/ciel.gdshader" id="sh_ciel"]
+[ext_resource type="Script" path="res://scripts/track/track.gd" id="1_track"]
+[ext_resource type="Curve3D" path="res://resources/tracks/track_01_curve.tres" id="1_courbe"]
 [ext_resource type="PackedScene" path="res://scenes/kart/kart.tscn" id="2_kart"]
 [ext_resource type="PackedScene" path="res://scenes/kart/ai_kart.tscn" id="6_ai"]
 [ext_resource type="Script" path="res://scripts/camera/chase_camera.gd" id="3_camera"]
@@ -15,9 +17,23 @@
 [ext_resource type="Script" path="res://scripts/race/kart_collisions.gd" id="14_bump"]
 [ext_resource type="Resource" path="res://resources/items/item_table.tres" id="13_table"]
 
+[sub_resource type="ShaderMaterial" id="Ciel_shader"]
+shader = ExtResource("sh_ciel")
+shader_parameter/haut = Color(0.3, 0.52, 0.88, 1)
+shader_parameter/horizon = Color(0.72, 0.84, 0.96, 1)
+shader_parameter/sol_horizon = Color(0.55, 0.75, 0.5, 1)
+shader_parameter/sol_bas = Color(0.3, 0.5, 0.25, 1)
+shader_parameter/nuages = 0.45
+shader_parameter/couleur_nuages = Color(1, 1, 1, 1)
+shader_parameter/etoiles = 0.0
+shader_parameter/soleil = 1.0
+
+[sub_resource type="Sky" id="Sky_shader"]
+sky_material = SubResource("Ciel_shader")
+
 [sub_resource type="Environment" id="Env_race"]
-background_mode = 1
-background_color = Color(0.55, 0.72, 0.90, 1)
+background_mode = 2
+sky = SubResource("Sky_shader")
 ambient_light_source = 2
 ambient_light_color = Color(0.6, 0.68, 0.78, 1)
 ambient_light_energy = 0.6
@@ -31,7 +47,9 @@ environment = SubResource("Env_race")
 transform = Transform3D(0.766, -0.492, 0.414, 0, 0.643, 0.766, -0.643, -0.587, 0.492, 0, 40, 0)
 shadow_enabled = true
 
-[node name="Track" parent="." instance=ExtResource("1_track")]
+[node name="Track" type="Node3D" parent="."]
+script = ExtResource("1_track")
+curve = ExtResource("1_courbe")
 
 [node name="Kart" parent="." instance=ExtResource("2_kart")]
 

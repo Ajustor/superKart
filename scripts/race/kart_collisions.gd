@@ -39,8 +39,20 @@ static func _paire(a: Kart, b: Kart) -> void:
 		return
 	var pa := _position(a)
 	var pb := _position(b)
-	if KartBump.contact(pa, pb, a.motor.heading, b.motor.heading) == Vector3.ZERO:
+	var choc := KartBump.contact(pa, pb, a.motor.heading, b.motor.heading)
+	if choc == Vector3.ZERO:
 		return
+	# Pour le bruit du choc : seulement quand les karts se rapprochent, pas
+	# à chaque image où ils se frôlent.
+	var rapprochement := (KartBump.vitesse(a.motor) - KartBump.vitesse(b.motor)).dot(choc.normalized())
+	if rapprochement < 0.0:
+		a.bouscule.emit(-rapprochement)
+		b.bouscule.emit(-rapprochement)
+	# Sous étoile, on renverse ce qu'on touche. Chaque machine ne renverse que
+	# les karts qu'elle simule : l'étoile d'un kart distant se lit dans son
+	# instantané.
+	_renverser(a, b)
+	_renverser(b, a)
 	# L'écartement se partage entre les karts simulés ici ; un kart distant
 	# ne bouge pas, celui d'ici fait tout le chemin.
 	var part := 0.5 if a.simule and b.simule else 1.0
@@ -55,6 +67,11 @@ static func _paire(a: Kart, b: Kart) -> void:
 		_deplacer(a, KartBump.encaisser(ma, pa, mb, pb, part))
 	if b.simule:
 		_deplacer(b, KartBump.encaisser(mb, pb, avant_a, pa, part))
+
+
+static func _renverser(etoile: Kart, autre: Kart) -> void:
+	if etoile.motor.etoile > 0.0 and autre.simule:
+		autre.motor.stun()
 
 
 static func _position(k: Kart) -> Vector3:

@@ -258,6 +258,41 @@ jobs:
               handle.write(content)
           PY
 
+      - name: Numéroter la version
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          # Android refuse une mise à jour dont le code de version n'augmente
+          # pas. Le code du preset sert de base, le numéro du run (qui croît à
+          # chaque exécution du workflow) s'y ajoute ; le nom affiché prend le
+          # numéro du run en dernier chiffre : 1.1 → 1.1.57.
+          python3 - <<'PY'
+          import os
+          import re
+
+          run = int(os.environ["RUN_NUMBER"])
+          with open("export_presets.cfg", encoding="utf-8") as handle:
+              content = handle.read()
+
+          code = re.search(r"^version/code=(\d+)$", content, re.MULTILINE)
+          name = re.search(r'^version/name="([^"]*)"$', content, re.MULTILINE)
+          if code is None or name is None:
+              raise SystemExit("version/code ou version/name absent du preset Android")
+
+          new_code = int(code.group(1)) + run
+          new_name = "%s.%d" % (name.group(1), run)
+          content = content.replace(code.group(0), "version/code=%d" % new_code, 1)
+          content = content.replace(name.group(0), 'version/name="%s"' % new_name, 1)
+
+          with open("export_presets.cfg", "w", encoding="utf-8") as handle:
+              handle.write(content)
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write("Android : version %s (code %d)\n" % (new_name, new_code))
+          print("version %s (code %d)" % (new_name, new_code))
+          PY
+
       - name: Importer les ressources
         run: |
           set -euo pipefail

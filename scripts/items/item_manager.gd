@@ -13,6 +13,10 @@ extends Node3D
 signal objet_recu(entree: RaceEntry, objet: int)
 signal objet_utilise(entree: RaceEntry, objet: int)
 signal kart_touche(entree: RaceEntry)
+## Frappé par l'éclair d'un autre : rétréci et sonné.
+signal kart_foudroye(entree: RaceEntry)
+## Une carapace bleue vient d'exploser, ici.
+signal explosion(ou: Vector3)
 
 ## Rayon de ramassage d'une boîte. Généreux : une boîte frôlée qui ne donne
 ## rien est vécue comme une injustice.
@@ -30,12 +34,27 @@ const VITESSE_CARAPACE := 36.0
 const DUREE_VERTE := 6.0
 const DUREE_ROUGE := 8.0
 const HAUTEUR_CARAPACE := 0.45
-## Marge gardée entre une carapace verte et le bord de la route, où elle
-## rebondit : le circuit n'a pas de murs, le bord du bitume en tient lieu.
+## Marge gardée entre une carapace et le mur sur lequel elle rebondit (ou le
+## bord du bitume, pour la rouge qui suit la route).
 const MARGE_BORD := 0.6
+## Au-delà de cette distance du bord, une carapace verte sortie de la route
+## est perdue : elle file dans le décor et disparaît.
+const SORTIE_HORS_PISTE := 8.0
 ## En deçà de cette avance sur la piste, la carapace rouge quitte la route pour
 ## foncer droit sur sa cible.
 const APPROCHE_ROUGE := 14.0
+
+## La carapace bleue : plus rapide que tout, elle vole au-dessus du peloton
+## sans toucher personne et va exploser sur celui qui mène.
+const VITESSE_BLEUE := 44.0
+const DUREE_BLEUE := 30.0
+const HAUTEUR_BLEUE := 2.6
+## Rayon de l'explosion : ceux qui collent au premier y passent aussi.
+const RAYON_EXPLOSION := 4.5
+
+## Une fausse boîte se percute comme une vraie se ramasse.
+const RAYON_FAUSSE_BOITE := 1.5
+const PIECES_PAR_OBJET := 2
 
 ## Pendant ce délai, un objet ignore celui qui vient de le lancer : sans lui,
 ## la carapace partirait déjà au contact de son propre kart.
@@ -55,6 +74,9 @@ var autorite: bool = true
 
 ## Contre-la-montre : pas de boîtes sur la route, trois champignons au départ.
 var contre_la_montre: bool = false
+## Bataille : un kart éliminé (fini) ne ramasse, ne lance et n'encaisse plus
+## rien, et la carapace rouge vise le kart le plus proche devant soi.
+var bataille: bool = false
 
 var boites: Array[Boite] = []
 var bananes: Array[Banane] = []
@@ -77,6 +99,8 @@ class Boite:
 
 
 class Banane:
+	## Une fausse boîte : même effet, autre allure.
+	var fausse: bool = false
 	var position: Vector3
 	var lanceur: RaceEntry
 	var age: float = 0.0
@@ -85,6 +109,7 @@ class Banane:
 
 class Carapace:
 	var rouge: bool = false
+	var bleue: bool = false
 	var position: Vector3
 	var direction: Vector3
 	var lanceur: RaceEntry
@@ -161,6 +186,9 @@ func avancer(positions: Array[Vector3], delta: float) -> void:
 
 	for i in entrees.size():
 		var entree := entrees[i]
+		if not _en_jeu(entree):
+			entree.kart.demande_objet = false
+			continue
 		entree.inventaire.avancer(delta)
 		_ramasser(entree, positions[i])
 		if entree.kart.demande_objet:
@@ -192,15 +220,85 @@ func _ramasser(entree: RaceEntry, point: Vector3) -> void:
 func _lancer(entree: RaceEntry, point: Vector3, objet: int) -> void:
 	var moteur := entree.kart.motor
 	var avant := Vector3(sin(moteur.velocity_dir), 0.0, -cos(moteur.velocity_dir))
+	if effet_sur_soi(moteur, objet):
+		return
 	match objet:
-		ItemKind.MUSHROOM:
-			moteur.boost_objet()
 		ItemKind.BANANA:
 			poser_banane(point - avant * RECUL_BANANE, entree)
+		ItemKind.FAKE_BOX:
+			poser_banane(point - avant * RECUL_BANANE, entree, true)
 		ItemKind.GREEN_SHELL:
 			lancer_carapace(point + avant * AVANCE_CARAPACE, avant, entree, null)
 		ItemKind.RED_SHELL:
-			lancer_carapace(point + avant * AVANCE_CARAPACE, avant, entree, cible_devant(entree))
+			var cible := cible_proche(entree, point, avant) if bataille else cible_devant(entree)
+			lancer_carapace(point + avant * AVANCE_CARAPACE, avant, entree, cible)
+		ItemKind.BLUE_SHELL:
+			lancer_carapace(point + avant * AVANCE_CARAPACE, avant, entree, cible_bleue(entree), true)
+		ItemKind.LIGHTNING:
+			frapper_eclair(entree)
+
+
+## Les objets qui n'agissent que sur celui qui les prend. Appliqués aussi par
+## la machine qui simule le kart, en réseau (RaceSync). Rend faux pour les
+## autres objets.
+static func effet_sur_soi(moteur: KartMotor, objet: int) -> bool:
+	match objet:
+		ItemKind.MUSHROOM:
+			moteur.boost_objet()
+		ItemKind.STAR:
+			moteur.prendre_etoile()
+		ItemKind.COINS:
+			moteur.gagner_pieces(PIECES_PAR_OBJET)
+			# Un petit coup de pouce, pour que ça se sente sur le moment.
+			moteur.accorder_turbo(0.4, moteur.stats.boost_speed_multipliers[0] if not moteur.stats.boost_speed_multipliers.is_empty() else 1.1)
+		_:
+			return false
+	return true
+
+
+## En bataille : le kart en jeu le plus proche, devant soi (dans un cône
+## large), ou null s'il n'y en a pas — la rouge part alors tout droit.
+func cible_proche(entree: RaceEntry, point: Vector3, avant: Vector3) -> RaceEntry:
+	var meilleure: RaceEntry = null
+	var plus_pres := INF
+	for autre in _session.entries:
+		if autre == entree or not _en_jeu(autre):
+			continue
+		var vers := autre.kart.global_position - point if autre.kart.is_inside_tree() else autre.kart.position - point
+		vers.y = 0.0
+		var d := vers.length()
+		if d < 0.1 or d > 60.0 or vers.normalized().dot(avant) < 0.3:
+			continue
+		if d < plus_pres:
+			plus_pres = d
+			meilleure = autre
+	return meilleure
+
+
+func _en_jeu(entree: RaceEntry) -> bool:
+	return not (bataille and entree.finished)
+
+
+## La carapace bleue vise celui qui mène — ou, lancée par lui, son second.
+func cible_bleue(entree: RaceEntry) -> RaceEntry:
+	var meilleur: RaceEntry = null
+	for autre in _session.entries:
+		if autre == entree or autre.finished:
+			continue
+		if meilleur == null or autre.position < meilleur.position:
+			meilleur = autre
+	return meilleur
+
+
+## L'éclair frappe tous les autres karts encore en course : rétrécis, sonnés,
+## et leur objet s'envole.
+func frapper_eclair(lanceur: RaceEntry) -> void:
+	for autre in _session.entries:
+		if autre == lanceur or autre.finished:
+			continue
+		if autre.kart.motor.foudroyer():
+			autre.inventaire.vider()
+			kart_foudroye.emit(autre)
 
 
 ## Le concurrent classé juste devant, ou null pour celui qui mène : la
@@ -212,12 +310,13 @@ func cible_devant(entree: RaceEntry) -> RaceEntry:
 	return null
 
 
-func poser_banane(ou: Vector3, lanceur: RaceEntry) -> Banane:
+func poser_banane(ou: Vector3, lanceur: RaceEntry, fausse: bool = false) -> Banane:
 	var d := _piste.distance_of(ou)
 	var banane := Banane.new()
-	banane.position = _au_sol(d, _piste.lateral_offset(ou), 0.25)
+	banane.fausse = fausse
+	banane.position = _au_sol(d, _piste.lateral_offset(ou), HAUTEUR_BOITE if fausse else 0.25)
 	banane.lanceur = lanceur
-	banane.noeud = _visuel_banane()
+	banane.noeud = _visuel_fausse_boite() if fausse else _visuel_banane()
 	banane.noeud.position = banane.position
 	add_child(banane.noeud)
 	bananes.append(banane)
@@ -226,15 +325,17 @@ func poser_banane(ou: Vector3, lanceur: RaceEntry) -> Banane:
 	return banane
 
 
-func lancer_carapace(ou: Vector3, direction: Vector3, lanceur: RaceEntry, cible: RaceEntry) -> Carapace:
+func lancer_carapace(ou: Vector3, direction: Vector3, lanceur: RaceEntry, cible: RaceEntry,
+		bleue: bool = false) -> Carapace:
 	var carapace := Carapace.new()
-	carapace.rouge = cible != null
+	carapace.bleue = bleue
+	carapace.rouge = cible != null and not bleue
 	carapace.cible = cible
 	carapace.lanceur = lanceur
 	carapace.direction = Vector3(direction.x, 0.0, direction.z).normalized()
 	var d := _piste.distance_of(ou)
-	carapace.position = _au_sol(d, _piste.lateral_offset(ou), HAUTEUR_CARAPACE)
-	carapace.noeud = _visuel_carapace(carapace.rouge)
+	carapace.position = _au_sol(d, _piste.lateral_offset(ou), _hauteur(carapace))
+	carapace.noeud = _visuel_carapace(_genre(carapace))
 	carapace.noeud.position = carapace.position
 	add_child(carapace.noeud)
 	carapaces.append(carapace)
@@ -246,17 +347,23 @@ func _avancer_carapaces(positions: Array[Vector3], delta: float) -> void:
 	while i < carapaces.size():
 		var c := carapaces[i]
 		c.age += delta
-		if c.age > (DUREE_ROUGE if c.rouge else DUREE_VERTE):
+		if c.age > _duree(c):
 			_retirer_carapace(i)
 			continue
-		_deplacer(c, positions, delta)
-		if _carapace_touche(c, positions):
+		if c.bleue:
+			# Le premier a pu changer depuis le lancer : elle suit celui qui
+			# mène maintenant.
+			var meneur := cible_bleue(c.lanceur)
+			if meneur != null:
+				c.cible = meneur
+		if not _deplacer(c, positions, delta) or _carapace_touche(c, positions):
 			_retirer_carapace(i)
 			continue
 		i += 1
 
 
-func _deplacer(c: Carapace, positions: Array[Vector3], delta: float) -> void:
+## Rend faux quand la carapace est perdue hors de la route.
+func _deplacer(c: Carapace, positions: Array[Vector3], delta: float) -> bool:
 	var d := _piste.distance_of(c.position)
 	if c.cible != null:
 		var ou_est_la_cible := positions[_session.entries.find(c.cible)]
@@ -274,27 +381,38 @@ func _deplacer(c: Carapace, positions: Array[Vector3], delta: float) -> void:
 			c.direction = vers.normalized()
 
 	var ancien := _piste.lateral_offset_at(c.position, d)
-	var suivante := c.position + c.direction * VITESSE_CARAPACE * delta
+	var suivante := c.position + c.direction * _vitesse(c) * delta
 	var nd := _piste.distance_of(suivante)
 	var ecart := _piste.lateral_offset_at(suivante, nd)
 	var limite := _piste.half_width - MARGE_BORD
-	if absf(ecart) > limite:
-		# Le bord de la route fait office de mur : on renvoie la composante qui
-		# sort, comme une bille sur une bande.
+	if (c.rouge or c.bleue) and absf(ecart) > limite:
+		# La rouge suit la route : le bord la renvoie, comme une bille sur une
+		# bande. La verte, elle, ne rebondit que sur de vrais murs — sans mur,
+		# elle quitte la route.
 		var normale := _piste.right_at(nd) * signf(ecart)
 		normale.y = 0.0
 		normale = normale.normalized()
 		if c.direction.dot(normale) > 0.0:
 			c.direction = (c.direction - 2.0 * c.direction.dot(normale) * normale).normalized()
 		ecart = clampf(ecart, -limite, limite)
-	ecart = _rebondir_sur_les_murs(c, nd, ancien, ecart)
-	c.position = _au_sol(nd, ecart, HAUTEUR_CARAPACE)
+	if not c.bleue:
+		# La bleue vole : les murs passent sous elle.
+		ecart = _rebondir_sur_les_murs(c, nd, ancien, ecart)
+	if absf(ecart) > _piste.half_width + SORTIE_HORS_PISTE:
+		return false
+	var hauteur := _hauteur(c)
+	if c.bleue and c.cible != null:
+		# Elle plonge sur sa cible dans les derniers mètres.
+		var reste := absf(wrapf(c.cible.progress.distance - nd, -_piste.length * 0.5, _piste.length * 0.5))
+		hauteur = lerpf(HAUTEUR_CARAPACE, HAUTEUR_BLEUE, clampf(reste / APPROCHE_ROUGE, 0.0, 1.0))
+	c.position = _au_sol(nd, ecart, hauteur)
 	if c.noeud != null:
 		c.noeud.position = c.position
+	return true
 
 
 ## Une carapace qui franchirait un mur du circuit entre deux images rebondit
-## dessus, exactement comme sur le bord de la route. Rend l'écart corrigé.
+## dessus. Rend l'écart corrigé.
 func _rebondir_sur_les_murs(c: Carapace, distance: float, avant: float, apres: float) -> float:
 	if _circuit == null:
 		return apres
@@ -313,9 +431,23 @@ func _rebondir_sur_les_murs(c: Carapace, distance: float, avant: float, apres: f
 
 
 func _carapace_touche(c: Carapace, positions: Array[Vector3]) -> bool:
+	if c.bleue:
+		# Ne touche que sa cible, au sol ; mais l'explosion prend tout
+		# autour.
+		if c.cible == null:
+			return false
+		var ou := positions[_session.entries.find(c.cible)]
+		if ou.distance_to(c.position) > RAYON_IMPACT:
+			return false
+		for j in _session.entries.size():
+			if positions[j].distance_to(ou) <= RAYON_EXPLOSION:
+				_toucher(_session.entries[j])
+		explosion.emit(c.position)
+		_visuel_explosion(c.position)
+		return true
 	for j in _session.entries.size():
 		var entree := _session.entries[j]
-		if entree == c.lanceur and c.age < GRACE_LANCEUR:
+		if (entree == c.lanceur and c.age < GRACE_LANCEUR) or not _en_jeu(entree):
 			continue
 		if positions[j].distance_to(c.position) <= RAYON_IMPACT:
 			_toucher(entree)
@@ -337,9 +469,9 @@ func _avancer_bananes(positions: Array[Vector3], delta: float) -> void:
 		var touchee := false
 		for j in _session.entries.size():
 			var entree := _session.entries[j]
-			if entree == b.lanceur and b.age < GRACE_LANCEUR:
+			if (entree == b.lanceur and b.age < GRACE_LANCEUR) or not _en_jeu(entree):
 				continue
-			if positions[j].distance_to(b.position) <= RAYON_IMPACT:
+			if positions[j].distance_to(b.position) <= (RAYON_FAUSSE_BOITE if b.fausse else RAYON_IMPACT):
 				_toucher(entree)
 				touchee = true
 				break
@@ -381,16 +513,19 @@ func instantane() -> Dictionary:
 		if boites[i].disponible():
 			masque |= 1 << i
 	var b := PackedVector3Array()
+	var fausses := PackedByteArray()
 	for banane in bananes:
 		b.append(banane.position)
+		fausses.append(1 if banane.fausse else 0)
 	var c := PackedVector3Array()
 	var directions := PackedVector3Array()
-	var rouges := PackedByteArray()
+	var genres := PackedByteArray()
 	for carapace in carapaces:
 		c.append(carapace.position)
 		directions.append(carapace.direction)
-		rouges.append(1 if carapace.rouge else 0)
-	return {boites = masque, bananes = b, carapaces = c, directions = directions, rouges = rouges}
+		genres.append(_genre(carapace))
+	return {boites = masque, bananes = b, fausses = fausses, carapaces = c, directions = directions,
+		genres = genres}
 
 
 ## `avance` : l'âge de la photo, en secondes. Les carapaces ont roulé
@@ -403,34 +538,41 @@ func appliquer_instantane(etat: Dictionary, avance: float = 0.0) -> void:
 			boites[i].noeud.visible = boites[i].disponible()
 
 	var b: PackedVector3Array = etat.get("bananes", PackedVector3Array())
-	while bananes.size() > b.size():
-		_retirer_banane(bananes.size() - 1)
+	var fausses: PackedByteArray = etat.get("fausses", PackedByteArray())
+	for i in range(bananes.size() - 1, -1, -1):
+		if i >= b.size() or bananes[i].fausse != (i < fausses.size() and fausses[i] == 1):
+			_retirer_banane(i)
 	for i in b.size():
 		if i >= bananes.size():
 			var nouvelle := Banane.new()
-			nouvelle.noeud = _visuel_banane()
+			nouvelle.fausse = i < fausses.size() and fausses[i] == 1
+			nouvelle.noeud = _visuel_fausse_boite() if nouvelle.fausse else _visuel_banane()
 			add_child(nouvelle.noeud)
 			bananes.append(nouvelle)
 		bananes[i].position = b[i]
 		bananes[i].noeud.position = b[i]
 
 	var c: PackedVector3Array = etat.get("carapaces", PackedVector3Array())
-	var rouges: PackedByteArray = etat.get("rouges", PackedByteArray())
+	var genres: PackedByteArray = etat.get("genres", PackedByteArray())
 	var directions: PackedVector3Array = etat.get("directions", PackedVector3Array())
 	# Une carapace qui change de couleur à la même place de la liste est une
-	# autre carapace : on refait son visuel.
+	# autre carapace : on refait son visuel. Une bleue qui disparaît a
+	# explosé : l'explosion se voit ici aussi.
 	for i in range(carapaces.size() - 1, -1, -1):
-		if i >= c.size() or carapaces[i].rouge != (rouges[i] == 1):
+		if i >= c.size() or _genre(carapaces[i]) != genres[i]:
+			if carapaces[i].bleue and i >= c.size():
+				_visuel_explosion(carapaces[i].position)
 			_retirer_carapace(i)
 	for i in c.size():
 		if i >= carapaces.size():
 			var nouvelle := Carapace.new()
-			nouvelle.rouge = rouges[i] == 1
-			nouvelle.noeud = _visuel_carapace(nouvelle.rouge)
+			nouvelle.rouge = genres[i] == Genre.ROUGE
+			nouvelle.bleue = genres[i] == Genre.BLEUE
+			nouvelle.noeud = _visuel_carapace(genres[i])
 			add_child(nouvelle.noeud)
 			carapaces.append(nouvelle)
 		carapaces[i].direction = directions[i] if i < directions.size() else Vector3.ZERO
-		carapaces[i].position = c[i] + carapaces[i].direction * VITESSE_CARAPACE * avance
+		carapaces[i].position = c[i] + carapaces[i].direction * _vitesse(carapaces[i]) * avance
 		carapaces[i].noeud.position = carapaces[i].position
 
 
@@ -439,9 +581,32 @@ func appliquer_instantane(etat: Dictionary, avance: float = 0.0) -> void:
 ## bonds d'un mètre. La photo suivante corrige virages et rebonds.
 func _prolonger_carapaces(delta: float) -> void:
 	for c in carapaces:
-		c.position += c.direction * VITESSE_CARAPACE * delta
+		c.position += c.direction * _vitesse(c) * delta
 		if c.noeud != null:
 			c.noeud.position = c.position
+
+
+enum Genre { VERTE, ROUGE, BLEUE }
+
+
+static func _genre(c: Carapace) -> int:
+	if c.bleue:
+		return Genre.BLEUE
+	return Genre.ROUGE if c.rouge else Genre.VERTE
+
+
+static func _vitesse(c: Carapace) -> float:
+	return VITESSE_BLEUE if c.bleue else VITESSE_CARAPACE
+
+
+static func _hauteur(c: Carapace) -> float:
+	return HAUTEUR_BLEUE if c.bleue else HAUTEUR_CARAPACE
+
+
+static func _duree(c: Carapace) -> float:
+	if c.bleue:
+		return DUREE_BLEUE
+	return DUREE_ROUGE if c.rouge else DUREE_VERTE
 
 
 ## Un point de la chaussée, à `hauteur` au-dessus du bitume, dévers compris.
@@ -530,15 +695,15 @@ func _visuel_banane() -> Node3D:
 	return racine
 
 
-func _visuel_carapace(rouge: bool) -> Node3D:
+func _visuel_carapace(genre: int) -> Node3D:
 	var racine := Node3D.new()
 	var dome := MeshInstance3D.new()
 	var forme := SphereMesh.new()
 	forme.radius = 0.42
 	forme.height = 0.55
 	dome.mesh = forme
-	var couleur := Color(0.9, 0.12, 0.1) if rouge else Color(0.15, 0.75, 0.2)
-	dome.material_override = _materiau(couleur, 0.3)
+	var couleur: Color = [Color(0.15, 0.75, 0.2), Color(0.9, 0.12, 0.1), Color(0.15, 0.35, 1.0)][genre]
+	dome.material_override = _materiau(couleur, 0.6 if genre == Genre.BLEUE else 0.3)
 	racine.add_child(dome)
 	var bord := MeshInstance3D.new()
 	var anneau := TorusMesh.new()
@@ -548,4 +713,49 @@ func _visuel_carapace(rouge: bool) -> Node3D:
 	bord.material_override = _materiau(Color(0.97, 0.97, 0.95))
 	bord.position = Vector3(0.0, -0.08, 0.0)
 	racine.add_child(bord)
+	if genre == Genre.BLEUE:
+		# Des ailes blanches : on la reconnaît de loin, au-dessus du peloton.
+		for cote in [-1.0, 1.0]:
+			var aile := MeshInstance3D.new()
+			var plaque := BoxMesh.new()
+			plaque.size = Vector3(0.7, 0.05, 0.3)
+			aile.mesh = plaque
+			aile.material_override = _materiau(Color(0.97, 0.97, 1.0), 0.4)
+			aile.position = Vector3(cote * 0.62, 0.12, 0.0)
+			aile.rotation = Vector3(0.0, 0.0, cote * deg_to_rad(-20.0))
+			racine.add_child(aile)
 	return racine
+
+
+## Comme une vraie boîte, à s'y méprendre de loin : rougeâtre, et son point
+## d'interrogation est à l'envers.
+func _visuel_fausse_boite() -> Node3D:
+	var racine := _visuel_boite()
+	var cube := racine.get_child(0) as MeshInstance3D
+	cube.material_override = _materiau(Color(1.0, 0.45, 0.4, 0.75), 0.6, true)
+	var signe := racine.get_child(1) as Label3D
+	signe.text = "¿"
+	return racine
+
+
+## Une boule de feu qui gonfle et s'efface.
+func _visuel_explosion(ou: Vector3) -> void:
+	var boule := MeshInstance3D.new()
+	var forme := SphereMesh.new()
+	forme.radius = 1.0
+	forme.height = 2.0
+	boule.mesh = forme
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.albedo_color = Color(0.45, 0.7, 1.0, 0.85)
+	boule.material_override = m
+	boule.position = ou
+	boule.scale = Vector3.ONE * 0.3
+	add_child(boule)
+	if not is_inside_tree():
+		return
+	var anime := create_tween().set_parallel()
+	anime.tween_property(boule, "scale", Vector3.ONE * RAYON_EXPLOSION, 0.45).set_ease(Tween.EASE_OUT)
+	anime.tween_property(m, "albedo_color:a", 0.0, 0.45)
+	anime.chain().tween_callback(boule.queue_free)

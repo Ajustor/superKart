@@ -94,6 +94,11 @@ const GRID_COLUMN_STAGGER := 2.5
 ## Noms des concurrents, dans l'ordre de kart_paths.
 @export var noms: PackedStringArray = []
 
+## Les vrais noms, dans l'ordre de kart_paths, là où `noms` affiche « Vous »
+## pour le joueur local. En réseau, c'est sous ce nom que la coupe compte ses
+## points, le même sur toutes les machines. Vide en solo : `noms` suffit.
+var noms_reels: PackedStringArray = []
+
 ## Qui est piloté par un humain, dans l'ordre de kart_paths. Vide en solo :
 ## seul le premier, le joueur, l'est.
 var humains: Array[bool] = []
@@ -119,6 +124,8 @@ var en_course: bool = false
 
 ## Vrai quand le dernier concurrent a franchi la ligne.
 var terminee: bool = false
+## Mode bataille : pas de tours à compter, les places viennent de Bataille.
+var sans_tours: bool = false
 
 ## Temps restant avant le vert, en secondes.
 var decompte_restant: float = 0.0
@@ -193,10 +200,12 @@ func demarrer(piste: Track, pilotes: Array[Kart]) -> void:
 		pilotes[i].respawn_at(place)
 		pilotes[i].controle_actif = en_course
 		var entree := RaceEntry.new(pilotes[i], _track.track_curve, case_.x)
-		# Tous partent avec le même retard : le recul de la pole. Chacun
-		# parcourt toujours la même distance, et le tour se boucle sur la
-		# ligne peinte pour la pole, pas six mètres avant.
-		entree.progress.total = -RECUL_GRILLE
+		# L'avancement part de la case elle-même, en négatif : le tour se
+		# boucle pour chacun en franchissant la ligne peinte. Donner à tous le
+		# même retard faisait boucler les derniers de la grille jusqu'à
+		# dix-sept mètres avant la ligne. Partir de plus loin coûte quelques
+		# mètres, comme dans Mario Kart.
+		entree.progress.total = case_.x
 		entree.nom = noms[i] if i < noms.size() else "Pilote %d" % (i + 1)
 		entree.case_de_grille = cases[i]
 		entree.humain = humains[i] if i < humains.size() else i == 0
@@ -242,6 +251,14 @@ static func cases_attribuees(concurrents: int, case_joueur: int) -> Array[int]:
 		cases.append(libre)
 		libre += 1
 	return cases
+
+
+## Le nom sous lequel ce concurrent compte dans une coupe.
+func nom_reel(entree: RaceEntry) -> String:
+	var i := entries.find(entree)
+	if i >= 0 and i < noms_reels.size():
+		return noms_reels[i]
+	return entree.nom
 
 
 ## Le circuit monté. ItemManager en a besoin pour faire rebondir les
@@ -352,7 +369,7 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 		# Se déclencher sur sa montée enregistrait un tour à chaque
 		# franchissement, donc reculer sur la ligne d'arrivée fabriquait un
 		# meilleur temps de deux images. On compte sur une ligne de crue.
-		if entree.progress.lap > entree.tours_comptes:
+		if not sans_tours and entree.progress.lap > entree.tours_comptes:
 			entree.tours_comptes = entree.progress.lap
 			entree.timer.complete_lap()
 			if entree.tours_comptes >= lap_count and arbitre:
@@ -384,6 +401,9 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 	if tremplin != null and entree.kart.sauter(tremplin.impulsion):
 		entree.en_vol = true
 		entree.kart.motor.accorder_turbo(tremplin.duree_turbo, tremplin.force_turbo)
+	var plaque := _track.accelerateur_en(d, lateral)
+	if plaque != null and entree.kart.au_sol:
+		entree.kart.motor.accorder_turbo(plaque.duree_turbo, plaque.force_turbo)
 
 	if not dehors and _track.trou_en(d) == null:
 		# On remet en piste là où le kart roulait encore, pas là où la courbe

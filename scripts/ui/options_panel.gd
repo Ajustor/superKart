@@ -18,12 +18,16 @@ var _mini_carte: CheckButton
 var _fps: CheckButton
 var _qualite: OptionButton
 var _joystick: CheckButton
+var _sensibilite: HSlider
+var _principal: Control
+var _touches: TouchesPanel
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UITheme.theme()
 	var colonne := UITheme.panneau_centre(self, 1080.0)
+	_principal = colonne.get_parent().get_parent()
 	colonne.add_child(UITheme.titre("OPTIONS", 38))
 	# Deux colonnes : sur un téléphone tenu en paysage, une seule dépassait
 	# du bas de l'écran.
@@ -55,8 +59,20 @@ func _ready() -> void:
 		"Automatique": GameSettings.Tactile.AUTO, "Toujours": GameSettings.Tactile.TOUJOURS,
 		"Jamais": GameSettings.Tactile.JAMAIS})
 	_joystick = _interrupteur(droite, "Direction au joystick (tactile)")
+	_sensibilite = _curseur(droite, "Sensibilité du joystick", GameSettings.SENSIBILITE_MIN,
+		GameSettings.SENSIBILITE_MAX)
 	_auto = _interrupteur(droite, "Accélération automatique (tactile)")
 	_vibrations = _interrupteur(droite, "Vibrations de la manette")
+	var changer := UITheme.bouton("Changer les touches…", _montrer_touches)
+	changer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	droite.add_child(changer)
+
+	_touches = TouchesPanel.new()
+	_touches.visible = false
+	add_child(_touches)
+	_touches.ferme.connect(func() -> void:
+		_principal.show()
+		changer.grab_focus())
 
 	var retour := UITheme.bouton("Retour", _fermer)
 	retour.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -93,6 +109,9 @@ func _ready() -> void:
 	_qualite.item_selected.connect(func(i: int) -> void:
 		GameSettings.qualite = _qualite.get_item_id(i)
 		GameSettings.valider())
+	_sensibilite.value_changed.connect(func(v: float) -> void:
+		GameSettings.sensibilite_joystick = v
+		GameSettings.valider())
 	_fps.toggled.connect(func(v: bool) -> void:
 		GameSettings.afficher_fps = v
 		GameSettings.valider())
@@ -101,6 +120,8 @@ func _ready() -> void:
 
 func _sur_visibilite() -> void:
 	if visible:
+		_touches.hide()
+		_principal.show()
 		_relire()
 		_general.grab_focus()
 
@@ -117,13 +138,19 @@ func _relire() -> void:
 	_mini_carte.set_pressed_no_signal(GameSettings.mini_carte)
 	_fps.set_pressed_no_signal(GameSettings.afficher_fps)
 	_joystick.set_pressed_no_signal(GameSettings.joystick)
+	_sensibilite.set_value_no_signal(GameSettings.sensibilite_joystick)
 	_qualite.select(_qualite.get_item_index(GameSettings.qualite))
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if visible and (event.is_action_pressed(&"ui_cancel") or event.is_action_pressed(&"pause")):
+	if visible and not _touches.visible and (event.is_action_pressed(&"ui_cancel") or event.is_action_pressed(&"pause")):
 		get_viewport().set_input_as_handled()
 		_fermer()
+
+
+func _montrer_touches() -> void:
+	_principal.hide()
+	_touches.show()
 
 
 func _fermer() -> void:
@@ -139,15 +166,15 @@ func _intertitre(texte: String) -> Label:
 	return l
 
 
-func _curseur(colonne: VBoxContainer, texte: String) -> HSlider:
+func _curseur(colonne: VBoxContainer, texte: String, mini := 0.0, maxi := 1.0) -> HSlider:
 	var ligne := HBoxContainer.new()
 	var etiquette := Label.new()
 	etiquette.text = texte
 	etiquette.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ligne.add_child(etiquette)
 	var curseur := HSlider.new()
-	curseur.min_value = 0.0
-	curseur.max_value = 1.0
+	curseur.min_value = mini
+	curseur.max_value = maxi
 	curseur.step = 0.05
 	curseur.custom_minimum_size = Vector2(230, 40)
 	curseur.size_flags_vertical = Control.SIZE_SHRINK_CENTER

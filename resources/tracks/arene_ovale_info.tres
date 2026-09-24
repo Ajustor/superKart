@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TrackInfo" format=3]
+
+[ext_resource type="Script" path="res://scripts/race/track_info.gd" id="1_info"]
+
+[resource]
+script = ExtResource("1_info")
+id = "arene_ovale"
+nom = "Arène Ovale"
+description = "Un anneau de sable fermé de murs, large comme une place de village : on s'y tourne autour, on s'y guette, on s'y crève les ballons."
+chemin_scene = "res://scenes/tracks/arene_ovale.tscn"
+tours = 1

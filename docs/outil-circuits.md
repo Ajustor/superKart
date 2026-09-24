@@ -134,7 +134,7 @@ déplacer un point de contrôle emmène les murs et les zones avec lui.
 
 | Circuit | Longueur | Ce qui le distingue |
 |---|---|---|
-| Circuit des Collines | 789 m | le circuit d'origine : collines, épingle, un trou à sauter |
+| Circuit des Collines | 774 m | le circuit d'origine : collines, épingle en montée bordée de deux murs (375 à 470 m), un trou à sauter (314 à 338 m), bas-côtés d'herbe tout le tour sauf au trou. Pentes adoucies (35 % → 22 % au plus dans l'épingle) |
 | Plage aux Palmiers | 1 032 m | bordures, bas-côtés de sable, dune à tremplin (262 m), lacet autour du phare, bras de mer à sauter (766 à 790 m), raccourci de sable à l'intérieur du virage 380 à 475 m |
 | Forteresse de Lave | 773 m | remparts presque partout, montée vers une chicane à 10 m de haut (340 à 470 m), douve de lave à sauter (542 à 566 m), piliers enflammés |
 | Ruban Céleste | 1 099 m | route arc-en-ciel dans la nuit, en huit : le pont (560 à 650 m) passe 20 m au-dessus de la ligne droite de départ ; saut dans le vide (866 à 892 m), garde-fous seulement dans les virages serrés |
@@ -150,3 +150,28 @@ déplacer un point de contrôle emmène les murs et les zones avec lui.
   326 m) et trou de 12 m juste derrière (326 à 338 m).
 - `TremplinMontee` : tremplin turbo dans la montée (155 m).
 - `RaccourciHerbe` : raccourci en herbe à l'intérieur du virage 560 à 605 m.
+
+## Liquides et ciels (`shaders/`)
+
+- `liquide.gdshader` : l'eau et la lave. Un bruit qui dérive dans deux sens
+  mêle `couleur_profonde` et `couleur_claire` et ride la surface ; `lueur`
+  (lave) fait briller et battre les veines claires. Tout au pixel : le plan
+  peut rester à deux triangles.
+- `ciel.gdshader` : dégradé, nuages (`nuages`, part du ciel couverte),
+  disque du soleil (la première lumière de la scène) et étoiles la nuit
+  (`etoiles`). Immobile, pour que les reflets ne se recalculent qu'une fois.
+
+## Relief, accélérateurs et décor posé sur le sol
+
+- `TrackTerrain` (un par circuit) : le sol autour du tracé. Sous le bitume et
+  au ras des bas-côtés près de la route, il monte en collines au loin
+  (`relief`) et se creuse en ravin sous les trous (`ravin`). Sans collision :
+  il ne change rien à la course. `tests/test_relief.gd` vérifie qu'il ne
+  perce jamais la route. Premier utilisateur : le Circuit des Collines.
+- `TrackBoost` : une plaque d'accélération (turbo `duree_turbo` à
+  `force_turbo`), aux flèches qui défilent dans le sens de la course.
+- `TrackDecor` : nouveaux objets `ARBRE`, `BOTTE_DE_FOIN`, `MOULIN`,
+  `BUISSON` (en rangée serrée, une haie qui marque le bord du praticable).
+  `eviter_la_route` saute les objets qui tomberaient sur une autre partie du
+  tracé ; s'il y a un `TrackTerrain`, les objets hors de la route se posent
+  sur le relief.

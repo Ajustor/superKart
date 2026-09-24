@@ -7,10 +7,57 @@
 [ext_resource type="Script" uid="uid://c6eaokwi1nmo5" path="res://scripts/track/features/track_offroad.gd" id="5_offroad"]
 [ext_resource type="Script" uid="uid://buiebxrijqyv" path="res://scripts/track/features/track_ramp.gd" id="6_ramp"]
 [ext_resource type="Script" uid="uid://q2ofv6qoojmw" path="res://scripts/track/features/track_gap.gd" id="7_gap"]
+[ext_resource type="Script" path="res://scripts/track/features/track_terrain.gd" id="8_terrain"]
+[ext_resource type="Script" path="res://scripts/track/features/track_boost.gd" id="12_boost"]
+[ext_resource type="Script" path="res://scripts/track/features/track_decor.gd" id="9_decor"]
+[ext_resource type="Shader" path="res://shaders/liquide.gdshader" id="10_liquide"]
+[ext_resource type="Shader" path="res://shaders/ciel.gdshader" id="11_ciel"]
+
+[sub_resource type="ShaderMaterial" id="Ciel"]
+shader = ExtResource("11_ciel")
+shader_parameter/haut = Color(0.28, 0.52, 0.9, 1)
+shader_parameter/horizon = Color(0.78, 0.88, 0.97, 1)
+shader_parameter/sol_horizon = Color(0.5, 0.68, 0.42, 1)
+shader_parameter/sol_bas = Color(0.3, 0.48, 0.22, 1)
+shader_parameter/nuages = 0.48
+shader_parameter/couleur_nuages = Color(1, 1, 1, 1)
+shader_parameter/etoiles = 0.0
+shader_parameter/soleil = 1.0
+
+[sub_resource type="Sky" id="Sky"]
+sky_material = SubResource("Ciel")
+
+[sub_resource type="Environment" id="Env"]
+background_mode = 2
+sky = SubResource("Sky")
+ambient_light_source = 2
+ambient_light_color = Color(0.62, 0.7, 0.78, 1)
+ambient_light_energy = 0.6
+fog_enabled = true
+fog_light_color = Color(0.75, 0.84, 0.95, 1)
+fog_density = 0.0007
+fog_sky_affect = 0.0
+
+[sub_resource type="ShaderMaterial" id="Mat_riviere"]
+shader = ExtResource("10_liquide")
+shader_parameter/couleur_profonde = Color(0.08, 0.32, 0.45, 1)
+shader_parameter/couleur_claire = Color(0.3, 0.62, 0.72, 1)
+shader_parameter/echelle = 5.0
+shader_parameter/vitesse = 0.5
+shader_parameter/rides = 0.4
+shader_parameter/lueur = 0.0
+shader_parameter/rugosite = 0.15
+
+[sub_resource type="PlaneMesh" id="Riviere"]
+material = SubResource("Mat_riviere")
+size = Vector2(60, 60)
 
 [node name="Track" type="Node3D" unique_id=1258864960]
 script = ExtResource("1_track")
 curve = ExtResource("2_curve")
+road_color = Color(0.4, 0.4, 0.43, 1)
+bordures = true
+musique = 0
 
 [node name="CurveEditor" type="Path3D" parent="." unique_id=1708648200]
 curve = ExtResource("2_curve")
@@ -42,9 +89,148 @@ script = ExtResource("7_gap")
 debut = 326.0
 longueur = 12.0
 
-[node name="RaccourciHerbe" type="Node3D" parent="."]
+[node name="HerbeDroite" type="Node3D" parent="."]
 script = ExtResource("5_offroad")
-debut = 560.0
-longueur = 45.0
+longueur = 310.0
 decalage = 14.0
 largeur = 10.0
+
+[node name="HerbeGauche" type="Node3D" parent="."]
+script = ExtResource("5_offroad")
+longueur = 310.0
+decalage = -14.0
+largeur = 10.0
+
+[node name="HerbeDroiteApres" type="Node3D" parent="."]
+script = ExtResource("5_offroad")
+debut = 342.0
+longueur = 432.0
+decalage = 14.0
+largeur = 10.0
+
+[node name="HerbeGaucheApres" type="Node3D" parent="."]
+script = ExtResource("5_offroad")
+debut = 342.0
+longueur = 432.0
+decalage = -14.0
+largeur = 10.0
+
+[node name="MurInterieurEpingle" type="Node3D" parent="."]
+script = ExtResource("3_wall")
+debut = 375.0
+longueur = 95.0
+cote = 1
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.766, -0.492, 0.414, 0, 0.643, 0.766, -0.643, -0.587, 0.492, 0, 60, 0)
+light_color = Color(1, 0.96, 0.88, 1)
+light_energy = 0.95
+shadow_enabled = true
+
+[node name="Relief" type="Node3D" parent="."]
+script = ExtResource("8_terrain")
+
+[node name="Riviere" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 77, -12.5, 53)
+mesh = SubResource("Riviere")
+
+[node name="ArbresBord" type="Node3D" parent="."]
+script = ExtResource("9_decor")
+objet = 10
+longueur = 774.0
+decalage = 27.0
+espacement = 21.0
+eviter_la_route = true
+graine = 2
+
+[node name="ArbresLoin" type="Node3D" parent="."]
+script = ExtResource("9_decor")
+objet = 10
+debut = 9.0
+longueur = 774.0
+decalage = 46.0
+espacement = 17.0
+echelle = 1.3
+eviter_la_route = true
+graine = 5
+
+[node name="Bottes" type="Node3D" parent="."]
+script = ExtResource("9_decor")
+objet = 11
+debut = 40.0
+longueur = 700.0
+decalage = 23.0
+espacement = 55.0
+eviter_la_route = true
+graine = 7
+
+[node name="Rochers" type="Node3D" parent="."]
+script = ExtResource("9_decor")
+objet = 5
+debut = 20.0
+longueur = 760.0
+decalage = 34.0
+espacement = 60.0
+echelle = 0.8
+eviter_la_route = true
+graine = 11
+
+[node name="Moulin" type="Node3D" parent="."]
+script = ExtResource("9_decor")
+objet = 12
+debut = 210.0
+longueur = 1.0
+decalage = 58.0
+espacement = 0.0
+symetrique = false
+eviter_la_route = true
+
+[node name="Haies" type="Node3D" parent="."]
+script = ExtResource("9_decor")
+objet = 13
+longueur = 774.0
+decalage = 20.8
+espacement = 3.2
+eviter_la_route = true
+graine = 13
+
+[node name="PlaqueAvantLeSaut" type="Node3D" parent="."]
+script = ExtResource("12_boost")
+debut = 300.0
+
+[node name="PlaqueSortieEpingle" type="Node3D" parent="."]
+script = ExtResource("12_boost")
+debut = 503.0
+
+[node name="PlaqueLigneDroite" type="Node3D" parent="."]
+script = ExtResource("12_boost")
+debut = 628.0
+decalage = -4.0
+largeur = 4.0
+
+[node name="BarriereVirageDuMoulin" type="Node3D" parent="."]
+script = ExtResource("3_wall")
+debut = 168.0
+longueur = 64.0
+cote = 1
+marge = 9.2
+hauteur = 1.0
+
+[node name="BarriereSortieDuMoulin" type="Node3D" parent="."]
+script = ExtResource("3_wall")
+debut = 212.0
+longueur = 42.0
+cote = 0
+marge = 9.2
+hauteur = 1.0
+
+[node name="BarriereVirageSerre" type="Node3D" parent="."]
+script = ExtResource("3_wall")
+debut = 112.0
+longueur = 38.0
+cote = 0
+marge = 9.2
+hauteur = 1.0

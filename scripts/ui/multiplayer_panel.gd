@@ -7,6 +7,8 @@ extends Control
 ## que l'afficher et lui transmettre des gestes.
 
 signal ferme
+## Le joueur veut changer de kart : le menu ouvre le garage, puis revient ici.
+signal garage
 
 var _entree: Control
 var _salon: Control
@@ -22,6 +24,9 @@ var _joueurs: VBoxContainer
 var _adresses: Label
 var _piste: OptionButton
 var _tours: OptionButton
+var _mode: OptionButton
+var _classe: OptionButton
+var _miroir: CheckButton
 var _lancer: Button
 var _attente: Label
 
@@ -130,6 +135,9 @@ func _ecran_salon() -> Control:
 	_titre_salon = UITheme.titre("SALON", 40)
 	colonne.add_child(_titre_salon)
 	_adresses = Label.new()
+	# L'adresse Internet, ou pourquoi il n'y en a pas : parfois deux lignes.
+	_adresses.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_adresses.custom_minimum_size.x = 660
 	_adresses.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_adresses.add_theme_color_override("font_color", UITheme.TEXTE_DOUX)
 	_adresses.add_theme_font_size_override("font_size", 20)
@@ -137,6 +145,24 @@ func _ecran_salon() -> Control:
 
 	_joueurs = VBoxContainer.new()
 	colonne.add_child(_joueurs)
+
+	# Une course seule, ou une des coupes. L'id est l'index de la coupe plus
+	# un : un id de -1 veut dire « prends l'index » pour OptionButton.
+	_mode = OptionButton.new()
+	_mode.add_item("Course seule", Reseau.SANS_COUPE + 1)
+	for i in TrackCatalog.COUPES.size():
+		_mode.add_item("Grand Prix : %s" % TrackCatalog.COUPES[i].nom, i + 1)
+	_mode.item_selected.connect(func(_i: int) -> void: _envoyer_config())
+	colonne.add_child(_ligne("Mode", _mode))
+	_classe = OptionButton.new()
+	for c in Cylindree.NOMS.size():
+		_classe.add_item(Cylindree.nom(c), c)
+	_classe.item_selected.connect(func(_i: int) -> void: _envoyer_config())
+	colonne.add_child(_ligne("Cylindrée", _classe))
+	_miroir = CheckButton.new()
+	_miroir.text = "Circuits en miroir"
+	_miroir.toggled.connect(func(_actif: bool) -> void: _envoyer_config())
+	colonne.add_child(_miroir)
 
 	_piste = OptionButton.new()
 	for i in TrackCatalog.PISTES.size():
@@ -161,10 +187,13 @@ func _ecran_salon() -> Control:
 	var quitter := UITheme.bouton("Quitter le salon", func() -> void:
 		Reseau.quitter()
 		_montrer(_entree))
-	quitter.custom_minimum_size.x = 260
+	quitter.custom_minimum_size.x = 220
 	boutons.add_child(quitter)
+	var vers_garage := UITheme.bouton("Garage", func() -> void: garage.emit())
+	vers_garage.custom_minimum_size.x = 160
+	boutons.add_child(vers_garage)
 	_lancer = UITheme.bouton("Lancer la course", Reseau.lancer_course)
-	_lancer.custom_minimum_size.x = 260
+	_lancer.custom_minimum_size.x = 240
 	boutons.add_child(_lancer)
 	colonne.add_child(boutons)
 	return ecran
@@ -219,12 +248,22 @@ func _rafraichir_salon() -> void:
 		enfant.queue_free()
 	var hote := Reseau.est_hote()
 	for peer in Reseau.lobby.ordre:
+		# La couleur de son kart, puis son nom et son modèle.
+		var ligne := HBoxContainer.new()
+		ligne.add_theme_constant_override("separation", 10)
+		var vehicule := Reseau.lobby.vehicule(peer)
+		var pastille := ColorRect.new()
+		pastille.color = ModeleKart.couleur(vehicule[1])
+		pastille.custom_minimum_size = Vector2(18, 18)
+		pastille.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		ligne.add_child(pastille)
 		var l := Label.new()
 		var marque := " (hôte)" if peer == 1 else ""
 		var toi := "  ← toi" if peer == Reseau.mon_id() else ""
-		l.text = "• %s%s%s" % [Reseau.lobby.joueurs[peer], marque, toi]
+		l.text = "%s%s — %s%s" % [Reseau.lobby.joueurs[peer], marque, ModeleKart.nom(vehicule[0]), toi]
 		l.add_theme_color_override("font_color", UITheme.ACCENT if peer == Reseau.mon_id() else UITheme.TEXTE)
-		_joueurs.add_child(l)
+		ligne.add_child(l)
+		_joueurs.add_child(ligne)
 	var places_ia := Lobby.PLACES - Reseau.lobby.joueurs.size()
 	if places_ia > 0:
 		var l := Label.new()
@@ -242,22 +281,41 @@ func _rafraichir_salon() -> void:
 	if index >= 0:
 		_piste.select(index)
 	_tours.select(_tours.get_item_index(int(Reseau.config.get("tours", 3))))
-	_piste.disabled = not hote
-	_tours.disabled = not hote
+	_mode.select(_mode.get_item_index(int(Reseau.config.get("coupe", Reseau.SANS_COUPE)) + 1))
+	_classe.select(_classe.get_item_index(int(Reseau.config.get("cylindree", Cylindree.Classe.CC150))))
+	_miroir.set_pressed_no_signal(bool(Reseau.config.get("miroir", false)))
+	# Ce que l'hôte a débloqué vaut pour le salon.
+	_classe.set_item_disabled(_classe.get_item_index(Cylindree.Classe.CC200),
+		hote and not GameSettings.debloque_200cc())
+	_miroir.visible = bool(Reseau.config.get("miroir", false)) or (hote and GameSettings.debloque_miroir())
+	var en_coupe := int(Reseau.config.get("coupe", Reseau.SANS_COUPE)) != Reseau.SANS_COUPE
+	_mode.disabled = not hote
+	_classe.disabled = not hote
+	_miroir.disabled = not hote
+	# En coupe, les circuits et les tours sont ceux de la coupe.
+	_piste.disabled = not hote or en_coupe
+	_tours.disabled = not hote or en_coupe
 	_lancer.visible = hote
 	_attente.visible = not hote
 
 
 static func adresses_texte() -> String:
 	var a := Reseau.adresses_locales()
+	var lignes := PackedStringArray()
 	if a.is_empty():
-		return "Pas d'adresse réseau trouvée : es-tu connecté au Wi-Fi ?"
-	return "Pour te rejoindre : %s" % " ou ".join(a)
+		lignes.append("Pas d'adresse réseau trouvée : es-tu connecté au Wi-Fi ?")
+	else:
+		lignes.append("Pour te rejoindre : %s" % " ou ".join(a))
+	var internet := Reseau.port_internet.texte()
+	if internet != "":
+		lignes.append(internet)
+	return "\n".join(lignes)
 
 
 func _envoyer_config() -> void:
 	var piste: TrackInfo = TrackCatalog.PISTES[_piste.get_selected_id()]
-	Reseau.choisir_config(piste.id, _tours.get_selected_id())
+	Reseau.choisir_config(piste.id, _tours.get_selected_id(), _classe.get_selected_id(),
+		_mode.get_selected_id() - 1, _miroir.button_pressed)
 
 
 func _ligne(texte: String, controle: Control) -> HBoxContainer:

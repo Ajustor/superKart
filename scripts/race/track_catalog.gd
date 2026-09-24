@@ -15,6 +15,13 @@ const PISTES: Array[TrackInfo] = [
 	preload("res://resources/tracks/ruban_celeste_info.tres"),
 ]
 
+## Les arènes du mode bataille : des anneaux larges et fermés, où l'on ne
+## fait pas la course. Hors de PISTES : elles n'ont rien à faire au menu des
+## courses ni dans les coupes.
+const ARENES: Array[TrackInfo] = [
+	preload("res://resources/tracks/arene_ovale_info.tres"),
+]
+
 ## Les coupes du Grand Prix : quatre circuits chacune, du plus doux au plus
 ## redoutable. Le menu les affiche dans cet ordre ; leur index sert de clé
 ## aux trophées, ne les réordonne pas.
@@ -33,7 +40,7 @@ const COUPES := [
 
 
 static func par_id(id: String) -> TrackInfo:
-	for piste in PISTES:
+	for piste in PISTES + ARENES:
 		if piste.id == id:
 			return piste
 	return null

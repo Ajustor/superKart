@@ -27,6 +27,13 @@ var _annonce: Label
 var _temps_annonce: float = 0.0
 var _depuis_depart: float = -1.0
 var _carte: MiniMap
+## Une flèche à côté de la place quand on en gagne ou en perd une.
+var _fleche: Label
+var _fleche_reste: float = 0.0
+var _place_vue: int = 0
+## En mode bataille : les ballons et le temps remplacent les tours.
+var _bataille: Bataille
+const DUREE_FLECHE := 1.2
 
 
 func _ready() -> void:
@@ -41,6 +48,13 @@ func _ready() -> void:
 	_label.add_theme_color_override("font_outline_color", Color.BLACK)
 	_label.add_theme_constant_override("outline_size", 6)
 	add_child(_label)
+	_fleche = Label.new()
+	_fleche.position = Vector2(135, 12)
+	_fleche.add_theme_font_size_override("font_size", 34)
+	_fleche.add_theme_color_override("font_outline_color", Color.BLACK)
+	_fleche.add_theme_constant_override("outline_size", 6)
+	_fleche.visible = false
+	add_child(_fleche)
 
 	_annonce = Label.new()
 	_annonce.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
@@ -66,6 +80,14 @@ func _ready() -> void:
 		_annoncer("GO !"))
 	_session.tour_boucle.connect(_sur_tour)
 	_session.depart_du_joueur.connect(_sur_depart_du_joueur)
+	_bataille = _session.get_parent().get_node_or_null("Bataille") as Bataille if _session.get_parent() != null else null
+	if _bataille != null:
+		_bataille.ballon_perdu.connect(func(e: RaceEntry, restants: int) -> void:
+			if e == _session.entries[0] and restants > 0:
+				_annoncer("BALLON CREVÉ !", 1.2))
+		_bataille.elimine.connect(func(e: RaceEntry) -> void:
+			if e == _session.entries[0]:
+				_annoncer("ÉLIMINÉ !\n%s" % RaceScoring.ordinal(e.place_finale), 3.0))
 
 
 func _placer_la_carte() -> void:
@@ -90,6 +112,22 @@ func _sur_tour(entree: RaceEntry) -> void:
 		_annoncer("DERNIER TOUR !")
 
 
+## Une place gagnée : ▲ vert ; perdue : ▼ rouge, le temps d'y jeter un œil.
+## Pas pendant le décompte : le classement de la grille n'est pas une course.
+func _suivre_la_place(place: int, delta: float) -> void:
+	if _session.entries.size() <= 1 or place <= 0:
+		return
+	if _session.en_course and _place_vue > 0 and place != _place_vue:
+		var gagne := place < _place_vue
+		_fleche.text = "▲" if gagne else "▼"
+		_fleche.add_theme_color_override("font_color", Color(0.35, 1.0, 0.45) if gagne else Color(1.0, 0.35, 0.3))
+		_fleche_reste = DUREE_FLECHE
+	_place_vue = place
+	_fleche_reste = maxf(_fleche_reste - delta, 0.0)
+	_fleche.visible = _fleche_reste > 0.0
+	_fleche.modulate.a = minf(_fleche_reste / 0.3, 1.0)
+
+
 func _annoncer(texte: String, duree: float = DUREE_ANNONCE) -> void:
 	_annonce.text = texte
 	_annonce.add_theme_font_size_override("font_size", 120 if texte.length() <= 4 else 72)
@@ -102,6 +140,11 @@ func _process(delta: float) -> void:
 	var moi := _session.entries[0]
 	var tour := mini(moi.progress.lap + 1, _session.lap_count)
 	var lignes := PackedStringArray()
+	if _bataille != null:
+		_label.text = "\n".join(lignes_de_bataille(_bataille, moi, _session.entries.size()))
+		_suivre_la_place(moi.position, delta)
+		_process_annonces(delta)
+		return
 	# maxi(..., 1) couvre la toute première image, avant que classer() n'ait
 	# tourné : afficher « 0e » serait un bug visible.
 	# Seul en piste (contre-la-montre), la place ne dit rien.
@@ -112,7 +155,11 @@ func _process(delta: float) -> void:
 	if moi.timer.has_best:
 		lignes.append("MEILLEUR %s" % RaceTimer.format(moi.timer.best))
 	_label.text = "\n".join(lignes)
+	_suivre_la_place(moi.position, delta)
+	_process_annonces(delta)
 
+
+func _process_annonces(delta: float) -> void:
 	if not _session.en_course:
 		_annonce.text = str(ceili(_session.decompte_restant))
 		_annonce.add_theme_font_size_override("font_size", 120)
@@ -130,6 +177,7 @@ func _draw() -> void:
 		return
 	_dessiner_vitesse()
 	_dessiner_objet()
+	_dessiner_pieces()
 	_dessiner_feux()
 
 
@@ -150,6 +198,18 @@ func _dessiner_objet() -> void:
 	if inventaire.roulette <= 0.0 and inventaire.charges > 1:
 		draw_string(ThemeDB.fallback_font, cadre.position + Vector2(CASE_OBJET - 30.0, CASE_OBJET - 8.0),
 			"×%d" % inventaire.charges, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color.WHITE)
+
+
+## Les pièces, à gauche de l'emplacement d'objet (dessous, c'est la
+## mini-carte), dès qu'on en a une.
+func _dessiner_pieces() -> void:
+	var pieces := _session.entries[0].kart.motor.pieces
+	if pieces <= 0:
+		return
+	var coin := Vector2(size.x - 104.0 - CASE_OBJET - 86.0, 16.0 + CASE_OBJET * 0.5 - 14.0)
+	ItemIcons.piece(self, coin + Vector2(14, 14), 13.0)
+	draw_string(ThemeDB.fallback_font, coin + Vector2(34, 22), "×%d" % pieces,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color.WHITE)
 
 
 ## Les feux de départ : trois rouges qui s'allument une seconde après l'autre,
@@ -192,3 +252,14 @@ func _dessiner_vitesse() -> void:
 		var longueur := randf_range(0.08, 0.16) * rayon
 		draw_line(centre + dir * debut, centre + dir * (debut + longueur),
 			Color(1, 1, 1, 0.35 * force), randf_range(2.0, 4.0))
+
+
+## Les lignes du coin en bataille : ses ballons, qui reste en lice, le temps.
+static func lignes_de_bataille(bataille: Bataille, moi: RaceEntry, total: int) -> PackedStringArray:
+	var restants := int(bataille.ballons.get(moi, 0))
+	var lignes := PackedStringArray()
+	lignes.append("BALLONS " + "●".repeat(restants) + "○".repeat(Bataille.BALLONS - restants))
+	lignes.append("EN LICE %d/%d" % [bataille.vivants().size(), total])
+	var t := ceili(bataille.temps_restant)
+	lignes.append("%d:%02d" % [t / 60, t % 60])
+	return lignes

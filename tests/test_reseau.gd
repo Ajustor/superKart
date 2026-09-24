@@ -129,6 +129,24 @@ func test_l_etat_d_un_kart_fait_l_aller_retour() -> void:
 	assert_eq(copie.motor.drift_dir, -1)
 
 
+## Le tonneau d'un kart distant n'était pas transmis : on ne le voyait que
+## sur sa propre machine.
+func test_la_figure_d_un_kart_distant_se_voit_une_fois() -> void:
+	var pilote := _kart()
+	pilote.figures = 1
+	var copie := _kart()
+	watch_signals(copie)
+	var etat := KartSnapshot.capturer(2, pilote)
+	KartSnapshot.appliquer(etat, copie)
+	KartSnapshot.appliquer(etat, copie)
+	assert_signal_emit_count(copie, "figure", 1, "un tonneau par figure, pas un par paquet")
+	# Un paquet perdu ne fait pas manquer la suivante.
+	pilote.figures = 3
+	KartSnapshot.appliquer(KartSnapshot.capturer(2, pilote), copie)
+	assert_signal_emit_count(copie, "figure", 2)
+	assert_eq(copie.figures, 3)
+
+
 func test_un_paquet_se_decoupe_kart_par_kart() -> void:
 	var paquet := PackedFloat32Array()
 	for gid in 3:
@@ -446,3 +464,69 @@ func test_les_objets_de_l_hote_se_recopient_chez_le_client() -> void:
 	client.appliquer_instantane(hote.instantane())
 	assert_eq(client.bananes.size(), 0)
 	assert_eq(client.carapaces.size(), 0)
+
+
+# --- Cylindrée et Grand Prix en réseau ---------------------------------------------------
+
+func test_la_cylindree_de_l_hote_vaut_pour_tous() -> void:
+	var course := RaceLauncher.monter_reseau(_plan_fixe(),
+		{piste = "circuit_01", tours = 2, cylindree = Cylindree.Classe.CC50}, 42, false)
+	var joueur := course.get_node("Kart") as Kart
+	assert_almost_eq(joueur.stats.max_speed, 22.0 * Cylindree.VITESSE[0], 0.01)
+	course.free()
+
+
+func test_la_coupe_compte_sous_les_vrais_noms() -> void:
+	var course := RaceLauncher.monter_reseau(_plan_fixe(), {piste = "circuit_01", tours = 2}, 1, true)
+	var session := course.get_node("Session") as RaceSession
+	assert_eq(session.noms[0], "Vous", "à l'écran, le joueur local reste « Vous »")
+	assert_eq(session.noms_reels[0], "Hôte", "mais la coupe le compte sous son nom")
+	course.free()
+
+
+func test_la_coupe_voyage_telle_quelle() -> void:
+	var gp := GrandPrix.new(1, Cylindree.Classe.CC100)
+	gp.compter(PackedStringArray(["Client", "Turbo", "Hôte", "Zéphyr", "Piston", "Comète", "Bielle", "Rafale"]))
+	var relue := GrandPrix.depuis(gp.en_dictionnaire())
+	assert_eq(relue.coupe, 1)
+	assert_eq(relue.classe, Cylindree.Classe.CC100)
+	assert_eq(relue.manche, 1)
+	assert_eq(relue.points, gp.points)
+	assert_eq(relue.classement(), gp.classement())
+	assert_eq(relue.dernieres_places["Hôte"], 3)
+
+
+func test_la_manche_prend_le_circuit_et_les_tours_de_la_coupe() -> void:
+	var gp := GrandPrix.new(0, Cylindree.Classe.CC50)
+	gp.compter(PackedStringArray(["a"]))
+	var c: Dictionary = preload("res://scripts/net/network_manager.gd").config_de_manche(
+		{piste = "ruban_celeste", tours = 5, cylindree = Cylindree.Classe.CC150, coupe = 0}, gp)
+	assert_eq(c.piste, TrackCatalog.COUPES[0].pistes[1])
+	assert_eq(c.tours, gp.piste().tours)
+	assert_eq(c.cylindree, Cylindree.Classe.CC50)
+	assert_true(c.has("gp"))
+
+
+func test_en_coupe_chacun_repart_de_sa_place_d_arrivee() -> void:
+	var l := Lobby.new()
+	l.ajouter(1, "Hôte")
+	l.ajouter(42, "Client")
+	var gp := GrandPrix.new(0)
+	var ordre := PackedStringArray(["Turbo", "Zéphyr", "Client", "Piston", "Comète", "Hôte"])
+	gp.compter(ordre)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3
+	var plan := l.plan_de_coupe(gp, rng)
+	assert_eq(plan.size(), Lobby.PLACES)
+	for gid in plan.size():
+		assert_eq(plan[gid].gid, gid, "le plan reste rangé par case")
+	for i in ordre.size():
+		assert_eq(plan[i].nom, ordre[i], "%s repart de sa place d'arrivée" % ordre[i])
+	var client: Dictionary = plan[2]
+	assert_eq(client.peer, 42, "le joueur garde son kart")
+
+
+func test_un_joueur_ne_prend_pas_le_nom_d_une_ia() -> void:
+	var l := Lobby.new()
+	var nom := l.ajouter(7, "Turbo")
+	assert_ne(nom, "Turbo", "la coupe confondrait ses points avec ceux de l'IA")

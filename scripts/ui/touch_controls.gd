@@ -234,7 +234,8 @@ func _appliquer() -> void:
 func _diriger() -> void:
 	var voulu := 0.0
 	if _doigt_joystick >= 0:
-		voulu = braquage(_centre_joystick, _pouce, rayon_joystick(size))
+		# Plus sensible, moins de chemin à faire pour braquer à fond.
+		voulu = braquage(_centre_joystick, _pouce, rayon_joystick(size) / GameSettings.sensibilite_joystick)
 	if is_equal_approx(voulu, _direction):
 		return
 	_direction = voulu

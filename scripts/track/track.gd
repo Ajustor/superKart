@@ -231,6 +231,14 @@ func point_de_reprise(distance: float) -> float:
 
 
 ## Le tremplin sous ce point du circuit, ou null.
+## La plaque d'accélération sous ce point, ou null.
+func accelerateur_en(distance: float, lateral: float) -> TrackBoost:
+	for element in elements():
+		if element is TrackBoost and element.contient(distance, lateral, track_curve.length):
+			return element
+	return null
+
+
 func tremplin_en(distance: float, lateral: float) -> TrackJump:
 	for element in elements():
 		if element is TrackJump and element.contient(distance, lateral, track_curve.length):

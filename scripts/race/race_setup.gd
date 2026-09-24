@@ -12,6 +12,8 @@ enum Mode {
 	GRAND_PRIX,
 	## Seul en piste, trois champignons, contre son propre fantôme.
 	CONTRE_LA_MONTRE,
+	## Dans une arène, trois ballons chacun : le dernier en lice gagne.
+	BATAILLE,
 }
 
 ## Case de départ tirée au sort au lancement de chaque course.
@@ -23,6 +25,11 @@ const CONCURRENTS := 8
 
 var mode: Mode = Mode.COURSE
 var classe: int = Cylindree.Classe.CC150
+## Le kart du joueur (ModeleKart) et sa couleur, choisis au garage.
+var modele: int = ModeleKart.STANDARD
+var couleur: int = 0
+## Le circuit retourné gauche-droite (Miroir). Se débloque.
+var miroir := false
 var piste: TrackInfo
 var tours: int = 3
 
@@ -55,6 +62,7 @@ func case_effective(concurrents: int, rng: RandomNumberGenerator) -> int:
 func commencer_grand_prix(coupe: int) -> void:
 	mode = Mode.GRAND_PRIX
 	grand_prix = GrandPrix.new(coupe, classe)
+	grand_prix.miroir = miroir
 	preparer_manche()
 
 
@@ -63,6 +71,7 @@ func preparer_manche() -> void:
 	if grand_prix == null:
 		return
 	classe = grand_prix.classe
+	miroir = grand_prix.miroir
 	choisir_piste(grand_prix.piste())
 
 
@@ -76,10 +85,13 @@ func classe_effective() -> int:
 ## seul, comme avant l'arrivée des cylindrées : les records déjà enregistrés
 ## restent valables. Le contre-la-montre a ses propres records.
 func cle_record() -> String:
-	if piste == null:
+	# Une bataille n'a pas de chrono à battre.
+	if piste == null or mode == Mode.BATAILLE:
 		return ""
+	var cle := piste.id
 	if mode == Mode.CONTRE_LA_MONTRE:
-		return "%s@clm" % piste.id
-	if classe == Cylindree.Classe.CC150:
-		return piste.id
-	return "%s@%s" % [piste.id, Cylindree.nom(classe)]
+		cle = "%s@clm" % piste.id
+	elif classe != Cylindree.Classe.CC150:
+		cle = "%s@%s" % [piste.id, Cylindree.nom(classe)]
+	# Le miroir est un autre circuit : ses records sont à part.
+	return cle + "@miroir" if miroir else cle

@@ -176,7 +176,8 @@ func test_chaque_concurrent_a_son_propre_etat() -> void:
 		session.avancer(session.entries[1], track.track_curve.position_at(float(i) * 0.5), 1.0 / 60.0)
 
 	assert_gt(session.entries[1].progress.total, 5.0, "celui qui roule avance")
-	assert_almost_eq(session.entries[0].progress.total, -RaceSession.RECUL_GRILLE, 0.001,
+	var depart := RaceSession.case_de_grille(session.entries[0].case_de_grille).x
+	assert_almost_eq(session.entries[0].progress.total, depart, 0.001,
 		"et les autres restent où ils sont")
 	assert_almost_eq(session.entries[2].timer.current, 0.0, 0.001,
 		"un chrono par concurrent, pas un pour tous")
@@ -220,11 +221,29 @@ func test_la_grille_part_en_amont_de_la_ligne() -> void:
 			"la case %d doit être derrière la ligne, à moins de trente mètres" % i)
 
 
-func test_tout_le_monde_part_a_zero_de_distance_parcourue() -> void:
+## Le tour se boucle sur la ligne peinte pour tout le monde : chacun part de
+## l'avancement de sa case. Avec un même retard pour tous, le dernier de la
+## grille bouclait son tour dix-sept mètres avant la ligne.
+func test_chacun_part_de_l_avancement_de_sa_case() -> void:
 	_monter(8)
 	for entree in session.entries:
-		assert_almost_eq(entree.progress.total, -RaceSession.RECUL_GRILLE, 0.001,
-			"la grille décale la position, jamais la distance à parcourir")
+		assert_almost_eq(entree.progress.total, RaceSession.case_de_grille(entree.case_de_grille).x, 0.001)
+
+
+func test_le_dernier_de_la_grille_boucle_son_tour_sur_la_ligne() -> void:
+	_monter(8)
+	var L := track.track_curve.length
+	var dernier: RaceEntry = session.entries[0]
+	for entree in session.entries:
+		if entree.case_de_grille > dernier.case_de_grille:
+			dernier = entree
+	var d := RaceSession.case_de_grille(dernier.case_de_grille).x
+	while d < L - 0.5:
+		d += 0.5
+		session.avancer(dernier, track.track_curve.position_at(d), 1.0 / 60.0)
+	assert_eq(dernier.progress.lap, 0, "pas encore la ligne, même parti de loin")
+	session.avancer(dernier, track.track_curve.position_at(L + 0.5), 1.0 / 60.0)
+	assert_eq(dernier.progress.lap, 1, "la ligne franchie")
 
 
 func test_la_grille_tient_sur_la_chaussee() -> void:

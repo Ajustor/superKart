@@ -49,15 +49,29 @@ func _ready() -> void:
 	_message.add_theme_color_override("font_color", UITheme.ACCENT)
 	colonne.add_child(_message)
 
-	_menu = UITheme.bouton("Menu principal", func() -> void:
-		GameSettings.course.mode = RaceSetup.Mode.COURSE
-		GameSettings.course.grand_prix = null
-		RaceLauncher.retour_au_menu(get_tree()))
+	_menu = UITheme.bouton("Menu principal", _sortir)
 	_menu.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	colonne.add_child(_menu)
 
 
-func montrer(gp: GrandPrix, moi: String) -> void:
+## En réseau, l'hôte ramène tout le monde au salon ; les autres peuvent
+## partir sans l'attendre.
+func _sortir() -> void:
+	if Reseau.actif():
+		if Reseau.est_hote():
+			Reseau.retour_salon()
+		else:
+			Reseau.abandonner()
+		return
+	GameSettings.course.mode = RaceSetup.Mode.COURSE
+	GameSettings.course.grand_prix = null
+	RaceLauncher.retour_au_menu(get_tree())
+
+
+## `nouveaute` : ce que ce trophée vient de débloquer, s'il y a lieu.
+func montrer(gp: GrandPrix, moi: String, nouveaute: String = "") -> void:
+	if Reseau.actif():
+		_menu.text = "Retour au salon" if Reseau.est_hote() else "Quitter la partie"
 	var classement := gp.classement()
 	_titre.text = "%s  ·  %s" % [gp.nom().to_upper(), Cylindree.nom(gp.classe)]
 
@@ -83,6 +97,8 @@ func montrer(gp: GrandPrix, moi: String) -> void:
 		_message.text = "%s place : %s" % [RaceScoring.ordinal(place), MEDAILLES[place - 1].to_lower()]
 	else:
 		_message.text = "Vous terminez %s. Le podium, ce sera pour la prochaine fois !" % RaceScoring.ordinal(place)
+	if nouveaute != "":
+		_message.text += "\n" + nouveaute
 	show()
 	_menu.grab_focus()
 

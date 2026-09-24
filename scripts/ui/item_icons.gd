@@ -24,6 +24,35 @@ static func dessiner(toile: CanvasItem, objet: int, centre: Vector2, r: float) -
 			_carapace(toile, centre, r, Color(0.15, 0.75, 0.2))
 		ItemKind.RED_SHELL:
 			_carapace(toile, centre, r, Color(0.9, 0.12, 0.1))
+		ItemKind.BLUE_SHELL:
+			# Des ailes blanches de part et d'autre, puis la carapace.
+			for cote in [-1.0, 1.0]:
+				toile.draw_colored_polygon(PackedVector2Array([
+					centre + Vector2(cote * r * 0.45, -r * 0.2),
+					centre + Vector2(cote * r * 1.05, -r * 0.6),
+					centre + Vector2(cote * r * 0.95, r * 0.05),
+				]), Color(0.97, 0.97, 1.0))
+			_carapace(toile, centre, r * 0.9, Color(0.15, 0.35, 1.0))
+		ItemKind.LIGHTNING:
+			toile.draw_colored_polygon(PackedVector2Array([
+				centre + Vector2(r * 0.25, -r * 0.95), centre + Vector2(-r * 0.5, r * 0.1),
+				centre + Vector2(-r * 0.02, r * 0.1), centre + Vector2(-r * 0.3, r * 0.95),
+				centre + Vector2(r * 0.5, -r * 0.15), centre + Vector2(r * 0.02, -r * 0.15),
+			]), Color(1.0, 0.88, 0.2))
+		ItemKind.STAR:
+			toile.draw_colored_polygon(etoile(centre, r * 0.95, r * 0.42), Color(1.0, 0.85, 0.15))
+			toile.draw_circle(centre + Vector2(-r * 0.15, -r * 0.05), r * 0.08, Color(0.1, 0.1, 0.1))
+			toile.draw_circle(centre + Vector2(r * 0.15, -r * 0.05), r * 0.08, Color(0.1, 0.1, 0.1))
+		ItemKind.FAKE_BOX:
+			var cote := r * 1.5
+			var cadre := Rect2(centre - Vector2(cote, cote) * 0.5, Vector2(cote, cote))
+			toile.draw_rect(cadre, Color(1.0, 0.45, 0.4, 0.85))
+			toile.draw_rect(cadre, Color.WHITE, false, 2.0)
+			toile.draw_string(ThemeDB.fallback_font, centre + Vector2(-r * 0.25, r * 0.35), "¿",
+				HORIZONTAL_ALIGNMENT_LEFT, -1, int(r * 1.1), Color.WHITE)
+		ItemKind.COINS:
+			piece(toile, centre + Vector2(-r * 0.3, r * 0.15), r * 0.55)
+			piece(toile, centre + Vector2(r * 0.3, -r * 0.15), r * 0.55)
 
 
 static func _champignon(toile: CanvasItem, centre: Vector2, r: float) -> void:
@@ -48,3 +77,18 @@ static func _carapace(toile: CanvasItem, centre: Vector2, r: float, couleur: Col
 		var a := TAU * float(i) / 6.0
 		hexagone.append(centre + Vector2(cos(a), sin(a)) * r * 0.26)
 	toile.draw_colored_polygon(hexagone, couleur.lightened(0.45))
+
+
+## Une étoile à cinq branches, pointe en haut.
+static func etoile(centre: Vector2, grand: float, petit: float) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	for i in 10:
+		var a := -PI * 0.5 + PI * float(i) / 5.0
+		points.append(centre + Vector2(cos(a), sin(a)) * (grand if i % 2 == 0 else petit))
+	return points
+
+
+static func piece(toile: CanvasItem, centre: Vector2, r: float) -> void:
+	toile.draw_circle(centre, r, Color(0.85, 0.62, 0.1))
+	toile.draw_circle(centre, r * 0.78, Color(1.0, 0.84, 0.2))
+	toile.draw_rect(Rect2(centre - Vector2(r * 0.12, r * 0.45), Vector2(r * 0.24, r * 0.9)), Color(0.85, 0.62, 0.1))

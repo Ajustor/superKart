@@ -49,6 +49,16 @@ var pseudo: String = ""
 ## La dernière adresse tapée pour rejoindre une partie.
 var derniere_adresse: String = ""
 
+## Sensibilité du joystick tactile : à 1,5, le pouce n'a à parcourir que les
+## deux tiers du chemin pour braquer à fond.
+const SENSIBILITE_MIN := 0.6
+const SENSIBILITE_MAX := 1.8
+var sensibilite_joystick: float = 1.0
+
+## Les commandes changées par le joueur : action -> liste d'événements décrits
+## (voir Touches). Vide : celles du projet.
+var touches: Dictionary = {}
+
 ## La dernière course réglée dans le menu. Rejouer la reprend telle quelle.
 var course := RaceSetup.new()
 
@@ -65,6 +75,7 @@ var _trophees: Dictionary = {}
 func _ready() -> void:
 	charger()
 	appliquer()
+	Touches.appliquer(touches)
 
 
 func charger() -> void:
@@ -80,6 +91,12 @@ func charger() -> void:
 	acceleration_auto = bool(fichier.get_value("commandes", "acceleration_auto", acceleration_auto))
 	vibrations = bool(fichier.get_value("commandes", "vibrations", vibrations))
 	joystick = bool(fichier.get_value("commandes", "joystick", joystick))
+	sensibilite_joystick = clampf(float(fichier.get_value("commandes", "sensibilite", sensibilite_joystick)),
+		SENSIBILITE_MIN, SENSIBILITE_MAX)
+	touches.clear()
+	if fichier.has_section("touches"):
+		for action in fichier.get_section_keys("touches"):
+			touches[action] = fichier.get_value("touches", action)
 	mini_carte = bool(fichier.get_value("affichage", "mini_carte", mini_carte))
 	afficher_fps = bool(fichier.get_value("affichage", "fps", afficher_fps))
 	qualite = clampi(int(fichier.get_value("affichage", "qualite", qualite)),
@@ -87,7 +104,9 @@ func charger() -> void:
 	pseudo = str(fichier.get_value("reseau", "pseudo", pseudo))
 	derniere_adresse = str(fichier.get_value("reseau", "adresse", derniere_adresse))
 	course.classe = clampi(int(fichier.get_value("course", "cylindree", course.classe)),
-		Cylindree.Classe.CC50, Cylindree.Classe.CC150)
+		Cylindree.Classe.CC50, Cylindree.Classe.CC200)
+	course.modele = clampi(int(fichier.get_value("garage", "modele", course.modele)), 0, ModeleKart.nombre() - 1)
+	course.couleur = posmod(int(fichier.get_value("garage", "couleur", course.couleur)), ModeleKart.COULEURS.size())
 	_trophees.clear()
 	if fichier.has_section("trophees"):
 		for cle in fichier.get_section_keys("trophees"):
@@ -108,12 +127,17 @@ func sauver() -> void:
 	fichier.set_value("commandes", "acceleration_auto", acceleration_auto)
 	fichier.set_value("commandes", "vibrations", vibrations)
 	fichier.set_value("commandes", "joystick", joystick)
+	fichier.set_value("commandes", "sensibilite", sensibilite_joystick)
+	for action in touches:
+		fichier.set_value("touches", action, touches[action])
 	fichier.set_value("affichage", "mini_carte", mini_carte)
 	fichier.set_value("affichage", "fps", afficher_fps)
 	fichier.set_value("affichage", "qualite", qualite)
 	fichier.set_value("reseau", "pseudo", pseudo)
 	fichier.set_value("reseau", "adresse", derniere_adresse)
 	fichier.set_value("course", "cylindree", course.classe)
+	fichier.set_value("garage", "modele", course.modele)
+	fichier.set_value("garage", "couleur", course.couleur)
 	for cle in _records:
 		fichier.set_value("records", cle, _records[cle])
 	for cle in _trophees:
@@ -220,3 +244,34 @@ func proposer_trophee(coupe: int, classe: int, place: int) -> bool:
 	_trophees[cle_de_trophee(coupe, classe)] = place
 	sauver()
 	return true
+
+
+## La 200cc : l'or dans toutes les coupes en 150cc.
+func debloque_200cc() -> bool:
+	return _or_partout(Cylindree.Classe.CC150)
+
+
+## Le miroir : l'or dans toutes les coupes en 100cc.
+func debloque_miroir() -> bool:
+	return _or_partout(Cylindree.Classe.CC100)
+
+
+func _or_partout(classe: int) -> bool:
+	for i in TrackCatalog.COUPES.size():
+		if trophee(i, classe) != 1:
+			return false
+	return true
+
+
+## Remplace une touche et l'enregistre (voir Touches.remplacer).
+func changer_touche(action: StringName, nouveau: InputEvent) -> void:
+	for changee in Touches.remplacer(action, nouveau):
+		touches[String(changee)] = Touches.decrire_action(changee)
+	sauver()
+
+
+## Les commandes d'origine, pour toutes les actions.
+func reinitialiser_touches() -> void:
+	touches.clear()
+	Touches.appliquer(touches)
+	sauver()

@@ -121,7 +121,7 @@ func _fill(delta: float) -> void:
 func veut_utiliser_objet() -> bool:
 	if objet_pret == ItemKind.NONE:
 		return false
-	if objet_pret == ItemKind.BANANA and en_tete:
+	if (objet_pret == ItemKind.BANANA or objet_pret == ItemKind.FAKE_BOX) and en_tete:
 		return ecart_poursuivant < ALERTE_POURSUIVANT
 	return true
 

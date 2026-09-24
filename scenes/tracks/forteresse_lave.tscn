@@ -1,5 +1,6 @@
 [gd_scene format=3]
 
+[ext_resource type="Shader" path="res://shaders/liquide.gdshader" id="sh_liquide"]
 [ext_resource type="Script" path="res://scripts/track/track.gd" id="1_track"]
 [ext_resource type="Curve3D" path="res://resources/tracks/forteresse_lave_curve.tres" id="2_curve"]
 [ext_resource type="Script" path="res://scripts/track/features/track_wall.gd" id="3_wall"]
@@ -20,12 +21,15 @@ glow_enabled = true
 glow_intensity = 0.7
 glow_hdr_threshold = 0.8
 
-[sub_resource type="StandardMaterial3D" id="Mat_lave"]
-albedo_color = Color(0.95, 0.3, 0.05, 1)
-roughness = 0.6
-emission_enabled = true
-emission = Color(1, 0.28, 0, 1)
-emission_energy_multiplier = 1.1
+[sub_resource type="ShaderMaterial" id="Mat_lave"]
+shader = ExtResource("sh_liquide")
+shader_parameter/couleur_profonde = Color(0.55, 0.08, 0.02, 1)
+shader_parameter/couleur_claire = Color(1, 0.55, 0.1, 1)
+shader_parameter/echelle = 7.0
+shader_parameter/vitesse = 0.12
+shader_parameter/rides = 0.2
+shader_parameter/lueur = 1.6
+shader_parameter/rugosite = 0.7
 
 [sub_resource type="PlaneMesh" id="Lave"]
 material = SubResource("Mat_lave")

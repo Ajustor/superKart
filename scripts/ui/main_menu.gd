@@ -8,18 +8,25 @@ var _accueil: Control
 var _selection: Control
 var _options: OptionsPanel
 var _multi: MultiplayerPanel
+var _astuces: AstucesPanel
+var _garage: GaragePanel
+## L'écran d'où l'on est venu au garage : l'accueil ou le salon.
+var _avant_garage: Control
 
 const NOMS_MODES := {
 	RaceSetup.Mode.GRAND_PRIX: "Grand Prix",
 	RaceSetup.Mode.COURSE: "Course libre",
 	RaceSetup.Mode.CONTRE_LA_MONTRE: "Contre-la-montre",
+	RaceSetup.Mode.BATAILLE: "Bataille",
 }
 
 var _boutons_piste: Array[Button] = []
+var _boutons_arene: Array[Button] = []
 var _boutons_mode: Dictionary = {}
 var _boutons_coupe: Array[Button] = []
 var _coupe: int = 0
 var _classe: OptionButton
+var _miroir: CheckButton
 var _coupes: HBoxContainer
 var _circuits: GridContainer
 var _reglages: HBoxContainer
@@ -42,6 +49,13 @@ func _ready() -> void:
 	_multi = MultiplayerPanel.new()
 	add_child(_multi)
 	_multi.ferme.connect(_montrer.bind(_accueil))
+	_astuces = AstucesPanel.new()
+	add_child(_astuces)
+	_astuces.ferme.connect(_montrer.bind(_accueil))
+	_garage = GaragePanel.new()
+	add_child(_garage)
+	_garage.ferme.connect(func() -> void: _montrer(_avant_garage))
+	_multi.garage.connect(_ouvrir_garage.bind(_multi))
 	# De retour d'une course en réseau : on revient droit au salon.
 	_montrer(_multi if Reseau.actif() else _accueil)
 
@@ -63,7 +77,7 @@ func _fond() -> void:
 
 
 func _montrer(ecran: Control) -> void:
-	for e in [_accueil, _selection, _options, _multi]:
+	for e in [_accueil, _selection, _options, _multi, _astuces, _garage]:
 		e.visible = e == ecran
 	# Le focus clavier/manette : sans lui, un joueur à la manette ne peut rien
 	# faire dans le menu.
@@ -71,6 +85,11 @@ func _montrer(ecran: Control) -> void:
 		(_accueil.find_child("Jouer", true, false) as Button).grab_focus()
 	elif ecran == _selection:
 		_demarrer.grab_focus()
+
+
+func _ouvrir_garage(depuis: Control) -> void:
+	_avant_garage = depuis
+	_montrer(_garage)
 
 
 func _ecran_accueil() -> Control:
@@ -98,12 +117,18 @@ func _ecran_accueil() -> Control:
 	jouer.name = "Jouer"
 	jouer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	colonne.add_child(jouer)
+	var garage := UITheme.bouton("Garage", func() -> void: _ouvrir_garage(_accueil))
+	garage.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	colonne.add_child(garage)
 	var multi := UITheme.bouton("Multijoueur", func() -> void: _montrer(_multi))
 	multi.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	colonne.add_child(multi)
 	var options := UITheme.bouton("Options", func() -> void: _montrer(_options))
 	options.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	colonne.add_child(options)
+	var astuces := UITheme.bouton("Astuces", func() -> void: _montrer(_astuces))
+	astuces.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	colonne.add_child(astuces)
 	# Sur mobile et sur le web, quitter est l'affaire du système.
 	if not (OS.has_feature("mobile") or OS.has_feature("web")):
 		var quitter := UITheme.bouton("Quitter", func() -> void: get_tree().quit())
@@ -125,20 +150,40 @@ func _ecran_selection() -> Control:
 	haut.add_theme_constant_override("separation", 10)
 	colonne.add_child(haut)
 	var groupe_modes := ButtonGroup.new()
-	for mode in [RaceSetup.Mode.GRAND_PRIX, RaceSetup.Mode.COURSE, RaceSetup.Mode.CONTRE_LA_MONTRE]:
-		var b := _bascule(NOMS_MODES[mode], groupe_modes, Vector2(210, 56), 22)
+	for mode in [RaceSetup.Mode.GRAND_PRIX, RaceSetup.Mode.COURSE, RaceSetup.Mode.CONTRE_LA_MONTRE,
+			RaceSetup.Mode.BATAILLE]:
+		var b := _bascule(NOMS_MODES[mode], groupe_modes, Vector2(160, 56), 19)
 		b.pressed.connect(_choisir_mode.bind(mode))
 		haut.add_child(b)
 		_boutons_mode[mode] = b
 	_classe = OptionButton.new()
 	for c in Cylindree.NOMS.size():
 		_classe.add_item(Cylindree.nom(c), c)
+	# La 200cc se gagne : or dans toutes les coupes en 150cc.
+	var i200 := _classe.get_item_index(Cylindree.Classe.CC200)
+	if not GameSettings.debloque_200cc():
+		_classe.set_item_text(i200, "200cc 🔒")
+		_classe.set_item_disabled(i200, true)
+		if reglage.classe == Cylindree.Classe.CC200:
+			reglage.classe = Cylindree.Classe.CC150
 	_classe.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_classe.item_selected.connect(func(i: int) -> void:
 		reglage.classe = _classe.get_item_id(i)
 		GameSettings.sauver()
 		_rafraichir())
 	haut.add_child(_classe)
+	# Le miroir se gagne : or dans toutes les coupes en 100cc.
+	_miroir = CheckButton.new()
+	_miroir.text = "Miroir" if GameSettings.debloque_miroir() else "Miroir 🔒"
+	_miroir.disabled = not GameSettings.debloque_miroir()
+	if _miroir.disabled:
+		reglage.miroir = false
+	_miroir.button_pressed = reglage.miroir
+	_miroir.add_theme_font_size_override("font_size", 20)
+	_miroir.toggled.connect(func(actif: bool) -> void:
+		reglage.miroir = actif
+		_rafraichir())
+	haut.add_child(_miroir)
 
 	# Les coupes, pour le Grand Prix.
 	_coupes = HBoxContainer.new()
@@ -167,6 +212,13 @@ func _ecran_selection() -> Control:
 		b.pressed.connect(_choisir_piste.bind(piste))
 		_circuits.add_child(b)
 		_boutons_piste.append(b)
+	# Les arènes, pour la bataille, dans la même grille (même groupe).
+	for arene in TrackCatalog.ARENES:
+		var b := _bascule(arene.nom, groupe, Vector2(234, 58), 20)
+		b.button_pressed = arene == reglage.piste
+		b.pressed.connect(_choisir_piste.bind(arene))
+		_circuits.add_child(b)
+		_boutons_arene.append(b)
 	colonne.add_child(_circuits)
 
 	_description = Label.new()
@@ -250,7 +302,22 @@ func _choisir_mode(mode: RaceSetup.Mode) -> void:
 	_circuits.visible = not _coupes.visible
 	_classe.visible = mode != RaceSetup.Mode.CONTRE_LA_MONTRE
 	_tours.visible = mode == RaceSetup.Mode.COURSE
-	_depart.visible = mode != RaceSetup.Mode.CONTRE_LA_MONTRE
+	var bataille := mode == RaceSetup.Mode.BATAILLE
+	# En bataille, les karts partent dispersés dans l'arène : pas de case.
+	_depart.visible = mode != RaceSetup.Mode.CONTRE_LA_MONTRE and not bataille
+	_miroir.visible = not bataille
+	for b in _boutons_piste:
+		b.visible = not bataille
+	for b in _boutons_arene:
+		b.visible = bataille
+	# Une arène ne se court pas, un circuit ne se bat pas.
+	var est_arene := TrackCatalog.ARENES.has(reglage.piste)
+	if bataille and not est_arene:
+		_choisir_piste(TrackCatalog.ARENES[0])
+		_boutons_arene[0].button_pressed = true
+	elif not bataille and est_arene:
+		_choisir_piste(TrackCatalog.PISTES[0])
+		_boutons_piste[0].button_pressed = true
 	if mode == RaceSetup.Mode.CONTRE_LA_MONTRE and reglage.piste != null:
 		reglage.tours = reglage.piste.tours
 	_rafraichir()
@@ -295,6 +362,9 @@ func _rafraichir() -> void:
 		RaceSetup.Mode.GRAND_PRIX:
 			_description.text = "Quatre courses de trois tours contre sept pilotes. Les points s'additionnent, et les trois premiers de la coupe montent sur le podium."
 			_record.text = ""
+		RaceSetup.Mode.BATAILLE:
+			_description.text = "Trois ballons chacun, et chaque objet qui vous touche en crève un. Le dernier en lice gagne ; au bout de %d minutes, on compte les ballons." % int(Bataille.DUREE / 60.0)
+			_record.text = ""
 		RaceSetup.Mode.CONTRE_LA_MONTRE:
 			_description.text = "Seul en piste en 150cc, trois champignons en poche. Battez votre record : votre meilleur parcours revient courir contre vous, en fantôme."
 			_rafraichir_record()
@@ -312,6 +382,8 @@ func _rafraichir_record() -> void:
 	var ou := reglage.piste.nom
 	if reglage.mode == RaceSetup.Mode.COURSE:
 		ou = "%s, %s" % [ou, Cylindree.nom(reglage.classe)]
+	if reglage.miroir:
+		ou += ", miroir"
 	if meilleur > 0.0:
 		_record.text = "Record (%s) : %s" % [ou, RaceTimer.format(meilleur)]
 		if reglage.mode == RaceSetup.Mode.CONTRE_LA_MONTRE and Fantome.charger(reglage.cle_record()) != null:

@@ -6,7 +6,7 @@ extends RefCounted
 ## lisent les étincelles, l'inclinaison de la caisse et le son : un kart
 ## distant qui glisse doit se voir glisser.
 ##
-## Un tableau de flottants plutôt qu'un dictionnaire : dix-sept nombres par
+## Un tableau de flottants plutôt qu'un dictionnaire : vingt nombres par
 ## kart, soixante fois par seconde, huit karts — un dictionnaire enverrait ses
 ## clés à chaque fois.
 ##
@@ -15,12 +15,12 @@ extends RefCounted
 ## celui-ci le relaie. Le destinataire y ajoute le trajet pour savoir de quand
 ## date ce qu'il reçoit, et donc de combien le prolonger.
 
-const TAILLE := 17
+const TAILLE := 20
 
 enum {
 	GID, PX, PY, PZ, QX, QY, QZ, QW,
 	VITESSE, CAP_MARCHE, CAP_CAISSE, ETAT, SENS_GLISSE, CHARGE, TURBO, FORCE_TURBO,
-	AGE,
+	FIGURES, ETOILE, RETRECI, AGE,
 }
 
 
@@ -33,7 +33,7 @@ static func capturer(gid: int, kart: Kart) -> PackedFloat32Array:
 	return PackedFloat32Array([
 		gid, t.origin.x, t.origin.y, t.origin.z, q.x, q.y, q.z, q.w,
 		m.speed, m.velocity_dir, m.heading, m.state, m.drift_dir, m.drift_charge,
-		m.boost_timer, m.boost_multiplier, 0.0,
+		m.boost_timer, m.boost_multiplier, kart.figures, m.etoile, m.retreci, 0.0,
 	])
 
 
@@ -54,6 +54,11 @@ static func appliquer(d: PackedFloat32Array, kart: Kart) -> void:
 		kart.global_transform = t
 	else:
 		kart.transform = t
+	# Une figure de plus que la dernière vue : le kart distant fait son
+	# tonneau ici aussi. Le compteur rattrape un paquet perdu.
+	if int(d[FIGURES]) > kart.figures:
+		kart.figures = int(d[FIGURES])
+		kart.figure.emit()
 	var m := kart.motor
 	if m == null:
 		return
@@ -65,6 +70,10 @@ static func appliquer(d: PackedFloat32Array, kart: Kart) -> void:
 	m.drift_charge = d[CHARGE]
 	m.boost_timer = d[TURBO]
 	m.boost_multiplier = d[FORCE_TURBO]
+	# L'étoile compte aussi pour l'hôte : c'est lui qui décide si une
+	# carapace touche, et elle ne touche pas un kart sous étoile.
+	m.etoile = d[ETOILE]
+	m.retreci = d[RETRECI]
 
 
 ## Découpe un paquet de plusieurs karts en états individuels.

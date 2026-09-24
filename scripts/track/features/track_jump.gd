@@ -42,15 +42,7 @@ func _construire(c: TrackCurve, racine: Node3D) -> void:
 ## Des chevrons qui pointent dans le sens de la course, orange sur jaune, en
 ## émissif : un tremplin doit se voir de loin, c'est une invitation.
 func _materiau() -> StandardMaterial3D:
-	var image := Image.create(32, 32, false, Image.FORMAT_RGB8)
-	var fond := Color(1.0, 0.8, 0.1)
-	var rayure := Color(0.95, 0.35, 0.05)
-	for y in 32:
-		for x in 32:
-			# u (x) le long du tracé, v (y) en travers : un chevron en V.
-			var v := absf(float(y) - 15.5) / 16.0
-			var phase := fposmod(float(x) / 32.0 + v * 0.5, 1.0)
-			image.set_pixel(x, y, rayure if phase < 0.45 else fond)
+	var image := TrackFeature.image_de_chevron(Color(1.0, 0.8, 0.1), Color(0.95, 0.35, 0.05))
 	var m := StandardMaterial3D.new()
 	m.albedo_texture = ImageTexture.create_from_image(image)
 	m.uv1_scale = Vector3(1.0 / 2.0, 1.0 / largeur, 1.0)

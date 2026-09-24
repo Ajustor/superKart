@@ -10,11 +10,52 @@ grille sont prises par l'IA.
    l'adresse à laquelle les autres peuvent le joindre.
 3. Les autres le trouvent dans **Parties sur ce réseau** (même Wi-Fi), ou
    tapent son adresse puis **Rejoindre**.
-4. L'hôte choisit le circuit et le nombre de tours, puis **Lance la course**.
+4. L'hôte choisit le mode, la cylindrée, le circuit et le nombre de tours,
+   puis **Lance la course**.
+   - **Course seule** : un circuit, le nombre de tours voulu.
+   - **Grand Prix** : une des coupes, quatre manches de trois tours. Voir plus
+     bas.
 5. À la fin, l'hôte ramène tout le monde au salon avec **Retour au salon**.
 
-Sur Internet (hors du réseau local), l'hôte doit rediriger le port **UDP 8910**
-de sa box vers sa machine, et donner son adresse IP publique aux autres.
+## Chargement
+
+- Chaque course s'ouvre sur un écran de chargement (`EcranChargement`). Il
+  s'affiche tout de suite, puis :
+  1. il charge la scène de course et le circuit dans un fil à part ;
+  2. il monte la course derrière lui ;
+  3. il attend que la musique soit composée et que quelques images soient
+     dessinées, pour que les shaders se compilent derrière l'écran et pas en
+     pleine course.
+- Il affiche la liste des joueurs : ✓ prêt, … en cours de chargement.
+- Le départ est donné quand tous sont prêts, ou au bout de 15 s.
+- Ce rendez-vous passe par l'autoload `Reseau` (`charges`, `depart`), qui
+  existe sur toutes les machines : les machines ne finissent pas de charger
+  en même temps, et un message adressé à une course pas encore montée se
+  perdrait.
+- L'hôte n'envoie l'état de la course (karts, objets, classement) qu'aux
+  machines prêtes.
+- Pendant le chargement, une doublure de `RaceSync` avale les paquets encore
+  en route de la course précédente.
+- Les circuits eux-mêmes ne se chargent plus avec le menu : la fiche d'un
+  circuit ne porte que le chemin de sa scène.
+
+## Grand Prix en réseau
+
+- L'hôte tient la coupe. À la fin d'une manche, il la compte et lance la
+  suivante pour tous (**Course suivante**).
+- L'état de la coupe (points, places de la dernière course) part avec chaque
+  manche : tout le monde affiche les mêmes points.
+- Chacun repart de la place où il a fini la manche précédente.
+- Après la dernière manche, l'hôte montre le podium à tous, puis ramène tout
+  le monde au salon.
+- Les points se comptent par nom. Un joueur ne peut donc pas prendre le nom
+  d'un pilote IA.
+- Les trophées, comme les records, ne se gagnent qu'en solo.
+
+Sur Internet (hors du réseau local), le jeu ouvre lui-même le port **UDP 8910**
+sur la box de l'hôte (UPnP) et affiche au salon l'adresse publique à donner
+aux autres (voir « Jouer par Internet » plus bas). Si la box refuse ou est
+introuvable, il reste à rediriger ce port à la main vers la machine de l'hôte.
 
 ## Qui fait quoi
 
@@ -25,7 +66,7 @@ de sa box vers sa machine, et donner son adresse IP publique aux autres.
 | les karts des autres | affiche | affiche |
 | objets : boîtes, lancers, chocs | décide | affiche, demande à l'hôte |
 | classement, arrivées | décide | recopie |
-| départ | donne quand tout le monde a chargé (10 s au plus) | attend |
+| départ | donne quand tout le monde a chargé (15 s au plus) | attend, derrière l'écran de chargement |
 
 Chaque joueur simule **son** kart : le pilotage reste aussi vif qu'en solo,
 quelle que soit la latence. Les autres karts sont montrés là où ils sont
@@ -54,6 +95,10 @@ qui part, tout le monde revient au menu.
   seconde ; le classement 10 fois par seconde.
 - Le protocole porte un numéro de version (`Reseau.VERSION`) : un joueur dont
   le jeu n'est pas à la même version est refusé avec un message clair.
+- L'état de chaque kart porte aussi son compteur de figures. Le tonneau d'un
+  kart distant se voit partout, même si un paquet se perd.
+- Le turbo de départ, le dérapage (étincelles, paliers) et les flammes du
+  turbo se lisent sur l'état du moteur, déjà transmis.
 
 ## Tester sans deuxième appareil
 
@@ -65,6 +110,10 @@ godot --headless --path . -s tools/essai_reseau.gd -- client
 ```
 
 Les deux journaux doivent donner le même classement et les mêmes temps.
+
+Avec `coupe` en second argument des deux côtés, l'essai joue une coupe
+entière en 100cc (manches d'un tour). Les deux journaux doivent donner les
+mêmes grilles, les mêmes points après chaque manche et le même podium.
 
 ## Mesurer le retard
 
@@ -85,3 +134,19 @@ python3 tools/mesure_latence.py
 
 (écart médian entre la position affichée et la vraie, et le retard que cela
 représente à la vitesse du kart.)
+
+## Jouer par Internet (`PortInternet`)
+
+En hébergeant, le jeu demande à la box d'ouvrir le port de la partie (UDP
+8910) par **UPnP**, dans un fil à part, et affiche dans le salon l'adresse
+publique à donner aux autres (`ip:port`). Ceux qui rejoignent tapent cette
+adresse telle quelle : `Reseau.decouper_adresse` sépare l'hôte et le port.
+
+- Le port est demandé avec un bail de 4 h (sans limite si la box refuse les
+  baux), et refermé en quittant la partie ou le jeu.
+- Quand ça ne marche pas, le salon dit pourquoi : box introuvable, UPnP
+  désactivé, ou accès derrière le réseau de l'opérateur (CGNAT, adresse
+  publique privée ou en 100.64.0.0/10). Il reste alors à ouvrir le port à la
+  main, ou à jouer en réseau local.
+- Pas de relais : sans serveur à héberger, un hôte derrière un CGNAT ne peut
+  pas être rejoint depuis Internet.
