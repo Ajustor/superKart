@@ -5,8 +5,10 @@ extends RefCounted
 ##
 ## La scène est modifiée AVANT d'entrer dans l'arbre : aucun _ready n'a encore
 ## tourné, donc on peut y remplacer le circuit et régler la session sans que
-## rien n'ait eu le temps de lire l'ancien. Lancée seule depuis l'éditeur,
-## race.tscn garde son circuit et ses valeurs par défaut.
+## rien n'ait eu le temps de lire l'ancien. race.tscn n'a qu'un circuit
+## minimal (la courbe des Collines, sans décor) : charger la scène de course
+## ne charge ainsi aucun circuit complet, seul celui qu'on court l'est.
+## Lancée seule depuis l'éditeur, elle roule sur ce circuit nu.
 
 const SCENE_COURSE := "res://scenes/race.tscn"
 const SCENE_MENU := "res://scenes/ui/main_menu.tscn"

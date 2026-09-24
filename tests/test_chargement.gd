@@ -76,3 +76,11 @@ func test_la_doublure_de_raceSync_ignore_les_paquets_orphelins() -> void:
 	doublure._objets({})
 	doublure._effet(0, "choc", 0)
 	assert_true(true, "aucune erreur")
+
+
+func test_la_scene_de_course_ne_charge_aucun_circuit_complet() -> void:
+	# Ses dépendances directes : la scène d'un circuit n'en fait pas partie,
+	# seule la courbe du circuit minimal.
+	for dependance in ResourceLoader.get_dependencies(RaceLauncher.SCENE_COURSE):
+		var chemin := dependance.get_slice("::", 2) if dependance.contains("::") else dependance
+		assert_false(chemin.begins_with("res://scenes/tracks/"), "race.tscn charge %s" % chemin)
