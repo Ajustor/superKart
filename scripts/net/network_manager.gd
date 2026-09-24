@@ -46,6 +46,8 @@ var depart_donne := false
 var plan: Array = []
 
 var decouverte := LanDiscovery.new()
+## Le port de l'hôte ouvert sur sa box, pour jouer par Internet.
+var port_internet := PortInternet.new()
 
 var _nom_voulu: String = ""
 ## Le port réellement ouvert, celui qu'on annonce sur le réseau local.
@@ -54,6 +56,8 @@ var _port: int = PORT
 
 func _ready() -> void:
 	add_child(decouverte)
+	add_child(port_internet)
+	port_internet.fini.connect(func() -> void: salon_change.emit())
 	multiplayer.peer_connected.connect(_sur_arrivee)
 	multiplayer.peer_disconnected.connect(_sur_depart)
 	multiplayer.connected_to_server.connect(_sur_connexion)
@@ -94,6 +98,7 @@ func heberger(nom: String, port: int = PORT) -> Error:
 	lobby.choisir_vehicule(1, GameSettings.course.modele, GameSettings.course.couleur)
 	en_course = false
 	_annoncer()
+	port_internet.ouvrir(port)
 	salon_change.emit()
 	connecte.emit()
 	return OK
@@ -101,8 +106,9 @@ func heberger(nom: String, port: int = PORT) -> Error:
 
 func rejoindre(adresse: String, nom: String, port: int = PORT) -> Error:
 	quitter()
+	var cible := decouper_adresse(adresse, port)
 	var peer := ENetMultiplayerPeer.new()
-	var err := peer.create_client(adresse.strip_edges(), port)
+	var err := peer.create_client(cible[0], cible[1])
 	if err != OK:
 		erreur.emit("Adresse invalide : %s" % adresse)
 		return err
@@ -111,8 +117,20 @@ func rejoindre(adresse: String, nom: String, port: int = PORT) -> Error:
 	return OK
 
 
+## « hôte » ou « hôte:port » (l'adresse Internet qu'affiche le salon de
+## l'hôte porte son port) : rend [hôte, port].
+static func decouper_adresse(texte: String, port_par_defaut: int = PORT) -> Array:
+	var propre := texte.strip_edges()
+	var deux_points := propre.rfind(":")
+	# Un seul « : » : c'est un port. Plusieurs : une adresse IPv6, sans port.
+	if deux_points > 0 and propre.count(":") == 1 and propre.substr(deux_points + 1).is_valid_int():
+		return [propre.left(deux_points), int(propre.substr(deux_points + 1))]
+	return [propre, port_par_defaut]
+
+
 func quitter() -> void:
 	decouverte.arreter_annonce()
+	port_internet.fermer()
 	if multiplayer.multiplayer_peer != null and not multiplayer.multiplayer_peer is OfflineMultiplayerPeer:
 		multiplayer.multiplayer_peer.close()
 	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()

@@ -132,3 +132,19 @@ python3 tools/mesure_latence.py
 
 (écart médian entre la position affichée et la vraie, et le retard que cela
 représente à la vitesse du kart.)
+
+## Jouer par Internet (`PortInternet`)
+
+En hébergeant, le jeu demande à la box d'ouvrir le port de la partie (UDP
+8910) par **UPnP**, dans un fil à part, et affiche dans le salon l'adresse
+publique à donner aux autres (`ip:port`). Ceux qui rejoignent tapent cette
+adresse telle quelle : `Reseau.decouper_adresse` sépare l'hôte et le port.
+
+- Le port est demandé avec un bail de 4 h (sans limite si la box refuse les
+  baux), et refermé en quittant la partie ou le jeu.
+- Quand ça ne marche pas, le salon dit pourquoi : box introuvable, UPnP
+  désactivé, ou accès derrière le réseau de l'opérateur (CGNAT, adresse
+  publique privée ou en 100.64.0.0/10). Il reste alors à ouvrir le port à la
+  main, ou à jouer en réseau local.
+- Pas de relais : sans serveur à héberger, un hôte derrière un CGNAT ne peut
+  pas être rejoint depuis Internet.

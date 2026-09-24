@@ -135,6 +135,9 @@ func _ecran_salon() -> Control:
 	_titre_salon = UITheme.titre("SALON", 40)
 	colonne.add_child(_titre_salon)
 	_adresses = Label.new()
+	# L'adresse Internet, ou pourquoi il n'y en a pas : parfois deux lignes.
+	_adresses.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_adresses.custom_minimum_size.x = 660
 	_adresses.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_adresses.add_theme_color_override("font_color", UITheme.TEXTE_DOUX)
 	_adresses.add_theme_font_size_override("font_size", 20)
@@ -298,9 +301,15 @@ func _rafraichir_salon() -> void:
 
 static func adresses_texte() -> String:
 	var a := Reseau.adresses_locales()
+	var lignes := PackedStringArray()
 	if a.is_empty():
-		return "Pas d'adresse réseau trouvée : es-tu connecté au Wi-Fi ?"
-	return "Pour te rejoindre : %s" % " ou ".join(a)
+		lignes.append("Pas d'adresse réseau trouvée : es-tu connecté au Wi-Fi ?")
+	else:
+		lignes.append("Pour te rejoindre : %s" % " ou ".join(a))
+	var internet := Reseau.port_internet.texte()
+	if internet != "":
+		lignes.append(internet)
+	return "\n".join(lignes)
 
 
 func _envoyer_config() -> void:
