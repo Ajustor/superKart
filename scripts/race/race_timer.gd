@@ -7,6 +7,8 @@ extends RefCounted
 var current: float = 0.0
 var best: float = 0.0
 var has_best: bool = false
+## Le temps de chaque tour bouclé, dans l'ordre : l'écran d'arrivée les montre.
+var tours := PackedFloat32Array()
 
 
 func advance(delta: float) -> void:
@@ -14,6 +16,7 @@ func advance(delta: float) -> void:
 
 
 func complete_lap() -> void:
+	tours.append(current)
 	if not has_best or current < best:
 		best = current
 		has_best = true

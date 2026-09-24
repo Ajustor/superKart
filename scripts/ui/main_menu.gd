@@ -8,6 +8,7 @@ var _accueil: Control
 var _selection: Control
 var _options: OptionsPanel
 var _multi: MultiplayerPanel
+var _astuces: AstucesPanel
 
 const NOMS_MODES := {
 	RaceSetup.Mode.GRAND_PRIX: "Grand Prix",
@@ -43,6 +44,9 @@ func _ready() -> void:
 	_multi = MultiplayerPanel.new()
 	add_child(_multi)
 	_multi.ferme.connect(_montrer.bind(_accueil))
+	_astuces = AstucesPanel.new()
+	add_child(_astuces)
+	_astuces.ferme.connect(_montrer.bind(_accueil))
 	# De retour d'une course en réseau : on revient droit au salon.
 	_montrer(_multi if Reseau.actif() else _accueil)
 
@@ -64,7 +68,7 @@ func _fond() -> void:
 
 
 func _montrer(ecran: Control) -> void:
-	for e in [_accueil, _selection, _options, _multi]:
+	for e in [_accueil, _selection, _options, _multi, _astuces]:
 		e.visible = e == ecran
 	# Le focus clavier/manette : sans lui, un joueur à la manette ne peut rien
 	# faire dans le menu.
@@ -105,6 +109,9 @@ func _ecran_accueil() -> Control:
 	var options := UITheme.bouton("Options", func() -> void: _montrer(_options))
 	options.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	colonne.add_child(options)
+	var astuces := UITheme.bouton("Astuces", func() -> void: _montrer(_astuces))
+	astuces.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	colonne.add_child(astuces)
 	# Sur mobile et sur le web, quitter est l'affaire du système.
 	if not (OS.has_feature("mobile") or OS.has_feature("web")):
 		var quitter := UITheme.bouton("Quitter", func() -> void: get_tree().quit())

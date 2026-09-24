@@ -27,6 +27,11 @@ var _annonce: Label
 var _temps_annonce: float = 0.0
 var _depuis_depart: float = -1.0
 var _carte: MiniMap
+## Une flèche à côté de la place quand on en gagne ou en perd une.
+var _fleche: Label
+var _fleche_reste: float = 0.0
+var _place_vue: int = 0
+const DUREE_FLECHE := 1.2
 
 
 func _ready() -> void:
@@ -41,6 +46,13 @@ func _ready() -> void:
 	_label.add_theme_color_override("font_outline_color", Color.BLACK)
 	_label.add_theme_constant_override("outline_size", 6)
 	add_child(_label)
+	_fleche = Label.new()
+	_fleche.position = Vector2(135, 12)
+	_fleche.add_theme_font_size_override("font_size", 34)
+	_fleche.add_theme_color_override("font_outline_color", Color.BLACK)
+	_fleche.add_theme_constant_override("outline_size", 6)
+	_fleche.visible = false
+	add_child(_fleche)
 
 	_annonce = Label.new()
 	_annonce.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
@@ -90,6 +102,22 @@ func _sur_tour(entree: RaceEntry) -> void:
 		_annoncer("DERNIER TOUR !")
 
 
+## Une place gagnée : ▲ vert ; perdue : ▼ rouge, le temps d'y jeter un œil.
+## Pas pendant le décompte : le classement de la grille n'est pas une course.
+func _suivre_la_place(place: int, delta: float) -> void:
+	if _session.entries.size() <= 1 or place <= 0:
+		return
+	if _session.en_course and _place_vue > 0 and place != _place_vue:
+		var gagne := place < _place_vue
+		_fleche.text = "▲" if gagne else "▼"
+		_fleche.add_theme_color_override("font_color", Color(0.35, 1.0, 0.45) if gagne else Color(1.0, 0.35, 0.3))
+		_fleche_reste = DUREE_FLECHE
+	_place_vue = place
+	_fleche_reste = maxf(_fleche_reste - delta, 0.0)
+	_fleche.visible = _fleche_reste > 0.0
+	_fleche.modulate.a = minf(_fleche_reste / 0.3, 1.0)
+
+
 func _annoncer(texte: String, duree: float = DUREE_ANNONCE) -> void:
 	_annonce.text = texte
 	_annonce.add_theme_font_size_override("font_size", 120 if texte.length() <= 4 else 72)
@@ -112,6 +140,7 @@ func _process(delta: float) -> void:
 	if moi.timer.has_best:
 		lignes.append("MEILLEUR %s" % RaceTimer.format(moi.timer.best))
 	_label.text = "\n".join(lignes)
+	_suivre_la_place(moi.position, delta)
 
 	if not _session.en_course:
 		_annonce.text = str(ceili(_session.decompte_restant))

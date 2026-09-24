@@ -17,6 +17,7 @@ var _session: RaceSession
 var _grille: GridContainer
 var _resume: Label
 var _record: Label
+var _tours: Label
 var _rejouer: Button
 var _podium: PodiumScreen
 var _manche_comptee := false
@@ -47,6 +48,12 @@ func _ready() -> void:
 	_record.add_theme_color_override("font_color", UITheme.ACCENT)
 	_record.hide()
 	colonne.add_child(_record)
+	# Le temps de chacun de ses tours, le meilleur marqué d'une étoile.
+	_tours = Label.new()
+	_tours.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_tours.add_theme_color_override("font_color", UITheme.TEXTE_DOUX)
+	_tours.add_theme_font_size_override("font_size", 20)
+	colonne.add_child(_tours)
 
 	_grille = GridContainer.new()
 	_grille.columns = _colonnes().size()
@@ -215,6 +222,7 @@ func _ouvrir() -> void:
 
 func _remplir() -> void:
 	var moi := _session.entries[0]
+	_tours.text = texte_des_tours(moi.timer.tours)
 	var gp := _grand_prix()
 	if _contre_la_montre():
 		var record := GameSettings.record(_session.id_piste, _session.lap_count)
@@ -264,3 +272,17 @@ func _cellule(texte: String, couleur: Color, taille: int = 22) -> void:
 	l.add_theme_color_override("font_color", couleur)
 	l.add_theme_font_size_override("font_size", taille)
 	_grille.add_child(l)
+
+
+## « Tours : 0:31.200 · ★ 0:30.100 · 0:30.800 », le meilleur étoilé.
+static func texte_des_tours(tours: PackedFloat32Array) -> String:
+	if tours.is_empty():
+		return ""
+	var meilleur := 0
+	for i in tours.size():
+		if tours[i] < tours[meilleur]:
+			meilleur = i
+	var morceaux := PackedStringArray()
+	for i in tours.size():
+		morceaux.append(("★ " if i == meilleur and tours.size() > 1 else "") + RaceTimer.format(tours[i]))
+	return "Tours : " + " · ".join(morceaux)
