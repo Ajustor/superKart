@@ -51,6 +51,17 @@ Si on ajoute une option d'export qui compte (architecture, nom de paquet,
 version…), c'est dans `.github/export_presets.ci.cfg` qu'elle doit atterrir,
 sinon la CI ne la verra pas.
 
+## Version Android
+
+Android n'installe une mise à jour que si son code de version augmente. La
+pipeline le fait d'elle-même : le code du preset (`version/code`) sert de
+base, et le numéro du run GitHub (`github.run_number`, qui croît à chaque
+exécution du workflow) s'y ajoute. Le nom affiché prend ce numéro en dernier
+chiffre : `version/name="1.1"` au run 57 donne la version 1.1.57, code 59.
+
+Pour une nouvelle version majeure, changer `version/name` dans le preset ;
+le code, lui, n'a jamais besoin d'être touché à la main.
+
 ## Signature Android
 
 Sans secret configuré, la pipeline génère une clé de debug jetable et produit un
