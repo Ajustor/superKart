@@ -7,6 +7,8 @@ extends Control
 ## que l'afficher et lui transmettre des gestes.
 
 signal ferme
+## Le joueur veut changer de kart : le menu ouvre le garage, puis revient ici.
+signal garage
 
 var _entree: Control
 var _salon: Control
@@ -182,10 +184,13 @@ func _ecran_salon() -> Control:
 	var quitter := UITheme.bouton("Quitter le salon", func() -> void:
 		Reseau.quitter()
 		_montrer(_entree))
-	quitter.custom_minimum_size.x = 260
+	quitter.custom_minimum_size.x = 220
 	boutons.add_child(quitter)
+	var vers_garage := UITheme.bouton("Garage", func() -> void: garage.emit())
+	vers_garage.custom_minimum_size.x = 160
+	boutons.add_child(vers_garage)
 	_lancer = UITheme.bouton("Lancer la course", Reseau.lancer_course)
-	_lancer.custom_minimum_size.x = 260
+	_lancer.custom_minimum_size.x = 240
 	boutons.add_child(_lancer)
 	colonne.add_child(boutons)
 	return ecran
@@ -240,12 +245,22 @@ func _rafraichir_salon() -> void:
 		enfant.queue_free()
 	var hote := Reseau.est_hote()
 	for peer in Reseau.lobby.ordre:
+		# La couleur de son kart, puis son nom et son modèle.
+		var ligne := HBoxContainer.new()
+		ligne.add_theme_constant_override("separation", 10)
+		var vehicule := Reseau.lobby.vehicule(peer)
+		var pastille := ColorRect.new()
+		pastille.color = ModeleKart.couleur(vehicule[1])
+		pastille.custom_minimum_size = Vector2(18, 18)
+		pastille.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		ligne.add_child(pastille)
 		var l := Label.new()
 		var marque := " (hôte)" if peer == 1 else ""
 		var toi := "  ← toi" if peer == Reseau.mon_id() else ""
-		l.text = "• %s%s%s" % [Reseau.lobby.joueurs[peer], marque, toi]
+		l.text = "%s%s — %s%s" % [Reseau.lobby.joueurs[peer], marque, ModeleKart.nom(vehicule[0]), toi]
 		l.add_theme_color_override("font_color", UITheme.ACCENT if peer == Reseau.mon_id() else UITheme.TEXTE)
-		_joueurs.add_child(l)
+		ligne.add_child(l)
+		_joueurs.add_child(ligne)
 	var places_ia := Lobby.PLACES - Reseau.lobby.joueurs.size()
 	if places_ia > 0:
 		var l := Label.new()

@@ -97,3 +97,30 @@ sur un kart (étoile, pièces, éclair) sont appliqués par la machine qui le
 simule, et l'étoile et le rétrécissement voyagent dans l'instantané du kart
 (`KartSnapshot`) : l'hôte doit savoir qu'une carapace ne touche pas un kart
 sous étoile.
+
+## Garage (`ModeleKart`, `GaragePanel`)
+
+Cinq karts au choix, accessibles depuis l'accueil et depuis le salon
+multijoueur, et huit couleurs. Chaque modèle retouche les caractéristiques
+du kart d'origine (celui sur lequel les circuits sont validés) :
+
+| Modèle | Vitesse | Accélération | Virage | Glisse | Poids |
+| --- | --- | --- | --- | --- | --- |
+| Standard | 1 | 1 | 1 | 1 | 1 |
+| Fusée | 1,04 | 0,80 | 1 | 0,90 | 1,1 |
+| Plume | 0,97 | 1,30 | 1,08 | 1,05 | 0,8 |
+| Dériveur | 0,99 | 0,95 | 1 | 1,30 | 0,95 |
+| Costaud | 1,02 | 0,88 | 0,97 | 0,95 | 1,4 |
+
+La glisse divise les seuils des paliers de mini-turbo ; le poids pèse dans
+les chocs entre karts (le plus léger prend la plus grande part de
+l'échange) et réduit la perte de vitesse contre un mur. La caisse change
+aussi d'allure.
+
+Le choix est enregistré (`[garage]` dans les réglages). En réseau, chaque
+joueur l'annonce à l'hôte, qui le range dans le salon et le met dans le plan
+de course : tout le monde voit chacun dans sa couleur, et le poids de chacun
+compte dans les chocs. L'IA prend les couleurs restantes.
+
+Le harnais IA accepte `kart=N` pour valider un modèle :
+`tools/essai_circuit.gd -- <id> 1 200 kart=4`.

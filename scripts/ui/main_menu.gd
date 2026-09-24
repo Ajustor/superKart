@@ -9,6 +9,9 @@ var _selection: Control
 var _options: OptionsPanel
 var _multi: MultiplayerPanel
 var _astuces: AstucesPanel
+var _garage: GaragePanel
+## L'écran d'où l'on est venu au garage : l'accueil ou le salon.
+var _avant_garage: Control
 
 const NOMS_MODES := {
 	RaceSetup.Mode.GRAND_PRIX: "Grand Prix",
@@ -47,6 +50,10 @@ func _ready() -> void:
 	_astuces = AstucesPanel.new()
 	add_child(_astuces)
 	_astuces.ferme.connect(_montrer.bind(_accueil))
+	_garage = GaragePanel.new()
+	add_child(_garage)
+	_garage.ferme.connect(func() -> void: _montrer(_avant_garage))
+	_multi.garage.connect(_ouvrir_garage.bind(_multi))
 	# De retour d'une course en réseau : on revient droit au salon.
 	_montrer(_multi if Reseau.actif() else _accueil)
 
@@ -68,7 +75,7 @@ func _fond() -> void:
 
 
 func _montrer(ecran: Control) -> void:
-	for e in [_accueil, _selection, _options, _multi, _astuces]:
+	for e in [_accueil, _selection, _options, _multi, _astuces, _garage]:
 		e.visible = e == ecran
 	# Le focus clavier/manette : sans lui, un joueur à la manette ne peut rien
 	# faire dans le menu.
@@ -76,6 +83,11 @@ func _montrer(ecran: Control) -> void:
 		(_accueil.find_child("Jouer", true, false) as Button).grab_focus()
 	elif ecran == _selection:
 		_demarrer.grab_focus()
+
+
+func _ouvrir_garage(depuis: Control) -> void:
+	_avant_garage = depuis
+	_montrer(_garage)
 
 
 func _ecran_accueil() -> Control:
@@ -103,6 +115,9 @@ func _ecran_accueil() -> Control:
 	jouer.name = "Jouer"
 	jouer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	colonne.add_child(jouer)
+	var garage := UITheme.bouton("Garage", func() -> void: _ouvrir_garage(_accueil))
+	garage.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	colonne.add_child(garage)
 	var multi := UITheme.bouton("Multijoueur", func() -> void: _montrer(_multi))
 	multi.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	colonne.add_child(multi)

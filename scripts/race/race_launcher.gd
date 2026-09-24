@@ -109,8 +109,24 @@ static func monter(reglage: RaceSetup, rng: RandomNumberGenerator = null) -> Nod
 				session.cases_imposees = reglage.grand_prix.cases(session.noms)
 		RaceSetup.Mode.CONTRE_LA_MONTRE:
 			_seul_en_piste(course, session)
+	_habiller(session, reglage)
 	Cylindree.appliquer(course, reglage.classe_effective())
 	return course
+
+
+## Le kart du joueur prend le modèle et la couleur choisis au garage ; l'IA,
+## les autres couleurs de la palette.
+static func _habiller(session: RaceSession, reglage: RaceSetup) -> void:
+	var libres := ModeleKart.couleurs_libres([reglage.couleur])
+	for k in session.kart_paths.size():
+		var kart := session.get_node_or_null(session.kart_paths[k]) as Kart
+		if kart == null:
+			continue
+		if k == 0:
+			kart.stats = ModeleKart.stats(kart.stats, reglage.modele)
+			ModeleKart.habiller(kart, reglage.modele, ModeleKart.couleur(reglage.couleur))
+		else:
+			ModeleKart.habiller(kart, ModeleKart.STANDARD, ModeleKart.couleur(libres[(k - 1) % libres.size()]))
 
 
 ## Le contre-la-montre : le kart du joueur seul, sans boîtes, trois
@@ -199,6 +215,25 @@ static func monter_reseau(plan: Array, config: Dictionary, moi: int, hote: bool)
 	session.attente_depart = true
 	# Pas de record en réseau : les temps dépendent de qui roule devant qui.
 	session.id_piste = ""
+
+	# Chaque humain dans le kart de son garage, sur toutes les machines : la
+	# couleur se voit, le poids compte dans les chocs. L'IA prend les
+	# couleurs restantes.
+	var prises := []
+	for place in plan:
+		if int(place.peer) != 0:
+			prises.append(int(place.get("couleur", 0)))
+	var teintes_ia := ModeleKart.couleurs_libres(prises)
+	var n_ia := 0
+	for place in plan:
+		var kart := course.get_node(noeuds[place.gid]) as Kart
+		if int(place.peer) != 0:
+			var modele := int(place.get("modele", ModeleKart.STANDARD))
+			kart.stats = ModeleKart.stats(kart.stats, modele)
+			ModeleKart.habiller(kart, modele, ModeleKart.couleur(int(place.get("couleur", 0))))
+		else:
+			ModeleKart.habiller(kart, ModeleKart.STANDARD, ModeleKart.couleur(teintes_ia[n_ia % teintes_ia.size()]))
+			n_ia += 1
 
 	var objets := course.get_node_or_null("Objets") as ItemManager
 	if objets != null:

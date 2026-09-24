@@ -83,6 +83,9 @@ extends Resource
 ## Part de la vitesse perdue contre un mur pris de face. De biais, la perte
 ## suit l'angle : un mur frôlé ne coûte presque rien.
 @export var wall_speed_loss: float = 0.7
+## Masse relative, pour les chocs entre karts : le plus lourd pousse, le plus
+## léger est poussé (voir ModeleKart).
+@export var poids: float = 1.0
 
 @export_group("Objets")
 ## Le champignon pousse comme un mini-turbo de palier 2, mais plus longtemps :

@@ -91,6 +91,7 @@ func heberger(nom: String, port: int = PORT) -> Error:
 	_port = port
 	lobby = Lobby.new()
 	lobby.ajouter(1, nom)
+	lobby.choisir_vehicule(1, GameSettings.course.modele, GameSettings.course.couleur)
 	en_course = false
 	_annoncer()
 	salon_change.emit()
@@ -166,6 +167,31 @@ func _sur_depart(peer: int) -> void:
 
 func _sur_connexion() -> void:
 	_bonjour.rpc_id(1, _nom_voulu, VERSION)
+	annoncer_vehicule()
+
+
+## Le kart du garage, à l'hôte (qui le range dans le salon et le diffuse).
+## À rappeler quand le joueur en change en cours de salon.
+func annoncer_vehicule() -> void:
+	if not actif():
+		return
+	var reglage := GameSettings.course
+	if multiplayer.is_server():
+		lobby.choisir_vehicule(1, reglage.modele, reglage.couleur)
+		_diffuser_salon()
+	else:
+		_vehicule.rpc_id(1, reglage.modele, reglage.couleur)
+
+
+@rpc("any_peer", "reliable")
+func _vehicule(modele: int, couleur: int) -> void:
+	if not multiplayer.is_server():
+		return
+	var peer := multiplayer.get_remote_sender_id()
+	if not lobby.joueurs.has(peer):
+		return
+	lobby.choisir_vehicule(peer, modele, couleur)
+	_diffuser_salon()
 
 
 func _sur_echec() -> void:

@@ -38,6 +38,8 @@ var _matiere_flammes: StandardMaterial3D
 const ECHELLE_RETRECI := 0.6
 var _echelle: float = 1.0
 var _position_caisse := Vector3.ZERO
+## L'allure du modèle (ModeleKart), que le rétrécissement respecte.
+var _echelle_caisse := Vector3.ONE
 ## Sous étoile, une bulle aux couleurs qui tournent.
 var _aura: MeshInstance3D
 var _matiere_aura: StandardMaterial3D
@@ -66,6 +68,7 @@ func _ready() -> void:
 	_flammes = _creer_flammes()
 	add_child(_flammes)
 	_position_caisse = _body.position
+	_echelle_caisse = _body.scale
 
 
 func _process(delta: float) -> void:
@@ -84,7 +87,7 @@ func _update_taille(motor: KartMotor, delta: float) -> void:
 	if _echelle == cible:
 		return
 	_echelle = move_toward(_echelle, cible, 2.5 * delta)
-	_body.scale = Vector3.ONE * _echelle
+	_body.scale = _echelle_caisse * _echelle
 	_body.position = _position_caisse * _echelle
 
 

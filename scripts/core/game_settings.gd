@@ -105,6 +105,8 @@ func charger() -> void:
 	derniere_adresse = str(fichier.get_value("reseau", "adresse", derniere_adresse))
 	course.classe = clampi(int(fichier.get_value("course", "cylindree", course.classe)),
 		Cylindree.Classe.CC50, Cylindree.Classe.CC200)
+	course.modele = clampi(int(fichier.get_value("garage", "modele", course.modele)), 0, ModeleKart.nombre() - 1)
+	course.couleur = posmod(int(fichier.get_value("garage", "couleur", course.couleur)), ModeleKart.COULEURS.size())
 	_trophees.clear()
 	if fichier.has_section("trophees"):
 		for cle in fichier.get_section_keys("trophees"):
@@ -134,6 +136,8 @@ func sauver() -> void:
 	fichier.set_value("reseau", "pseudo", pseudo)
 	fichier.set_value("reseau", "adresse", derniere_adresse)
 	fichier.set_value("course", "cylindree", course.classe)
+	fichier.set_value("garage", "modele", course.modele)
+	fichier.set_value("garage", "couleur", course.couleur)
 	for cle in _records:
 		fichier.set_value("records", cle, _records[cle])
 	for cle in _trophees:
