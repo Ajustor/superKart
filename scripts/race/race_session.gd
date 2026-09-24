@@ -401,6 +401,9 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 	if tremplin != null and entree.kart.sauter(tremplin.impulsion):
 		entree.en_vol = true
 		entree.kart.motor.accorder_turbo(tremplin.duree_turbo, tremplin.force_turbo)
+	var plaque := _track.accelerateur_en(d, lateral)
+	if plaque != null and entree.kart.au_sol:
+		entree.kart.motor.accorder_turbo(plaque.duree_turbo, plaque.force_turbo)
 
 	if not dehors and _track.trou_en(d) == null:
 		# On remet en piste là où le kart roulait encore, pas là où la courbe

@@ -13,7 +13,8 @@ extends TrackFeature
 ## Tous les objets d'une rangée forment une seule MultiMesh : cinquante
 ## palmiers coûtent un appel de dessin, pas cinquante — ça compte sur mobile.
 
-enum Objet { PALMIER, PHARE, PILIER_DE_FEU, ETOILE, CHAMPIGNON, ROCHER, SAPIN, LAMPADAIRE, CRISTAL, IMMEUBLE }
+enum Objet { PALMIER, PHARE, PILIER_DE_FEU, ETOILE, CHAMPIGNON, ROCHER, SAPIN, LAMPADAIRE, CRISTAL, IMMEUBLE,
+	ARBRE, BOTTE_DE_FOIN, MOULIN, BUISSON }
 
 @export var objet: Objet = Objet.PALMIER:
 	set(valeur):
@@ -40,6 +41,13 @@ enum Objet { PALMIER, PHARE, PILIER_DE_FEU, ETOILE, CHAMPIGNON, ROCHER, SAPIN, L
 @export_range(0.2, 10.0, 0.05) var echelle: float = 1.0:
 	set(valeur):
 		echelle = valeur
+		_modifie()
+
+## Ne pose rien sur la route : là où le tracé revient sur lui-même (une
+## épingle), une rangée posée au bord d'une branche tomberait sur l'autre.
+@export var eviter_la_route: bool = false:
+	set(valeur):
+		eviter_la_route = valeur
 		_modifie()
 
 ## Un peu de désordre : taille, orientation et place varient d'un objet à
@@ -76,10 +84,36 @@ func placements(c: TrackCurve) -> Array[Transform3D]:
 			var taille := echelle * (1.0 if espacement <= 0.0 else rng.randf_range(0.85, 1.15))
 			var envol := hauteur * (1.0 if objet != Objet.ETOILE else rng.randf_range(0.6, 1.4))
 			var ou := TrackFeature.point(c, ici, lateral, envol)
+			if eviter_la_route and _sur_la_route(c, ou):
+				continue
+			# Sur le relief du circuit, s'il en a un : loin de la route, le sol
+			# n'est plus à la hauteur du bitume.
+			var sol := _terrain()
+			if sol != null and absf(lateral) > c.half_width:
+				ou.y = sol.hauteur_en(ou.x, ou.z) + envol
 			var lacet := rng.randf_range(0.0, TAU) if objet != Objet.PHARE else 0.0
 			var base := Basis(Vector3.UP, lacet).scaled(Vector3.ONE * taille)
 			poses.append(Transform3D(base, ou))
 	return poses
+
+
+func _sur_la_route(c: TrackCurve, ou: Vector3) -> bool:
+	var d := c.distance_of(ou)
+	var proche := c.position_at(d)
+	# Trop haut ou trop bas : c'est une autre partie du relief, pas la route.
+	if absf(proche.y - ou.y) > 4.0:
+		return false
+	return absf(c.lateral_offset_at(ou, d)) < c.half_width + 4.0
+
+
+func _terrain() -> TrackTerrain:
+	var circuit := piste()
+	if circuit == null:
+		return null
+	for element in circuit.elements():
+		if element is TrackTerrain:
+			return element
+	return null
 
 
 func _construire(c: TrackCurve, racine: Node3D) -> void:
@@ -129,6 +163,14 @@ static func maillage_de(quoi: Objet) -> ArrayMesh:
 			_cristal(brille)
 		Objet.IMMEUBLE:
 			_immeuble(mat, brille)
+		Objet.ARBRE:
+			_arbre(mat)
+		Objet.BOTTE_DE_FOIN:
+			_botte(mat)
+		Objet.MOULIN:
+			_moulin(mat)
+		Objet.BUISSON:
+			_buisson(mat)
 	var maillage := ArrayMesh.new()
 	if not mat.vide():
 		mat.dans(maillage, _materiau(false))
@@ -256,6 +298,54 @@ static func _immeuble(m: _Assemblage, b: _Assemblage) -> void:
 			var dir := Vector3.FORWARD.rotated(Vector3.UP, face * PI * 0.5)
 			var cote := dir.cross(Vector3.UP)
 			b.pave(Vector3(0, y, 0) + dir * 4.02, (Vector3(6.0, 0.9, 0.0) if absf(dir.x) < 0.5 else Vector3(0.0, 0.9, 6.0)) + Vector3(0.05, 0, 0.05), teinte)
+
+
+static func _arbre(m: _Assemblage) -> void:
+	# Un feuillu des collines : un tronc, et un houppier en boules serrées.
+	m.cylindre(Vector3.ZERO, Vector3.UP * 2.6, 0.35, 0.25, Color(0.42, 0.28, 0.16))
+	var vert := Color(0.2, 0.5, 0.18)
+	m.boule(Vector3(0, 3.6, 0), 1.9, vert)
+	m.boule(Vector3(1.1, 3.1, 0.4), 1.3, vert.lightened(0.08))
+	m.boule(Vector3(-1.0, 3.2, -0.5), 1.35, vert.darkened(0.08))
+	m.boule(Vector3(0.2, 4.6, -0.3), 1.2, vert.lightened(0.12))
+
+
+static func _botte(m: _Assemblage) -> void:
+	# Une botte ronde, couchée, et ses deux sangles.
+	var paille := Color(0.9, 0.76, 0.35)
+	m.cylindre(Vector3(-0.8, 0.75, 0), Vector3(0.8, 0.75, 0), 0.75, 0.75, paille, 12)
+	m.cylindre(Vector3(-0.8, 0.75, 0), Vector3(-0.79, 0.75, 0), 0.72, 0.1, paille.darkened(0.15), 12)
+	m.cylindre(Vector3(0.8, 0.75, 0), Vector3(0.79, 0.75, 0), 0.72, 0.1, paille.darkened(0.15), 12)
+	for x in [-0.35, 0.35]:
+		m.cylindre(Vector3(x - 0.04, 0.75, 0), Vector3(x + 0.04, 0.75, 0), 0.77, 0.77, Color(0.75, 0.2, 0.15), 12)
+
+
+static func _moulin(m: _Assemblage) -> void:
+	# Une tour blanche au toit rouge, et quatre ailes face au vent.
+	var pierre := Color(0.93, 0.9, 0.84)
+	m.cylindre(Vector3.ZERO, Vector3.UP * 9.0, 2.8, 2.1, pierre, 12)
+	m.cone(Vector3.UP * 9.0, 2.5, 2.6, Color(0.72, 0.2, 0.15), 12)
+	m.pave(Vector3(0, 1.1, 2.55), Vector3(1.1, 2.2, 0.3), Color(0.35, 0.22, 0.12))
+	var moyeu := Vector3(0, 8.6, 2.5)
+	m.boule(moyeu, 0.45, Color(0.3, 0.2, 0.12))
+	for i in 4:
+		var angle := PI * 0.5 * i
+		var dir := Vector3(cos(angle), sin(angle), 0.0)
+		var cote := Vector3(-dir.y, dir.x, 0.0)
+		var bout := moyeu + dir * 7.0 + Vector3(0, 0, 0.1)
+		m.cylindre(moyeu, bout, 0.12, 0.08, Color(0.4, 0.28, 0.16), 6)
+		m.pave(moyeu + dir * 4.3 + cote * 0.55 + Vector3(0, 0, 0.15),
+			Vector3(absf(dir.x) * 4.6 + absf(cote.x) * 1.0, absf(dir.y) * 4.6 + absf(cote.y) * 1.0, 0.06),
+			Color(0.96, 0.94, 0.88))
+
+
+static func _buisson(m: _Assemblage) -> void:
+	# Un buisson bas : serrés en rangée, ils font une haie qui marque le bord
+	# du terrain praticable sans cacher la route.
+	var vert := Color(0.18, 0.42, 0.16)
+	m.boule(Vector3(0, 0.55, 0), 0.95, vert)
+	m.boule(Vector3(0.9, 0.45, 0.2), 0.75, vert.lightened(0.07))
+	m.boule(Vector3(-0.9, 0.45, -0.2), 0.75, vert.darkened(0.06))
 
 
 static func _rocher(m: _Assemblage) -> void:

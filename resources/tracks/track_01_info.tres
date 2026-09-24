@@ -6,6 +6,6 @@
 script = ExtResource("1_info")
 id = "circuit_01"
 nom = "Circuit des Collines"
-description = "Une boucle vallonnée, une épingle et une longue descente. Idéal pour apprendre à déraper."
+description = "Une boucle au creux des collines, entre les haies et le vieux moulin : une rivière à franchir d'un saut, une épingle serrée et des flèches bleues pour prendre de l'élan. Idéal pour apprendre à déraper."
 chemin_scene = "res://scenes/tracks/track_01.tscn"
 tours = 3

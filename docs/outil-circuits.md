@@ -160,3 +160,18 @@ déplacer un point de contrôle emmène les murs et les zones avec lui.
 - `ciel.gdshader` : dégradé, nuages (`nuages`, part du ciel couverte),
   disque du soleil (la première lumière de la scène) et étoiles la nuit
   (`etoiles`). Immobile, pour que les reflets ne se recalculent qu'une fois.
+
+## Relief, accélérateurs et décor posé sur le sol
+
+- `TrackTerrain` (un par circuit) : le sol autour du tracé. Sous le bitume et
+  au ras des bas-côtés près de la route, il monte en collines au loin
+  (`relief`) et se creuse en ravin sous les trous (`ravin`). Sans collision :
+  il ne change rien à la course. `tests/test_relief.gd` vérifie qu'il ne
+  perce jamais la route. Premier utilisateur : le Circuit des Collines.
+- `TrackBoost` : une plaque d'accélération (turbo `duree_turbo` à
+  `force_turbo`), aux flèches qui défilent dans le sens de la course.
+- `TrackDecor` : nouveaux objets `ARBRE`, `BOTTE_DE_FOIN`, `MOULIN`,
+  `BUISSON` (en rangée serrée, une haie qui marque le bord du praticable).
+  `eviter_la_route` saute les objets qui tomberaient sur une autre partie du
+  tracé ; s'il y a un `TrackTerrain`, les objets hors de la route se posent
+  sur le relief.
