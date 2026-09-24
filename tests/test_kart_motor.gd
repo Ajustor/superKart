@@ -223,15 +223,16 @@ func test_l_angle_de_glisse_reste_dans_la_fourchette() -> void:
 			"angle hors fourchette pour un braquage de %f" % braquage)
 
 
-func test_braquer_vers_l_interieur_resserre_la_glisse() -> void:
+func test_serrer_met_la_caisse_plus_en_travers() -> void:
+	# Comme dans Mario Kart : vers l'intérieur la caisse se met en travers,
+	# vers l'extérieur elle se redresse.
 	_enter_drift(1)
 	cmd.steer = 1.0
 	_run(1.0)
 	var serre := motor.drift_angle
-	cmd.steer = 0.0
+	cmd.steer = -1.0
 	_run(1.0)
-	assert_gt(motor.drift_angle, serre,
-		"relâcher le braquage vers l'intérieur ouvre l'angle de glisse")
+	assert_lt(motor.drift_angle, serre, "contre-braquer redresse la caisse")
 
 
 func test_le_derapage_fait_tourner_la_trajectoire() -> void:
@@ -578,3 +579,55 @@ func test_l_entree_en_glisse_est_progressive() -> void:
 	assert_lt(tourne, 55.0, "0,3 s après l'atterrissage, loin d'un quart de tour")
 	assert_gt(tourne, 15.0, "mais la glisse se voit")
 	assert_lt(rad_to_deg(motor.drift_angle), stats.drift_angle_max_deg + 0.5)
+
+
+
+## La lacet parcouru en une seconde de glisse établie, stick tenu.
+func _lacet_en_glisse(braquage: float) -> float:
+	_enter_drift(1)
+	cmd.steer = braquage
+	_run(1.0)
+	var avant := motor.velocity_dir
+	_run(1.0)
+	return motor.velocity_dir - avant
+
+
+func _lacet_en_adherence() -> float:
+	var grip := KartMotor.new(stats)
+	var c := KartCommand.new()
+	c.throttle = 1.0
+	for i in 300:
+		grip.step(c, 1.0 / 60.0)
+	c.steer = 1.0
+	var avant := grip.velocity_dir
+	for i in 60:
+		grip.step(c, 1.0 / 60.0)
+	return grip.velocity_dir - avant
+
+
+## Joué en main : la glisse était trop sèche, même au neutre, et le stick n'y
+## changeait presque rien. Comme dans Mario Kart 8 : au neutre, à peu près le
+## braquage à fond ; vers l'intérieur, plus serré ; vers l'extérieur, bien
+## plus large.
+func test_les_trois_regimes_de_la_glisse() -> void:
+	var adherence := _lacet_en_adherence()
+	var interieur := _lacet_en_glisse(1.0)
+	before_each()
+	var neutre := _lacet_en_glisse(0.0)
+	before_each()
+	var exterieur := _lacet_en_glisse(-1.0)
+	assert_gt(interieur, adherence * 1.15, "vers l'intérieur, plus serré qu'en adhérence")
+	assert_almost_eq(neutre, adherence, adherence * 0.15, "au neutre, comme le braquage à fond")
+	assert_lt(exterieur, adherence * 0.55, "vers l'extérieur, une grande courbe")
+	assert_gt(exterieur, 0.0, "mais toujours du même côté")
+
+
+func test_la_glisse_suit_le_stick_sans_a_coup() -> void:
+	_enter_drift(1)
+	cmd.steer = -1.0
+	_run(1.0)
+	cmd.steer = 1.0
+	motor.step(cmd, 1.0 / 60.0)
+	assert_lt(motor.modulation, 0.2, "une image après, la glisse n'a presque pas bougé")
+	_run(0.5)
+	assert_almost_eq(motor.modulation, 1.0, 0.001, "en une demi-seconde, elle a suivi")
