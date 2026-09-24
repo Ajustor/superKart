@@ -1,0 +1,80 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/track/track.gd" id="1_track"]
+[ext_resource type="Curve3D" path="res://resources/tracks/arene_ovale_curve.tres" id="2_curve"]
+[ext_resource type="Script" path="res://scripts/track/features/track_decor.gd" id="s_decor"]
+[ext_resource type="Script" path="res://scripts/track/features/track_wall.gd" id="s_wall"]
+
+[sub_resource type="ProceduralSkyMaterial" id="Ciel"]
+sky_top_color = Color(0.3, 0.5, 0.95, 1)
+sky_horizon_color = Color(0.85, 0.85, 1.0, 1)
+ground_bottom_color = Color(0.35, 0.3, 0.25, 1)
+ground_horizon_color = Color(0.7, 0.65, 0.55, 1)
+
+[sub_resource type="Sky" id="Sky"]
+sky_material = SubResource("Ciel")
+
+[sub_resource type="Environment" id="Env"]
+background_mode = 2
+sky = SubResource("Sky")
+ambient_light_source = 2
+ambient_light_color = Color(0.7, 0.7, 0.75, 1)
+ambient_light_energy = 0.5
+
+[sub_resource type="StandardMaterial3D" id="Mat_sol"]
+albedo_color = Color(0.72, 0.6, 0.42, 1)
+roughness = 1.0
+
+[sub_resource type="PlaneMesh" id="Sol"]
+material = SubResource("Mat_sol")
+size = Vector2(600, 600)
+
+[node name="Track" type="Node3D"]
+script = ExtResource("1_track")
+curve = ExtResource("2_curve")
+half_width = 14.0
+rangees_objets = PackedFloat32Array(0.12, 0.37, 0.62, 0.87)
+road_color = Color(0.5, 0.46, 0.5, 1)
+bordures = true
+couleur_bordure = Color(0.95, 0.75, 0.15, 1)
+couleur_bordure_bis = Color(0.2, 0.2, 0.25, 1)
+musique = 2
+
+[node name="CurveEditor" type="Path3D" parent="."]
+curve = ExtResource("2_curve")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.766, -0.492, 0.414, 0, 0.643, 0.766, -0.643, -0.587, 0.492, 0, 60, 0)
+light_energy = 0.9
+shadow_enabled = true
+
+[node name="Sable" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.05, 0)
+mesh = SubResource("Sol")
+
+[node name="Enceinte" type="Node3D" parent="."]
+script = ExtResource("s_wall")
+longueur = 250.0
+hauteur = 1.6
+couleur = Color(0.95, 0.75, 0.15, 1)
+couleur_bis = Color(0.2, 0.2, 0.25, 1)
+
+[node name="Piliers" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 2
+longueur = 250.0
+decalage = 20.0
+espacement = 26.0
+graine = 4
+
+[node name="Rochers" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 5
+debut = 13.0
+longueur = 250.0
+decalage = 26.0
+espacement = 24.0
+graine = 9

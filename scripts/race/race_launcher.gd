@@ -109,6 +109,8 @@ static func monter(reglage: RaceSetup, rng: RandomNumberGenerator = null) -> Nod
 				session.cases_imposees = reglage.grand_prix.cases(session.noms)
 		RaceSetup.Mode.CONTRE_LA_MONTRE:
 			_seul_en_piste(course, session)
+		RaceSetup.Mode.BATAILLE:
+			_en_bataille(course, session)
 	_habiller(session, reglage)
 	Cylindree.appliquer(course, reglage.classe_effective())
 	return course
@@ -127,6 +129,27 @@ static func _habiller(session: RaceSession, reglage: RaceSetup) -> void:
 			ModeleKart.habiller(kart, reglage.modele, ModeleKart.couleur(reglage.couleur))
 		else:
 			ModeleKart.habiller(kart, ModeleKart.STANDARD, ModeleKart.couleur(libres[(k - 1) % libres.size()]))
+
+
+## La bataille : pas de tours ni de record, la table d'objets de l'arène, et
+## l'arbitre des ballons.
+static func _en_bataille(course: Node, session: RaceSession) -> void:
+	session.sans_tours = true
+	session.id_piste = ""
+	var objets := course.get_node_or_null("Objets") as ItemManager
+	if objets != null:
+		objets.bataille = true
+		objets.table = Bataille.table()
+	# Ni grille, ni damier, ni portique : on ne part ni n'arrive nulle part.
+	var marquage := course.get_node_or_null("GridMarkings")
+	if marquage != null:
+		course.remove_child(marquage)
+		marquage.free()
+	var bataille := Bataille.new()
+	bataille.name = "Bataille"
+	bataille.session_path = NodePath("../Session")
+	bataille.objets_path = NodePath("../Objets")
+	course.add_child(bataille)
 
 
 ## Le contre-la-montre : le kart du joueur seul, sans boîtes, trois

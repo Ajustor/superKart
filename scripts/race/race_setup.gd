@@ -12,6 +12,8 @@ enum Mode {
 	GRAND_PRIX,
 	## Seul en piste, trois champignons, contre son propre fantôme.
 	CONTRE_LA_MONTRE,
+	## Dans une arène, trois ballons chacun : le dernier en lice gagne.
+	BATAILLE,
 }
 
 ## Case de départ tirée au sort au lancement de chaque course.
@@ -83,7 +85,8 @@ func classe_effective() -> int:
 ## seul, comme avant l'arrivée des cylindrées : les records déjà enregistrés
 ## restent valables. Le contre-la-montre a ses propres records.
 func cle_record() -> String:
-	if piste == null:
+	# Une bataille n'a pas de chrono à battre.
+	if piste == null or mode == Mode.BATAILLE:
 		return ""
 	var cle := piste.id
 	if mode == Mode.CONTRE_LA_MONTRE:

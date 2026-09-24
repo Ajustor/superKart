@@ -31,6 +31,8 @@ var _carte: MiniMap
 var _fleche: Label
 var _fleche_reste: float = 0.0
 var _place_vue: int = 0
+## En mode bataille : les ballons et le temps remplacent les tours.
+var _bataille: Bataille
 const DUREE_FLECHE := 1.2
 
 
@@ -78,6 +80,14 @@ func _ready() -> void:
 		_annoncer("GO !"))
 	_session.tour_boucle.connect(_sur_tour)
 	_session.depart_du_joueur.connect(_sur_depart_du_joueur)
+	_bataille = _session.get_parent().get_node_or_null("Bataille") as Bataille if _session.get_parent() != null else null
+	if _bataille != null:
+		_bataille.ballon_perdu.connect(func(e: RaceEntry, restants: int) -> void:
+			if e == _session.entries[0] and restants > 0:
+				_annoncer("BALLON CREVÉ !", 1.2))
+		_bataille.elimine.connect(func(e: RaceEntry) -> void:
+			if e == _session.entries[0]:
+				_annoncer("ÉLIMINÉ !\n%s" % RaceScoring.ordinal(e.place_finale), 3.0))
 
 
 func _placer_la_carte() -> void:
@@ -130,6 +140,11 @@ func _process(delta: float) -> void:
 	var moi := _session.entries[0]
 	var tour := mini(moi.progress.lap + 1, _session.lap_count)
 	var lignes := PackedStringArray()
+	if _bataille != null:
+		_label.text = "\n".join(lignes_de_bataille(_bataille, moi, _session.entries.size()))
+		_suivre_la_place(moi.position, delta)
+		_process_annonces(delta)
+		return
 	# maxi(..., 1) couvre la toute première image, avant que classer() n'ait
 	# tourné : afficher « 0e » serait un bug visible.
 	# Seul en piste (contre-la-montre), la place ne dit rien.
@@ -141,7 +156,10 @@ func _process(delta: float) -> void:
 		lignes.append("MEILLEUR %s" % RaceTimer.format(moi.timer.best))
 	_label.text = "\n".join(lignes)
 	_suivre_la_place(moi.position, delta)
+	_process_annonces(delta)
 
+
+func _process_annonces(delta: float) -> void:
 	if not _session.en_course:
 		_annonce.text = str(ceili(_session.decompte_restant))
 		_annonce.add_theme_font_size_override("font_size", 120)
@@ -234,3 +252,14 @@ func _dessiner_vitesse() -> void:
 		var longueur := randf_range(0.08, 0.16) * rayon
 		draw_line(centre + dir * debut, centre + dir * (debut + longueur),
 			Color(1, 1, 1, 0.35 * force), randf_range(2.0, 4.0))
+
+
+## Les lignes du coin en bataille : ses ballons, qui reste en lice, le temps.
+static func lignes_de_bataille(bataille: Bataille, moi: RaceEntry, total: int) -> PackedStringArray:
+	var restants := int(bataille.ballons.get(moi, 0))
+	var lignes := PackedStringArray()
+	lignes.append("BALLONS " + "●".repeat(restants) + "○".repeat(Bataille.BALLONS - restants))
+	lignes.append("EN LICE %d/%d" % [bataille.vivants().size(), total])
+	var t := ceili(bataille.temps_restant)
+	lignes.append("%d:%02d" % [t / 60, t % 60])
+	return lignes

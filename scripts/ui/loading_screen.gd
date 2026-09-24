@@ -93,6 +93,9 @@ static func _sous_titre(reglage: RaceSetup) -> String:
 	match reglage.mode:
 		RaceSetup.Mode.CONTRE_LA_MONTRE:
 			return "Contre-la-montre"
+		RaceSetup.Mode.BATAILLE:
+			return "Bataille · %s · %d ballons · %d min" % [Cylindree.nom(reglage.classe), Bataille.BALLONS,
+				int(Bataille.DUREE / 60.0)]
 		RaceSetup.Mode.GRAND_PRIX:
 			if reglage.grand_prix != null:
 				var gp := reglage.grand_prix

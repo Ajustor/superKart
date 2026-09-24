@@ -124,6 +124,8 @@ var en_course: bool = false
 
 ## Vrai quand le dernier concurrent a franchi la ligne.
 var terminee: bool = false
+## Mode bataille : pas de tours à compter, les places viennent de Bataille.
+var sans_tours: bool = false
 
 ## Temps restant avant le vert, en secondes.
 var decompte_restant: float = 0.0
@@ -367,7 +369,7 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 		# Se déclencher sur sa montée enregistrait un tour à chaque
 		# franchissement, donc reculer sur la ligne d'arrivée fabriquait un
 		# meilleur temps de deux images. On compte sur une ligne de crue.
-		if entree.progress.lap > entree.tours_comptes:
+		if not sans_tours and entree.progress.lap > entree.tours_comptes:
 			entree.tours_comptes = entree.progress.lap
 			entree.timer.complete_lap()
 			if entree.tours_comptes >= lap_count and arbitre:

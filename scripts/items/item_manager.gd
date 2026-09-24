@@ -74,6 +74,9 @@ var autorite: bool = true
 
 ## Contre-la-montre : pas de boîtes sur la route, trois champignons au départ.
 var contre_la_montre: bool = false
+## Bataille : un kart éliminé (fini) ne ramasse, ne lance et n'encaisse plus
+## rien, et la carapace rouge vise le kart le plus proche devant soi.
+var bataille: bool = false
 
 var boites: Array[Boite] = []
 var bananes: Array[Banane] = []
@@ -183,6 +186,9 @@ func avancer(positions: Array[Vector3], delta: float) -> void:
 
 	for i in entrees.size():
 		var entree := entrees[i]
+		if not _en_jeu(entree):
+			entree.kart.demande_objet = false
+			continue
 		entree.inventaire.avancer(delta)
 		_ramasser(entree, positions[i])
 		if entree.kart.demande_objet:
@@ -224,7 +230,8 @@ func _lancer(entree: RaceEntry, point: Vector3, objet: int) -> void:
 		ItemKind.GREEN_SHELL:
 			lancer_carapace(point + avant * AVANCE_CARAPACE, avant, entree, null)
 		ItemKind.RED_SHELL:
-			lancer_carapace(point + avant * AVANCE_CARAPACE, avant, entree, cible_devant(entree))
+			var cible := cible_proche(entree, point, avant) if bataille else cible_devant(entree)
+			lancer_carapace(point + avant * AVANCE_CARAPACE, avant, entree, cible)
 		ItemKind.BLUE_SHELL:
 			lancer_carapace(point + avant * AVANCE_CARAPACE, avant, entree, cible_bleue(entree), true)
 		ItemKind.LIGHTNING:
@@ -247,6 +254,29 @@ static func effet_sur_soi(moteur: KartMotor, objet: int) -> bool:
 		_:
 			return false
 	return true
+
+
+## En bataille : le kart en jeu le plus proche, devant soi (dans un cône
+## large), ou null s'il n'y en a pas — la rouge part alors tout droit.
+func cible_proche(entree: RaceEntry, point: Vector3, avant: Vector3) -> RaceEntry:
+	var meilleure: RaceEntry = null
+	var plus_pres := INF
+	for autre in _session.entries:
+		if autre == entree or not _en_jeu(autre):
+			continue
+		var vers := autre.kart.global_position - point if autre.kart.is_inside_tree() else autre.kart.position - point
+		vers.y = 0.0
+		var d := vers.length()
+		if d < 0.1 or d > 60.0 or vers.normalized().dot(avant) < 0.3:
+			continue
+		if d < plus_pres:
+			plus_pres = d
+			meilleure = autre
+	return meilleure
+
+
+func _en_jeu(entree: RaceEntry) -> bool:
+	return not (bataille and entree.finished)
 
 
 ## La carapace bleue vise celui qui mène — ou, lancée par lui, son second.
@@ -417,7 +447,7 @@ func _carapace_touche(c: Carapace, positions: Array[Vector3]) -> bool:
 		return true
 	for j in _session.entries.size():
 		var entree := _session.entries[j]
-		if entree == c.lanceur and c.age < GRACE_LANCEUR:
+		if (entree == c.lanceur and c.age < GRACE_LANCEUR) or not _en_jeu(entree):
 			continue
 		if positions[j].distance_to(c.position) <= RAYON_IMPACT:
 			_toucher(entree)
@@ -439,7 +469,7 @@ func _avancer_bananes(positions: Array[Vector3], delta: float) -> void:
 		var touchee := false
 		for j in _session.entries.size():
 			var entree := _session.entries[j]
-			if entree == b.lanceur and b.age < GRACE_LANCEUR:
+			if (entree == b.lanceur and b.age < GRACE_LANCEUR) or not _en_jeu(entree):
 				continue
 			if positions[j].distance_to(b.position) <= (RAYON_FAUSSE_BOITE if b.fausse else RAYON_IMPACT):
 				_toucher(entree)

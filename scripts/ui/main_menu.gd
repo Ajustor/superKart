@@ -17,9 +17,11 @@ const NOMS_MODES := {
 	RaceSetup.Mode.GRAND_PRIX: "Grand Prix",
 	RaceSetup.Mode.COURSE: "Course libre",
 	RaceSetup.Mode.CONTRE_LA_MONTRE: "Contre-la-montre",
+	RaceSetup.Mode.BATAILLE: "Bataille",
 }
 
 var _boutons_piste: Array[Button] = []
+var _boutons_arene: Array[Button] = []
 var _boutons_mode: Dictionary = {}
 var _boutons_coupe: Array[Button] = []
 var _coupe: int = 0
@@ -148,8 +150,9 @@ func _ecran_selection() -> Control:
 	haut.add_theme_constant_override("separation", 10)
 	colonne.add_child(haut)
 	var groupe_modes := ButtonGroup.new()
-	for mode in [RaceSetup.Mode.GRAND_PRIX, RaceSetup.Mode.COURSE, RaceSetup.Mode.CONTRE_LA_MONTRE]:
-		var b := _bascule(NOMS_MODES[mode], groupe_modes, Vector2(196, 56), 21)
+	for mode in [RaceSetup.Mode.GRAND_PRIX, RaceSetup.Mode.COURSE, RaceSetup.Mode.CONTRE_LA_MONTRE,
+			RaceSetup.Mode.BATAILLE]:
+		var b := _bascule(NOMS_MODES[mode], groupe_modes, Vector2(160, 56), 19)
 		b.pressed.connect(_choisir_mode.bind(mode))
 		haut.add_child(b)
 		_boutons_mode[mode] = b
@@ -209,6 +212,13 @@ func _ecran_selection() -> Control:
 		b.pressed.connect(_choisir_piste.bind(piste))
 		_circuits.add_child(b)
 		_boutons_piste.append(b)
+	# Les arènes, pour la bataille, dans la même grille (même groupe).
+	for arene in TrackCatalog.ARENES:
+		var b := _bascule(arene.nom, groupe, Vector2(234, 58), 20)
+		b.button_pressed = arene == reglage.piste
+		b.pressed.connect(_choisir_piste.bind(arene))
+		_circuits.add_child(b)
+		_boutons_arene.append(b)
 	colonne.add_child(_circuits)
 
 	_description = Label.new()
@@ -292,7 +302,22 @@ func _choisir_mode(mode: RaceSetup.Mode) -> void:
 	_circuits.visible = not _coupes.visible
 	_classe.visible = mode != RaceSetup.Mode.CONTRE_LA_MONTRE
 	_tours.visible = mode == RaceSetup.Mode.COURSE
-	_depart.visible = mode != RaceSetup.Mode.CONTRE_LA_MONTRE
+	var bataille := mode == RaceSetup.Mode.BATAILLE
+	# En bataille, les karts partent dispersés dans l'arène : pas de case.
+	_depart.visible = mode != RaceSetup.Mode.CONTRE_LA_MONTRE and not bataille
+	_miroir.visible = not bataille
+	for b in _boutons_piste:
+		b.visible = not bataille
+	for b in _boutons_arene:
+		b.visible = bataille
+	# Une arène ne se court pas, un circuit ne se bat pas.
+	var est_arene := TrackCatalog.ARENES.has(reglage.piste)
+	if bataille and not est_arene:
+		_choisir_piste(TrackCatalog.ARENES[0])
+		_boutons_arene[0].button_pressed = true
+	elif not bataille and est_arene:
+		_choisir_piste(TrackCatalog.PISTES[0])
+		_boutons_piste[0].button_pressed = true
 	if mode == RaceSetup.Mode.CONTRE_LA_MONTRE and reglage.piste != null:
 		reglage.tours = reglage.piste.tours
 	_rafraichir()
@@ -336,6 +361,9 @@ func _rafraichir() -> void:
 	match reglage.mode:
 		RaceSetup.Mode.GRAND_PRIX:
 			_description.text = "Quatre courses de trois tours contre sept pilotes. Les points s'additionnent, et les trois premiers de la coupe montent sur le podium."
+			_record.text = ""
+		RaceSetup.Mode.BATAILLE:
+			_description.text = "Trois ballons chacun, et chaque objet qui vous touche en crève un. Le dernier en lice gagne ; au bout de %d minutes, on compte les ballons." % int(Bataille.DUREE / 60.0)
 			_record.text = ""
 		RaceSetup.Mode.CONTRE_LA_MONTRE:
 			_description.text = "Seul en piste en 150cc, trois champignons en poche. Battez votre record : votre meilleur parcours revient courir contre vous, en fantôme."

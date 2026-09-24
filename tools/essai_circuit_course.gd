@@ -4,7 +4,7 @@ extends Node
 ## le tracé se laisse rouler : temps de chacun, remises en piste, images
 ## passées presque à l'arrêt.
 ##
-##   godot --headless --fixed-fps 60 --path . -s tools/essai_circuit.gd -- <id> [tours] [cc] [miroir] [kart=N]
+##   godot --headless --fixed-fps 60 --path . -s tools/essai_circuit.gd -- <id> [tours] [cc] [miroir] [bataille] [kart=N]
 ##
 ## (essai_circuit.gd ne fait que charger ce nœud à la première image : un
 ## script lancé par -s est compilé avant que les autoloads n'existent, et
@@ -50,6 +50,9 @@ func _ready() -> void:
 		reglage.classe = Cylindree.NOMS.find("%scc" % args[2])
 	# Quatrième argument facultatif : « miroir ».
 	reglage.miroir = args.has("miroir")
+	# « bataille » : une bataille de ballons plutôt qu'une course.
+	if args.has("bataille"):
+		reglage.mode = RaceSetup.Mode.BATAILLE
 	# « kart=N » n'importe où après : le modèle du kart du joueur (ModeleKart).
 	for a in args:
 		if a.begins_with("kart="):

@@ -124,3 +124,24 @@ compte dans les chocs. L'IA prend les couleurs restantes.
 
 Le harnais IA accepte `kart=N` pour valider un modèle :
 `tools/essai_circuit.gd -- <id> 1 200 kart=4`.
+
+## Bataille (`Bataille`, arènes de `TrackCatalog.ARENES`)
+
+Trois ballons chacun. Chaque objet encaissé (carapace, banane, fausse boîte,
+explosion) en crève un ; sans ballon, on est éliminé et classé derrière tous
+ceux qui en ont encore. Le dernier en lice gagne ; au bout de 3 minutes, les
+survivants sont classés au nombre de ballons.
+
+- L'arène est un anneau large et fermé de murs (`arene_ovale`), hors du menu
+  des courses et des coupes. Les karts y partent dispersés, sans grille ni
+  portique.
+- La session ne compte pas de tours (`RaceSession.sans_tours`) : `Bataille`
+  donne les places comme des arrivées, et l'écran des résultats suit sans
+  changement.
+- Table d'objets à part : ni carapace bleue, ni éclair, ni pièces. La
+  carapace rouge vise le kart en jeu le plus proche devant soi.
+- Un kart d'IA éliminé quitte l'arène ; le joueur éliminé s'arrête et voit
+  les résultats.
+- Solo contre l'IA pour l'instant ; pas encore en réseau.
+
+Harnais : `tools/essai_circuit.gd -- arene_ovale 1 150 bataille`.
