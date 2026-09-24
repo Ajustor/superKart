@@ -47,3 +47,20 @@ func test_l_ouverture_finit_toujours_par_une_reponse() -> void:
 	assert_ne(p.texte(), "")
 	p.fermer()
 	assert_eq(p.etat, PortInternet.Etat.INACTIF)
+
+
+func test_une_reponse_perimee_ne_touche_pas_a_la_nouvelle_demande() -> void:
+	var p := PortInternet.new()
+	add_child_autofree(p)
+	# Une demande en cours (sans fil lancé : on simule ses réponses).
+	p.etat = PortInternet.Etat.EN_COURS
+	p._demande = 2
+	p._port = Reseau.PORT
+	p._terminer(UPNP.new(), {ok = true, ip = "82.64.1.2"}, Reseau.PORT, 1)
+	assert_eq(p.etat, PortInternet.Etat.EN_COURS, "la réponse de la demande 1 est ignorée")
+	assert_eq(p.adresse, "")
+	p._terminer(UPNP.new(), {ok = true, ip = "82.64.1.2"}, Reseau.PORT, 2)
+	assert_eq(p.etat, PortInternet.Etat.OUVERT, "celle de la demande 2 compte")
+	assert_string_contains(p.adresse, "82.64.1.2")
+	p._upnp = null
+	p.etat = PortInternet.Etat.INACTIF

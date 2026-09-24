@@ -13,7 +13,9 @@ course.
 | 150cc | 100 % (réglage d'origine) | 100 % |
 | 200cc | 118 %, braquage compris | 100 % |
 
-- Le braquage ne change pas : plus lent, on tourne plus serré.
+- En 50, 100 et 150cc, le braquage ne change pas : plus lent, on tourne plus
+  serré. En 200cc, il suit la vitesse, sans quoi un rayon de braquage de
+  14 m ne passait plus les épingles de 12,5 m.
 - La gravité suit le carré du facteur de vitesse, et l'impulsion des tremplins
   le facteur lui-même. Chaque saut garde ainsi sa trajectoire. Sans ça, en
   50cc, toute l'IA tombait dans le gouffre de la mine.

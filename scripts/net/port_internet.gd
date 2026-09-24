@@ -33,6 +33,10 @@ var message: String = ""
 var _fil: Thread
 var _upnp: UPNP
 var _port: int = 0
+## Numéro de la demande en cours. Une réponse d'une demande précédente (on a
+## quitté puis rouvert un salon avant qu'elle n'arrive) porte un autre numéro,
+## et ne doit toucher ni à l'état ni au fil de la nouvelle.
+var _demande: int = 0
 
 
 static func disponible() -> bool:
@@ -47,13 +51,14 @@ func ouvrir(port: int) -> void:
 		_echouer("L'ouverture automatique du port n'est pas possible sur cette plateforme.")
 		return
 	etat = Etat.EN_COURS
+	_demande += 1
 	_fil = Thread.new()
-	_fil.start(_chercher.bind(port))
+	_fil.start(_chercher.bind(port, _demande))
 
 
 ## Dans le fil : trouver la box, lui demander le port, lire l'adresse
 ## publique. Ne touche à rien d'autre que ses variables locales.
-func _chercher(port: int) -> void:
+func _chercher(port: int, demande: int) -> void:
 	var upnp := UPNP.new()
 	var resultat := {}
 	var err := upnp.discover(2500, 2, "InternetGatewayDevice")
@@ -69,17 +74,26 @@ func _chercher(port: int) -> void:
 			resultat = {ok = false, message = "La box refuse d'ouvrir le port %d : activez l'UPnP dans ses réglages, ou ouvrez-le à la main (UDP)." % port}
 		else:
 			resultat = {ok = true, ip = upnp.query_external_address()}
-	_terminer.call_deferred(upnp, resultat)
+	_terminer.call_deferred(upnp, resultat, port, demande)
 
 
-func _terminer(upnp: UPNP, resultat: Dictionary) -> void:
+func _terminer(upnp: UPNP, resultat: Dictionary, port: int, demande: int) -> void:
+	var ouvert := bool(resultat.get("ok", false))
+	if demande != _demande:
+		# Une réponse périmée : son fil a déjà été attendu par ouvrir(). On
+		# referme le port qu'elle a ouvert, sauf si la demande en cours vise
+		# le même : c'est elle qui le tient désormais.
+		var repris := port == _port and (etat == Etat.EN_COURS or etat == Etat.OUVERT)
+		if ouvert and not repris:
+			upnp.delete_port_mapping(port, "UDP")
+		return
 	if _fil != null:
 		_fil.wait_to_finish()
 		_fil = null
 	# Entre-temps, on a peut-être quitté la partie.
 	if etat != Etat.EN_COURS:
-		if bool(resultat.get("ok", false)):
-			upnp.delete_port_mapping(_port, "UDP")
+		if ouvert:
+			upnp.delete_port_mapping(port, "UDP")
 		return
 	if not bool(resultat.get("ok", false)):
 		_echouer(str(resultat.get("message", "")))

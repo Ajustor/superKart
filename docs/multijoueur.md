@@ -52,8 +52,10 @@ grille sont prises par l'IA.
   d'un pilote IA.
 - Les trophées, comme les records, ne se gagnent qu'en solo.
 
-Sur Internet (hors du réseau local), l'hôte doit rediriger le port **UDP 8910**
-de sa box vers sa machine, et donner son adresse IP publique aux autres.
+Sur Internet (hors du réseau local), le jeu ouvre lui-même le port **UDP 8910**
+sur la box de l'hôte (UPnP) et affiche au salon l'adresse publique à donner
+aux autres (voir « Jouer par Internet » plus bas). Si la box refuse ou est
+introuvable, il reste à rediriger ce port à la main vers la machine de l'hôte.
 
 ## Qui fait quoi
 
