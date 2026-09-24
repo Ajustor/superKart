@@ -60,3 +60,27 @@ godot --headless --fixed-fps 60 --path . -s tools/essai_circuit.gd -- <circuit> 
 fait courir huit IA et donne, en plus des temps, la durée réelle de chaque
 image (moyenne, 95e centile, pire). Sans rendu : c'est le coût processeur
 seul.
+
+## Saccades
+
+- **Tour de chauffe** (`TourDeChauffe`) : derrière l'écran de chargement,
+  trois images sont rendues depuis une caméra qui voit tout le circuit, avec
+  devant elle un exemplaire de chaque objet et de chaque effet (boîtes,
+  bananes, carapaces, explosion, aura d'étoile, étincelles, poussière,
+  flammes). En GL Compatibility, un matériau n'est compilé qu'à son premier
+  dessin : sans ce tour, la première carapace ou la première vue sur la lave
+  figeaient l'image en pleine course. Mesuré en rendu logiciel sur la
+  Forteresse : 2 saccades de 150-165 ms à la première carapace sans le tour,
+  aucune avec.
+- Les maillages des objets sont faits une fois (`ItemManager._forme`) ; le
+  tableau des résultats se réécrit en place au lieu d'être refait deux fois
+  par seconde ; le son moteur, calculé échantillon par échantillon, tourne à
+  11 025 Hz.
+- `tools/essai_saccades.gd` relève les images anormalement longues d'une
+  course et ce qui venait de se passer (objet, explosion, choc, figure…) :
+
+      xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 480x270 \
+          -s tools/essai_saccades.gd -- <id> [secondes] [sans_chauffe]
+
+  Avec `--headless --fixed-fps 60` à la place, il ne mesure que le coût
+  processeur.

@@ -34,6 +34,14 @@ extends Resource
 ## glisse à nouveau plus large que de ne rien faire.
 @export var drift_curvature_min: float = 0.68
 
+## Durée de l'entrée en glisse, en secondes : la courbure y monte de
+## drift_entree_debut à sa pleine valeur. Sans elle, la trajectoire tournait
+## d'emblée à pleine vitesse ; ajoutée à l'angle de caisse, le kart semblait
+## pivoter d'un quart de tour dès l'atterrissage du bond. Le rayon une fois
+## la glisse installée, lui, ne change pas.
+@export var drift_entree: float = 0.35
+@export var drift_entree_debut: float = 0.45
+
 ## Durée du bond d'entrée en dérapage. La glisse commence à l'atterrissage.
 @export var hop_duration: float = 0.20
 
@@ -52,9 +60,13 @@ extends Resource
 @export_group("Dérapage — apparence")
 ## Ces trois-là ne touchent que l'angle affiché de la caisse, pas la
 ## trajectoire : c'est drift_turn_rate qui pilote le virage.
-@export var drift_angle_min_deg: float = 30.0
-@export var drift_angle_max_deg: float = 55.0
-@export var drift_angle_rate_deg: float = 220.0 ## convergence de l'angle, deg/s
+## Mesuré en jeu : à 30-55°, atteints en 0,2 s, la caisse se mettait en
+## travers d'un coup et, avec la trajectoire qui tourne, le kart semblait
+## partir à 90°. 15-30°, atteints en douceur : on voit la glisse sans perdre
+## la route des yeux.
+@export var drift_angle_min_deg: float = 15.0
+@export var drift_angle_max_deg: float = 30.0
+@export var drift_angle_rate_deg: float = 90.0 ## convergence de l'angle, deg/s
 
 @export_group("Mini-turbo")
 @export var drift_tiers: PackedFloat32Array = PackedFloat32Array([0.6, 1.5, 2.6])

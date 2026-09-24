@@ -29,11 +29,40 @@ static func noter_appui(action: StringName) -> void:
 func _ready() -> void:
 	# Un appui fait dans le menu ne doit pas lancer un objet au départ.
 	_appuis.clear()
+	_axes.clear()
+
+
+## Une gâchette de manette est un axe, pas un bouton : tenue enfoncée, elle
+## envoie un événement « appuyé » à chaque frémissement. Chacun comptait pour
+## un appui, et une pression lançait deux, trois, huit objets. On ne retient
+## que le passage de relâchée à enfoncée, avec un écart entre les deux seuils
+## pour qu'une gâchette qui hésite au milieu ne mitraille pas.
+const GACHETTE_ENFONCEE := 0.6
+const GACHETTE_RELACHEE := 0.3
+
+## (manette, axe) -> enfoncée ou non, pour les axes liés à un appui bref.
+static var _axes: Dictionary = {}
 
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventJoypadMotion:
+		_axe(event as InputEventJoypadMotion)
+		return
 	for action in APPUIS_BREFS:
 		if event.is_action_pressed(action):
+			_appuis[action] = true
+
+
+func _axe(event: InputEventJoypadMotion) -> void:
+	for action in APPUIS_BREFS:
+		if not event.is_action(action):
+			continue
+		var cle := Vector2i(event.device, event.axis)
+		var avant: bool = _axes.get(cle, false)
+		var force := absf(event.axis_value)
+		var enfoncee := force > GACHETTE_RELACHEE if avant else force > GACHETTE_ENFONCEE
+		_axes[cle] = enfoncee
+		if enfoncee and not avant:
 			_appuis[action] = true
 
 

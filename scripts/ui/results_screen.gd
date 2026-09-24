@@ -237,9 +237,9 @@ func _remplir() -> void:
 		if gp != null:
 			_resume.text = "%s, course %d/%d  ·  %s" % [gp.nom(), gp.manche + 1, gp.manches(), _resume.text]
 
-	for enfant in _grille.get_children():
-		_grille.remove_child(enfant)
-		enfant.queue_free()
+	# Les cases se réécrivent en place : tout défaire et tout refaire deux
+	# fois par seconde coûtait une saccade à chaque rafraîchissement.
+	_case_suivante = 0
 	var colonnes := _colonnes()
 	for titre in colonnes:
 		_cellule(titre, UITheme.TEXTE_DOUX, 18)
@@ -265,14 +265,29 @@ func _remplir() -> void:
 			if not _manche_comptee:
 				total += RaceScoring.points_pour(entree.position)
 			_cellule(str(total), couleur)
+	# Moins de cases qu'avant (le nombre de colonnes ne change pas en cours de
+	# route, mais on ne suppose rien) : les restantes s'en vont.
+	while _grille.get_child_count() > _case_suivante:
+		var reste := _grille.get_child(_grille.get_child_count() - 1)
+		_grille.remove_child(reste)
+		reste.queue_free()
+
+
+var _case_suivante := 0
 
 
 func _cellule(texte: String, couleur: Color, taille: int = 22) -> void:
-	var l := Label.new()
-	l.text = texte
+	var l: Label
+	if _case_suivante < _grille.get_child_count():
+		l = _grille.get_child(_case_suivante) as Label
+	else:
+		l = Label.new()
+		_grille.add_child(l)
+	_case_suivante += 1
+	if l.text != texte:
+		l.text = texte
 	l.add_theme_color_override("font_color", couleur)
 	l.add_theme_font_size_override("font_size", taille)
-	_grille.add_child(l)
 
 
 ## « Tours : 0:31.200 · ★ 0:30.100 · 0:30.800 », le meilleur étoilé.

@@ -78,3 +78,37 @@ func test_seuls_les_appuis_brefs_sont_retenus() -> void:
 	var p := _joueur()
 	PlayerInput.noter_appui(&"throttle")
 	assert_eq(p.poll(1.0 / 60.0).throttle, 0.0, "les gaz se tiennent, ils ne se tapent pas")
+
+
+func _gachette(valeur: float, axe: JoyAxis = JOY_AXIS_TRIGGER_LEFT) -> InputEventJoypadMotion:
+	var e := InputEventJoypadMotion.new()
+	e.axis = axe
+	e.axis_value = valeur
+	return e
+
+
+## Une gâchette est un axe : tenue enfoncée, elle envoie un événement à chaque
+## frémissement. Un seul appui doit en sortir, pas un par événement.
+func test_une_gachette_enfoncee_ne_lance_qu_un_objet() -> void:
+	var p := _joueur()
+	var lances := 0
+	for valeur in [0.3, 0.7, 0.9, 1.0, 0.95, 1.0, 0.85, 0.97]:
+		p._input(_gachette(valeur))
+		if p.poll(1.0 / 60.0).use_item:
+			lances += 1
+	assert_eq(lances, 1, "une pression, un objet")
+	for valeur in [0.5, 0.1, 0.0]:
+		p._input(_gachette(valeur))
+		p.poll(1.0 / 60.0)
+	p._input(_gachette(0.9))
+	assert_true(p.poll(1.0 / 60.0).use_item, "relâchée puis renfoncée : un second objet")
+
+
+func test_une_gachette_qui_hesite_au_seuil_ne_mitraille_pas() -> void:
+	var p := _joueur()
+	var lances := 0
+	for valeur in [0.62, 0.55, 0.64, 0.5, 0.66, 0.58]:
+		p._input(_gachette(valeur))
+		if p.poll(1.0 / 60.0).use_item:
+			lances += 1
+	assert_eq(lances, 1)

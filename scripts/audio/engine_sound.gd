@@ -20,6 +20,12 @@ extends AudioStreamPlayer
 
 var _kart: Kart
 var _lecture: AudioStreamGeneratorPlayback
+
+## Fréquence d'échantillonnage du moteur : la moitié de celle des autres sons.
+## Un ronflement et un crissement à 1 150 Hz n'ont pas besoin de plus, et ce
+## son se calcule échantillon par échantillon en GDScript — sur téléphone,
+## le diviser par deux soulage chaque image.
+const FREQUENCE := 11025
 var _phase: float = 0.0
 var _phase_basse: float = 0.0
 var _frequence: float = 0.0
@@ -40,7 +46,7 @@ var _hasard := RandomNumberGenerator.new()
 func _ready() -> void:
 	_kart = get_node_or_null(kart_path) as Kart
 	var flux := AudioStreamGenerator.new()
-	flux.mix_rate = Synth.FREQUENCE
+	flux.mix_rate = FREQUENCE
 	flux.buffer_length = 0.1
 	stream = flux
 	bus = &"Effets"
@@ -89,7 +95,7 @@ static func couches(moteur: KartMotor, au_sol: bool, vitesse_max: float) -> Vect
 
 func _remplir() -> void:
 	var libres := _lecture.get_frames_available()
-	var pas := 1.0 / Synth.FREQUENCE
+	var pas := 1.0 / FREQUENCE
 	for i in libres:
 		_phase = fmod(_phase + _frequence * pas, 1.0)
 		_phase_basse = fmod(_phase_basse + _frequence * 0.5 * pas, 1.0)
@@ -97,8 +103,8 @@ func _remplir() -> void:
 		# Trois filtres d'un pôle sur le même bruit : un grave pour l'herbe, un
 		# médium pour le souffle, un aigu (ce que le médium laisse) pour les
 		# pneus.
-		_bas += (bruit - _bas) * 0.03
-		_moyen += (bruit - _moyen) * 0.25
+		_bas += (bruit - _bas) * 0.06
+		_moyen += (bruit - _moyen) * 0.44
 		_haut = bruit - _moyen
 		# Dent de scie + sous-harmonique : le ronflement d'un deux-temps. Un
 		# peu de bruit par-dessus quand on a le pied au plancher.

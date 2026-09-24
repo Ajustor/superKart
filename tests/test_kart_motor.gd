@@ -560,3 +560,21 @@ func test_on_bondit_meme_a_l_arret() -> void:
 	assert_eq(motor.state, KartMotor.State.HOP, "comme dans Mario Kart, le bond ne demande pas de vitesse")
 	_run(stats.hop_duration + 0.1)
 	assert_ne(motor.state, KartMotor.State.DRIFT, "la glisse, elle, en demande")
+
+
+## Mesuré en jeu : la caisse partait en travers d'un coup et la trajectoire
+## tournait aussitôt à pleine vitesse ; on croyait le kart parti à 90°.
+func test_l_entree_en_glisse_est_progressive() -> void:
+	cmd.throttle = 1.0
+	_run(5.0)
+	cmd.steer = 1.0
+	cmd.drift = true
+	# Jusqu'à l'atterrissage du bond, puis 0,3 s de glisse.
+	while motor.state != KartMotor.State.DRIFT:
+		_run(1.0 / 60.0)
+	var cap_au_depart := motor.heading
+	_run(0.3)
+	var tourne := rad_to_deg(absf(wrapf(motor.heading - cap_au_depart, -PI, PI)))
+	assert_lt(tourne, 55.0, "0,3 s après l'atterrissage, loin d'un quart de tour")
+	assert_gt(tourne, 15.0, "mais la glisse se voit")
+	assert_lt(rad_to_deg(motor.drift_angle), stats.drift_angle_max_deg + 0.5)

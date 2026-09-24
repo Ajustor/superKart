@@ -654,9 +654,10 @@ func _materiau(couleur: Color, emission: float = 0.0, transparent: bool = false)
 func _visuel_boite() -> Node3D:
 	var racine := Node3D.new()
 	var cube := MeshInstance3D.new()
-	var forme := BoxMesh.new()
-	forme.size = Vector3(1.1, 1.1, 1.1)
-	cube.mesh = forme
+	cube.mesh = _forme("boite", func() -> Mesh:
+		var boite := BoxMesh.new()
+		boite.size = Vector3(1.1, 1.1, 1.1)
+		return boite)
 	cube.material_override = _materiau(Color(0.35, 0.75, 1.0, 0.75), 0.6, true)
 	# Posé sur un coin : c'est la silhouette que tout le monde reconnaît.
 	cube.rotation = Vector3(deg_to_rad(35.0), 0.0, deg_to_rad(45.0))
@@ -676,19 +677,21 @@ func _visuel_boite() -> Node3D:
 func _visuel_banane() -> Node3D:
 	var racine := Node3D.new()
 	var corps := MeshInstance3D.new()
-	var forme := CapsuleMesh.new()
-	forme.radius = 0.16
-	forme.height = 0.8
-	corps.mesh = forme
+	corps.mesh = _forme("banane", func() -> Mesh:
+		var capsule := CapsuleMesh.new()
+		capsule.radius = 0.16
+		capsule.height = 0.8
+		return capsule)
 	corps.material_override = _materiau(Color(1.0, 0.86, 0.15))
 	corps.rotation = Vector3(0.0, 0.0, deg_to_rad(70.0))
 	racine.add_child(corps)
 	var queue := MeshInstance3D.new()
-	var tige := CylinderMesh.new()
-	tige.top_radius = 0.04
-	tige.bottom_radius = 0.05
-	tige.height = 0.18
-	queue.mesh = tige
+	queue.mesh = _forme("tige", func() -> Mesh:
+		var tige := CylinderMesh.new()
+		tige.top_radius = 0.04
+		tige.bottom_radius = 0.05
+		tige.height = 0.18
+		return tige)
 	queue.material_override = _materiau(Color(0.35, 0.25, 0.1))
 	queue.position = Vector3(0.36, 0.2, 0.0)
 	racine.add_child(queue)
@@ -698,18 +701,20 @@ func _visuel_banane() -> Node3D:
 func _visuel_carapace(genre: int) -> Node3D:
 	var racine := Node3D.new()
 	var dome := MeshInstance3D.new()
-	var forme := SphereMesh.new()
-	forme.radius = 0.42
-	forme.height = 0.55
-	dome.mesh = forme
+	dome.mesh = _forme("dome", func() -> Mesh:
+		var sphere := SphereMesh.new()
+		sphere.radius = 0.42
+		sphere.height = 0.55
+		return sphere)
 	var couleur: Color = [Color(0.15, 0.75, 0.2), Color(0.9, 0.12, 0.1), Color(0.15, 0.35, 1.0)][genre]
 	dome.material_override = _materiau(couleur, 0.6 if genre == Genre.BLEUE else 0.3)
 	racine.add_child(dome)
 	var bord := MeshInstance3D.new()
-	var anneau := TorusMesh.new()
-	anneau.inner_radius = 0.34
-	anneau.outer_radius = 0.46
-	bord.mesh = anneau
+	bord.mesh = _forme("anneau", func() -> Mesh:
+		var anneau := TorusMesh.new()
+		anneau.inner_radius = 0.34
+		anneau.outer_radius = 0.46
+		return anneau)
 	bord.material_override = _materiau(Color(0.97, 0.97, 0.95))
 	bord.position = Vector3(0.0, -0.08, 0.0)
 	racine.add_child(bord)
@@ -717,9 +722,10 @@ func _visuel_carapace(genre: int) -> Node3D:
 		# Des ailes blanches : on la reconnaît de loin, au-dessus du peloton.
 		for cote in [-1.0, 1.0]:
 			var aile := MeshInstance3D.new()
-			var plaque := BoxMesh.new()
-			plaque.size = Vector3(0.7, 0.05, 0.3)
-			aile.mesh = plaque
+			aile.mesh = _forme("aile", func() -> Mesh:
+				var plaque := BoxMesh.new()
+				plaque.size = Vector3(0.7, 0.05, 0.3)
+				return plaque)
 			aile.material_override = _materiau(Color(0.97, 0.97, 1.0), 0.4)
 			aile.position = Vector3(cote * 0.62, 0.12, 0.0)
 			aile.rotation = Vector3(0.0, 0.0, cote * deg_to_rad(-20.0))
@@ -739,17 +745,46 @@ func _visuel_fausse_boite() -> Node3D:
 
 
 ## Une boule de feu qui gonfle et s'efface.
-func _visuel_explosion(ou: Vector3) -> void:
+func _boule_d_explosion() -> MeshInstance3D:
 	var boule := MeshInstance3D.new()
-	var forme := SphereMesh.new()
-	forme.radius = 1.0
-	forme.height = 2.0
-	boule.mesh = forme
+	boule.mesh = _forme("explosion", func() -> Mesh:
+		var sphere := SphereMesh.new()
+		sphere.radius = 1.0
+		sphere.height = 2.0
+		return sphere)
+	# Un matériau à elle : son alpha s'anime.
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.albedo_color = Color(0.45, 0.7, 1.0, 0.85)
 	boule.material_override = m
+	return boule
+
+
+## Un exemplaire de chaque objet qui peut apparaître en course, pour le tour
+## de chauffe (TourDeChauffe) : dessinés une fois derrière l'écran de
+## chargement, leurs shaders sont compilés avant le départ, pas au premier
+## lancer — ce qui figeait l'image en pleine course.
+func echantillons() -> Array[Node3D]:
+	var liste: Array[Node3D] = [_visuel_boite(), _visuel_fausse_boite(), _visuel_banane()]
+	for genre in [Genre.VERTE, Genre.ROUGE, Genre.BLEUE]:
+		liste.append(_visuel_carapace(genre))
+	liste.append(_boule_d_explosion())
+	return liste
+
+
+## Les maillages des objets, faits une fois : une sphère ou un tore neufs à
+## chaque carapace se recalculaient pendant la course.
+static var _formes: Dictionary = {}
+
+
+static func _forme(cle: String, fabrique: Callable) -> Mesh:
+	if not _formes.has(cle):
+		_formes[cle] = fabrique.call()
+	return _formes[cle]
+func _visuel_explosion(ou: Vector3) -> void:
+	var boule := _boule_d_explosion()
+	var m := boule.material_override as StandardMaterial3D
 	boule.position = ou
 	boule.scale = Vector3.ONE * 0.3
 	add_child(boule)

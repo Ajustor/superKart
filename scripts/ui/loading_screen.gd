@@ -58,6 +58,8 @@ var description: String = ""
 var changer_de_scene := true
 
 var etape: Etape = Etape.CHARGEMENT
+var _chauffe: TourDeChauffe
+var _chauffe_faite := false
 var course: Node
 
 var _session: RaceSession
@@ -127,6 +129,14 @@ func _process(delta: float) -> void:
 				_montage_demande = true
 				_monter.call_deferred()
 		Etape.PREPARATION:
+			# D'abord le tour de chauffe : tous les matériaux de la course
+			# dessinés une fois, derrière l'écran.
+			if _chauffe == null and not _chauffe_faite:
+				_chauffe_faite = true
+				if course != null and course.is_inside_tree():
+					_chauffe = TourDeChauffe.lancer(course)
+			if _chauffe != null and is_instance_valid(_chauffe) and not _chauffe.fini():
+				return
 			_attente += delta
 			_images += 1
 			var musique_prete := _musique_prete()
