@@ -23,6 +23,20 @@ var _figure: AudioStreamWAV
 ## Un second lecteur pour les objets : un bip de tour ne doit pas couper le
 ## bruit du choc qui tombe à la même image.
 var _lecteur_objets: AudioStreamPlayer
+## Un troisième pour les chocs du joueur (murs, retombées, karts) : ils
+## tombent souvent en même temps qu'un objet.
+var _lecteur_chocs: AudioStreamPlayer
+var _mur: AudioStreamWAV
+var _retombee: AudioStreamWAV
+var _bousculade: AudioStreamWAV
+## Temps, en secondes, avant qu'un autre choc puisse sonner : un kart qui
+## frotte un mur le heurte à chaque image.
+var _repos_chocs: float = 0.0
+
+## Entre un choc de `force` minimale et un de `force` pleine, le volume va de
+## CHOC_MIN à 1.
+const CHOC_MIN := 0.25
+const REPOS_CHOCS := 0.18
 
 
 func _ready() -> void:
@@ -65,6 +79,17 @@ func _ready() -> void:
 	if _session.entries.is_empty():
 		await _session.grille_prete
 	var joueur := _session.entries[0]
+	_lecteur_chocs = AudioStreamPlayer.new()
+	_lecteur_chocs.bus = &"Effets"
+	add_child(_lecteur_chocs)
+	# De la tôle pour un mur, un coup sourd pour une retombée, entre les deux
+	# pour un autre kart.
+	_mur = Synth.choc(0.28, 120.0, 0.55, 0.6)
+	_retombee = Synth.choc(0.22, 75.0, 0.12, 0.6)
+	_bousculade = Synth.choc(0.16, 210.0, 0.75, 0.5)
+	joueur.kart.motor.choc_mur.connect(func(f: float) -> void: _choquer(_mur, f, 3.0, 14.0))
+	joueur.kart.atterri.connect(func(v: float) -> void: _choquer(_retombee, v, Kart.ATTERRISSAGE_AUDIBLE, 12.0))
+	joueur.kart.bouscule.connect(func(f: float) -> void: _choquer(_bousculade, f, 0.8, 10.0))
 	joueur.kart.figure.connect(func() -> void: _jouer_objet(joueur, _figure))
 	# Un « ding » à chaque palier de glisse, plus aigu de palier en palier,
 	# puis un souffle au lâcher.
@@ -77,6 +102,25 @@ func _ready() -> void:
 	joueur.kart.motor.palier_atteint.connect(func(p: int) -> void:
 		_jouer_objet(joueur, dings[mini(p, 3) - 1]))
 	joueur.kart.motor.mini_turbo.connect(func(_p: int) -> void: _jouer_objet(joueur, souffle))
+
+
+func _process(delta: float) -> void:
+	_repos_chocs = maxf(_repos_chocs - delta, 0.0)
+
+
+## Joue un choc d'autant plus fort que `force` approche de `pleine` ; rien
+## sous `seuil`, ni pendant le repos qui suit le choc précédent.
+func _choquer(son: AudioStream, force: float, seuil: float, pleine: float) -> void:
+	if force < seuil or _repos_chocs > 0.0:
+		return
+	_repos_chocs = REPOS_CHOCS
+	_lecteur_chocs.stream = son
+	_lecteur_chocs.volume_db = linear_to_db(volume_du_choc(force, seuil, pleine))
+	_lecteur_chocs.play()
+
+
+static func volume_du_choc(force: float, seuil: float, pleine: float) -> float:
+	return lerpf(CHOC_MIN, 1.0, clampf((force - seuil) / maxf(pleine - seuil, 0.001), 0.0, 1.0))
 
 
 ## Seulement pour le joueur : entendre sept adversaires ramasser des boîtes ne

@@ -39,8 +39,15 @@ static func _paire(a: Kart, b: Kart) -> void:
 		return
 	var pa := _position(a)
 	var pb := _position(b)
-	if KartBump.contact(pa, pb, a.motor.heading, b.motor.heading) == Vector3.ZERO:
+	var choc := KartBump.contact(pa, pb, a.motor.heading, b.motor.heading)
+	if choc == Vector3.ZERO:
 		return
+	# Pour le bruit du choc : seulement quand les karts se rapprochent, pas
+	# à chaque image où ils se frôlent.
+	var rapprochement := (KartBump.vitesse(a.motor) - KartBump.vitesse(b.motor)).dot(choc.normalized())
+	if rapprochement < 0.0:
+		a.bouscule.emit(-rapprochement)
+		b.bouscule.emit(-rapprochement)
 	# L'écartement se partage entre les karts simulés ici ; un kart distant
 	# ne bouge pas, celui d'ici fait tout le chemin.
 	var part := 0.5 if a.simule and b.simule else 1.0

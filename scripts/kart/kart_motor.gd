@@ -40,6 +40,8 @@ var stun_timer: float = 0.0
 signal palier_atteint(palier: int)
 ## Une glisse relâchée assez chargée : le mini-turbo part.
 signal mini_turbo(palier: int)
+## Un mur heurté : `force` est la vitesse, en m/s, qui rentrait dans le mur.
+signal choc_mur(force: float)
 
 var palier_courant: int = 0
 var _derapage_avant: bool = false
@@ -317,6 +319,7 @@ func heurter_mur(normale: Vector3) -> void:
 	if enfoncement <= 0.0:
 		return  # on s'éloigne déjà du mur
 	var longe := marche + n * enfoncement
+	choc_mur.emit(speed * enfoncement)
 	speed *= 1.0 - stats.wall_speed_loss * enfoncement
 	if state == State.DRIFT or state == State.HOP:
 		# Une glisse contre un mur est une glisse ratée.

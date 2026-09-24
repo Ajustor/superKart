@@ -61,6 +61,13 @@ var gaz_tenu: bool = false
 ## tonneau au kart, et l'atterrissage donne un turbo. Le risque, c'est le
 ## moment : trop près du sol, il n'y a pas le temps.
 signal figure
+## Retombé au sol : `vitesse` est la vitesse de chute, en m/s.
+signal atterri(vitesse: float)
+## Un autre kart heurté (KartCollisions) : `force`, la vitesse de rapprochement.
+signal bouscule(force: float)
+## En deçà, en m/s, une retombée ne s'entend pas : le contact au sol vacille
+## aux coutures du maillage.
+const ATTERRISSAGE_AUDIBLE := 2.5
 ## Temps en l'air avant qu'une figure soit possible, en secondes.
 const FIGURE_APRES := 0.12
 const FIGURE_TURBO := 0.7
@@ -167,6 +174,8 @@ func _physics_process(delta: float) -> void:
 		vient_de_decoller = true
 		en_saut = true
 	if au_sol and _vertical <= 0.0:
+		if not etait_au_sol and _vertical < -ATTERRISSAGE_AUDIBLE:
+			atterri.emit(-_vertical)
 		_vertical = 0.0
 	else:
 		# Pendant le bond du dérapage, sa gravité à lui : plus haut, aussi court.
