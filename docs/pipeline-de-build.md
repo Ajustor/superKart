@@ -105,6 +105,6 @@ Pour la retoucher : modifier `tools/icone.py`, puis relancer
 `python3 tools/icone.py` et
 `godot --headless --path . -s tools/icone_png.gd`.
 
-L'icône du fichier `.exe` lui-même, dans l'explorateur, n'est pas changée : il
-faudrait `application/modify_resources=true`, donc rcedit (et Wine sur le
-runner Linux). La fenêtre du jeu et la barre des tâches affichent bien l'icône.
+L'icône est aussi celle du fichier `.exe` lui-même, dans l'explorateur :
+`application/modify_resources=true`. Godot 4.7 réécrit les ressources de
+l'exécutable sans rcedit ni Wine, y compris depuis le runner Linux.
