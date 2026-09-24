@@ -1,5 +1,6 @@
 [gd_scene format=3]
 
+[ext_resource type="Shader" path="res://shaders/ciel.gdshader" id="sh_ciel"]
 [ext_resource type="Script" path="res://scripts/track/track.gd" id="1_track"]
 [ext_resource type="Curve3D" path="res://resources/tracks/ruban_celeste_curve.tres" id="2_curve"]
 [ext_resource type="Script" path="res://scripts/track/features/track_wall.gd" id="3_wall"]
@@ -7,9 +8,23 @@
 [ext_resource type="Script" path="res://scripts/track/features/track_gap.gd" id="7_gap"]
 [ext_resource type="Script" path="res://scripts/track/features/track_decor.gd" id="8_decor"]
 
+[sub_resource type="ShaderMaterial" id="Ciel_shader"]
+shader = ExtResource("sh_ciel")
+shader_parameter/haut = Color(0.01, 0.01, 0.05, 1)
+shader_parameter/horizon = Color(0.08, 0.05, 0.2, 1)
+shader_parameter/sol_horizon = Color(0.05, 0.03, 0.12, 1)
+shader_parameter/sol_bas = Color(0.01, 0.01, 0.03, 1)
+shader_parameter/nuages = 0.0
+shader_parameter/couleur_nuages = Color(1, 1, 1, 1)
+shader_parameter/etoiles = 1.0
+shader_parameter/soleil = 0.0
+
+[sub_resource type="Sky" id="Sky_shader"]
+sky_material = SubResource("Ciel_shader")
+
 [sub_resource type="Environment" id="Env_ruban"]
-background_mode = 1
-background_color = Color(0.02, 0.02, 0.07, 1)
+background_mode = 2
+sky = SubResource("Sky_shader")
 ambient_light_source = 2
 ambient_light_color = Color(0.55, 0.55, 0.75, 1)
 ambient_light_energy = 0.8

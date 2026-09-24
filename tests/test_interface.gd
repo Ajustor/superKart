@@ -45,3 +45,25 @@ func test_la_fleche_dit_si_l_on_gagne_ou_perd_une_place() -> void:
 	assert_eq(hud._fleche.text, "▼", "une place perdue")
 	hud._suivre_la_place(6, RaceHUD.DUREE_FLECHE + 0.1)
 	assert_false(hud._fleche.visible, "et elle s'efface")
+
+
+func test_la_camera_d_arrivee_passe_devant_le_kart() -> void:
+	assert_eq(ChaseCamera.angle_d_orbite(0.0), 0.0, "au départ, derrière le kart")
+	assert_almost_eq(ChaseCamera.angle_d_orbite(ChaseCamera.ORBITE_DEMI_TOUR), PI, 0.001, "puis devant")
+	assert_gt(ChaseCamera.angle_d_orbite(ChaseCamera.ORBITE_DEMI_TOUR + 4.0), PI, "et elle continue de tourner")
+	assert_gt(ResultsScreen.DELAI, ChaseCamera.ORBITE_DEMI_TOUR, "les résultats attendent la fin du demi-tour")
+
+
+func test_la_camera_tourne_a_l_arrivee_du_joueur() -> void:
+	var course := RaceLauncher.monter(RaceSetup.new())
+	var session := course.get_node("Session") as RaceSession
+	session.duree_decompte = 0.0
+	add_child_autofree(course)
+	await wait_until(func() -> bool: return session.en_course, 3.0)
+	var camera := course.get_node("ChaseCamera") as ChaseCamera
+	assert_lt(camera.orbite, 0.0)
+	session.appliquer_arrivee(session.entries[1], 1, 30.0)
+	assert_lt(camera.orbite, 0.0, "l'arrivée d'un autre ne change rien")
+	session.appliquer_arrivee(session.entries[0], 2, 31.0)
+	await wait_physics_frames(5)
+	assert_gt(camera.orbite, 0.0)

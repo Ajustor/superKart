@@ -150,3 +150,13 @@ déplacer un point de contrôle emmène les murs et les zones avec lui.
   326 m) et trou de 12 m juste derrière (326 à 338 m).
 - `TremplinMontee` : tremplin turbo dans la montée (155 m).
 - `RaccourciHerbe` : raccourci en herbe à l'intérieur du virage 560 à 605 m.
+
+## Liquides et ciels (`shaders/`)
+
+- `liquide.gdshader` : l'eau et la lave. Un bruit qui dérive dans deux sens
+  mêle `couleur_profonde` et `couleur_claire` et ride la surface ; `lueur`
+  (lave) fait briller et battre les veines claires. Tout au pixel : le plan
+  peut rester à deux triangles.
+- `ciel.gdshader` : dégradé, nuages (`nuages`, part du ciel couverte),
+  disque du soleil (la première lumière de la scène) et étoiles la nuit
+  (`etoiles`). Immobile, pour que les reflets ne se recalculent qu'une fois.

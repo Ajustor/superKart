@@ -10,8 +10,9 @@ extends Control
 @export var pause_path: NodePath
 @export var touch_path: NodePath
 
-## Le temps de voir passer la ligne avant que l'écran ne la cache.
-const DELAI := 1.5
+## Le temps de voir passer la ligne, puis la caméra d'arrivée faire son
+## demi-tour (ChaseCamera.ORBITE_DEMI_TOUR), avant que l'écran ne cache tout.
+const DELAI := 2.6
 
 var _session: RaceSession
 var _grille: GridContainer

@@ -36,15 +36,35 @@ var secousse: float = 0.0
 ## pendant tout le décompte, pile quand le joueur regarde sa case.
 var _placee: bool = false
 
+## La caméra d'arrivée : une fois la ligne franchie (ou le joueur éliminé en
+## bataille), elle quitte l'arrière du kart et vient le montrer de face, puis
+## tourne lentement autour de lui. Négatif tant qu'on court.
+var orbite: float = -1.0
+const ORBITE_DISTANCE := 5.6
+const ORBITE_HAUTEUR := 1.9
+## Le demi-tour, de derrière à devant, en secondes ; ensuite on tourne à
+## peine, pour que l'image vive.
+const ORBITE_DEMI_TOUR := 2.2
+const ORBITE_LENTE := 0.25
+const FOV_ARRIVEE := 58.0
+
 
 func _ready() -> void:
 	_kart = get_node(target_path) as Kart
 	assert(_kart != null, "target_path doit pointer vers un Kart")
 	fov = fov_min
+	var session := get_node_or_null("../Session") as RaceSession
+	if session != null:
+		session.arrivee.connect(func(e: RaceEntry) -> void:
+			if e.kart == _kart and orbite < 0.0:
+				orbite = 0.0)
 
 
 func _physics_process(delta: float) -> void:
 	var motor := _kart.motor
+	if orbite >= 0.0:
+		_tourner_autour(delta)
+		return
 	var forward := Vector3(sin(motor.velocity_dir), 0.0, -cos(motor.velocity_dir))
 
 	var desired := _kart.global_position - forward * distance + Vector3.UP * height
@@ -95,3 +115,30 @@ func _secouer(motor: KartMotor, delta: float) -> void:
 	# repartirait sinon de la position secouée, et la secousse traînerait.
 	h_offset = randf_range(-1.0, 1.0) * secousse if secousse > 0.005 else 0.0
 	v_offset = randf_range(-1.0, 1.0) * secousse if secousse > 0.005 else 0.0
+
+
+## L'angle de la caméra autour du kart, `t` secondes après l'arrivée : 0 est
+## derrière lui, PI devant.
+static func angle_d_orbite(t: float) -> float:
+	var demi := clampf(t / ORBITE_DEMI_TOUR, 0.0, 1.0)
+	# Démarrage et arrivée en douceur sur le demi-tour, puis la lente dérive.
+	return PI * (demi * demi * (3.0 - 2.0 * demi)) + maxf(t - ORBITE_DEMI_TOUR, 0.0) * ORBITE_LENTE
+
+
+func _tourner_autour(delta: float) -> void:
+	orbite += delta
+	var cap := _kart.motor.heading
+	var angle := cap + PI + angle_d_orbite(orbite)
+	# Le cap du moteur compte comme une boussole (voir Kart) : derrière le
+	# kart, c'est -avant.
+	var autour := Vector3(sin(angle), 0.0, -cos(angle))
+	var voulu := _kart.global_position + autour * ORBITE_DISTANCE + Vector3.UP * ORBITE_HAUTEUR
+	# Le kart roule encore (pilote automatique) : un suivi à ressort resterait
+	# à la traîne et finirait collé à la caisse. Seul le passage depuis la
+	# caméra de poursuite est adouci ; ensuite l'angle, déjà lissé, suffit.
+	var passage := clampf(orbite / 0.5, 0.0, 1.0)
+	global_position = global_position.lerp(voulu, lerpf(1.0 - exp(-8.0 * delta), 1.0, passage))
+	look_at(_kart.global_position + Vector3.UP * 0.6, Vector3.UP)
+	fov = lerpf(fov, FOV_ARRIVEE, 1.0 - exp(-3.0 * delta))
+	h_offset = 0.0
+	v_offset = 0.0
