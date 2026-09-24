@@ -150,10 +150,17 @@ func _montrer_podium(gp: GrandPrix) -> void:
 		if enfant != _podium and enfant is CanvasItem:
 			(enfant as CanvasItem).hide()
 	var moi := _session.nom_reel(_session.entries[0])
+	var nouveautes := PackedStringArray()
 	# Les trophées, comme les records, ne se gagnent qu'en solo.
 	if not Reseau.actif():
+		var avait_200 := GameSettings.debloque_200cc()
+		var avait_miroir := GameSettings.debloque_miroir()
 		GameSettings.proposer_trophee(gp.coupe, gp.classe, gp.place_de(moi))
-	_podium.montrer(gp, moi)
+		if not avait_200 and GameSettings.debloque_200cc():
+			nouveautes.append("200cc débloquée !")
+		if not avait_miroir and GameSettings.debloque_miroir():
+			nouveautes.append("Mode miroir débloqué !")
+	_podium.montrer(gp, moi, " ".join(nouveautes))
 
 
 func _sur_arrivee(entree: RaceEntry) -> void:

@@ -68,7 +68,8 @@ func _sortir() -> void:
 	RaceLauncher.retour_au_menu(get_tree())
 
 
-func montrer(gp: GrandPrix, moi: String) -> void:
+## `nouveaute` : ce que ce trophée vient de débloquer, s'il y a lieu.
+func montrer(gp: GrandPrix, moi: String, nouveaute: String = "") -> void:
 	if Reseau.actif():
 		_menu.text = "Retour au salon" if Reseau.est_hote() else "Quitter la partie"
 	var classement := gp.classement()
@@ -96,6 +97,8 @@ func montrer(gp: GrandPrix, moi: String) -> void:
 		_message.text = "%s place : %s" % [RaceScoring.ordinal(place), MEDAILLES[place - 1].to_lower()]
 	else:
 		_message.text = "Vous terminez %s. Le podium, ce sera pour la prochaine fois !" % RaceScoring.ordinal(place)
+	if nouveaute != "":
+		_message.text += "\n" + nouveaute
 	show()
 	_menu.grab_focus()
 

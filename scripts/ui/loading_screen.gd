@@ -92,7 +92,8 @@ static func _sous_titre(reglage: RaceSetup) -> String:
 			if reglage.grand_prix != null:
 				var gp := reglage.grand_prix
 				return "%s · course %d/%d · %s" % [gp.nom(), gp.manche + 1, gp.manches(), Cylindree.nom(gp.classe)]
-	return "%s · %d tour%s" % [Cylindree.nom(reglage.classe), reglage.tours, "s" if reglage.tours > 1 else ""]
+	return "%s%s · %d tour%s" % [Cylindree.nom(reglage.classe), " · miroir" if reglage.miroir else "",
+		reglage.tours, "s" if reglage.tours > 1 else ""]
 
 
 func _ready() -> void:

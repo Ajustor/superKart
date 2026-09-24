@@ -22,7 +22,7 @@ signal depart
 const PORT := 8910
 ## Monté à chaque changement du protocole : un client d'une autre version est
 ## refusé poliment plutôt que de désynchroniser la course en silence.
-const VERSION := 3
+const VERSION := 4
 
 ## Pas de coupe : une course seule.
 const SANS_COUPE := -1
@@ -135,13 +135,14 @@ static func adresses_locales() -> PackedStringArray:
 # --- Le salon ------------------------------------------------------------------
 
 func choisir_config(piste: String, tours: int, cylindree: int = Cylindree.Classe.CC150,
-		coupe: int = SANS_COUPE) -> void:
+		coupe: int = SANS_COUPE, miroir := false) -> void:
 	if not est_hote():
 		return
 	config = {
 		piste = piste, tours = clampi(tours, 1, 9),
-		cylindree = clampi(cylindree, Cylindree.Classe.CC50, Cylindree.Classe.CC150),
+		cylindree = clampi(cylindree, Cylindree.Classe.CC50, Cylindree.Classe.CC200),
 		coupe = clampi(coupe, SANS_COUPE, TrackCatalog.COUPES.size() - 1),
+		miroir = miroir,
 	}
 	_diffuser_salon()
 
@@ -244,6 +245,7 @@ func lancer_course() -> void:
 		_lancer_pour_tous(lobby.plan_de_course(rng), config)
 		return
 	var gp := GrandPrix.new(coupe, int(config.get("cylindree", Cylindree.Classe.CC150)))
+	gp.miroir = bool(config.get("miroir", false))
 	_lancer_pour_tous(lobby.plan_de_course(rng), config_de_manche(config, gp))
 
 
@@ -256,6 +258,7 @@ static func config_de_manche(base: Dictionary, gp: GrandPrix) -> Dictionary:
 	# tours_coupe : pour les essais seulement, des manches courtes.
 	c.tours = int(base.get("tours_coupe", piste.tours))
 	c.cylindree = gp.classe
+	c.miroir = gp.miroir
 	c.coupe = gp.coupe
 	c.gp = gp.en_dictionnaire()
 	return c

@@ -76,6 +76,8 @@ static func monter(reglage: RaceSetup, rng: RandomNumberGenerator = null) -> Nod
 	if reglage.piste != null and reglage.piste.scene != null:
 		var ancienne := course.get_node("Track")
 		var nouvelle := reglage.piste.scene.instantiate()
+		if reglage.miroir and nouvelle is Track:
+			Miroir.appliquer(nouvelle as Track)
 		# Pas replace_by : il déménage les enfants de l'ancien circuit dans le
 		# nouveau, et chaque circuit héritait des murs, rampes et trous du
 		# circuit par défaut de race.tscn.
@@ -148,6 +150,7 @@ static func monter_reseau(plan: Array, config: Dictionary, moi: int, hote: bool)
 		reglage.choisir_piste(piste)
 	reglage.tours = int(config.get("tours", reglage.tours))
 	reglage.classe = int(config.get("cylindree", Cylindree.Classe.CC150))
+	reglage.miroir = bool(config.get("miroir", false))
 	var course := monter(reglage)
 	var session := course.get_node("Session") as RaceSession
 

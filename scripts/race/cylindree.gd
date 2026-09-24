@@ -15,16 +15,16 @@ extends RefCounted
 ## du facteur de vitesse, et l'impulsion des tremplins le facteur lui-même :
 ## chaque trajectoire reste la même parabole, parcourue plus lentement.
 
-enum Classe { CC50, CC100, CC150 }
+enum Classe { CC50, CC100, CC150, CC200 }
 
-const NOMS := ["50cc", "100cc", "150cc"]
+const NOMS := ["50cc", "100cc", "150cc", "200cc"]
 
 ## Part de la vitesse de pointe et de l'accélération de la 150cc.
-const VITESSE := [0.78, 0.89, 1.0]
+const VITESSE := [0.78, 0.89, 1.0, 1.18]
 
 ## Allure des karts de l'IA, relativement au joueur : en 50cc, ils laissent un
 ## peu de marge ; en 150cc, ils roulent avec les mêmes armes que lui.
-const ALLURE_IA := [0.95, 0.975, 1.0]
+const ALLURE_IA := [0.95, 0.975, 1.0, 1.0]
 
 
 static func nom(classe: int) -> String:
@@ -42,6 +42,13 @@ static func stats(base: KartStats, classe: int, ia: bool) -> KartStats:
 	s.acceleration *= facteur
 	s.gravity *= facteur * facteur
 	s.echelle_des_tremplins *= facteur
+	# Plus vite que la 150cc, le braquage suit : sans ça, un rayon de braquage
+	# de 14 m ne passait plus les épingles de 12,5 m. Les virages gardent leur
+	# forme, ils défilent seulement plus vite. En dessous, on garde le braquage
+	# de la 150cc : c'est ce qui rend la petite cylindrée plus facile.
+	if facteur > 1.0:
+		s.turn_rate *= facteur
+		s.drift_turn_rate *= facteur
 	return s
 
 

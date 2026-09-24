@@ -87,7 +87,7 @@ func charger() -> void:
 	pseudo = str(fichier.get_value("reseau", "pseudo", pseudo))
 	derniere_adresse = str(fichier.get_value("reseau", "adresse", derniere_adresse))
 	course.classe = clampi(int(fichier.get_value("course", "cylindree", course.classe)),
-		Cylindree.Classe.CC50, Cylindree.Classe.CC150)
+		Cylindree.Classe.CC50, Cylindree.Classe.CC200)
 	_trophees.clear()
 	if fichier.has_section("trophees"):
 		for cle in fichier.get_section_keys("trophees"):
@@ -219,4 +219,21 @@ func proposer_trophee(coupe: int, classe: int, place: int) -> bool:
 		return false
 	_trophees[cle_de_trophee(coupe, classe)] = place
 	sauver()
+	return true
+
+
+## La 200cc : l'or dans toutes les coupes en 150cc.
+func debloque_200cc() -> bool:
+	return _or_partout(Cylindree.Classe.CC150)
+
+
+## Le miroir : l'or dans toutes les coupes en 100cc.
+func debloque_miroir() -> bool:
+	return _or_partout(Cylindree.Classe.CC100)
+
+
+func _or_partout(classe: int) -> bool:
+	for i in TrackCatalog.COUPES.size():
+		if trophee(i, classe) != 1:
+			return false
 	return true

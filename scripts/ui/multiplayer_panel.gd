@@ -24,6 +24,7 @@ var _piste: OptionButton
 var _tours: OptionButton
 var _mode: OptionButton
 var _classe: OptionButton
+var _miroir: CheckButton
 var _lancer: Button
 var _attente: Label
 
@@ -153,6 +154,10 @@ func _ecran_salon() -> Control:
 		_classe.add_item(Cylindree.nom(c), c)
 	_classe.item_selected.connect(func(_i: int) -> void: _envoyer_config())
 	colonne.add_child(_ligne("Cylindrée", _classe))
+	_miroir = CheckButton.new()
+	_miroir.text = "Circuits en miroir"
+	_miroir.toggled.connect(func(_actif: bool) -> void: _envoyer_config())
+	colonne.add_child(_miroir)
 
 	_piste = OptionButton.new()
 	for i in TrackCatalog.PISTES.size():
@@ -260,9 +265,15 @@ func _rafraichir_salon() -> void:
 	_tours.select(_tours.get_item_index(int(Reseau.config.get("tours", 3))))
 	_mode.select(_mode.get_item_index(int(Reseau.config.get("coupe", Reseau.SANS_COUPE)) + 1))
 	_classe.select(_classe.get_item_index(int(Reseau.config.get("cylindree", Cylindree.Classe.CC150))))
+	_miroir.set_pressed_no_signal(bool(Reseau.config.get("miroir", false)))
+	# Ce que l'hôte a débloqué vaut pour le salon.
+	_classe.set_item_disabled(_classe.get_item_index(Cylindree.Classe.CC200),
+		hote and not GameSettings.debloque_200cc())
+	_miroir.visible = bool(Reseau.config.get("miroir", false)) or (hote and GameSettings.debloque_miroir())
 	var en_coupe := int(Reseau.config.get("coupe", Reseau.SANS_COUPE)) != Reseau.SANS_COUPE
 	_mode.disabled = not hote
 	_classe.disabled = not hote
+	_miroir.disabled = not hote
 	# En coupe, les circuits et les tours sont ceux de la coupe.
 	_piste.disabled = not hote or en_coupe
 	_tours.disabled = not hote or en_coupe
@@ -280,7 +291,7 @@ static func adresses_texte() -> String:
 func _envoyer_config() -> void:
 	var piste: TrackInfo = TrackCatalog.PISTES[_piste.get_selected_id()]
 	Reseau.choisir_config(piste.id, _tours.get_selected_id(), _classe.get_selected_id(),
-		_mode.get_selected_id() - 1)
+		_mode.get_selected_id() - 1, _miroir.button_pressed)
 
 
 func _ligne(texte: String, controle: Control) -> HBoxContainer:

@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Fait courir huit IA sur un circuit — voir essai_circuit_course.gd :
 ##
-##   godot --headless --fixed-fps 60 --path . -s tools/essai_circuit.gd -- <id> [tours] [50|100|150]
+##   godot --headless --fixed-fps 60 --path . -s tools/essai_circuit.gd -- <id> [tours] [50|100|150|200] [miroir]
 ##
 ## Ce lanceur ne fait que charger l'essai à la première image : un script
 ## lancé par -s est compilé avant que les autoloads (GameSettings, Reseau…)

@@ -20,6 +20,7 @@ var _boutons_mode: Dictionary = {}
 var _boutons_coupe: Array[Button] = []
 var _coupe: int = 0
 var _classe: OptionButton
+var _miroir: CheckButton
 var _coupes: HBoxContainer
 var _circuits: GridContainer
 var _reglages: HBoxContainer
@@ -126,19 +127,38 @@ func _ecran_selection() -> Control:
 	colonne.add_child(haut)
 	var groupe_modes := ButtonGroup.new()
 	for mode in [RaceSetup.Mode.GRAND_PRIX, RaceSetup.Mode.COURSE, RaceSetup.Mode.CONTRE_LA_MONTRE]:
-		var b := _bascule(NOMS_MODES[mode], groupe_modes, Vector2(210, 56), 22)
+		var b := _bascule(NOMS_MODES[mode], groupe_modes, Vector2(196, 56), 21)
 		b.pressed.connect(_choisir_mode.bind(mode))
 		haut.add_child(b)
 		_boutons_mode[mode] = b
 	_classe = OptionButton.new()
 	for c in Cylindree.NOMS.size():
 		_classe.add_item(Cylindree.nom(c), c)
+	# La 200cc se gagne : or dans toutes les coupes en 150cc.
+	var i200 := _classe.get_item_index(Cylindree.Classe.CC200)
+	if not GameSettings.debloque_200cc():
+		_classe.set_item_text(i200, "200cc 🔒")
+		_classe.set_item_disabled(i200, true)
+		if reglage.classe == Cylindree.Classe.CC200:
+			reglage.classe = Cylindree.Classe.CC150
 	_classe.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_classe.item_selected.connect(func(i: int) -> void:
 		reglage.classe = _classe.get_item_id(i)
 		GameSettings.sauver()
 		_rafraichir())
 	haut.add_child(_classe)
+	# Le miroir se gagne : or dans toutes les coupes en 100cc.
+	_miroir = CheckButton.new()
+	_miroir.text = "Miroir" if GameSettings.debloque_miroir() else "Miroir 🔒"
+	_miroir.disabled = not GameSettings.debloque_miroir()
+	if _miroir.disabled:
+		reglage.miroir = false
+	_miroir.button_pressed = reglage.miroir
+	_miroir.add_theme_font_size_override("font_size", 20)
+	_miroir.toggled.connect(func(actif: bool) -> void:
+		reglage.miroir = actif
+		_rafraichir())
+	haut.add_child(_miroir)
 
 	# Les coupes, pour le Grand Prix.
 	_coupes = HBoxContainer.new()
@@ -312,6 +332,8 @@ func _rafraichir_record() -> void:
 	var ou := reglage.piste.nom
 	if reglage.mode == RaceSetup.Mode.COURSE:
 		ou = "%s, %s" % [ou, Cylindree.nom(reglage.classe)]
+	if reglage.miroir:
+		ou += ", miroir"
 	if meilleur > 0.0:
 		_record.text = "Record (%s) : %s" % [ou, RaceTimer.format(meilleur)]
 		if reglage.mode == RaceSetup.Mode.CONTRE_LA_MONTRE and Fantome.charger(reglage.cle_record()) != null:

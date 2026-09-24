@@ -10,6 +10,7 @@ extends RefCounted
 
 var coupe: int = 0
 var classe: int = Cylindree.Classe.CC150
+var miroir := false
 
 ## Index de la course à courir, de 0 à manches() - 1. Égal à manches() une
 ## fois la dernière comptée.
@@ -92,13 +93,14 @@ func cases(noms: PackedStringArray) -> Array[int]:
 ## Ce qui voyage sur le réseau : l'hôte tient la coupe, et l'envoie à chaque
 ## course pour que tous affichent les mêmes points.
 func en_dictionnaire() -> Dictionary:
-	return {coupe = coupe, classe = classe, manche = manche, points = points,
+	return {coupe = coupe, classe = classe, miroir = miroir, manche = manche, points = points,
 		dernieres_places = dernieres_places}
 
 
 static func depuis(d: Dictionary) -> GrandPrix:
 	var gp := GrandPrix.new(int(d.get("coupe", 0)), int(d.get("classe", Cylindree.Classe.CC150)))
 	gp.manche = int(d.get("manche", 0))
+	gp.miroir = bool(d.get("miroir", false))
 	for pilote in d.get("points", {}):
 		gp.points[str(pilote)] = int(d.points[pilote])
 	for pilote in d.get("dernieres_places", {}):

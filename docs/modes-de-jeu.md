@@ -11,6 +11,7 @@ course.
 | 50cc | 78 % | 95 % de celle du joueur |
 | 100cc | 89 % | 97,5 % |
 | 150cc | 100 % (réglage d'origine) | 100 % |
+| 200cc | 118 %, braquage compris | 100 % |
 
 - Le braquage ne change pas : plus lent, on tourne plus serré.
 - La gravité suit le carré du facteur de vitesse, et l'impulsion des tremplins
@@ -23,6 +24,17 @@ course.
 - Le choix de cylindrée est enregistré dans les réglages.
 - Le harnais IA la prend en troisième argument :
   `tools/essai_circuit.gd -- <id> <tours> 50`.
+
+## Déblocages
+
+| | Se débloque par | Ce que c'est |
+|---|---|---|
+| 200cc | l'or dans toutes les coupes en 150cc | vitesse ×1,18 ; le braquage suit, pour que les virages gardent leur forme |
+| Miroir | l'or dans toutes les coupes en 100cc | le circuit retourné gauche-droite (`Miroir`) : courbe en x → -x, dévers et écarts latéraux inversés, murs de l'autre côté |
+
+- Les deux ont leurs propres records (`@200cc`, `@miroir`).
+- Le podium annonce ce qu'un trophée vient de débloquer.
+- En réseau, c'est ce que l'hôte a débloqué qui compte.
 
 ## Grand Prix (`GrandPrix`)
 
