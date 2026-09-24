@@ -31,6 +31,8 @@ var drift_dir: int = 0          ## -1 gauche, +1 droite, 0 hors dérapage
 var drift_charge: float = 0.0
 var drift_angle: float = 0.0    ## écart caisse / trajectoire, en radians
 var hop_timer: float = 0.0
+## Secondes depuis le début de la glisse en cours (voir stats.drift_entree).
+var temps_en_glisse: float = 0.0
 
 ## Temps restant en tête-à-queue. Un compteur et non une machine à états de
 ## plus, comme le prévoyait la spec : l'état STUNNED existait déjà.
@@ -199,6 +201,7 @@ func _update_hop(cmd: KartCommand, delta: float) -> void:
 	if cmd.drift and drift_dir != 0 and speed >= stats.min_drift_speed:
 		state = State.DRIFT
 		hop_timer = 0.0
+		temps_en_glisse = 0.0
 		drift_charge = 0.0
 		drift_angle = 0.0
 		palier_courant = 0
@@ -239,7 +242,9 @@ func _update_drift(cmd: KartCommand, delta: float) -> void:
 	# l'autre inversait la commande : braquer vers l'intérieur ouvrait le rayon
 	# et contre-braquer le resserrait, et l'entrée en glisse sous-virait le temps
 	# que l'angle monte depuis zéro.
-	var courbure := lerpf(stats.drift_curvature_min, 1.0, t)
+	temps_en_glisse += delta
+	var entree := smoothstep(0.0, maxf(stats.drift_entree, 0.001), temps_en_glisse)
+	var courbure := lerpf(stats.drift_curvature_min, 1.0, t) * lerpf(stats.drift_entree_debut, 1.0, entree)
 	velocity_dir += float(drift_dir) * stats.drift_turn_rate * courbure * delta
 	heading = velocity_dir + float(drift_dir) * drift_angle
 
@@ -408,5 +413,6 @@ func reset(yaw: float) -> void:
 	drift_charge = 0.0
 	drift_angle = 0.0
 	hop_timer = 0.0
+	temps_en_glisse = 0.0
 	stun_timer = 0.0
 	_drift_locked_out = false
