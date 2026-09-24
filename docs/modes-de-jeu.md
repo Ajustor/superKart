@@ -55,3 +55,6 @@ course.
   translucide de la caisse et des roues, sans script ni collision.
 - Un fichier qui ne commence pas par la signature, ou d'une autre version,
   est ignoré.
+- Le fantôme garde aussi son temps de passage à chaque tour. Le joueur voit,
+  sous le chrono, son écart au fantôme au même passage : en vert quand il est
+  en avance, en rouge quand il est en retard.

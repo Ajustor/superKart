@@ -9,6 +9,12 @@ extends Node
 ## départ ensemble, comme dans Mario Kart.
 
 signal fantome_battu
+## Le joueur vient de boucler un tour : `ecart` secondes d'avance (négatif)
+## ou de retard (positif) sur le fantôme au même passage.
+signal ecart_au_passage(tour: int, ecart: float)
+
+## Combien de temps l'écart reste affiché.
+const DUREE_ECART := 3.0
 
 @export var session_path: NodePath
 
@@ -23,6 +29,8 @@ var _horloge: float = 0.0
 var _prochain: float = 0.0
 var _visuel: Node3D
 var _caisse: Node3D
+var _etiquette: Label
+var _etiquette_reste: float = 0.0
 
 
 func _ready() -> void:
@@ -37,6 +45,14 @@ func _ready() -> void:
 		_visuel.hide()
 		get_parent().add_child.call_deferred(_visuel)
 	_session.arrivee.connect(_sur_arrivee)
+	_session.tour_boucle.connect(_sur_tour)
+	_etiquette = _construire_etiquette()
+
+
+func _process(delta: float) -> void:
+	if _etiquette_reste > 0.0:
+		_etiquette_reste -= delta
+		_etiquette.visible = _etiquette_reste > 0.0
 
 
 func _physics_process(delta: float) -> void:
@@ -68,6 +84,50 @@ func _rejouer(t: float) -> void:
 	_visuel.global_transform = Transform3D(Basis(instant.kart), instant.position)
 	if _caisse != null:
 		_caisse.quaternion = instant.caisse
+
+
+## À chaque tour bouclé : le temps de passage, et l'écart au fantôme au même
+## passage s'il en a un.
+func _sur_tour(entree: RaceEntry) -> void:
+	if _session.entries.is_empty() or entree != _session.entries[0]:
+		return
+	enregistrement.passages.append(_horloge)
+	var i := enregistrement.passages.size() - 1
+	if fantome == null or i >= fantome.passages.size():
+		return
+	var ecart := _horloge - fantome.passages[i]
+	ecart_au_passage.emit(i + 1, ecart)
+	_montrer_ecart(ecart)
+
+
+static func texte_ecart(ecart: float) -> String:
+	return "%s%.2f s" % ["−" if ecart < 0.0 else "+", absf(ecart)]
+
+
+func _montrer_ecart(ecart: float) -> void:
+	if _etiquette == null:
+		return
+	_etiquette.text = texte_ecart(ecart)
+	# Vert en avance, rouge en retard : comme au chrono de Mario Kart.
+	_etiquette.add_theme_color_override("font_color",
+		Color(0.35, 1.0, 0.45) if ecart < 0.0 else Color(1.0, 0.35, 0.3))
+	_etiquette.visible = true
+	_etiquette_reste = DUREE_ECART
+
+
+func _construire_etiquette() -> Label:
+	var calque := CanvasLayer.new()
+	calque.layer = 5
+	add_child(calque)
+	# Sous le chrono, en haut à gauche : là où l'œil va chercher le temps.
+	var l := Label.new()
+	l.position = Vector2(22, 96)
+	l.add_theme_font_size_override("font_size", 40)
+	l.add_theme_color_override("font_outline_color", Color.BLACK)
+	l.add_theme_constant_override("outline_size", 10)
+	l.visible = false
+	calque.add_child(l)
+	return l
 
 
 func _sur_arrivee(entree: RaceEntry) -> void:

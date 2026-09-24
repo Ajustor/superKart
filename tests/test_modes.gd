@@ -280,3 +280,36 @@ func test_la_course_enregistre_le_parcours_du_joueur() -> void:
 	await wait_physics_frames(12)
 	assert_gt(fantome.enregistrement.echantillons(), 0, "il note dès le vert")
 	assert_lt(fantome.enregistrement.echantillons(), 12, "vingt fois par seconde, pas à chaque image")
+
+
+func test_le_fantome_garde_ses_temps_de_passage() -> void:
+	var f := _parcours()
+	f.passages = PackedFloat32Array([31.5, 62.0])
+	assert_true(f.sauver(CLE_FANTOME))
+	var relu := Fantome.charger(CLE_FANTOME)
+	assert_eq(relu.passages, f.passages)
+
+
+func test_l_ecart_au_fantome_s_affiche_a_chaque_tour() -> void:
+	var reglage := RaceSetup.new()
+	reglage.mode = RaceSetup.Mode.CONTRE_LA_MONTRE
+	var course := RaceLauncher.monter(reglage)
+	add_child_autofree(course)
+	var session := course.get_node("Session") as RaceSession
+	await wait_until(func() -> bool: return not session.entries.is_empty(), 2.0)
+	var suivi := course.get_node("Fantome") as FantomeCourse
+	suivi.fantome = _parcours()
+	suivi.fantome.passages = PackedFloat32Array([30.0, 60.0])
+	watch_signals(suivi)
+	suivi._horloge = 29.6
+	suivi._sur_tour(session.entries[0])
+	assert_signal_emitted_with_parameters(suivi, "ecart_au_passage", [1, 29.6 - 30.0])
+	suivi._horloge = 60.25
+	suivi._sur_tour(session.entries[0])
+	assert_signal_emitted_with_parameters(suivi, "ecart_au_passage", [2, 60.25 - 60.0])
+	assert_eq(suivi.enregistrement.passages.size(), 2, "et les passages du joueur sont notés")
+
+
+func test_l_ecart_se_lit_comme_au_chrono() -> void:
+	assert_eq(FantomeCourse.texte_ecart(-0.426), "−0.43 s")
+	assert_eq(FantomeCourse.texte_ecart(1.5), "+1.50 s")
