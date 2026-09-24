@@ -99,6 +99,7 @@ func _ready() -> void:
 		objets.objet_recu.connect(_relayer_recu)
 		objets.objet_utilise.connect(_relayer_utilise)
 		objets.kart_touche.connect(_relayer_choc)
+		objets.kart_foudroye.connect(func(e: RaceEntry) -> void: _vers_proprietaire(e, "eclair", ItemKind.NONE))
 	# Le départ, comme le chargement, passe par Reseau : il a pu être donné
 	# avant que cette course ne soit montée.
 	Reseau.depart.connect(_partir)
@@ -402,12 +403,15 @@ func _effet(gid: int, quoi: String, objet: int) -> void:
 				if _champignons_predits == 0:
 					_inventaire_fige_jusqua = _maintenant() + 0.2
 				return
-			if objet == ItemKind.MUSHROOM:
-				e.kart.motor.boost_objet()
+			# Champignon, étoile, pièces : c'est ici que le kart roule.
+			ItemManager.effet_sur_soi(e.kart.motor, objet)
 			objets.objet_utilise.emit(e, objet)
 		"choc":
 			if e.kart.motor.stun():
 				objets.kart_touche.emit(e)
+		"eclair":
+			if e.kart.motor.foudroyer():
+				objets.kart_foudroye.emit(e)
 
 
 # --- Départs en cours de course -----------------------------------------------------

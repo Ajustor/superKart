@@ -159,6 +159,7 @@ func _draw() -> void:
 		return
 	_dessiner_vitesse()
 	_dessiner_objet()
+	_dessiner_pieces()
 	_dessiner_feux()
 
 
@@ -179,6 +180,18 @@ func _dessiner_objet() -> void:
 	if inventaire.roulette <= 0.0 and inventaire.charges > 1:
 		draw_string(ThemeDB.fallback_font, cadre.position + Vector2(CASE_OBJET - 30.0, CASE_OBJET - 8.0),
 			"×%d" % inventaire.charges, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color.WHITE)
+
+
+## Les pièces, à gauche de l'emplacement d'objet (dessous, c'est la
+## mini-carte), dès qu'on en a une.
+func _dessiner_pieces() -> void:
+	var pieces := _session.entries[0].kart.motor.pieces
+	if pieces <= 0:
+		return
+	var coin := Vector2(size.x - 104.0 - CASE_OBJET - 86.0, 16.0 + CASE_OBJET * 0.5 - 14.0)
+	ItemIcons.piece(self, coin + Vector2(14, 14), 13.0)
+	draw_string(ThemeDB.fallback_font, coin + Vector2(34, 22), "×%d" % pieces,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color.WHITE)
 
 
 ## Les feux de départ : trois rouges qui s'allument une seconde après l'autre,

@@ -20,6 +20,11 @@ var _choc: AudioStreamWAV
 var _turbo_depart: AudioStreamWAV
 var _calage: AudioStreamWAV
 var _figure: AudioStreamWAV
+var _tonnerre: AudioStreamWAV
+var _explosion: AudioStreamWAV
+var _etoile: AudioStreamWAV
+var _piece: AudioStreamWAV
+var _rapetisse: AudioStreamWAV
 ## Un second lecteur pour les objets : un bip de tour ne doit pas couper le
 ## bruit du choc qui tombe à la même image.
 var _lecteur_objets: AudioStreamPlayer
@@ -69,11 +74,21 @@ func _ready() -> void:
 	_boite = Synth.notes([[988.0, 0.05], [1319.0, 0.07]], 0.35)
 	_lancer = Synth.notes([[523.0, 0.04], [392.0, 0.06]], 0.35)
 	_choc = Synth.notes([[220.0, 0.07], [165.0, 0.09], [110.0, 0.16]], 0.55)
+	_tonnerre = Synth.choc(0.9, 55.0, 0.35, 0.8)
+	_explosion = Synth.choc(0.6, 90.0, 0.6, 0.8)
+	_etoile = Synth.notes([[784.0, 0.07], [988.0, 0.07], [1175.0, 0.07], [1568.0, 0.07],
+		[1175.0, 0.07], [1568.0, 0.2]], 0.35)
+	_piece = Synth.notes([[1319.0, 0.05], [1976.0, 0.14]], 0.3)
+	_rapetisse = Synth.notes([[880.0, 0.06], [698.0, 0.06], [554.0, 0.06], [440.0, 0.14]], 0.4)
 	var objets := get_node_or_null(items_path) as ItemManager
 	if objets != null:
 		objets.objet_recu.connect(func(e: RaceEntry, _o: int) -> void: _jouer_objet(e, _boite))
-		objets.objet_utilise.connect(func(e: RaceEntry, _o: int) -> void: _jouer_objet(e, _lancer))
+		objets.objet_utilise.connect(_sur_objet_utilise)
 		objets.kart_touche.connect(func(e: RaceEntry) -> void: _jouer_objet(e, _choc))
+		objets.kart_foudroye.connect(func(e: RaceEntry) -> void: _jouer_objet(e, _rapetisse))
+		# Une explosion de carapace bleue s'entend de partout : elle change la
+		# course de tout le monde.
+		objets.explosion.connect(func(_ou: Vector3) -> void: _jouer(_explosion))
 	# En dernier : la grille n'est peut-être pas encore posée, et attendre
 	# plus haut aurait retardé tout le reste.
 	if _session.entries.is_empty():
@@ -130,6 +145,20 @@ func _jouer_objet(entree: RaceEntry, son: AudioStream) -> void:
 		return
 	_lecteur_objets.stream = son
 	_lecteur_objets.play()
+
+
+## L'éclair s'entend de tous : c'est un orage sur toute la piste. Le reste,
+## seulement pour le joueur.
+func _sur_objet_utilise(e: RaceEntry, objet: int) -> void:
+	match objet:
+		ItemKind.LIGHTNING:
+			_jouer(_tonnerre)
+		ItemKind.STAR:
+			_jouer_objet(e, _etoile)
+		ItemKind.COINS:
+			_jouer_objet(e, _piece)
+		_:
+			_jouer_objet(e, _lancer)
 
 
 func _sur_depart_du_joueur(resultat: int) -> void:

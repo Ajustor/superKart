@@ -31,6 +31,11 @@ const ASTUCES := [
 	"La carapace rouge suit la route jusqu'au kart de devant. La verte file tout droit et rebondit sur les murs.",
 	"Couper par l'herbe ralentit… sauf sous champignon.",
 	"En contre-la-montre, votre meilleur parcours revient courir contre vous, en fantôme.",
+	"La carapace bleue survole le peloton et explose sur celui qui mène. Restez à distance du premier !",
+	"Sous étoile, rien ne vous touche, et chaque kart percuté part en tête-à-queue.",
+	"Chaque pièce ajoute un peu de vitesse de pointe, jusqu'à dix. Un choc en fait perdre trois.",
+	"Méfiez-vous des boîtes rougeâtres au point d'interrogation à l'envers : ce sont des pièges.",
+	"L'éclair rétrécit tous vos adversaires et leur fait lâcher leur objet.",
 ]
 
 ## Au-delà, on lâche la course même si la musique n'est pas prête : elle

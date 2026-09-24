@@ -161,9 +161,10 @@ func test_le_dernier_n_a_jamais_de_banane() -> void:
 	for i in 2000:
 		var o := t.tirer(8, 8, rng)
 		assert_ne(o, ItemKind.BANANA)
-		if o == ItemKind.RED_SHELL or o == ItemKind.TRIPLE_MUSHROOM:
+		if o in [ItemKind.RED_SHELL, ItemKind.TRIPLE_MUSHROOM, ItemKind.STAR, ItemKind.LIGHTNING,
+				ItemKind.BLUE_SHELL]:
 			rattrapage += 1
-	assert_gt(rattrapage, 1400, "en queue, de quoi revenir")
+	assert_gt(rattrapage, 1600, "en queue, de quoi revenir")
 
 
 func test_une_ligne_vide_donne_quand_meme_un_objet() -> void:

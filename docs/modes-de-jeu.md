@@ -70,3 +70,30 @@ course.
 - Le fantôme garde aussi son temps de passage à chaque tour. Le joueur voit,
   sous le chrono, son écart au fantôme au même passage : en vert quand il est
   en avance, en rouge quand il est en retard.
+
+## Objets (`ItemManager`, `ItemKind`, `ItemTable`)
+
+Dix objets, tirés selon la place au classement (`ItemTable`, une ligne par
+tranche du peloton, une colonne par objet) :
+
+| Objet | Effet |
+| --- | --- |
+| Champignon, triple champignon | turbo |
+| Banane | posée derrière ; qui roule dessus part en tête-à-queue |
+| Fausse boîte | comme une banane, déguisée en boîte (rougeâtre, « ¿ ») |
+| Carapace verte | tout droit, rebondit sur les murs |
+| Carapace rouge | suit la route jusqu'au kart de devant |
+| Carapace bleue | survole le peloton jusqu'au premier (le second si c'est lui qui la lance) et explose : tout kart à moins de 4,5 m du premier y passe |
+| Éclair | tous les autres karts : tête-à-queue, rétrécis 5 s (vitesse ×0,72), objet perdu |
+| Étoile | 7 s intouchable, plus rapide, l'herbe ne freine plus ; les karts percutés partent en tête-à-queue |
+| Pièces | +2 pièces (10 au plus) ; chacune donne +1 % de vitesse de pointe ; un choc ou une remise en piste en coûte 3 |
+
+En tête surtout des bananes, fausses boîtes et pièces ; en queue des
+carapaces rouges, triples champignons, étoiles, et les rares carapaces
+bleues et éclairs.
+
+En réseau, l'hôte décide de tout, comme pour les autres objets ; les effets
+sur un kart (étoile, pièces, éclair) sont appliqués par la machine qui le
+simule, et l'étoile et le rétrécissement voyagent dans l'instantané du kart
+(`KartSnapshot`) : l'hôte doit savoir qu'une carapace ne touche pas un kart
+sous étoile.

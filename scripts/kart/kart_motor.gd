@@ -35,6 +35,24 @@ var hop_timer: float = 0.0
 ## Temps restant en tête-à-queue. Un compteur et non une machine à états de
 ## plus, comme le prévoyait la spec : l'état STUNNED existait déjà.
 var stun_timer: float = 0.0
+
+## Temps restant sous étoile : intouchable, plus rapide, et l'herbe ne freine
+## plus. Un kart qui en percute un autre sous étoile le fait tourner.
+var etoile: float = 0.0
+## Temps restant rétréci par un éclair : plus lent, le temps de regrandir.
+var retreci: float = 0.0
+## Pièces ramassées : chacune ajoute un peu de vitesse de pointe, et un choc
+## en fait perdre.
+var pieces: int = 0
+
+const DUREE_ETOILE := 7.0
+const VITESSE_ETOILE := 1.25
+const DUREE_RETRECI := 5.0
+const VITESSE_RETRECI := 0.72
+const PIECES_MAX := 10
+const BONUS_PAR_PIECE := 0.01
+const PIECES_PERDUES := 3
+
 ## Un palier de charge vient d'être franchi pendant la glisse : les
 ## étincelles changent de couleur, un son l'annonce.
 signal palier_atteint(palier: int)
@@ -65,6 +83,8 @@ func step(cmd: KartCommand, delta: float) -> void:
 
 func _pas(cmd: KartCommand, delta: float) -> void:
 	boost_timer = maxf(boost_timer - delta, 0.0)
+	etoile = maxf(etoile - delta, 0.0)
+	retreci = maxf(retreci - delta, 0.0)
 	if boost_timer == 0.0:
 		# Sans ça, la force d'un palier 3 terminé s'appliquerait au turbo
 		# suivant, même accordé par une glisse à peine chargée.
@@ -94,11 +114,23 @@ func _pas(cmd: KartCommand, delta: float) -> void:
 ## Vitesse maximale effective. Le turbo écrase la pénalité hors-piste :
 ## foncer dans l'herbe sous champignon doit rester payant.
 func _current_max_speed() -> float:
+	var base := vitesse_de_pointe()
 	if boost_timer > 0.0:
-		return stats.max_speed * boost_multiplier
+		return base * maxf(boost_multiplier, VITESSE_ETOILE if etoile > 0.0 else 0.0)
+	if etoile > 0.0:
+		return base * VITESSE_ETOILE
 	if on_offroad:
-		return stats.max_speed * stats.offroad_speed_multiplier
-	return stats.max_speed
+		return base * stats.offroad_speed_multiplier
+	return base
+
+
+## La vitesse de pointe sans turbo ni herbe : celle des stats, plus les
+## pièces, moins un éclair.
+func vitesse_de_pointe() -> float:
+	var v := stats.max_speed * (1.0 + BONUS_PAR_PIECE * pieces)
+	if retreci > 0.0:
+		v *= VITESSE_RETRECI
+	return v
 
 
 func _update_speed(cmd: KartCommand, delta: float) -> void:
@@ -115,7 +147,9 @@ func _update_speed(cmd: KartCommand, delta: float) -> void:
 		var target := -stats.max_reverse_speed * cmd.brake
 		speed = move_toward(speed, target, rate * cmd.brake * delta)
 	elif cmd.throttle > 0.0:
-		speed = move_toward(speed, ceiling, stats.acceleration * cmd.throttle * delta)
+		# Sous étoile, on reprend sa vitesse deux fois plus vite.
+		var acceleration := stats.acceleration * (2.0 if etoile > 0.0 else 1.0)
+		speed = move_toward(speed, ceiling, acceleration * cmd.throttle * delta)
 	else:
 		speed = move_toward(speed, 0.0, stats.coast_friction * delta)
 
@@ -263,8 +297,9 @@ func _release_drift() -> void:
 ## un kart sonné ne se fait pas sonner une deuxième fois, sans quoi deux
 ## bananes rapprochées le cloueraient au sol.
 func stun() -> bool:
-	if state == State.STUNNED:
+	if state == State.STUNNED or etoile > 0.0:
 		return false
+	pieces = maxi(pieces - PIECES_PERDUES, 0)
 	_end_drift()
 	state = State.STUNNED
 	stun_timer = stats.stun_duration
@@ -285,6 +320,29 @@ func _update_stun(delta: float) -> void:
 	if stun_timer <= 0.0:
 		state = State.GRIP
 		heading = velocity_dir
+
+
+## L'étoile : un tête-à-queue en cours s'arrête net, et plus rien ne touche
+## le kart le temps qu'elle dure.
+func prendre_etoile() -> void:
+	etoile = DUREE_ETOILE
+	if state == State.STUNNED:
+		state = State.GRIP
+		stun_timer = 0.0
+		heading = velocity_dir
+
+
+## L'éclair d'un autre : tête-à-queue et rétréci. Rend faux sous étoile.
+func foudroyer() -> bool:
+	if etoile > 0.0:
+		return false
+	retreci = DUREE_RETRECI
+	stun()
+	return true
+
+
+func gagner_pieces(n: int) -> void:
+	pieces = clampi(pieces + n, 0, PIECES_MAX)
 
 
 ## La poussée du champignon. Même mécanique que le mini-turbo, et même règle :
@@ -341,6 +399,10 @@ func reset(yaw: float) -> void:
 	heading = yaw
 	boost_timer = 0.0
 	boost_multiplier = _plancher_de_turbo()
+	etoile = 0.0
+	retreci = 0.0
+	# Une remise en piste coûte ses pièces, comme un choc.
+	pieces = maxi(pieces - PIECES_PERDUES, 0)
 	on_offroad = false
 	drift_dir = 0
 	drift_charge = 0.0

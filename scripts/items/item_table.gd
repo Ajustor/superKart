@@ -3,23 +3,24 @@ extends Resource
 
 ## La table de tirage, qui dépend de la place au classement : c'est elle qui
 ## rend le jeu vivant, pas les objets eux-mêmes (spec, 7.2). En tête surtout
-## des bananes, pour se protéger ; en fond de peloton des carapaces rouges et
-## des triples champignons, pour revenir.
+## des bananes, des fausses boîtes et des pièces, pour se protéger ; en fond
+## de peloton des carapaces rouges, des triples champignons, des étoiles, et
+## les rares carapaces bleues et éclairs qui rebattent les cartes.
 ##
 ## Une ligne par tranche de classement, de la tête à la queue ; une colonne par
 ## objet, dans l'ordre de ItemKind.TIRABLES. Les poids n'ont pas besoin de
 ## faire 100 : seule leur proportion compte.
 
 @export var lignes: Array[PackedFloat32Array] = [
-	#                   champi  triple  banane  verte  rouge
-	PackedFloat32Array([10.0,   0.0,    60.0,   30.0,  0.0]),
-	PackedFloat32Array([20.0,   0.0,    35.0,   35.0,  10.0]),
-	PackedFloat32Array([25.0,   5.0,    25.0,   30.0,  15.0]),
-	PackedFloat32Array([25.0,   10.0,   15.0,   25.0,  25.0]),
-	PackedFloat32Array([25.0,   15.0,   10.0,   20.0,  30.0]),
-	PackedFloat32Array([20.0,   25.0,   5.0,    15.0,  35.0]),
-	PackedFloat32Array([15.0,   35.0,   0.0,    10.0,  40.0]),
-	PackedFloat32Array([10.0,   45.0,   0.0,    5.0,   40.0]),
+	# champi triple banane verte rouge bleue éclair étoile fausse pièces
+	PackedFloat32Array([8.0, 0.0, 55.0, 20.0, 0.0, 0.0, 0.0, 0.0, 10.0, 7.0]),
+	PackedFloat32Array([18.0, 0.0, 30.0, 28.0, 8.0, 0.0, 0.0, 0.0, 8.0, 8.0]),
+	PackedFloat32Array([22.0, 5.0, 20.0, 26.0, 13.0, 0.0, 0.0, 3.0, 6.0, 5.0]),
+	PackedFloat32Array([22.0, 9.0, 12.0, 22.0, 20.0, 2.0, 0.0, 6.0, 3.0, 4.0]),
+	PackedFloat32Array([20.0, 14.0, 8.0, 17.0, 24.0, 4.0, 1.0, 9.0, 1.0, 2.0]),
+	PackedFloat32Array([16.0, 21.0, 4.0, 12.0, 27.0, 5.0, 2.0, 12.0, 0.0, 1.0]),
+	PackedFloat32Array([12.0, 28.0, 0.0, 8.0, 29.0, 6.0, 4.0, 13.0, 0.0, 0.0]),
+	PackedFloat32Array([8.0, 32.0, 0.0, 4.0, 28.0, 6.0, 8.0, 14.0, 0.0, 0.0]),
 ]
 
 
