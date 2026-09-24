@@ -82,6 +82,28 @@ func _process(delta: float) -> void:
 	_update_aura(motor)
 
 
+## Pour le tour de chauffe : l'aura d'étoile et des copies qui émettent des
+## étincelles, de la poussière et des flammes, jamais vues avant le départ.
+func echantillons() -> Array[Node3D]:
+	var liste: Array[Node3D] = []
+	var aura := MeshInstance3D.new()
+	aura.mesh = SphereMesh.new()
+	var matiere := StandardMaterial3D.new()
+	matiere.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	matiere.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	matiere.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	matiere.cull_mode = BaseMaterial3D.CULL_DISABLED
+	matiere.albedo_color = Color(1, 0.8, 0.3, 0.35)
+	aura.material_override = matiere
+	liste.append(aura)
+	for source in [_sparks, _poussiere, _flammes]:
+		# Sans émettre : une particule qui démarre hors de l'arbre lit sa
+		# position globale, qui n'existe pas encore. TourDeChauffe l'allume
+		# une fois posée.
+		liste.append((source as Node3D).duplicate() as Node3D)
+	return liste
+
+
 func _update_taille(motor: KartMotor, delta: float) -> void:
 	var cible := ECHELLE_RETRECI if motor.retreci > 0.0 else 1.0
 	if _echelle == cible:

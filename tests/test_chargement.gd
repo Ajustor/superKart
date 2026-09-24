@@ -39,6 +39,9 @@ func test_l_ecran_monte_la_course_puis_s_efface_au_depart() -> void:
 
 	await wait_until(func() -> bool: return not session.attente_depart, 10.0)
 	assert_false(session.attente_depart, "l'écran levé, le décompte peut partir")
+	assert_null(course.get_node_or_null("TourDeChauffe"), "le tour de chauffe est fini")
+	assert_eq(course.get_viewport().get_camera_3d(), course.get_node("ChaseCamera"),
+		"et la caméra de poursuite a repris la main")
 	var piste := session.circuit()
 	assert_not_null(Musique.deja_composee(piste.musique), "la musique est prête au départ")
 	var reste: WeakRef = weakref(ecran)
@@ -84,3 +87,22 @@ func test_la_scene_de_course_ne_charge_aucun_circuit_complet() -> void:
 	for dependance in ResourceLoader.get_dependencies(RaceLauncher.SCENE_COURSE):
 		var chemin := dependance.get_slice("::", 2) if dependance.contains("::") else dependance
 		assert_false(chemin.begins_with("res://scenes/tracks/"), "race.tscn charge %s" % chemin)
+
+
+func test_le_tour_de_chauffe_montre_chaque_objet_et_chaque_effet() -> void:
+	var course := RaceLauncher.monter(RaceSetup.new())
+	add_child_autofree(course)
+	await wait_physics_frames(2)
+	var tour := TourDeChauffe.lancer(course)
+	assert_not_null(tour)
+	assert_eq(course.get_viewport().get_camera_3d().get_parent(), tour, "sa caméra filme")
+	# Boîte, fausse boîte, banane, trois carapaces, explosion ; aura,
+	# étincelles, poussière, flammes.
+	assert_gte(tour.get_child_count() - 1, 11)
+	var particules := tour.find_children("*", "GPUParticles3D", true, false).size() \
+		+ tour.find_children("*", "CPUParticles3D", true, false).size()
+	assert_gte(particules, 3, "les particules émettent pour être compilées")
+	var reste: WeakRef = weakref(tour)
+	await wait_until(func() -> bool: return reste.get_ref() == null, 2.0)
+	assert_null(reste.get_ref(), "puis il s'en va")
+	assert_eq(course.get_viewport().get_camera_3d(), course.get_node("ChaseCamera"))
