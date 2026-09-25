@@ -206,3 +206,20 @@ details li + li { margin-top: 4px; }
   font-size: 14px;
   border-top: 1px solid var(--bord);
 }
+
+.nouveautes {
+  margin-top: 20px;
+  padding: 14px 18px;
+  background: var(--fond-clair);
+  border: 1px solid var(--bord);
+  border-left: 4px solid var(--accent);
+  border-radius: 10px;
+}
+.nouveautes h3 {
+  margin: 0 0 6px;
+  font-family: "Baloo 2", "Nunito", system-ui, sans-serif;
+  font-size: 20px;
+}
+.nouveautes h4 { margin: 10px 0 4px; }
+.nouveautes p { margin: 6px 0; color: var(--texte-doux); }
+.nouveautes ul { margin: 6px 0; padding-left: 1.3em; color: var(--texte-doux); }

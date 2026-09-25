@@ -3,8 +3,13 @@ class_name TrackDecor
 extends TrackFeature
 
 ## Du décor le long du tracé : une rangée de palmiers, de piliers enflammés,
-## d'étoiles… Comme les autres éléments, il suit la courbe ; mais il ne se
-## touche pas : rien ici n'a de collision, et la course ne le voit pas.
+## d'étoiles… Comme les autres éléments, il suit la courbe.
+##
+## Il se touche : un kart qui sort de la route bute contre un tronc, un
+## rocher, un immeuble, comme contre un mur. Chaque objet a une forme de
+## collision simple (un cylindre, une boîte) qui en suit le pied — sous un
+## houppier ou un chapeau de champignon, on passe. Les étoiles, qui flottent,
+## n'en ont pas.
 ##
 ## Une rangée pose un objet tous les `espacement` mètres, à `decalage` mètres
 ## de l'axe, et sur l'autre rive aussi si `symetrique`. Un espacement nul
@@ -48,6 +53,13 @@ enum Objet { PALMIER, PHARE, PILIER_DE_FEU, ETOILE, CHAMPIGNON, ROCHER, SAPIN, L
 @export var eviter_la_route: bool = false:
 	set(valeur):
 		eviter_la_route = valeur
+		_modifie()
+
+## Faux : on traverse la rangée. Pour un décor posé là où les karts doivent
+## passer, ou qui ne fait que de l'ombre au loin.
+@export var solide: bool = true:
+	set(valeur):
+		solide = valeur
 		_modifie()
 
 ## Un peu de désordre : taille, orientation et place varient d'un objet à
@@ -128,6 +140,81 @@ func _construire(c: TrackCurve, racine: Node3D) -> void:
 	var affichage := MultiMeshInstance3D.new()
 	affichage.multimesh = multi
 	racine.add_child(affichage)
+	if solide:
+		var corps := corps_de_collision(poses)
+		if corps != null:
+			racine.add_child(corps)
+
+
+## Un seul corps pour toute la rangée, une forme par objet. Des formes
+## simples plutôt que le maillage : un cylindre ou une boîte se testent en
+## un rien de temps, et n'accrochent pas le kart sur chaque facette.
+func corps_de_collision(poses: Array[Transform3D]) -> StaticBody3D:
+	var gabarit := forme_de(objet)
+	if gabarit.is_empty() or poses.is_empty():
+		return null
+	var corps := StaticBody3D.new()
+	corps.name = "Collisions"
+	corps.collision_layer = Kart.COUCHE_DECOR
+	corps.collision_mask = 0
+	for pose in poses:
+		var taille := pose.basis.get_scale().x
+		var sens := pose.basis.orthonormalized()
+		var forme := CollisionShape3D.new()
+		if gabarit.type == "cylindre":
+			var cylindre := CylinderShape3D.new()
+			cylindre.radius = gabarit.rayon * taille
+			cylindre.height = gabarit.hauteur * taille
+			forme.shape = cylindre
+		else:
+			var boite := BoxShape3D.new()
+			boite.size = gabarit.taille * taille
+			forme.shape = boite
+		forme.transform = Transform3D(sens, pose.origin + sens * (gabarit.centre * taille))
+		corps.add_child(forme)
+	return corps
+
+
+## La forme de collision d'un objet à l'échelle 1, dans son propre repère :
+## un cylindre (rayon, hauteur) ou une boîte (taille), et son centre. Vide
+## pour ce qui ne se touche pas.
+##
+## Elle suit ce qu'un kart heurte, à hauteur de caisse : le tronc d'un arbre,
+## pas son houppier.
+static func forme_de(quoi: Objet) -> Dictionary:
+	match quoi:
+		Objet.PALMIER:
+			# Le tronc penche de 18 cm par tronçon : on le prend en son milieu.
+			return {type = "cylindre", rayon = 0.4, hauteur = 6.4, centre = Vector3(0.36, 3.2, 0.0)}
+		Objet.PHARE:
+			return {type = "cylindre", rayon = 2.4, hauteur = 17.0, centre = Vector3(0.0, 8.5, 0.0)}
+		Objet.PILIER_DE_FEU:
+			return {type = "boite", taille = Vector3(2.0, 6.5, 2.0), centre = Vector3(0.0, 3.25, 0.0)}
+		Objet.CHAMPIGNON:
+			return {type = "cylindre", rayon = 0.9, hauteur = 3.0, centre = Vector3(0.0, 1.5, 0.0)}
+		Objet.ROCHER:
+			# Un cylindre plutôt qu'une boule : une boule posée à demi dans le
+			# sol ferait tremplin.
+			return {type = "cylindre", rayon = 1.6, hauteur = 2.2, centre = Vector3(0.0, 0.6, 0.0)}
+		Objet.SAPIN:
+			# Les branches du bas descendent à un mètre du sol : à hauteur de
+			# caisse, on les touche.
+			return {type = "cylindre", rayon = 1.3, hauteur = 4.0, centre = Vector3(0.0, 2.0, 0.0)}
+		Objet.LAMPADAIRE:
+			return {type = "cylindre", rayon = 0.2, hauteur = 6.0, centre = Vector3(0.0, 3.0, 0.0)}
+		Objet.CRISTAL:
+			return {type = "cylindre", rayon = 1.0, hauteur = 3.0, centre = Vector3(0.0, 1.5, 0.0)}
+		Objet.IMMEUBLE:
+			return {type = "boite", taille = Vector3(8.0, 18.0, 8.0), centre = Vector3(0.0, 9.0, 0.0)}
+		Objet.ARBRE:
+			return {type = "cylindre", rayon = 0.45, hauteur = 3.0, centre = Vector3(0.0, 1.5, 0.0)}
+		Objet.BOTTE_DE_FOIN:
+			return {type = "boite", taille = Vector3(1.6, 1.5, 1.5), centre = Vector3(0.0, 0.75, 0.0)}
+		Objet.MOULIN:
+			return {type = "cylindre", rayon = 2.8, hauteur = 9.0, centre = Vector3(0.0, 4.5, 0.0)}
+		Objet.BUISSON:
+			return {type = "boite", taille = Vector3(3.0, 1.2, 1.6), centre = Vector3(0.0, 0.55, 0.0)}
+	return {}
 
 
 # --- Les objets -------------------------------------------------------------------

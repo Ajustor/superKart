@@ -122,7 +122,8 @@ var entries: Array[RaceEntry] = []
 ## les karts qui ont fini continuent de rouler.
 var en_course: bool = false
 
-## Vrai quand le dernier concurrent a franchi la ligne.
+## Vrai quand tout le monde est classé : le dernier concurrent l'est d'office
+## dès que tous les autres ont franchi la ligne (voir _classer_le_dernier).
 var terminee: bool = false
 ## Mode bataille : pas de tours à compter, les places viennent de Bataille.
 var sans_tours: bool = false
@@ -430,10 +431,11 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 
 
 ## En réseau, sur un client : l'hôte annonce une arrivée, on la recopie.
-func appliquer_arrivee(entree: RaceEntry, place: int, temps: float) -> void:
+func appliquer_arrivee(entree: RaceEntry, place: int, temps: float, hors_temps := false) -> void:
 	if entree.finished:
 		return
 	entree.temps_course = temps
+	entree.hors_temps = hors_temps
 	_arriver(entree, place, entree.kart.global_position if entree.kart.is_inside_tree() else Vector3.ZERO)
 
 
@@ -451,6 +453,38 @@ func _arriver(entree: RaceEntry, place: int, point: Vector3) -> void:
 	if _arrives >= entries.size():
 		terminee = true
 		course_terminee.emit()
+	else:
+		_classer_le_dernier()
+
+
+## Quand il ne reste qu'un concurrent en piste, la course s'arrête : il est
+## classé à la dernière place libre, sans attendre qu'il finisse ses tours.
+##
+## Pas en contre-la-montre, où l'on court seul : c'est son arrivée qui finit
+## la course. Pas en bataille, qui classe elle-même (sans_tours). Et pas sur
+## un client en réseau : l'hôte décide, et envoie cette arrivée comme les
+## autres.
+func _classer_le_dernier() -> void:
+	if not arbitre or sans_tours or entries.size() < 2 or _arrives != entries.size() - 1:
+		return
+	for entree in entries:
+		if not entree.finished:
+			entree.hors_temps = true
+			var point := entree.kart.global_position if entree.kart.is_inside_tree() else Vector3.ZERO
+			_arriver(entree, _place_libre(), point)
+			return
+
+
+## La plus petite place que personne n'a prise.
+func _place_libre() -> int:
+	var prises := {}
+	for entree in entries:
+		if entree.finished:
+			prises[entree.place_finale] = true
+	var place := 1
+	while prises.has(place):
+		place += 1
+	return place
 
 
 ## Une fois la ligne franchie, le kart du joueur finit son tour d'honneur tout

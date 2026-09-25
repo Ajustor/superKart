@@ -484,13 +484,20 @@ func test_les_gaz_repassent_de_la_marche_arriere_a_l_avant() -> void:
 	assert_gt(motor.speed, 0.0, "les gaz doivent reprendre la main sur la marche arrière")
 
 
-func test_on_dirige_encore_en_marche_arriere() -> void:
+## Comme en voiture : en reculant, braquer à droite envoie l'arrière à
+## droite, donc le nez à gauche (le cap diminue).
+func test_en_marche_arriere_braquer_a_droite_envoie_l_arriere_a_droite() -> void:
 	cmd.brake = 1.0
 	_run(3.0)
+	assert_lt(motor.speed, 0.0, "le kart doit reculer")
 	var depart := motor.velocity_dir
 	cmd.steer = 1.0
 	_run(1.0)
-	assert_gt(motor.velocity_dir, depart, "le braquage garde de l'autorité en marche arrière")
+	assert_lt(motor.velocity_dir, depart, "en reculant, braquer à droite tourne le nez à gauche")
+	# L'arrière, qui ouvre la marche, part bien à droite : la marche arrière
+	# (-avant) tourne dans le même sens que le braquage.
+	var arriere := -Vector3(sin(motor.velocity_dir), 0.0, -cos(motor.velocity_dir))
+	assert_gt(arriere.x, 0.0, "l'arrière doit partir vers la droite (+x)")
 
 
 func test_reset_remet_le_moteur_a_neuf() -> void:

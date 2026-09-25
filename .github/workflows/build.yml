@@ -3,6 +3,10 @@ name: Build
 on:
   push:
     branches: [main]
+  # Publier une Release GitHub (un tag, ex. v1.2) construit le jeu, attache
+  # les binaires à la Release et met à jour la page de téléchargement.
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       platforms:
@@ -81,13 +85,15 @@ jobs:
         id: version
         env:
           RUN_NUMBER: ${{ github.run_number }}
+          EVENT_NAME: ${{ github.event_name }}
+          TAG: ${{ github.event.release.tag_name }}
         run: |
           set -euo pipefail
           # Android refuse une mise à jour dont le code de version n'augmente
           # pas. Le code du preset sert de base, le numéro du run (qui croît à
           # chaque exécution du workflow) s'y ajoute ; le nom affiché prend le
-          # numéro du run en dernier chiffre : 1.1 → 1.1.57. La page de
-          # téléchargement affiche le même nom.
+          # numéro du run en dernier chiffre : 1.1 → 1.1.57. Pour une Release,
+          # le nom est celui du tag : v1.2 → 1.2.
           python3 - <<'PY'
           import os
           import re
@@ -103,6 +109,9 @@ jobs:
 
           new_code = int(code.group(1)) + run
           new_name = "%s.%d" % (name.group(1), run)
+          tag = os.environ.get("TAG", "")
+          if os.environ["EVENT_NAME"] == "release" and tag:
+              new_name = tag[1:] if re.match(r"^[vV]\d", tag) else tag
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
               out.write("name=%s\ncode=%d\n" % (new_name, new_code))
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
@@ -166,8 +175,6 @@ jobs:
   android:
     name: Android (arm64-v8a)
     needs: prepare
-    outputs:
-      signature: ${{ steps.export.outputs.signature }}
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.platforms == 'all' || inputs.platforms == 'android' }}
     runs-on: ubuntu-latest
     steps:
@@ -214,6 +221,7 @@ jobs:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_USER: ${{ secrets.ANDROID_KEYSTORE_USER }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
           mkdir -p "$HOME/.android"
@@ -235,6 +243,12 @@ jobs:
             printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$release_keystore"
             echo "release-keystore=$release_keystore" >> "$GITHUB_OUTPUT"
             echo "mode=release" >> "$GITHUB_OUTPUT"
+          elif [ "$EVENT_NAME" = "release" ]; then
+            # Une version publiée doit pouvoir s'installer par-dessus la
+            # précédente : il lui faut toujours la même clé, pas une clé de
+            # debug refaite à chaque build.
+            echo "::error title=Signature Android::Une Release exige la clé de signature release : ajouter les secrets ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_USER et ANDROID_KEYSTORE_PASSWORD (voir docs/pipeline-de-build.md)."
+            exit 1
           else
             echo "::notice title=Signature Android::Aucun secret de signature release trouvé, l'APK sera signé en debug."
             echo "release-keystore=" >> "$GITHUB_OUTPUT"
@@ -348,11 +362,9 @@ jobs:
           if [ "$BUILD_TYPE" = "release" ] && [ "$SIGNING_MODE" = "release" ]; then
             export_flag="--export-release"
             apk="SuperKart.apk"
-            signature="release"
           else
             export_flag="--export-debug"
             apk="SuperKart-debug.apk"
-            signature="debug"
           fi
 
           godot --headless --path . "$export_flag" "Android" "$PWD/build/android/$apk"
@@ -361,7 +373,6 @@ jobs:
           ls -lh build/android
 
           echo "apk=$apk" >> "$GITHUB_OUTPUT"
-          echo "signature=$signature" >> "$GITHUB_OUTPUT"
 
       - name: Publier l'artefact
         uses: actions/upload-artifact@v4
@@ -371,24 +382,17 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  pages:
-    name: Page de téléchargement
+  publier:
+    name: Publier la Release
     needs: [prepare, windows, android]
-    # Seulement les builds release de main, et seulement si les deux
+    # Seulement pour une Release publiée, et seulement si les deux
     # plateformes sont là : la page propose toujours les deux.
-    if: ${{ github.ref == 'refs/heads/main' && needs.prepare.outputs.build-type == 'release' && needs.windows.result == 'success' && needs.android.result == 'success' }}
+    if: ${{ github.event_name == 'release' && needs.windows.result == 'success' && needs.android.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+      contents: write
+      actions: write
     steps:
-      - name: Récupérer le dépôt
-        uses: actions/checkout@v4
-
       - name: Récupérer l'export Windows
         uses: actions/download-artifact@v4
         with:
@@ -401,28 +405,28 @@ jobs:
           name: superkart-android-${{ needs.prepare.outputs.build-id }}
           path: build/android
 
-      - name: Assembler la page
+      - name: Attacher les binaires à la Release
         env:
-          VERSION_NAME: ${{ needs.prepare.outputs.version-name }}
-          SIGNATURE: ${{ needs.android.outputs.signature }}
-          SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.event.release.tag_name }}
         run: |
           set -euo pipefail
-          apk="$(ls build/android/*.apk | head -1)"
-          python3 .github/scripts/page_de_telechargement.py \
-            --site site --sortie _site \
-            --windows build/windows --apk "$apk" \
-            --version "$VERSION_NAME" --commit "$SHA" --signature "$SIGNATURE"
-          ls -lhR _site
+          # Des noms fixes : la page et les liens partagés n'en changent pas.
+          mkdir -p publication/SuperKart
+          cp build/windows/SuperKart.exe build/windows/SuperKart.pck publication/SuperKart/
+          (cd publication && zip -9 -r SuperKart-windows.zip SuperKart)
+          cp build/android/SuperKart.apk publication/SuperKart.apk
+          gh release upload "$TAG" publication/SuperKart-windows.zip publication/SuperKart.apk --clobber
+          ls -lh publication
 
-      - name: Préparer la publication
-        uses: actions/configure-pages@v5
-
-      - name: Téléverser la page
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-
-      - name: Publier sur GitHub Pages
-        id: deploy
-        uses: actions/deploy-pages@v4
+      - name: Mettre à jour la page de téléchargement
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          # La page se publie depuis main : l'environnement github-pages
+          # n'accepte par défaut que la branche par défaut, pas un tag.
+          gh workflow run pages.yml --ref main -f tag="$TAG"

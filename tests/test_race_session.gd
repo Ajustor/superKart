@@ -184,7 +184,8 @@ func test_chaque_concurrent_a_son_propre_etat() -> void:
 
 
 func test_la_course_finit_pour_chacun_separement() -> void:
-	_monter(2)
+	# Trois : à deux, l'arrivée du premier classerait aussitôt le second.
+	_monter(3)
 	session.lap_count = 1
 	var L := track.track_curve.length
 	var d := 0.0
@@ -194,6 +195,7 @@ func test_la_course_finit_pour_chacun_separement() -> void:
 
 	assert_true(session.entries[0].finished, "celui qui a bouclé a fini")
 	assert_false(session.entries[1].finished, "celui qui n'a pas bouclé court toujours")
+	assert_false(session.entries[2].finished)
 
 
 func test_la_grille_ne_superpose_personne() -> void:
@@ -493,7 +495,7 @@ func _faire_boucler(entree: RaceEntry) -> void:
 
 
 func test_l_ordre_d_arrivee_prime_sur_la_distance() -> void:
-	_monter(2)
+	_monter(3)
 	session.lap_count = 1
 	_faire_boucler(session.entries[0])
 	_faire_boucler(session.entries[1])
@@ -517,16 +519,69 @@ func test_le_temps_de_course_s_arrete_a_l_arrivee() -> void:
 	assert_almost_eq(_joueur().temps_course, fige, 0.0001)
 
 
-func test_la_course_se_termine_quand_tout_le_monde_a_fini() -> void:
-	_monter(2)
+func test_la_course_se_termine_quand_l_avant_dernier_arrive() -> void:
+	_monter(3)
 	session.lap_count = 1
 	watch_signals(session)
 	_faire_boucler(session.entries[0])
-	assert_false(session.terminee, "il reste quelqu'un en piste")
+	assert_false(session.terminee, "il en reste deux en piste")
 	_faire_boucler(session.entries[1])
-	assert_true(session.terminee)
+	assert_true(session.terminee, "le dernier ne court pas seul")
 	assert_signal_emit_count(session, "course_terminee", 1)
-	assert_signal_emit_count(session, "arrivee", 2)
+	assert_signal_emit_count(session, "arrivee", 3)
+	var dernier := session.entries[2]
+	assert_true(dernier.finished)
+	assert_eq(dernier.place_finale, 3, "classé à la dernière place")
+	assert_true(dernier.hors_temps, "sans avoir franchi la ligne")
+	assert_false(session.entries[0].hors_temps)
+	assert_false(session.entries[1].hors_temps)
+
+
+func test_a_deux_l_arrivee_du_premier_finit_la_course() -> void:
+	_monter(2)
+	session.lap_count = 1
+	_faire_boucler(session.entries[0])
+	assert_true(session.terminee)
+	assert_eq(session.entries[1].place_finale, 2)
+	assert_true(session.entries[1].hors_temps)
+
+
+func test_seul_en_piste_la_course_attend_l_arrivee() -> void:
+	# Le contre-la-montre : un seul concurrent, c'est son arrivée qui finit.
+	session.lap_count = 2
+	_faire_boucler(_joueur())
+	assert_false(session.terminee, "un tour sur deux : la course continue")
+	assert_false(_joueur().finished)
+	_faire_boucler(_joueur())
+	assert_true(session.terminee)
+	assert_false(_joueur().hors_temps, "son temps est un vrai chrono")
+
+
+func test_en_bataille_la_session_ne_classe_pas_le_dernier() -> void:
+	_monter(3)
+	session.sans_tours = true
+	session.appliquer_arrivee(session.entries[2], 3, 10.0)
+	session.appliquer_arrivee(session.entries[1], 2, 12.0)
+	assert_false(session.entries[0].finished, "c'est Bataille qui classe le survivant")
+	assert_false(session.terminee)
+
+
+func test_sur_un_client_c_est_l_hote_qui_classe_le_dernier() -> void:
+	_monter(3)
+	session.arbitre = false
+	session.appliquer_arrivee(session.entries[0], 1, 60.0)
+	session.appliquer_arrivee(session.entries[1], 2, 61.0)
+	assert_false(session.entries[2].finished, "le client attend l'annonce de l'hôte")
+	session.appliquer_arrivee(session.entries[2], 3, 62.0, true)
+	assert_true(session.entries[2].hors_temps)
+	assert_true(session.terminee)
+
+
+func test_le_dernier_prend_la_place_restee_libre() -> void:
+	_monter(3)
+	session.appliquer_arrivee(session.entries[1], 1, 60.0)
+	session.appliquer_arrivee(session.entries[0], 3, 61.0)
+	assert_eq(session.entries[2].place_finale, 2)
 
 
 func test_le_joueur_passe_en_pilote_automatique_apres_l_arrivee() -> void:

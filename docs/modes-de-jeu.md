@@ -4,6 +4,17 @@ Le menu « Jouer » propose trois modes et, sauf en contre-la-montre, une
 cylindrée. Tout se règle dans `RaceSetup` ; `RaceLauncher.monter` en tire la
 course.
 
+## Fin de course
+
+La course s'arrête quand tous les concurrents sauf un ont franchi la ligne :
+le dernier est classé d'office à la dernière place, sans temps (« — » aux
+résultats), et son chrono ne compte ni pour les records ni pour le fantôme.
+Si c'est le joueur, il passe en pilote automatique comme à une arrivée.
+
+- En contre-la-montre, on court seul : la course attend son arrivée.
+- En bataille, c'est `Bataille` qui classe, pas la session.
+- En réseau, l'hôte décide et envoie cette arrivée comme les autres.
+
 ## Cylindrées (`Cylindree`)
 
 | | Vitesse et accélération | Allure de l'IA |

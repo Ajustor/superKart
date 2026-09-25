@@ -36,6 +36,12 @@ var temps_course: float = 0.0
 ## sinon par dépasser le vainqueur au classement.
 var place_finale: int = 0
 
+## Classé d'office, sans avoir franchi la ligne : la course s'arrête quand
+## tous les autres sont arrivés, et le dernier ne court pas seul pour rien.
+## Son temps n'est alors qu'un temps écoulé — ni chrono, ni record, ni
+## fantôme.
+var hors_temps: bool = false
+
 ## Case occupée sur la grille, 0 = pole position. Classe les concurrents tant
 ## que personne n'a bougé.
 var case_de_grille: int = 0
