@@ -136,6 +136,26 @@ jobs:
       - name: Mettre en place les presets d'export
         run: cp .github/export_presets.ci.cfg export_presets.cfg
 
+      - name: Inscrire la version dans le jeu
+        env:
+          VERSION_NAME: ${{ needs.prepare.outputs.version-name }}
+        run: |
+          set -euo pipefail
+          # Le menu l'affiche en bas à gauche (application/config/version).
+          python3 - <<'PY'
+          import os
+          import re
+
+          with open("project.godot", encoding="utf-8") as handle:
+              content = handle.read()
+          content, n = re.subn(r'^config/version="[^"]*"$', 'config/version="%s"' % os.environ["VERSION_NAME"],
+                               content, count=1, flags=re.MULTILINE)
+          if n != 1:
+              raise SystemExit("config/version absent de project.godot")
+          with open("project.godot", "w", encoding="utf-8") as handle:
+              handle.write(content)
+          PY
+
       - name: Importer les ressources
         run: |
           set -euo pipefail
@@ -333,6 +353,26 @@ jobs:
               raise SystemExit("version/code ou version/name absent du preset Android")
 
           with open("export_presets.cfg", "w", encoding="utf-8") as handle:
+              handle.write(content)
+          PY
+
+      - name: Inscrire la version dans le jeu
+        env:
+          VERSION_NAME: ${{ needs.prepare.outputs.version-name }}
+        run: |
+          set -euo pipefail
+          # Le menu l'affiche en bas à gauche (application/config/version).
+          python3 - <<'PY'
+          import os
+          import re
+
+          with open("project.godot", encoding="utf-8") as handle:
+              content = handle.read()
+          content, n = re.subn(r'^config/version="[^"]*"$', 'config/version="%s"' % os.environ["VERSION_NAME"],
+                               content, count=1, flags=re.MULTILINE)
+          if n != 1:
+              raise SystemExit("config/version absent de project.godot")
+          with open("project.godot", "w", encoding="utf-8") as handle:
               handle.write(content)
           PY
 
