@@ -168,8 +168,12 @@ func _steering_authority() -> float:
 	return clampf(absf(speed) / (stats.max_speed * 0.5), 0.0, 1.0)
 
 
+## En marche arrière, comme en voiture : braquer à gauche envoie l'arrière
+## à gauche, donc le nez à droite. Sans ce changement de signe, la direction
+## paraît inversée dès qu'on recule.
 func _update_grip_steering(cmd: KartCommand, delta: float) -> void:
-	velocity_dir += cmd.steer * stats.turn_rate * _steering_authority() * delta
+	var sens := -1.0 if speed < 0.0 else 1.0
+	velocity_dir += cmd.steer * sens * stats.turn_rate * _steering_authority() * delta
 	heading = velocity_dir
 
 

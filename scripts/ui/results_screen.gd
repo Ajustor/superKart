@@ -174,7 +174,7 @@ func _montrer_podium(gp: GrandPrix) -> void:
 func _sur_arrivee(entree: RaceEntry) -> void:
 	if entree == _session.entries[0]:
 		_attente = DELAI
-		if _session.id_piste != "" and GameSettings.proposer_record(
+		if not entree.hors_temps and _session.id_piste != "" and GameSettings.proposer_record(
 				_session.id_piste, _session.lap_count, entree.temps_course):
 			_record.text = "Nouveau record du circuit !"
 			if _contre_la_montre():
@@ -221,6 +221,11 @@ func _ouvrir() -> void:
 		_rejouer.grab_focus()
 
 
+## Le chrono d'un arrivé ; un tiret pour qui a été arrêté en route.
+static func _temps(entree: RaceEntry) -> String:
+	return "—" if entree.hors_temps else RaceTimer.format(entree.temps_course)
+
+
 func _remplir() -> void:
 	var moi := _session.entries[0]
 	_tours.text = texte_des_tours(moi.timer.tours)
@@ -232,7 +237,7 @@ func _remplir() -> void:
 			_resume.text += "  ·  record : %s" % RaceTimer.format(record)
 	else:
 		_resume.text = "%s  ·  %s  ·  %d points" % [
-			RaceScoring.ordinal(moi.place_finale), RaceTimer.format(moi.temps_course),
+			RaceScoring.ordinal(moi.place_finale), _temps(moi),
 			RaceScoring.points_pour(moi.place_finale)]
 		if gp != null:
 			_resume.text = "%s, course %d/%d  ·  %s" % [gp.nom(), gp.manche + 1, gp.manches(), _resume.text]
@@ -251,7 +256,7 @@ func _remplir() -> void:
 		_cellule(RaceScoring.ordinal(entree.position), couleur)
 		_cellule(entree.nom, couleur)
 		if entree.finished:
-			_cellule(RaceTimer.format(entree.temps_course), couleur)
+			_cellule(_temps(entree), couleur)
 		else:
 			_cellule("tour %d/%d…" % [mini(entree.tours_comptes + 1, _session.lap_count), _session.lap_count], couleur)
 		_cellule(RaceTimer.format(entree.timer.best) if entree.timer.has_best else "—", couleur)

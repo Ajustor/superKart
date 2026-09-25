@@ -22,7 +22,7 @@
 <main>
   <section class="telechargements" aria-labelledby="titre-telecharger">
     <h2 id="titre-telecharger">Télécharger</h2>
-    <p class="version">Version <strong>{{VERSION}}</strong> · {{DATE}} · <code>{{COMMIT}}</code></p>
+    <p class="version">Version <strong>{{VERSION}}</strong> · publiée le {{DATE}}</p>
 
     <div class="cartes">
       <a class="carte" href="telecharger/SuperKart-windows.zip" download>
@@ -51,10 +51,11 @@
         <ol>
           <li>Ouvrir le fichier <code>SuperKart.apk</code> téléchargé.</li>
           <li>Autoriser l'installation d'applications depuis le navigateur, si le téléphone le demande.</li>
-          <li>{{MISE_A_JOUR_ANDROID}}</li>
+          <li>Une nouvelle version s'installe par-dessus l'ancienne, sans perdre la progression.</li>
         </ol>
       </details>
     </div>
+{{NOUVEAUTES}}
   </section>
 
   <section class="galerie" aria-label="Captures d'écran">
@@ -82,7 +83,7 @@
 </main>
 
 <footer class="pied">
-  <p>Construit automatiquement à chaque mise à jour du jeu.</p>
+  <p>Mis à jour à chaque nouvelle version du jeu.</p>
 </footer>
 
 </body>

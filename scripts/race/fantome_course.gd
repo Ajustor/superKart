@@ -131,7 +131,7 @@ func _construire_etiquette() -> Label:
 
 
 func _sur_arrivee(entree: RaceEntry) -> void:
-	if entree != _session.entries[0] or _cle == "":
+	if entree != _session.entries[0] or _cle == "" or entree.hors_temps:
 		return
 	_noter(entree.kart)
 	enregistrement.temps = entree.temps_course

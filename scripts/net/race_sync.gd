@@ -302,7 +302,7 @@ func _photo_classement() -> Array:
 	for gid in entrees:
 		var e: RaceEntry = entrees[gid]
 		photo.append([gid, e.position, e.tours_comptes, e.finished, e.place_finale, e.temps_course,
-			e.inventaire.objet, e.inventaire.charges, e.inventaire.roulette])
+			e.inventaire.objet, e.inventaire.charges, e.inventaire.roulette, e.hors_temps])
 	return photo
 
 
@@ -314,7 +314,7 @@ func _classement(photo: Array) -> void:
 			continue
 		e.position = int(ligne[1])
 		if bool(ligne[3]) and not e.finished:
-			session.appliquer_arrivee(e, int(ligne[4]), float(ligne[5]))
+			session.appliquer_arrivee(e, int(ligne[4]), float(ligne[5]), bool(ligne[9]))
 		if e == _entree_locale() and _inventaire_fige():
 			continue
 		e.inventaire.objet = int(ligne[6])

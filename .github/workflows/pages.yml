@@ -1,0 +1,73 @@
+name: Page de téléchargement
+
+# Publie sur GitHub Pages la page qui propose une version du jeu : une
+# Release GitHub et ses binaires. Lancé par le workflow Build quand une
+# Release est publiée ; se relance à la main (onglet Actions) pour refaire
+# la page, par exemple après avoir retouché site/.
+#
+# Toujours sur main : l'environnement github-pages n'accepte par défaut que
+# la branche par défaut.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag de la Release à proposer (ex. v1.2). Vide = la dernière Release publiée."
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publier:
+    name: Publier la page
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Récupérer la Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ -z "$TAG" ]; then
+            TAG="$(gh release view --json tagName --jq .tagName)"
+          fi
+          echo "Release $TAG" >> "$GITHUB_STEP_SUMMARY"
+          mkdir -p release
+          gh release view "$TAG" --json tagName,name,publishedAt,body > release/release.json
+          gh release download "$TAG" --dir release \
+            --pattern SuperKart-windows.zip --pattern SuperKart.apk
+          ls -lh release
+
+      - name: Assembler la page
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/page_de_telechargement.py \
+            --site site --sortie _site --release release/release.json \
+            --windows release/SuperKart-windows.zip --apk release/SuperKart.apk
+
+      - name: Préparer la publication
+        uses: actions/configure-pages@v5
+
+      - name: Téléverser la page
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Publier sur GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

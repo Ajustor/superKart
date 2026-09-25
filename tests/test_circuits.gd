@@ -108,13 +108,84 @@ func test_un_espacement_nul_pose_un_objet_seul_au_milieu() -> void:
 	assert_almost_eq(track.track_curve.distance_of(poses[0].origin), 50.0, 0.5)
 
 
-func test_le_decor_ne_se_touche_pas() -> void:
+func test_le_decor_se_touche() -> void:
 	var decor := _decor(0.0, 100.0, 20.0)
 	decor.reconstruire()
-	assert_eq(decor.find_children("*", "CollisionObject3D", true, false).size(), 0,
-		"un palmier sans collision : on ne l'accroche pas en coupant un virage")
+	var corps := decor.find_children("*", "StaticBody3D", true, false)
+	assert_eq(corps.size(), 1, "un seul corps pour toute la rangée")
+	var formes := corps[0].find_children("*", "CollisionShape3D", true, false)
+	assert_eq(formes.size(), decor.placements(track.track_curve).size(), "une forme par palmier")
+	assert_eq((corps[0] as StaticBody3D).collision_layer, Kart.COUCHE_DECOR,
+		"sur la couche que les karts heurtent")
 	assert_eq(decor.find_children("*", "MultiMeshInstance3D", true, false).size(), 1,
 		"toute la rangée en un seul appel de dessin")
+
+
+func test_la_forme_suit_l_objet_et_sa_taille() -> void:
+	var decor := _decor(40.0, 20.0, 0.0, false)
+	decor.objet = TrackDecor.Objet.MOULIN
+	decor.echelle = 2.0
+	decor.reconstruire()
+	var pose := decor.placements(track.track_curve)[0]
+	var forme := decor.find_children("*", "CollisionShape3D", true, false)[0] as CollisionShape3D
+	var cylindre := forme.shape as CylinderShape3D
+	assert_not_null(cylindre)
+	assert_almost_eq(cylindre.radius, 2.8 * 2.0, 0.01, "le rayon suit l'échelle")
+	assert_almost_eq(forme.transform.origin.y - pose.origin.y, 4.5 * 2.0, 0.01, "posée sur le sol, pas enfoncée")
+	assert_almost_eq(forme.transform.basis.get_scale().x, 1.0, 0.001,
+		"la forme n'est pas mise à l'échelle : ses dimensions le sont")
+
+
+func test_ce_qui_flotte_ne_se_touche_pas() -> void:
+	var decor := _decor(0.0, 100.0, 20.0)
+	decor.objet = TrackDecor.Objet.ETOILE
+	decor.reconstruire()
+	assert_eq(decor.find_children("*", "CollisionObject3D", true, false).size(), 0)
+
+
+func test_un_decor_non_solide_se_traverse() -> void:
+	var decor := _decor(0.0, 100.0, 20.0)
+	decor.solide = false
+	decor.reconstruire()
+	assert_eq(decor.find_children("*", "CollisionObject3D", true, false).size(), 0)
+
+
+## Un décor solide ne doit jamais mordre sur la route : un tronc au bord du
+## bitume arrêterait net un kart qui ne fait que prendre la corde.
+func test_aucun_decor_solide_ne_mord_sur_la_route() -> void:
+	for info in TrackCatalog.PISTES + TrackCatalog.ARENES:
+		var piste := info.scene.instantiate() as Track
+		add_child_autofree(piste)
+		var c := piste.track_curve
+		for e in piste.elements():
+			if not (e is TrackDecor) or not e.solide:
+				continue
+			var g := TrackDecor.forme_de(e.objet)
+			if g.is_empty():
+				continue
+			var hauteur: float = g.hauteur if g.type == "cylindre" else g.taille.y
+			# Le rayon qui dépasse le plus, quelle que soit l'orientation.
+			var rayon: float = g.rayon if g.type == "cylindre" else Vector2(g.taille.x, g.taille.z).length() * 0.5
+			for pose: Transform3D in e.placements(c):
+				var t := pose.basis.get_scale().x
+				var centre: Vector3 = pose.origin + pose.basis.orthonormalized() * (g.centre * t)
+				var d := c.distance_of(centre)
+				var route := c.position_at(d)
+				# Au-dessus des karts, ou sous la route (un autre étage) : sans
+				# conséquence.
+				if centre.y - hauteur * t * 0.5 > route.y + 2.5 or centre.y + hauteur * t * 0.5 < route.y - 0.5:
+					continue
+				var marge := absf(c.lateral_offset_at(centre, d)) - rayon * t - c.half_width
+				assert_gt(marge, 0.0, "%s, %s à %.0f m : mord de %.2f m sur la route" % [info.id, e.name, d, -marge])
+
+
+func test_chaque_objet_qui_se_touche_a_une_forme_de_collision() -> void:
+	for objet in TrackDecor.Objet.values():
+		var forme := TrackDecor.forme_de(objet)
+		if objet == TrackDecor.Objet.ETOILE:
+			assert_true(forme.is_empty(), "une étoile flotte")
+		else:
+			assert_false(forme.is_empty(), "objet %s" % TrackDecor.Objet.keys()[objet])
 
 
 func test_chaque_objet_de_decor_a_une_forme() -> void:

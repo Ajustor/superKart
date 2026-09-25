@@ -1,21 +1,24 @@
 """Assemble la page de téléchargement publiée sur GitHub Pages.
 
-Copie le site (`site/`) dans le dossier de sortie, y range les binaires sous
-`telecharger/` avec des noms fixes — les liens de la page ne changent jamais
-d'une version à l'autre — et remplit les champs de la page : version, date,
-commit, tailles.
+La page propose une version publiée : une Release GitHub et ses fichiers. Ce
+script copie le site (`site/`) dans le dossier de sortie, y range les
+binaires sous `telecharger/` avec des noms fixes — les liens de la page ne
+changent jamais d'une version à l'autre — et remplit les champs de la page :
+version, date, tailles, notes de version.
 
+    gh release view v1.2 --json tagName,name,publishedAt,body > release.json
     python3 .github/scripts/page_de_telechargement.py \\
-        --site site --sortie _site \\
-        --windows build/windows --apk build/android/SuperKart.apk \\
-        --version 1.1.57 --commit 0123abc --signature release
+        --site site --sortie _site --release release.json \\
+        --windows SuperKart-windows.zip --apk SuperKart.apk
 """
 
 import argparse
 import datetime
+import html
+import json
 import pathlib
+import re
 import shutil
-import zipfile
 
 MOIS = [
     "janvier", "février", "mars", "avril", "mai", "juin",
@@ -28,67 +31,108 @@ def taille(chemin: pathlib.Path) -> str:
     return "%.0f Mo" % (octets / 1_000_000) if octets >= 10_000_000 else "%.1f Mo" % (octets / 1_000_000)
 
 
-def date_du_jour() -> str:
-    jour = datetime.date.today()
+def date_en_francais(iso: str) -> str:
+    jour = datetime.date.fromisoformat(iso[:10]) if iso else datetime.date.today()
     return "%d %s %d" % (jour.day, MOIS[jour.month - 1], jour.year)
+
+
+def version_du_tag(tag: str) -> str:
+    """« v1.2 » s'affiche « 1.2 »."""
+    return tag[1:] if re.match(r"^[vV]\d", tag) else tag
+
+
+def _en_ligne(texte: str) -> str:
+    """Échappe, puis rend le gras et le code du Markdown."""
+    texte = html.escape(texte)
+    texte = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", texte)
+    texte = re.sub(r"`(.+?)`", r"<code>\1</code>", texte)
+    return texte
+
+
+def notes_en_html(markdown: str) -> str:
+    """Les notes de la Release, en HTML. Juste ce qu'on y écrit d'habitude :
+    des titres, des listes, des paragraphes. Tout le reste est du texte."""
+    morceaux: list[str] = []
+    liste = False
+    for ligne in markdown.replace("\r\n", "\n").split("\n"):
+        ligne = ligne.rstrip()
+        puce = re.match(r"^\s*[-*+]\s+(.*)$", ligne)
+        if puce is None and liste:
+            morceaux.append("</ul>")
+            liste = False
+        if not ligne.strip():
+            continue
+        if puce is not None:
+            if not liste:
+                morceaux.append("<ul>")
+                liste = True
+            morceaux.append("<li>%s</li>" % _en_ligne(puce.group(1)))
+            continue
+        titre = re.match(r"^#{1,6}\s+(.*)$", ligne)
+        if titre is not None and not morceaux and titre.group(1).strip().lower() == "nouveautés":
+            continue  # la section porte déjà ce titre
+        if titre is not None:
+            morceaux.append("<h4>%s</h4>" % _en_ligne(titre.group(1)))
+        else:
+            morceaux.append("<p>%s</p>" % _en_ligne(ligne.strip()))
+    if liste:
+        morceaux.append("</ul>")
+    return "\n".join(morceaux)
+
+
+def section_nouveautes(markdown: str) -> str:
+    corps = notes_en_html(markdown or "")
+    if not corps:
+        return ""
+    return ('    <div class="nouveautes">\n      <h3>Nouveautés</h3>\n%s\n    </div>' % corps)
 
 
 def main() -> None:
     args = argparse.ArgumentParser()
     args.add_argument("--site", required=True, type=pathlib.Path)
     args.add_argument("--sortie", required=True, type=pathlib.Path)
-    args.add_argument("--windows", required=True, type=pathlib.Path, help="dossier de l'export Windows")
+    args.add_argument("--release", required=True, type=pathlib.Path,
+                      help="JSON de `gh release view --json tagName,name,publishedAt,body`")
+    args.add_argument("--windows", required=True, type=pathlib.Path, help="l'archive ZIP Windows")
     args.add_argument("--apk", required=True, type=pathlib.Path)
-    args.add_argument("--version", required=True)
-    args.add_argument("--commit", required=True)
-    args.add_argument("--signature", choices=["release", "debug"], required=True)
     a = args.parse_args()
+
+    release = json.loads(a.release.read_text(encoding="utf-8"))
 
     if a.sortie.exists():
         shutil.rmtree(a.sortie)
     shutil.copytree(a.site, a.sortie, ignore=shutil.ignore_patterns(".gdignore"))
     telecharger = a.sortie / "telecharger"
     telecharger.mkdir()
-
-    # Windows : l'exécutable et son .pck, ensemble dans une archive.
     archive = telecharger / "SuperKart-windows.zip"
-    fichiers = sorted(p for p in a.windows.iterdir() if p.is_file())
-    if not any(p.suffix == ".exe" for p in fichiers) or not any(p.suffix == ".pck" for p in fichiers):
-        raise SystemExit("export Windows incomplet dans %s : il faut le .exe et le .pck" % a.windows)
-    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
-        for f in fichiers:
-            z.write(f, "SuperKart/" + f.name)
-
     apk = telecharger / "SuperKart.apk"
+    shutil.copyfile(a.windows, archive)
     shutil.copyfile(a.apk, apk)
 
-    # Signé en release, une version remplace la précédente. Signé en debug,
-    # la clé change à chaque build : Android refuse la mise à jour.
-    if a.signature == "release":
-        mise_a_jour = "Une nouvelle version s'installe par-dessus l'ancienne, sans perdre la progression."
-    else:
-        mise_a_jour = ("Cette version est signée en debug : pour mettre à jour, désinstaller "
-                       "l'ancienne d'abord (la progression est alors perdue).")
-
     champs = {
-        "{{VERSION}}": a.version,
-        "{{DATE}}": date_du_jour(),
-        "{{COMMIT}}": a.commit[:7],
+        "{{VERSION}}": html.escape(version_du_tag(release["tagName"])),
+        "{{DATE}}": date_en_francais(release.get("publishedAt") or ""),
         "{{TAILLE_WINDOWS}}": taille(archive),
         "{{TAILLE_ANDROID}}": taille(apk),
-        "{{MISE_A_JOUR_ANDROID}}": mise_a_jour,
+        "{{NOUVEAUTES}}": section_nouveautes(release.get("body") or ""),
     }
     page = a.sortie / "index.html"
     texte = page.read_text(encoding="utf-8")
-    for cle, valeur in champs.items():
+    for cle in champs:
         if cle not in texte:
             raise SystemExit("champ %s absent de la page" % cle)
+    # Les notes en dernier : elles viennent de la Release, et peuvent
+    # contenir des accolades sans être un champ oublié.
+    notes = champs.pop("{{NOUVEAUTES}}")
+    for cle, valeur in champs.items():
         texte = texte.replace(cle, valeur)
-    if "{{" in texte:
+    if re.search(r"\{\{[A-Z_]+\}\}", texte.replace("{{NOUVEAUTES}}", "")):
         raise SystemExit("champ non rempli dans la page")
+    texte = texte.replace("{{NOUVEAUTES}}", notes)
     page.write_text(texte, encoding="utf-8")
 
-    print("Page %s : Windows %s, Android %s" % (a.version, champs["{{TAILLE_WINDOWS}}"], champs["{{TAILLE_ANDROID}}"]))
+    print("Page %s : Windows %s, Android %s" % (
+        champs["{{VERSION}}"], champs["{{TAILLE_WINDOWS}}"], champs["{{TAILLE_ANDROID}}"]))
 
 
 if __name__ == "__main__":
