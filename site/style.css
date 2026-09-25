@@ -1,0 +1,208 @@
+:root {
+  --fond: #11131c;
+  --fond-clair: #1b1f2e;
+  --bord: #2c3247;
+  --texte: #eef1f8;
+  --texte-doux: #a9b0c4;
+  --accent: #ffc62e;
+  --accent-fonce: #e39b00;
+  --rouge: #e8453c;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--fond);
+  color: var(--texte);
+  font: 17px/1.55 "Nunito", system-ui, sans-serif;
+}
+
+h1, h2, .plateforme, .bouton {
+  font-family: "Baloo 2", "Nunito", system-ui, sans-serif;
+}
+
+code {
+  font-size: 0.9em;
+  background: var(--fond-clair);
+  border: 1px solid var(--bord);
+  border-radius: 4px;
+  padding: 0 0.3em;
+}
+
+main {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* En-tête : un damier de ligne d'arrivée en bas. */
+.entete {
+  text-align: center;
+  padding: 48px 16px 64px;
+  background:
+    linear-gradient(180deg, #232a45 0%, var(--fond) 100%);
+  position: relative;
+}
+.entete::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 16px;
+  background:
+    conic-gradient(#fff 25%, #11131c 0 50%, #fff 0 75%, #11131c 0) 0 0 / 16px 16px;
+  opacity: 0.85;
+}
+.icone {
+  border-radius: 22px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.4);
+}
+h1 {
+  margin: 12px 0 0;
+  font-size: clamp(44px, 9vw, 76px);
+  font-weight: 800;
+  line-height: 1;
+  color: var(--accent);
+  text-shadow: 0 4px 0 var(--rouge);
+  letter-spacing: 0.01em;
+}
+.accroche {
+  margin: 14px auto 0;
+  max-width: 34em;
+  color: var(--texte-doux);
+}
+
+h2 {
+  font-size: 30px;
+  font-weight: 800;
+  margin: 48px 0 8px;
+}
+
+.version {
+  margin: 0 0 20px;
+  color: var(--texte-doux);
+}
+.version strong { color: var(--texte); }
+
+.cartes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+.carte {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 22px 22px 20px;
+  background: var(--fond-clair);
+  border: 1px solid var(--bord);
+  border-radius: 14px;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.carte:hover, .carte:focus-visible {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+.carte:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.plateforme {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.detail {
+  color: var(--texte-doux);
+  font-size: 15px;
+}
+.bouton {
+  align-self: flex-start;
+  margin-top: 14px;
+  padding: 8px 22px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #1a1400;
+  font-weight: 800;
+  font-size: 18px;
+  box-shadow: 0 3px 0 var(--accent-fonce);
+}
+
+.installer {
+  margin-top: 20px;
+  display: grid;
+  gap: 10px;
+}
+details {
+  background: var(--fond-clair);
+  border: 1px solid var(--bord);
+  border-radius: 10px;
+  padding: 10px 16px;
+}
+summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+details ol { margin: 10px 0 4px; padding-left: 1.3em; }
+details li + li { margin-top: 4px; }
+
+.galerie {
+  margin-top: 48px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+.galerie figure {
+  margin: 0;
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--bord);
+}
+.galerie img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.galerie figcaption {
+  position: absolute;
+  left: 8px; bottom: 8px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgb(10 12 20 / 0.75);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.liste {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 8px 24px;
+}
+.liste li {
+  padding-left: 22px;
+  position: relative;
+  color: var(--texte-doux);
+}
+.liste li::before {
+  content: "";
+  position: absolute;
+  left: 2px; top: 0.55em;
+  width: 10px; height: 10px;
+  border-radius: 2px;
+  background: var(--accent);
+  transform: rotate(45deg);
+}
+.liste strong { color: var(--texte); }
+
+.pied {
+  margin-top: 64px;
+  padding: 24px 16px 40px;
+  text-align: center;
+  color: var(--texte-doux);
+  font-size: 14px;
+  border-top: 1px solid var(--bord);
+}

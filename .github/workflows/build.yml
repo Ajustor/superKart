@@ -44,7 +44,12 @@ jobs:
       godot-version: ${{ steps.config.outputs.godot-version }}
       build-type: ${{ steps.config.outputs.build-type }}
       build-id: ${{ steps.config.outputs.build-id }}
+      version-name: ${{ steps.version.outputs.name }}
+      version-code: ${{ steps.version.outputs.code }}
     steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
       - name: Résoudre les paramètres de build
         id: config
         env:
@@ -71,6 +76,39 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
           echo "Godot $godot_version · export $build_type · ${slug}-${SHA:0:7}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Numéroter la version
+        id: version
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          # Android refuse une mise à jour dont le code de version n'augmente
+          # pas. Le code du preset sert de base, le numéro du run (qui croît à
+          # chaque exécution du workflow) s'y ajoute ; le nom affiché prend le
+          # numéro du run en dernier chiffre : 1.1 → 1.1.57. La page de
+          # téléchargement affiche le même nom.
+          python3 - <<'PY'
+          import os
+          import re
+
+          run = int(os.environ["RUN_NUMBER"])
+          with open(".github/export_presets.ci.cfg", encoding="utf-8") as handle:
+              content = handle.read()
+
+          code = re.search(r"^version/code=(\d+)$", content, re.MULTILINE)
+          name = re.search(r'^version/name="([^"]*)"$', content, re.MULTILINE)
+          if code is None or name is None:
+              raise SystemExit("version/code ou version/name absent du preset Android")
+
+          new_code = int(code.group(1)) + run
+          new_name = "%s.%d" % (name.group(1), run)
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write("name=%s\ncode=%d\n" % (new_name, new_code))
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write("Version %s (code Android %d)\n" % (new_name, new_code))
+          print("version %s (code %d)" % (new_name, new_code))
+          PY
 
   windows:
     name: Windows (x86_64)
@@ -128,6 +166,8 @@ jobs:
   android:
     name: Android (arm64-v8a)
     needs: prepare
+    outputs:
+      signature: ${{ steps.export.outputs.signature }}
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.platforms == 'all' || inputs.platforms == 'android' }}
     runs-on: ubuntu-latest
     steps:
@@ -258,39 +298,28 @@ jobs:
               handle.write(content)
           PY
 
-      - name: Numéroter la version
+      - name: Appliquer le numéro de version
         env:
-          RUN_NUMBER: ${{ github.run_number }}
+          VERSION_NAME: ${{ needs.prepare.outputs.version-name }}
+          VERSION_CODE: ${{ needs.prepare.outputs.version-code }}
         run: |
           set -euo pipefail
-          # Android refuse une mise à jour dont le code de version n'augmente
-          # pas. Le code du preset sert de base, le numéro du run (qui croît à
-          # chaque exécution du workflow) s'y ajoute ; le nom affiché prend le
-          # numéro du run en dernier chiffre : 1.1 → 1.1.57.
           python3 - <<'PY'
           import os
           import re
 
-          run = int(os.environ["RUN_NUMBER"])
           with open("export_presets.cfg", encoding="utf-8") as handle:
               content = handle.read()
 
-          code = re.search(r"^version/code=(\d+)$", content, re.MULTILINE)
-          name = re.search(r'^version/name="([^"]*)"$', content, re.MULTILINE)
-          if code is None or name is None:
+          content, n_code = re.subn(r"^version/code=\d+$", "version/code=%s" % os.environ["VERSION_CODE"],
+                                    content, count=1, flags=re.MULTILINE)
+          content, n_name = re.subn(r'^version/name="[^"]*"$', 'version/name="%s"' % os.environ["VERSION_NAME"],
+                                    content, count=1, flags=re.MULTILINE)
+          if n_code != 1 or n_name != 1:
               raise SystemExit("version/code ou version/name absent du preset Android")
-
-          new_code = int(code.group(1)) + run
-          new_name = "%s.%d" % (name.group(1), run)
-          content = content.replace(code.group(0), "version/code=%d" % new_code, 1)
-          content = content.replace(name.group(0), 'version/name="%s"' % new_name, 1)
 
           with open("export_presets.cfg", "w", encoding="utf-8") as handle:
               handle.write(content)
-
-          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
-              summary.write("Android : version %s (code %d)\n" % (new_name, new_code))
-          print("version %s (code %d)" % (new_name, new_code))
           PY
 
       - name: Importer les ressources
@@ -319,9 +348,11 @@ jobs:
           if [ "$BUILD_TYPE" = "release" ] && [ "$SIGNING_MODE" = "release" ]; then
             export_flag="--export-release"
             apk="SuperKart.apk"
+            signature="release"
           else
             export_flag="--export-debug"
             apk="SuperKart-debug.apk"
+            signature="debug"
           fi
 
           godot --headless --path . "$export_flag" "Android" "$PWD/build/android/$apk"
@@ -330,6 +361,7 @@ jobs:
           ls -lh build/android
 
           echo "apk=$apk" >> "$GITHUB_OUTPUT"
+          echo "signature=$signature" >> "$GITHUB_OUTPUT"
 
       - name: Publier l'artefact
         uses: actions/upload-artifact@v4
@@ -338,3 +370,59 @@ jobs:
           path: build/android
           if-no-files-found: error
           retention-days: 14
+
+  pages:
+    name: Page de téléchargement
+    needs: [prepare, windows, android]
+    # Seulement les builds release de main, et seulement si les deux
+    # plateformes sont là : la page propose toujours les deux.
+    if: ${{ github.ref == 'refs/heads/main' && needs.prepare.outputs.build-type == 'release' && needs.windows.result == 'success' && needs.android.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Récupérer l'export Windows
+        uses: actions/download-artifact@v4
+        with:
+          name: superkart-windows-${{ needs.prepare.outputs.build-id }}
+          path: build/windows
+
+      - name: Récupérer l'APK
+        uses: actions/download-artifact@v4
+        with:
+          name: superkart-android-${{ needs.prepare.outputs.build-id }}
+          path: build/android
+
+      - name: Assembler la page
+        env:
+          VERSION_NAME: ${{ needs.prepare.outputs.version-name }}
+          SIGNATURE: ${{ needs.android.outputs.signature }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          apk="$(ls build/android/*.apk | head -1)"
+          python3 .github/scripts/page_de_telechargement.py \
+            --site site --sortie _site \
+            --windows build/windows --apk "$apk" \
+            --version "$VERSION_NAME" --commit "$SHA" --signature "$SIGNATURE"
+          ls -lhR _site
+
+      - name: Préparer la publication
+        uses: actions/configure-pages@v5
+
+      - name: Téléverser la page
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Publier sur GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
