@@ -19,20 +19,26 @@ extends Resource
 
 @export_group("Dérapage — tenue de route")
 @export var min_drift_speed: float = 8.0
-## Mesuré : à 2,1 rad/s, une glisse au braquage neutre décrivait un rayon de
-## 14,0 m contre 12,2 m en adhérence — s'engager dans le dérapage élargissait
-## la trajectoire au lieu de la resserrer, et il fallait tenir le braquage
-## presque à fond pour y gagner quoi que ce soit. Monté à 2,6 pour que toute
-## la plage de glisse tienne à l'intérieur du rayon d'adhérence, comme dans
-## un Mario Kart où la glisse est la trajectoire rapide et la modulation un
-## réglage fin, pas une condition.
-@export var drift_turn_rate: float = 2.6        ## rad/s pendant la glisse
+## La glisse façon Mario Kart 8 : trois régimes au stick, et le kart glisse
+## de l'un à l'autre en douceur.
+## - vers l'intérieur : le virage le plus serré (drift_turn_rate) ;
+## - au neutre : à peu près le braquage à fond en adhérence ;
+## - vers l'extérieur : une grande courbe, presque une ligne de vitesse.
+##
+## Joué en main : l'ancienne glisse tournait à 2,2 rad/s même au neutre (10 m
+## de rayon contre 12,2 en adhérence) et le contre-braquage ne l'ouvrait qu'à
+## 12 m — trop sec, et le stick ne changeait presque rien.
+@export var drift_turn_rate: float = 2.3        ## rad/s, stick vers l'intérieur
 
-## Part de drift_turn_rate qui reste au contre-braquage maximal. C'est le
-## plancher de la plage de modulation : à 0,68 le contre-braquage ouvre à
-## 11,9 m, encore en deçà des 12,2 m de l'adhérence. Le descendre rendrait la
-## glisse à nouveau plus large que de ne rien faire.
-@export var drift_curvature_min: float = 0.68
+## Part de drift_turn_rate au neutre et au contre-braquage maximal. À 22 m/s :
+## 9,6 m vers l'intérieur, 12,3 m au neutre, 27 m vers l'extérieur.
+@export var drift_rapport_neutre: float = 0.78
+@export var drift_rapport_exterieur: float = 0.35
+
+## Vitesse à laquelle la glisse suit le stick, en plages par seconde : passer
+## de l'extérieur à l'intérieur prend 0,4 s. Sans ça, un stick qui tremble
+## faisait zigzaguer la glisse.
+@export var drift_modulation_vitesse: float = 5.0
 
 ## Durée de l'entrée en glisse, en secondes : la courbure y monte de
 ## drift_entree_debut à sa pleine valeur. Sans elle, la trajectoire tournait
@@ -62,9 +68,9 @@ extends Resource
 ## trajectoire : c'est drift_turn_rate qui pilote le virage.
 ## Mesuré en jeu : à 30-55°, atteints en 0,2 s, la caisse se mettait en
 ## travers d'un coup et, avec la trajectoire qui tourne, le kart semblait
-## partir à 90°. 15-30°, atteints en douceur : on voit la glisse sans perdre
-## la route des yeux.
-@export var drift_angle_min_deg: float = 15.0
+## partir à 90°. Comme dans Mario Kart, la caisse est d'autant plus en
+## travers qu'on serre : 12° en contre-braquant, 30° en serrant à fond.
+@export var drift_angle_min_deg: float = 12.0
 @export var drift_angle_max_deg: float = 30.0
 @export var drift_angle_rate_deg: float = 90.0 ## convergence de l'angle, deg/s
 

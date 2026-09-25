@@ -33,6 +33,9 @@ var drift_angle: float = 0.0    ## écart caisse / trajectoire, en radians
 var hop_timer: float = 0.0
 ## Secondes depuis le début de la glisse en cours (voir stats.drift_entree).
 var temps_en_glisse: float = 0.0
+## Le stick pendant la glisse, lissé : 0 à fond vers l'extérieur, 1 à fond
+## vers l'intérieur (voir stats.drift_modulation_vitesse).
+var modulation: float = 0.5
 
 ## Temps restant en tête-à-queue. Un compteur et non une machine à états de
 ## plus, comme le prévoyait la spec : l'état STUNNED existait déjà.
@@ -202,6 +205,8 @@ func _update_hop(cmd: KartCommand, delta: float) -> void:
 		state = State.DRIFT
 		hop_timer = 0.0
 		temps_en_glisse = 0.0
+		# La glisse part du braquage de l'atterrissage, sans rattrapage.
+		modulation = (clampf(cmd.steer * float(drift_dir), -1.0, 1.0) + 1.0) * 0.5
 		drift_charge = 0.0
 		drift_angle = 0.0
 		palier_courant = 0
@@ -227,29 +232,25 @@ func _end_drift() -> void:
 	heading = velocity_dir
 
 
-## Pendant la glisse, le braquage pilote deux choses distinctes : la courbure
-## de la trajectoire, directement et proportionnellement, et l'angle de la
-## caisse par rapport à cette trajectoire. Braquer vers l'intérieur resserre
-## le virage et réduit l'angle de caisse ; contre-braquer élargit le virage
-## et met la caisse plus en travers.
+## Pendant la glisse, le stick module le virage, comme dans Mario Kart 8 :
+## vers l'intérieur on serre et la caisse se met plus en travers, vers
+## l'extérieur on ouvre en grand et la caisse se redresse. La glisse ne
+## change jamais de côté : contre-braquer l'élargit, sans l'inverser.
 func _update_drift(cmd: KartCommand, delta: float) -> void:
 	var inward := clampf(cmd.steer * float(drift_dir), -1.0, 1.0)
 	var t := (inward + 1.0) * 0.5
-	var target := deg_to_rad(lerpf(stats.drift_angle_max_deg, stats.drift_angle_min_deg, t))
+	modulation = move_toward(modulation, t, stats.drift_modulation_vitesse * delta)
+	var target := deg_to_rad(lerpf(stats.drift_angle_min_deg, stats.drift_angle_max_deg, modulation))
 	drift_angle = move_toward(drift_angle, target, deg_to_rad(stats.drift_angle_rate_deg) * delta)
 
-	# La courbure suit le braquage, pas l'angle de glisse. Les dériver l'un de
-	# l'autre inversait la commande : braquer vers l'intérieur ouvrait le rayon
-	# et contre-braquer le resserrait, et l'entrée en glisse sous-virait le temps
-	# que l'angle monte depuis zéro.
 	temps_en_glisse += delta
 	var entree := smoothstep(0.0, maxf(stats.drift_entree, 0.001), temps_en_glisse)
-	var courbure := lerpf(stats.drift_curvature_min, 1.0, t) * lerpf(stats.drift_entree_debut, 1.0, entree)
-	velocity_dir += float(drift_dir) * stats.drift_turn_rate * courbure * delta
+	velocity_dir += float(drift_dir) * stats.drift_turn_rate * rapport_de_glisse(modulation) \
+		* lerpf(stats.drift_entree_debut, 1.0, entree) * delta
 	heading = velocity_dir + float(drift_dir) * drift_angle
 
 	# Serrer le virage charge plus vite ; contre-braquer, plus lentement.
-	drift_charge += delta * lerpf(stats.charge_au_contre_braquage, 1.0, t)
+	drift_charge += delta * lerpf(stats.charge_au_contre_braquage, 1.0, modulation)
 	var palier := tier_for_charge(drift_charge)
 	if palier > palier_courant:
 		palier_courant = palier
@@ -262,6 +263,14 @@ func _update_drift(cmd: KartCommand, delta: float) -> void:
 	if _drift_is_broken(inward):
 		_drift_locked_out = true
 		_end_drift()
+
+
+## La part de drift_turn_rate pour une modulation donnée : l'extérieur, le
+## neutre et l'intérieur, reliés en deux segments.
+func rapport_de_glisse(m: float) -> float:
+	if m < 0.5:
+		return lerpf(stats.drift_rapport_exterieur, stats.drift_rapport_neutre, m * 2.0)
+	return lerpf(stats.drift_rapport_neutre, 1.0, (m - 0.5) * 2.0)
 
 
 ## Une glisse cassée ne rapporte rien, quel que soit son niveau de charge.
@@ -414,5 +423,6 @@ func reset(yaw: float) -> void:
 	drift_angle = 0.0
 	hop_timer = 0.0
 	temps_en_glisse = 0.0
+	modulation = 0.5
 	stun_timer = 0.0
 	_drift_locked_out = false
