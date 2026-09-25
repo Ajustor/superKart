@@ -3,8 +3,12 @@ name: Build
 on:
   push:
     branches: [main]
-  # Publier une Release GitHub (un tag, ex. v1.2) construit le jeu, attache
-  # les binaires à la Release et met à jour la page de téléchargement.
+    # Un tag de version (ex. v1.2) construit le jeu, crée la Release si elle
+    # n'existe pas, y attache les binaires et met à jour la page de
+    # téléchargement.
+    tags: ["v*"]
+  # Une Release publiée sur GitHub avec un nouveau tag fait de même. Si le
+  # tag déclenche aussi un push, la concurrence (même ref) n'en garde qu'un.
   release:
     types: [published]
   workflow_dispatch:
@@ -85,8 +89,8 @@ jobs:
         id: version
         env:
           RUN_NUMBER: ${{ github.run_number }}
-          EVENT_NAME: ${{ github.event_name }}
-          TAG: ${{ github.event.release.tag_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
           # Android refuse une mise à jour dont le code de version n'augmente
@@ -110,7 +114,7 @@ jobs:
           new_code = int(code.group(1)) + run
           new_name = "%s.%d" % (name.group(1), run)
           tag = os.environ.get("TAG", "")
-          if os.environ["EVENT_NAME"] == "release" and tag:
+          if os.environ["REF_TYPE"] == "tag" and tag:
               new_name = tag[1:] if re.match(r"^[vV]\d", tag) else tag
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
               out.write("name=%s\ncode=%d\n" % (new_name, new_code))
@@ -241,7 +245,7 @@ jobs:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_USER: ${{ secrets.ANDROID_KEYSTORE_USER }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
         run: |
           set -euo pipefail
           mkdir -p "$HOME/.android"
@@ -263,7 +267,7 @@ jobs:
             printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$release_keystore"
             echo "release-keystore=$release_keystore" >> "$GITHUB_OUTPUT"
             echo "mode=release" >> "$GITHUB_OUTPUT"
-          elif [ "$EVENT_NAME" = "release" ]; then
+          elif [ "$REF_TYPE" = "tag" ]; then
             # Une version publiée doit pouvoir s'installer par-dessus la
             # précédente : il lui faut toujours la même clé, pas une clé de
             # debug refaite à chaque build.
@@ -425,9 +429,9 @@ jobs:
   publier:
     name: Publier la Release
     needs: [prepare, windows, android]
-    # Seulement pour une Release publiée, et seulement si les deux
-    # plateformes sont là : la page propose toujours les deux.
-    if: ${{ github.event_name == 'release' && needs.windows.result == 'success' && needs.android.result == 'success' }}
+    # Seulement pour un tag de version, et seulement si les deux plateformes
+    # sont là : la page propose toujours les deux.
+    if: ${{ github.ref_type == 'tag' && needs.windows.result == 'success' && needs.android.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -449,7 +453,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          TAG: ${{ github.event.release.tag_name }}
+          TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
           # Des noms fixes : la page et les liens partagés n'en changent pas.
@@ -457,6 +461,11 @@ jobs:
           cp build/windows/SuperKart.exe build/windows/SuperKart.pck publication/SuperKart/
           (cd publication && zip -9 -r SuperKart-windows.zip SuperKart)
           cp build/android/SuperKart.apk publication/SuperKart.apk
+          # Un tag poussé seul n'a pas encore de Release : on la crée, notes
+          # tirées des PR et commits depuis le tag précédent.
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            gh release create "$TAG" --verify-tag --title "SuperKart ${TAG#v}" --generate-notes
+          fi
           gh release upload "$TAG" publication/SuperKart-windows.zip publication/SuperKart.apk --clobber
           ls -lh publication
 
@@ -464,7 +473,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          TAG: ${{ github.event.release.tag_name }}
+          TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
           # La page se publie depuis main : l'environnement github-pages
