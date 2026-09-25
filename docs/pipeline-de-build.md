@@ -1,7 +1,8 @@
 # Pipeline de build
 
 La pipeline `.github/workflows/build.yml` exporte le jeu pour **Windows** et
-**Android**, et dépose les binaires en artefacts de run GitHub Actions.
+**Android**, dépose les binaires en artefacts de run GitHub Actions et, sur
+`main`, les publie sur une page de téléchargement (GitHub Pages).
 
 ## Quand elle se déclenche
 
@@ -37,6 +38,47 @@ Un nouveau push sur la même référence annule le run précédent.
 
 Conservés 14 jours.
 
+## Page de téléchargement
+
+Après chaque build release de `main` où les deux plateformes ont réussi, le
+job **Page de téléchargement** publie sur GitHub Pages une page qui propose
+la dernière version :
+
+| Lien (relatif à la page) | Contenu |
+| --- | --- |
+| `telecharger/SuperKart-windows.zip` | `SuperKart/SuperKart.exe` + `SuperKart/SuperKart.pck` |
+| `telecharger/SuperKart.apk` | l'APK, quel que soit son mode de signature |
+
+Les noms ne changent jamais : un lien partagé mène toujours à la dernière
+version. La page affiche la version (la même que celle de l'APK), la date,
+le commit et la taille des fichiers. Si l'APK est signé en debug, elle
+prévient qu'il faut désinstaller l'ancienne version pour mettre à jour : la
+clé de debug change à chaque build.
+
+Les binaires sont servis par Pages lui-même, pas par une release GitHub :
+sur un dépôt privé, les fichiers d'une release ne se téléchargent pas sans
+compte.
+
+Le site vit dans `site/` (HTML, CSS, captures d'écran) ; les champs
+`{{VERSION}}`, `{{TAILLE_WINDOWS}}`… de `site/index.html` sont remplis par
+`.github/scripts/page_de_telechargement.py`, qui range aussi les binaires.
+Pour voir la page sans passer par la CI :
+
+```sh
+python3 .github/scripts/page_de_telechargement.py --site site --sortie /tmp/page \
+    --windows build/windows --apk build/android/SuperKart.apk \
+    --version 1.1.0 --commit $(git rev-parse HEAD) --signature release
+```
+
+`site/.gdignore` tient le dossier hors du projet Godot : ses images ne sont
+ni importées ni exportées avec le jeu.
+
+**À faire une fois**, dans *Settings* → *Pages* : choisir la source
+**GitHub Actions**. Sans cela, le job échoue à l'étape *Préparer la
+publication*. GitHub Pages sur un dépôt privé demande un compte GitHub Pro
+(ou une organisation Team) ; sinon, rendre le dépôt public. La page, elle,
+est toujours publique : n'importe qui ayant le lien peut télécharger le jeu.
+
 ## Presets d'export
 
 `export_presets.cfg` est gitignoré : il porte les chemins et les clés de chaque
@@ -51,13 +93,15 @@ Si on ajoute une option d'export qui compte (architecture, nom de paquet,
 version…), c'est dans `.github/export_presets.ci.cfg` qu'elle doit atterrir,
 sinon la CI ne la verra pas.
 
-## Version Android
+## Version
 
 Android n'installe une mise à jour que si son code de version augmente. La
 pipeline le fait d'elle-même : le code du preset (`version/code`) sert de
 base, et le numéro du run GitHub (`github.run_number`, qui croît à chaque
 exécution du workflow) s'y ajoute. Le nom affiché prend ce numéro en dernier
 chiffre : `version/name="1.1"` au run 57 donne la version 1.1.57, code 59.
+Le calcul se fait une fois, dans le job *Paramètres* ; l'APK et la page de
+téléchargement portent donc le même numéro.
 
 Pour une nouvelle version majeure, changer `version/name` dans le preset ;
 le code, lui, n'a jamais besoin d'être touché à la main.

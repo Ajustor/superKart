@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SuperKart — Télécharger</title>
+<meta name="description" content="SuperKart, un jeu de course de karts. Télécharger pour Windows et Android.">
+<link rel="icon" href="images/icone.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="entete">
+  <img class="icone" src="images/icone.png" alt="" width="96" height="96">
+  <h1>SuperKart</h1>
+  <p class="accroche">Des karts, des virages, des carapaces. Huit circuits, jusqu'à 200cc.</p>
+</header>
+
+<main>
+  <section class="telechargements" aria-labelledby="titre-telecharger">
+    <h2 id="titre-telecharger">Télécharger</h2>
+    <p class="version">Version <strong>{{VERSION}}</strong> · {{DATE}} · <code>{{COMMIT}}</code></p>
+
+    <div class="cartes">
+      <a class="carte" href="telecharger/SuperKart-windows.zip" download>
+        <span class="plateforme">Windows</span>
+        <span class="detail">64 bits · archive ZIP · {{TAILLE_WINDOWS}}</span>
+        <span class="bouton">Télécharger</span>
+      </a>
+      <a class="carte" href="telecharger/SuperKart.apk" download>
+        <span class="plateforme">Android</span>
+        <span class="detail">arm64 · APK · {{TAILLE_ANDROID}}</span>
+        <span class="bouton">Télécharger</span>
+      </a>
+    </div>
+
+    <div class="installer">
+      <details>
+        <summary>Installer sur Windows</summary>
+        <ol>
+          <li>Décompresser l'archive, où l'on veut.</li>
+          <li>Lancer <code>SuperKart.exe</code> : il doit rester à côté de <code>SuperKart.pck</code>.</li>
+          <li>Windows peut prévenir que l'application n'est pas reconnue : <em>Informations complémentaires</em>, puis <em>Exécuter quand même</em>.</li>
+        </ol>
+      </details>
+      <details>
+        <summary>Installer sur Android</summary>
+        <ol>
+          <li>Ouvrir le fichier <code>SuperKart.apk</code> téléchargé.</li>
+          <li>Autoriser l'installation d'applications depuis le navigateur, si le téléphone le demande.</li>
+          <li>{{MISE_A_JOUR_ANDROID}}</li>
+        </ol>
+      </details>
+    </div>
+  </section>
+
+  <section class="galerie" aria-label="Captures d'écran">
+    <figure><img src="images/collines.jpg" alt="Course sur le Circuit des Collines" loading="lazy" width="960" height="540"><figcaption>Circuit des Collines</figcaption></figure>
+    <figure><img src="images/champignons.jpg" alt="Course dans le Jardin Champignon" loading="lazy" width="960" height="540"><figcaption>Jardin Champignon</figcaption></figure>
+    <figure><img src="images/neon.jpg" alt="Course de nuit dans la Ville Néon" loading="lazy" width="960" height="540"><figcaption>Ville Néon</figcaption></figure>
+    <figure><img src="images/lave.jpg" alt="Course dans la Forteresse de Lave" loading="lazy" width="960" height="540"><figcaption>Forteresse de Lave</figcaption></figure>
+    <figure><img src="images/plage.jpg" alt="Course sur la Plage aux Palmiers" loading="lazy" width="960" height="540"><figcaption>Plage aux Palmiers</figcaption></figure>
+    <figure><img src="images/neiges.jpg" alt="Course à la Station des Neiges" loading="lazy" width="960" height="540"><figcaption>Station des Neiges</figcaption></figure>
+  </section>
+
+  <section class="contenu" aria-labelledby="titre-contenu">
+    <h2 id="titre-contenu">Au programme</h2>
+    <ul class="liste">
+      <li><strong>Grand Prix</strong> — deux coupes de quatre circuits, et leurs trophées.</li>
+      <li><strong>Contre-la-montre</strong> — contre son propre fantôme.</li>
+      <li><strong>Bataille</strong> — trois ballons chacun, le dernier en lice gagne.</li>
+      <li><strong>Multijoueur</strong> — en réseau local, ou par Internet.</li>
+      <li><strong>Cinq karts</strong> — de la Plume au Costaud, à la couleur de son choix.</li>
+      <li><strong>50 à 200cc</strong> — et le mode miroir, à débloquer.</li>
+      <li><strong>Dérapages et mini-turbos</strong>, figures sur les sauts, objets à lancer.</li>
+      <li><strong>Clavier, manette ou écran tactile.</strong></li>
+    </ul>
+  </section>
+</main>
+
+<footer class="pied">
+  <p>Construit automatiquement à chaque mise à jour du jeu.</p>
+</footer>
+
+</body>
+</html>
