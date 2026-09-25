@@ -10,7 +10,7 @@ on publie une Release GitHub, elle attache les binaires à la Release et met
 | Déclencheur | Ce qui se passe |
 | --- | --- |
 | Push sur `main` | Les deux plateformes sont construites en release. La page de téléchargement ne change pas. |
-| Publication d'une Release GitHub (tag `v1.2`…) | Les deux plateformes sont construites en release, attachées à la Release, et la page de téléchargement passe à cette version. |
+| Tag de version poussé (`v1.2`…), ou Release publiée sur GitHub | Les deux plateformes sont construites en release, attachées à la Release (créée si besoin), et la page de téléchargement passe à cette version. |
 | Déclenchement manuel (onglet *Actions* → *Build* → *Run workflow*) | Sur n'importe quelle branche, avec le choix des plateformes et du type d'export. |
 
 Les entrées du déclenchement manuel :
@@ -45,12 +45,19 @@ Conservés 14 jours.
 La page propose **la dernière version publiée** : une Release GitHub, pas
 chaque push sur `main`.
 
-**Publier une version** : *Releases* → *Draft a new release*, un tag
-`v1.2` (le nom affiché sera 1.2), des notes de version, *Publish release*.
+**Publier une version**, au choix :
+
+- pousser un tag : `git tag v1.2 && git push origin v1.2` (le nom affiché
+  sera 1.2). La Release est créée par la CI, avec des notes tirées des PR
+  et des commits depuis le tag précédent ; on peut les retoucher ensuite
+  sur GitHub, puis relancer **Page de téléchargement** ;
+- ou *Releases* → *Draft a new release*, un nouveau tag `v1.2`, ses notes,
+  *Publish release*.
+
 Le workflow **Build** se lance alors sur ce tag, puis le job *Publier la
 Release* :
 
-1. attache à la Release `SuperKart-windows.zip` (`SuperKart/SuperKart.exe`
+1. crée la Release si elle n'existe pas, et y attache `SuperKart-windows.zip` (`SuperKart/SuperKart.exe`
    et `SuperKart/SuperKart.pck`) et `SuperKart.apk` ;
 2. lance le workflow **Page de téléchargement** (`pages.yml`) sur `main`.
 
