@@ -119,7 +119,10 @@ exécution du workflow) s'y ajoute. Le nom affiché prend ce numéro en dernier
 chiffre : `version/name="1.1"` au run 57 donne la version 1.1.57, code 59.
 Pour une Release, le nom affiché est celui du tag (`v1.2` → 1.2) ; le code
 suit toujours le numéro du run. Le calcul se fait une fois, dans le job
-*Paramètres* : l'APK et la page de téléchargement portent le même nom.
+*Paramètres* : l'APK, la page de téléchargement et le jeu lui-même portent le
+même nom. Chaque export l'inscrit dans `project.godot`
+(`application/config/version`), et le menu principal l'affiche en bas à
+gauche. Hors de la CI, la valeur du dépôt reste `dev`.
 
 Pour une nouvelle version majeure, changer `version/name` dans le preset ;
 le code, lui, n'a jamais besoin d'être touché à la main.

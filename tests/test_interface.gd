@@ -67,3 +67,27 @@ func test_la_camera_tourne_a_l_arrivee_du_joueur() -> void:
 	session.appliquer_arrivee(session.entries[0], 2, 31.0)
 	await wait_physics_frames(5)
 	assert_gt(camera.orbite, 0.0)
+
+
+# --- Version affichée au menu --------------------------------------------------------
+
+func test_le_menu_affiche_la_version_en_bas_a_gauche() -> void:
+	var menu := (load("res://scenes/ui/main_menu.tscn") as PackedScene).instantiate() as Control
+	add_child_autofree(menu)
+	var etiquette := menu.get_node_or_null("Version") as Label
+	assert_not_null(etiquette)
+	assert_eq(etiquette.text, menu.texte_version())
+	assert_eq(etiquette.anchor_left, 0.0, "à gauche")
+	assert_eq(etiquette.anchor_top, 1.0, "en bas")
+	assert_eq(etiquette.mouse_filter, Control.MOUSE_FILTER_IGNORE, "elle ne vole aucun clic")
+
+
+func test_la_version_vient_du_projet() -> void:
+	var avant = ProjectSettings.get_setting("application/config/version", "")
+	ProjectSettings.set_setting("application/config/version", "1.2")
+	var texte: String = load("res://scripts/ui/main_menu.gd").texte_version()
+	ProjectSettings.set_setting("application/config/version", "dev")
+	var hors_ci: String = load("res://scripts/ui/main_menu.gd").texte_version()
+	ProjectSettings.set_setting("application/config/version", avant)
+	assert_eq(texte, "v1.2", "la version inscrite par la CI")
+	assert_eq(hors_ci, "dev", "hors de la CI")

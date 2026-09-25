@@ -41,6 +41,7 @@ func _ready() -> void:
 	theme = UITheme.theme()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_fond()
+	_version()
 	_accueil = _ecran_accueil()
 	_selection = _ecran_selection()
 	_options = OptionsPanel.new()
@@ -74,6 +75,29 @@ func _fond() -> void:
 	fond.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	fond.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(fond)
+
+
+## Le numéro de version, discret, en bas à gauche : qu'on sache sans
+## chercher quelle version on a installée.
+func _version() -> void:
+	var etiquette := Label.new()
+	etiquette.name = "Version"
+	etiquette.text = texte_version()
+	etiquette.add_theme_color_override("font_color", UITheme.TEXTE_DOUX)
+	etiquette.add_theme_font_size_override("font_size", 16)
+	etiquette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	etiquette.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 12)
+	etiquette.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	add_child(etiquette)
+
+
+## « v1.2 », ou « dev » hors de la CI : c'est elle qui inscrit la version
+## (application/config/version) dans le jeu qu'elle exporte.
+static func texte_version() -> String:
+	var version := str(ProjectSettings.get_setting("application/config/version", ""))
+	if version == "" or version == "dev":
+		return "dev"
+	return "v" + version
 
 
 func _montrer(ecran: Control) -> void:
