@@ -6,7 +6,7 @@ extends Node
 ## parcours devient le nouveau fantôme.
 ##
 ## Les deux horloges partent au vert : le fantôme et le joueur prennent le
-## départ ensemble, comme dans Mario Kart.
+## départ ensemble, comme dans les jeux de kart.
 
 signal fantome_battu
 ## Le joueur vient de boucler un tour : `ecart` secondes d'avance (négatif)
@@ -108,7 +108,7 @@ func _montrer_ecart(ecart: float) -> void:
 	if _etiquette == null:
 		return
 	_etiquette.text = texte_ecart(ecart)
-	# Vert en avance, rouge en retard : comme au chrono de Mario Kart.
+	# Vert en avance, rouge en retard : comme au chrono des jeux de kart.
 	_etiquette.add_theme_color_override("font_color",
 		Color(0.35, 1.0, 0.45) if ecart < 0.0 else Color(1.0, 0.35, 0.3))
 	_etiquette.visible = true

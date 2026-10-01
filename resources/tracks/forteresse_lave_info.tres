@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_info")
 id = "forteresse_lave"
-nom = "Forteresse de Lave"
+nom = "Bastion de Magma"
 description = "Des couloirs de pierre au-dessus d'un lac de lave. Des virages secs entre les remparts, une chicane tout en haut et une douve à franchir d'un saut."
 chemin_scene = "res://scenes/tracks/forteresse_lave.tscn"
 tours = 3

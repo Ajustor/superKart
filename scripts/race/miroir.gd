@@ -1,7 +1,7 @@
 class_name Miroir
 extends RefCounted
 
-## Le mode miroir : le circuit retourné gauche-droite, comme dans Mario Kart.
+## Le mode miroir : le circuit retourné gauche-droite, comme dans les jeux de kart.
 ## Les virages à gauche deviennent des virages à droite ; le sens de la
 ## course, lui, ne change pas.
 ##
@@ -47,6 +47,12 @@ static func appliquer(piste: Track) -> void:
 
 static func _retourner_element(e: TrackFeature) -> void:
 	e.decalage = -e.decalage
+	if e is TrackCourant:
+		# Le vent qui poussait vers la droite pousse vers la gauche.
+		(e as TrackCourant).poussee_laterale = -(e as TrackCourant).poussee_laterale
+	if e is TrackObstacle:
+		# Le marteau part de l'autre côté, le tonneau roule dans l'autre sens.
+		(e as TrackObstacle).retourne = not (e as TrackObstacle).retourne
 	if e is TrackWall:
 		var mur := e as TrackWall
 		match mur.cote:

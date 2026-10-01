@@ -27,7 +27,7 @@ func test_l_ecran_monte_la_course_puis_s_efface_au_depart() -> void:
 	var attente := Node.new()
 	add_child_autofree(attente)
 	attente.add_child(ecran)
-	assert_eq(ecran.titre, "Jardin Champignon")
+	assert_eq(ecran.titre, "Clairière Enchantée")
 	assert_eq(ecran.layer, 100, "au-dessus du HUD et des commandes")
 
 	await wait_until(func() -> bool: return ecran.course != null, 10.0)

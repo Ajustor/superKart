@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TrackInfo" format=3]
+
+[ext_resource type="Script" path="res://scripts/race/track_info.gd" id="1_info"]
+
+[resource]
+script = ExtResource("1_info")
+id = "port_pirate"
+nom = "Port des Pirates"
+description = "Sur les quais, les tonneaux roulent d'un bord à l'autre ; on saute depuis le pont d'un galion, on traverse la grotte marine et on lutte contre le courant de la crique."
+chemin_scene = "res://scenes/tracks/port_pirate.tscn"
+tours = 3

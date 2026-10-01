@@ -24,15 +24,26 @@ Pour savoir d'où vient un ralentissement :
 
 **Options → Affichage → Qualité graphique** :
 
-| Réglage | Résolution 3D | Ombres portées | Lueur, brouillard |
-|---|---|---|---|
-| Haute | 100 % | oui | oui |
-| Moyenne | 80 % | non | oui |
-| Basse | 60 % | non | non |
+| Réglage | Résolution 3D | Ombres portées | Lueur, brouillard | Grain du bitume, contraste et saturation | Vignette et traits de vitesse |
+|---|---|---|---|---|---|
+| Haute | 100 % | oui | oui | oui | oui |
+| Moyenne | 80 % | non | oui | non | oui |
+| Basse | 60 % | non | non | non (ni tone mapping) | non |
 | Automatique | Moyenne sur téléphone et tablette, Haute ailleurs | | |
 
 Les ombres portées redessinent toute la scène une seconde fois, vue du
-soleil : c'est le premier poste qu'on retire.
+soleil : c'est le premier poste qu'on retire. Le grain du bitume (trois
+lectures de texture par pixel de route, deux fois) et l'étalonnage (une passe
+de plus sur toute l'image) suivent : sur téléphone, la route reste unie.
+
+`tools/mesure_rendu.gd` relève, sur 40 s de course vue du kart du joueur,
+les appels de dessin et les triangles par image : ce que la scène demande à
+la carte graphique, quelle que soit sa puissance.
+
+```
+xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 960x540 \
+    --fixed-fps 30 -s tools/mesure_rendu.gd -- <circuit> [haute|moyenne|basse]
+```
 
 ## Ce qui a été fait contre les gels et les commandes perdues
 

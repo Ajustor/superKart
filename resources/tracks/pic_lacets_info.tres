@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TrackInfo" format=3]
+
+[ext_resource type="Script" path="res://scripts/race/track_info.gd" id="1_info"]
+
+[resource]
+script = ExtResource("1_info")
+id = "pic_lacets"
+nom = "Pic des Lacets"
+description = "On monte au sommet par un tunnel en spirale, chaque tour au-dessus du précédent ; on redescend la face sud en lacets, et un dernier tunnel repasse sous les lacets."
+chemin_scene = "res://scenes/tracks/pic_lacets.tscn"
+tours = 2

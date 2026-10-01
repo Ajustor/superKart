@@ -27,6 +27,18 @@ var boost_timer: float = 0.0
 var boost_multiplier: float = 1.0
 var on_offroad: bool = false    ## piloté de l'extérieur par la détection de terrain
 
+## Adhérence du sol, de 1 (bitume) à près de 0 (verglas). Pilotée de
+## l'extérieur, comme on_offroad. En deçà de 1, le nez tourne mais la
+## trajectoire ne le suit qu'avec retard : le kart glisse, et accélère mal.
+var adherence: float = 1.0
+## Vitesse à laquelle la trajectoire rejoint le nez à pleine adhérence, en
+## 1/s : multipliée par l'adhérence, 0,3 sur la glace donne un retard d'une
+## demi-seconde.
+const RAPPEL_D_ADHERENCE := 6.0
+## Sur la glace, le nez répond un peu plus vite : on pivote, puis on glisse.
+const BRAQUAGE_SUR_GLACE := 1.25
+var _sur_glace: bool = false
+
 var drift_dir: int = 0          ## -1 gauche, +1 droite, 0 hors dérapage
 var drift_charge: float = 0.0
 var drift_angle: float = 0.0    ## écart caisse / trajectoire, en radians
@@ -154,6 +166,8 @@ func _update_speed(cmd: KartCommand, delta: float) -> void:
 	elif cmd.throttle > 0.0:
 		# Sous étoile, on reprend sa vitesse deux fois plus vite.
 		var acceleration := stats.acceleration * (2.0 if etoile > 0.0 else 1.0)
+		# Les roues patinent sur la glace.
+		acceleration *= lerpf(0.6, 1.0, clampf(adherence, 0.0, 1.0))
 		speed = move_toward(speed, ceiling, acceleration * cmd.throttle * delta)
 	else:
 		speed = move_toward(speed, 0.0, stats.coast_friction * delta)
@@ -173,12 +187,24 @@ func _steering_authority() -> float:
 ## paraît inversée dès qu'on recule.
 func _update_grip_steering(cmd: KartCommand, delta: float) -> void:
 	var sens := -1.0 if speed < 0.0 else 1.0
-	velocity_dir += cmd.steer * sens * stats.turn_rate * _steering_authority() * delta
-	heading = velocity_dir
+	var virage := cmd.steer * sens * stats.turn_rate * _steering_authority() * delta
+	if adherence >= 1.0:
+		if _sur_glace:
+			# Le nez a raison : sortant d'une glissade, la trajectoire
+			# reprend là où il pointe.
+			_sur_glace = false
+			velocity_dir = heading
+		velocity_dir += virage
+		heading = velocity_dir
+		return
+	_sur_glace = true
+	heading += virage * BRAQUAGE_SUR_GLACE
+	velocity_dir = lerp_angle(velocity_dir, heading,
+		1.0 - exp(-RAPPEL_D_ADHERENCE * maxf(adherence, 0.0) * delta))
 
 
 ## Un appui sur DRIFT fait toujours sauter le kart, braquage ou pas : c'est
-## pendant le saut qu'on choisit son côté, comme dans Mario Kart. Sans
+## pendant le saut qu'on choisit son côté, comme dans les jeux de kart. Sans
 ## direction à l'atterrissage, ce n'était qu'un saut.
 ##
 ## Tenu sans braquer, le bouton ne refait pas sauter en boucle : seul un
@@ -188,7 +214,7 @@ func _try_enter_drift(cmd: KartCommand) -> void:
 		return
 	if _drift_locked_out:
 		return
-	# Le bond se fait à toute vitesse, même à l'arrêt, comme dans Mario Kart :
+	# Le bond se fait à toute vitesse, même à l'arrêt, comme dans les jeux de kart :
 	# c'est la glisse qui demande de la vitesse, vérifiée à l'atterrissage.
 	var braque := absf(cmd.steer) >= STEER_DEADZONE
 	if not braque and _derapage_avant:
@@ -236,7 +262,7 @@ func _end_drift() -> void:
 	heading = velocity_dir
 
 
-## Pendant la glisse, le stick module le virage, comme dans Mario Kart 8 :
+## Pendant la glisse, le stick module le virage, comme dans les jeux de kart :
 ## vers l'intérieur on serre et la caisse se met plus en travers, vers
 ## l'extérieur on ouvre en grand et la caisse se redresse. La glisse ne
 ## change jamais de côté : contre-braquer l'élargit, sans l'inverser.
@@ -422,6 +448,8 @@ func reset(yaw: float) -> void:
 	# Une remise en piste coûte ses pièces, comme un choc.
 	pieces = maxi(pieces - PIECES_PERDUES, 0)
 	on_offroad = false
+	adherence = 1.0
+	_sur_glace = false
 	drift_dir = 0
 	drift_charge = 0.0
 	drift_angle = 0.0

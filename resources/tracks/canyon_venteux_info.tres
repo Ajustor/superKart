@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TrackInfo" format=3]
+
+[ext_resource type="Script" path="res://scripts/race/track_info.gd" id="1_info"]
+
+[resource]
+script = ExtResource("1_info")
+id = "canyon_venteux"
+nom = "Canyon Venteux"
+description = "Un canyon de grès balayé par les rafales : on traverse la mesa par son tunnel, on tient le cap dans le vent, et on saute le ravin dans un anneau d'or."
+chemin_scene = "res://scenes/tracks/canyon_venteux.tscn"
+tours = 3

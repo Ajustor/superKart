@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_info")
 id = "jardin_champignon"
-nom = "Jardin Champignon"
+nom = "Clairière Enchantée"
 description = "Un jardin où les champignons dépassent les arbres. Des bosses qui roulent, un S entre les chapeaux et deux champignons qui font rebondir."
 chemin_scene = "res://scenes/tracks/jardin_champignon.tscn"
 tours = 3

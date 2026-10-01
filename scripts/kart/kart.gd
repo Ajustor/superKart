@@ -100,6 +100,15 @@ var elan_de_rampe: float = 0.0
 ## décolle pas : il en descend.
 const DECOLLAGE_MIN := 2.0
 
+## Ce que le décor pousse en plus du moteur, en m/s : vent, courant, tapis
+## roulant. Renseigné par la session, comme elan_de_rampe ; le moteur n'en
+## sait rien, et sa vitesse reste celle qu'il croit avoir.
+var vent := Vector3.ZERO
+
+## Multiplie la gravité : moins de 1 dans une zone d'apesanteur, où chaque
+## saut dure plus longtemps. Renseigné par la session.
+var gravite_facteur: float = 1.0
+
 var _input: KartInput
 var _vertical: float = 0.0
 var _was_hopping: bool = false
@@ -180,7 +189,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		# Pendant le bond du dérapage, sa gravité à lui : plus haut, aussi court.
 		var gravite := stats.hop_gravity if motor.state == KartMotor.State.HOP else stats.gravity
-		_vertical -= gravite * delta
+		_vertical -= gravite * gravite_facteur * delta
 
 	# La normale BRUTE pilote la trajectoire, la lissée ne sert qu'à l'œil.
 	# Les confondre coûtait cher : à 10 d'amortissement, la normale lissée a
@@ -204,6 +213,7 @@ func _physics_process(delta: float) -> void:
 	# plus loin — un kart arcade colle à la piste, il ne fait pas du saut à ski.
 	if au_sol and _vertical <= 0.0:
 		velocity -= contact * ground_grip_push
+	velocity += vent
 
 	move_and_slide()
 	_encaisser_les_murs()
@@ -307,6 +317,8 @@ func respawn_at(where: Transform3D) -> void:
 	_en_l_air = 0.0
 	global_transform = where
 	velocity = Vector3.ZERO
+	vent = Vector3.ZERO
+	gravite_facteur = 1.0
 	_vertical = 0.0
 	_was_hopping = false
 	# L'assiette repart de celle de la route : sans ça le kart renaît à plat au

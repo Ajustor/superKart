@@ -49,6 +49,9 @@ var pseudo: String = ""
 ## La dernière adresse tapée pour rejoindre une partie.
 var derniere_adresse: String = ""
 
+## Chercher une nouvelle version du jeu au lancement (voir MiseAJour).
+var verifier_mises_a_jour: bool = true
+
 ## Sensibilité du joystick tactile : à 1,5, le pouce n'a à parcourir que les
 ## deux tiers du chemin pour braquer à fond.
 const SENSIBILITE_MIN := 0.6
@@ -70,6 +73,14 @@ var _records: Dictionary = {}
 
 ## Meilleure place obtenue dans chaque coupe, par cylindrée (1 = or).
 var _trophees: Dictionary = {}
+
+## Ce qui a été débloqué (« 200cc », « miroir ») : gardé une fois gagné.
+## Ajouter des coupes au jeu ne doit pas reprendre à un joueur ce qu'il avait
+## obtenu avec l'or dans toutes celles qui existaient alors.
+var _debloques: Dictionary = {}
+## Le nombre de coupes des réglages écrits avant que les déblocages soient
+## retenus : les deux premières coupes du jeu.
+const COUPES_D_AVANT := 2
 
 
 func _ready() -> void:
@@ -103,6 +114,7 @@ func charger() -> void:
 		QualiteGraphique.Niveau.AUTO, QualiteGraphique.Niveau.BASSE)
 	pseudo = str(fichier.get_value("reseau", "pseudo", pseudo))
 	derniere_adresse = str(fichier.get_value("reseau", "adresse", derniere_adresse))
+	verifier_mises_a_jour = bool(fichier.get_value("reseau", "mises_a_jour", verifier_mises_a_jour))
 	course.classe = clampi(int(fichier.get_value("course", "cylindree", course.classe)),
 		Cylindree.Classe.CC50, Cylindree.Classe.CC200)
 	course.modele = clampi(int(fichier.get_value("garage", "modele", course.modele)), 0, ModeleKart.nombre() - 1)
@@ -111,6 +123,17 @@ func charger() -> void:
 	if fichier.has_section("trophees"):
 		for cle in fichier.get_section_keys("trophees"):
 			_trophees[cle] = int(fichier.get_value("trophees", cle))
+	_debloques.clear()
+	if fichier.has_section("deblocages"):
+		for cle in fichier.get_section_keys("deblocages"):
+			_debloques[cle] = bool(fichier.get_value("deblocages", cle))
+	elif fichier.has_section("trophees"):
+		# Des réglages d'avant les nouvelles coupes : ce qui était débloqué
+		# l'était avec l'or dans les deux premières.
+		if _or_dans(Cylindree.Classe.CC150, COUPES_D_AVANT):
+			_debloques["200cc"] = true
+		if _or_dans(Cylindree.Classe.CC100, COUPES_D_AVANT):
+			_debloques["miroir"] = true
 	_records.clear()
 	if fichier.has_section("records"):
 		for cle in fichier.get_section_keys("records"):
@@ -135,6 +158,7 @@ func sauver() -> void:
 	fichier.set_value("affichage", "qualite", qualite)
 	fichier.set_value("reseau", "pseudo", pseudo)
 	fichier.set_value("reseau", "adresse", derniere_adresse)
+	fichier.set_value("reseau", "mises_a_jour", verifier_mises_a_jour)
 	fichier.set_value("course", "cylindree", course.classe)
 	fichier.set_value("garage", "modele", course.modele)
 	fichier.set_value("garage", "couleur", course.couleur)
@@ -142,6 +166,10 @@ func sauver() -> void:
 		fichier.set_value("records", cle, _records[cle])
 	for cle in _trophees:
 		fichier.set_value("trophees", cle, _trophees[cle])
+	# Toujours écrite, même vide : c'est elle qui dit que ces réglages
+	# retiennent leurs déblocages.
+	fichier.set_value("deblocages", "200cc", _debloques.get("200cc", false))
+	fichier.set_value("deblocages", "miroir", _debloques.get("miroir", false))
 	var err := fichier.save(chemin)
 	if err != OK:
 		push_warning("réglages non enregistrés (%s) : erreur %d" % [chemin, err])
@@ -242,22 +270,30 @@ func proposer_trophee(coupe: int, classe: int, place: int) -> bool:
 	if actuel > 0 and place >= actuel:
 		return false
 	_trophees[cle_de_trophee(coupe, classe)] = place
+	if _or_partout(Cylindree.Classe.CC150):
+		_debloques["200cc"] = true
+	if _or_partout(Cylindree.Classe.CC100):
+		_debloques["miroir"] = true
 	sauver()
 	return true
 
 
 ## La 200cc : l'or dans toutes les coupes en 150cc.
 func debloque_200cc() -> bool:
-	return _or_partout(Cylindree.Classe.CC150)
+	return _debloques.get("200cc", false) or _or_partout(Cylindree.Classe.CC150)
 
 
 ## Le miroir : l'or dans toutes les coupes en 100cc.
 func debloque_miroir() -> bool:
-	return _or_partout(Cylindree.Classe.CC100)
+	return _debloques.get("miroir", false) or _or_partout(Cylindree.Classe.CC100)
 
 
 func _or_partout(classe: int) -> bool:
-	for i in TrackCatalog.COUPES.size():
+	return _or_dans(classe, TrackCatalog.COUPES.size())
+
+
+func _or_dans(classe: int, coupes: int) -> bool:
+	for i in coupes:
 		if trophee(i, classe) != 1:
 			return false
 	return true

@@ -91,3 +91,22 @@ func test_la_version_vient_du_projet() -> void:
 	ProjectSettings.set_setting("application/config/version", avant)
 	assert_eq(texte, "v1.2", "la version inscrite par la CI")
 	assert_eq(hors_ci, "dev", "hors de la CI")
+
+
+# --- Mise à jour --------------------------------------------------------------------------
+
+func test_le_menu_annonce_une_nouvelle_version() -> void:
+	var menu := (load("res://scenes/ui/main_menu.tscn") as PackedScene).instantiate() as Control
+	add_child_autofree(menu)
+	var bandeau := menu.find_child("MiseAJour", true, false) as Control
+	assert_not_null(bandeau)
+	assert_false(bandeau.visible, "rien à dire quand on est à jour, ou en version de développement")
+	ProjectSettings.set_setting("application/config/version", "1.2")
+	MiseAJour.lire_manifeste({version = "1.3"})
+	assert_true(bandeau.visible, "une version plus récente s'annonce sur l'accueil")
+	var texte := (bandeau.find_children("*", "Label", true, false)[0] as Label).text
+	assert_string_contains(texte, "1.3")
+	MiseAJour.lire_manifeste({version = "1.2"})
+	assert_false(bandeau.visible)
+	ProjectSettings.set_setting("application/config/version", "dev")
+	MiseAJour.lire_manifeste({})

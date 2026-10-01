@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TrackInfo" format=3]
+
+[ext_resource type="Script" path="res://scripts/race/track_info.gd" id="1_info"]
+
+[resource]
+script = ExtResource("1_info")
+id = "citadelle_orages"
+nom = "Citadelle des Orages"
+description = "Une citadelle au-dessus des nuages, sous l'orage : des rafales qui soufflent tour à tour, des trous dans le vide, la porte de la citadelle et des pilons de foudre."
+chemin_scene = "res://scenes/tracks/citadelle_orages.tscn"
+tours = 3

@@ -19,7 +19,16 @@ extends TrackFeature
 ## palmiers coûtent un appel de dessin, pas cinquante — ça compte sur mobile.
 
 enum Objet { PALMIER, PHARE, PILIER_DE_FEU, ETOILE, CHAMPIGNON, ROCHER, SAPIN, LAMPADAIRE, CRISTAL, IMMEUBLE,
-	ARBRE, BOTTE_DE_FOIN, MOULIN, BUISSON }
+	ARBRE, BOTTE_DE_FOIN, MOULIN, BUISSON, CACTUS, STALAGMITE, TOTEM, TONNEAU, CITROUILLE, ENGRENAGE,
+	ANTENNE, FANTOME, NUAGE, PYLONE }
+
+## Ce qui flotte : on passe dessous ou au travers, sans collision, et sa
+## hauteur varie d'un objet à l'autre.
+const FLOTTANTS := [Objet.ETOILE, Objet.FANTOME, Objet.NUAGE]
+
+
+static func flotte(quoi: Objet) -> bool:
+	return quoi in FLOTTANTS
 
 @export var objet: Objet = Objet.PALMIER:
 	set(valeur):
@@ -94,7 +103,7 @@ func placements(c: TrackCurve) -> Array[Transform3D]:
 			var ici := d + jeu
 			var lateral := decalage * cote + rng.randf_range(-1.0, 1.0) * (0.0 if espacement <= 0.0 else 1.5)
 			var taille := echelle * (1.0 if espacement <= 0.0 else rng.randf_range(0.85, 1.15))
-			var envol := hauteur * (1.0 if objet != Objet.ETOILE else rng.randf_range(0.6, 1.4))
+			var envol := hauteur * (1.0 if not flotte(objet) else rng.randf_range(0.6, 1.4))
 			var ou := TrackFeature.point(c, ici, lateral, envol)
 			if eviter_la_route and _sur_la_route(c, ou):
 				continue
@@ -103,17 +112,24 @@ func placements(c: TrackCurve) -> Array[Transform3D]:
 			var sol := _terrain()
 			if sol != null and absf(lateral) > c.half_width:
 				ou.y = sol.hauteur_en(ou.x, ou.z) + envol
+				# Posé sur le relief, il peut tomber sur une route plus basse :
+				# sous des lacets, le sol est celui de la route du dessous.
+				# Un sapin de six mètres posé quatre mètres sous une route la
+				# percerait : on regarde jusqu'à douze mètres plus bas.
+				if eviter_la_route and _sur_la_route(c, ou - Vector3.UP * envol, 12.0):
+					continue
 			var lacet := rng.randf_range(0.0, TAU) if objet != Objet.PHARE else 0.0
 			var base := Basis(Vector3.UP, lacet).scaled(Vector3.ONE * taille)
 			poses.append(Transform3D(base, ou))
 	return poses
 
 
-func _sur_la_route(c: TrackCurve, ou: Vector3) -> bool:
+## `dessous` : jusqu'où sous la route un objet compte encore comme dessus.
+func _sur_la_route(c: TrackCurve, ou: Vector3, dessous := 4.0) -> bool:
 	var d := c.distance_of(ou)
 	var proche := c.position_at(d)
 	# Trop haut ou trop bas : c'est une autre partie du relief, pas la route.
-	if absf(proche.y - ou.y) > 4.0:
+	if ou.y - proche.y > 4.0 or proche.y - ou.y > dessous:
 		return false
 	return absf(c.lateral_offset_at(ou, d)) < c.half_width + 4.0
 
@@ -214,6 +230,23 @@ static func forme_de(quoi: Objet) -> Dictionary:
 			return {type = "cylindre", rayon = 2.8, hauteur = 9.0, centre = Vector3(0.0, 4.5, 0.0)}
 		Objet.BUISSON:
 			return {type = "boite", taille = Vector3(3.0, 1.2, 1.6), centre = Vector3(0.0, 0.55, 0.0)}
+		Objet.CACTUS:
+			return {type = "cylindre", rayon = 0.5, hauteur = 4.5, centre = Vector3(0.0, 2.25, 0.0)}
+		Objet.STALAGMITE:
+			return {type = "cylindre", rayon = 1.1, hauteur = 3.0, centre = Vector3(0.0, 1.5, 0.0)}
+		Objet.TOTEM:
+			return {type = "boite", taille = Vector3(1.6, 6.0, 1.6), centre = Vector3(0.0, 3.0, 0.0)}
+		Objet.TONNEAU:
+			return {type = "cylindre", rayon = 0.7, hauteur = 1.6, centre = Vector3(0.0, 0.8, 0.0)}
+		Objet.CITROUILLE:
+			return {type = "cylindre", rayon = 1.1, hauteur = 1.6, centre = Vector3(0.0, 0.8, 0.0)}
+		Objet.ENGRENAGE:
+			return {type = "cylindre", rayon = 0.6, hauteur = 4.0, centre = Vector3(0.0, 2.0, 0.0)}
+		Objet.ANTENNE:
+			return {type = "cylindre", rayon = 0.9, hauteur = 3.0, centre = Vector3(0.0, 1.5, 0.0)}
+		Objet.PYLONE:
+			# Il pend sous la route : personne ne l'atteint, mais il se touche.
+			return {type = "cylindre", rayon = 0.6, hauteur = 60.0, centre = Vector3(0.0, -30.3, 0.0)}
 	return {}
 
 
@@ -258,6 +291,26 @@ static func maillage_de(quoi: Objet) -> ArrayMesh:
 			_moulin(mat)
 		Objet.BUISSON:
 			_buisson(mat)
+		Objet.CACTUS:
+			_cactus(mat)
+		Objet.STALAGMITE:
+			_stalagmite(mat, brille)
+		Objet.TOTEM:
+			_totem(mat)
+		Objet.TONNEAU:
+			_tonneau(mat)
+		Objet.CITROUILLE:
+			_citrouille(mat, brille)
+		Objet.ENGRENAGE:
+			_engrenage(mat)
+		Objet.ANTENNE:
+			_antenne(mat, brille)
+		Objet.FANTOME:
+			_fantome(brille)
+		Objet.NUAGE:
+			_nuage(mat)
+		Objet.PYLONE:
+			_pylone(mat)
 	var maillage := ArrayMesh.new()
 	if not mat.vide():
 		mat.dans(maillage, _materiau(false))
@@ -433,6 +486,110 @@ static func _buisson(m: _Assemblage) -> void:
 	m.boule(Vector3(0, 0.55, 0), 0.95, vert)
 	m.boule(Vector3(0.9, 0.45, 0.2), 0.75, vert.lightened(0.07))
 	m.boule(Vector3(-0.9, 0.45, -0.2), 0.75, vert.darkened(0.06))
+
+
+static func _cactus(m: _Assemblage) -> void:
+	# Un saguaro : un fût et deux bras qui se redressent.
+	var vert := Color(0.25, 0.55, 0.28)
+	m.cylindre(Vector3.ZERO, Vector3.UP * 4.5, 0.5, 0.42, vert, 8)
+	m.boule(Vector3.UP * 4.5, 0.42, vert)
+	for cote: float in [1.0, -1.0]:
+		var depart := Vector3(0.0, 1.8 + 0.6 * (1.0 if cote > 0.0 else 0.0), 0.0)
+		var coude := depart + Vector3(1.2 * cote, 0.2, 0.0)
+		m.cylindre(depart, coude, 0.3, 0.3, vert.darkened(0.05), 8)
+		m.cylindre(coude, coude + Vector3.UP * 1.6, 0.3, 0.26, vert.darkened(0.05), 8)
+		m.boule(coude + Vector3.UP * 1.6, 0.26, vert.darkened(0.05))
+		m.boule(coude, 0.3, vert.darkened(0.05))
+
+
+static func _stalagmite(m: _Assemblage, b: _Assemblage) -> void:
+	# Des cônes de roche ou de glace, et une pointe qui luit.
+	var roche := Color(0.62, 0.72, 0.85)
+	m.cylindre(Vector3.ZERO, Vector3.UP * 3.0, 1.1, 0.05, roche, 8)
+	m.cylindre(Vector3(0.9, 0, 0.3), Vector3(1.0, 1.8, 0.3), 0.6, 0.03, roche.darkened(0.1), 8)
+	m.cylindre(Vector3(-0.7, 0, -0.5), Vector3(-0.8, 1.3, -0.5), 0.5, 0.03, roche.lightened(0.1), 8)
+	b.cylindre(Vector3.UP * 2.2, Vector3.UP * 3.05, 0.3, 0.02, Color(0.6, 0.9, 1.0), 6)
+
+
+static func _totem(m: _Assemblage) -> void:
+	# Trois têtes de pierre empilées, peintes, et des ailes au sommet.
+	var teintes := [Color(0.55, 0.42, 0.28), Color(0.4, 0.55, 0.35), Color(0.6, 0.35, 0.25)]
+	for i in 3:
+		var y := 1.0 + 2.0 * i
+		m.pave(Vector3(0, y, 0), Vector3(1.5, 1.9, 1.5), teintes[i])
+		m.pave(Vector3(0, y + 0.3, 0.78), Vector3(1.1, 0.25, 0.1), Color(0.95, 0.9, 0.7))
+		m.pave(Vector3(0, y - 0.35, 0.78), Vector3(0.7, 0.3, 0.1), Color(0.15, 0.1, 0.08))
+	m.pave(Vector3(0, 6.2, 0), Vector3(3.6, 0.3, 0.6), Color(0.8, 0.25, 0.2))
+
+
+static func _tonneau(m: _Assemblage) -> void:
+	var bois := Color(0.55, 0.33, 0.15)
+	m.cylindre(Vector3.ZERO, Vector3.UP * 0.8, 0.62, 0.72, bois, 12)
+	m.cylindre(Vector3.UP * 0.8, Vector3.UP * 1.6, 0.72, 0.62, bois, 12)
+	for y in [0.15, 0.8, 1.45]:
+		m.cylindre(Vector3.UP * (y - 0.05), Vector3.UP * (y + 0.05), 0.74, 0.74, Color(0.3, 0.3, 0.32), 12)
+
+
+static func _citrouille(m: _Assemblage, b: _Assemblage) -> void:
+	# Des quartiers orange, une tige, et un visage qui s'allume la nuit.
+	var orange := Color(0.95, 0.5, 0.08)
+	for i in 6:
+		var angle := TAU * float(i) / 6.0
+		m.boule(Vector3(cos(angle) * 0.45, 0.75, sin(angle) * 0.45), 0.75, orange.darkened(0.06 * (i % 2)))
+	m.cylindre(Vector3.UP * 1.4, Vector3(0.1, 1.85, 0.0), 0.12, 0.08, Color(0.3, 0.45, 0.15), 6)
+	var lueur := Color(1.0, 0.85, 0.3)
+	b.pave(Vector3(-0.35, 0.95, 1.12), Vector3(0.25, 0.22, 0.05), lueur)
+	b.pave(Vector3(0.35, 0.95, 1.12), Vector3(0.25, 0.22, 0.05), lueur)
+	b.pave(Vector3(0.0, 0.55, 1.14), Vector3(0.8, 0.16, 0.05), lueur)
+
+
+static func _engrenage(m: _Assemblage) -> void:
+	# Une roue dentée géante, debout sur son axe.
+	var acier := Color(0.55, 0.52, 0.48)
+	var centre := Vector3.UP * 4.0
+	m.cylindre(Vector3.ZERO, centre, 0.5, 0.4, Color(0.3, 0.3, 0.32), 8)
+	m.cylindre(centre + Vector3.BACK * -0.35, centre + Vector3.BACK * 0.35, 3.0, 3.0, acier, 16)
+	for i in 12:
+		var angle := TAU * float(i) / 12.0
+		var dir := Vector3(cos(angle), sin(angle), 0.0)
+		m.pave(centre + dir * 3.3, Vector3(0.7, 0.7, 0.6).abs(), acier.darkened(0.1))
+	m.cylindre(centre + Vector3.BACK * -0.45, centre + Vector3.BACK * 0.45, 0.8, 0.8, Color(0.75, 0.6, 0.2), 8)
+
+
+static func _antenne(m: _Assemblage, b: _Assemblage) -> void:
+	# Une parabole sur un module, et un feu rouge au bout du mât.
+	var blanc := Color(0.85, 0.87, 0.9)
+	m.pave(Vector3(0, 1.0, 0), Vector3(1.8, 2.0, 1.8), blanc.darkened(0.15))
+	m.cylindre(Vector3.UP * 2.0, Vector3.UP * 7.0, 0.12, 0.08, Color(0.5, 0.5, 0.55), 6)
+	m.cylindre(Vector3(0, 4.0, 0), Vector3(0, 5.2, 1.0), 0.15, 2.2, blanc, 14)
+	b.boule(Vector3.UP * 7.1, 0.22, Color(1.0, 0.2, 0.15))
+
+
+static func _fantome(b: _Assemblage) -> void:
+	# Un drap qui flotte, deux yeux sombres : il ne s'éclaire pas, il luit.
+	var drap := Color(0.85, 0.92, 1.0)
+	b.boule(Vector3.UP * 1.2, 0.9, drap)
+	b.cylindre(Vector3.UP * 1.2, Vector3.ZERO, 0.9, 1.05, drap, 10)
+	b.boule(Vector3(-0.3, 1.4, 0.8), 0.15, Color(0.05, 0.05, 0.1))
+	b.boule(Vector3(0.3, 1.4, 0.8), 0.15, Color(0.05, 0.05, 0.1))
+
+
+static func _nuage(m: _Assemblage) -> void:
+	var blanc := Color(0.96, 0.97, 1.0)
+	m.boule(Vector3.ZERO, 2.4, blanc)
+	m.boule(Vector3(2.4, -0.4, 0.3), 1.8, blanc.darkened(0.04))
+	m.boule(Vector3(-2.3, -0.5, -0.2), 1.7, blanc.darkened(0.06))
+	m.boule(Vector3(0.6, 1.3, 0.2), 1.6, blanc)
+
+
+static func _pylone(m: _Assemblage) -> void:
+	# Le pilier qui porte une route en l'air : posé au bord, il descend
+	# soixante mètres sous elle, jusqu'au sol, en bandes rouges et blanches.
+	for i in 12:
+		var haut := Vector3.DOWN * (0.3 + 5.0 * i)
+		m.cylindre(haut + Vector3.DOWN * 5.0, haut, 0.6, 0.6,
+			Color(0.85, 0.15, 0.15) if i % 2 == 0 else Color(0.95, 0.95, 0.95), 8)
+	m.pave(Vector3(0, -0.25, 0), Vector3(1.6, 0.3, 1.6), Color(0.3, 0.3, 0.33))
 
 
 static func _rocher(m: _Assemblage) -> void:

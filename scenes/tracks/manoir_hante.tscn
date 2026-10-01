@@ -1,0 +1,247 @@
+[gd_scene format=3]
+
+[ext_resource type="Shader" path="res://shaders/ciel.gdshader" id="sh_ciel"]
+[ext_resource type="Shader" path="res://shaders/liquide.gdshader" id="sh_liquide"]
+[ext_resource type="Script" path="res://scripts/track/track.gd" id="1_track"]
+[ext_resource type="Curve3D" path="res://resources/tracks/manoir_hante_curve.tres" id="2_curve"]
+[ext_resource type="Script" path="res://scripts/track/features/track_decor.gd" id="s_decor"]
+[ext_resource type="Script" path="res://scripts/track/features/track_gap.gd" id="s_gap"]
+[ext_resource type="Script" path="res://scripts/track/features/track_obstacle.gd" id="s_obstacle"]
+[ext_resource type="Script" path="res://scripts/track/features/track_offroad.gd" id="s_offroad"]
+[ext_resource type="Script" path="res://scripts/track/features/track_ramp.gd" id="s_ramp"]
+[ext_resource type="Script" path="res://scripts/track/features/track_tunnel.gd" id="s_tunnel"]
+
+[sub_resource type="ShaderMaterial" id="Ciel"]
+shader = ExtResource("sh_ciel")
+shader_parameter/haut = Color(0.02, 0.01, 0.06, 1)
+shader_parameter/horizon = Color(0.18, 0.08, 0.25, 1)
+shader_parameter/sol_horizon = Color(0.1, 0.05, 0.14, 1)
+shader_parameter/sol_bas = Color(0.02, 0.01, 0.04, 1)
+shader_parameter/nuages = 0.35
+shader_parameter/couleur_nuages = Color(0.35, 0.3, 0.45, 1)
+shader_parameter/etoiles = 0.6
+shader_parameter/soleil = 0
+
+[sub_resource type="Sky" id="Sky"]
+sky_material = SubResource("Ciel")
+
+[sub_resource type="Environment" id="Env"]
+background_mode = 2
+sky = SubResource("Sky")
+ambient_light_source = 2
+ambient_light_color = Color(0.45, 0.4, 0.6, 1)
+ambient_light_energy = 0.7
+fog_enabled = true
+fog_light_color = Color(0.2, 0.1, 0.28, 1)
+fog_density = 0.007
+glow_enabled = true
+glow_intensity = 0.7
+
+[sub_resource type="ShaderMaterial" id="Mat_liquide"]
+shader = ExtResource("sh_liquide")
+shader_parameter/couleur_profonde = Color(0.12, 0.05, 0.18, 1)
+shader_parameter/couleur_claire = Color(0.4, 0.3, 0.55, 1)
+shader_parameter/echelle = 10
+shader_parameter/vitesse = 0.15
+shader_parameter/rides = 0.2
+shader_parameter/lueur = 0.3
+shader_parameter/rugosite = 0.12
+
+[sub_resource type="PlaneMesh" id="Liquide"]
+material = SubResource("Mat_liquide")
+size = Vector2(1400, 1400)
+
+[node name="Track" type="Node3D"]
+script = ExtResource("1_track")
+curve = ExtResource("2_curve")
+rangees_objets = PackedFloat32Array(0.04, 0.3, 0.68)
+road_color = Color(0.36, 0.33, 0.4, 1)
+bordures = true
+couleur_bordure = Color(0.55, 0.2, 0.75, 1)
+couleur_bordure_bis = Color(0.15, 0.12, 0.18, 1)
+musique = 11
+altitude_du_liquide = -27
+
+[node name="CurveEditor" type="Path3D" parent="."]
+curve = ExtResource("2_curve")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.766, -0.492, 0.414, 0, 0.643, 0.766, -0.643, -0.587, 0.492, 0, 60, 0)
+light_color = Color(0.7, 0.75, 1, 1)
+light_energy = 0.45
+shadow_enabled = true
+
+[node name="LacDeBrume" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -27, -10)
+mesh = SubResource("Liquide")
+
+[node name="PelouseDroite0" type="Node3D" parent="."]
+script = ExtResource("s_offroad")
+debut = 0
+longueur = 163
+decalage = 13
+largeur = 8
+sol = 0
+teinte = Color(0.1, 0.14, 0.1, 1)
+
+[node name="PelouseGauche0" type="Node3D" parent="."]
+script = ExtResource("s_offroad")
+debut = 0
+longueur = 163
+decalage = -13
+largeur = 8
+sol = 0
+teinte = Color(0.1, 0.14, 0.1, 1)
+
+[node name="PelouseDroite191" type="Node3D" parent="."]
+script = ExtResource("s_offroad")
+debut = 191
+longueur = 149
+decalage = 13
+largeur = 8
+sol = 0
+teinte = Color(0.1, 0.14, 0.1, 1)
+
+[node name="PelouseGauche191" type="Node3D" parent="."]
+script = ExtResource("s_offroad")
+debut = 191
+longueur = 149
+decalage = -13
+largeur = 8
+sol = 0
+teinte = Color(0.1, 0.14, 0.1, 1)
+
+[node name="PelouseDroite520" type="Node3D" parent="."]
+script = ExtResource("s_offroad")
+debut = 520
+longueur = 381
+decalage = 13
+largeur = 8
+sol = 0
+teinte = Color(0.1, 0.14, 0.1, 1)
+
+[node name="PelouseGauche520" type="Node3D" parent="."]
+script = ExtResource("s_offroad")
+debut = 520
+longueur = 381
+decalage = -13
+largeur = 8
+sol = 0
+teinte = Color(0.1, 0.14, 0.1, 1)
+
+[node name="RampeDuFosse" type="Node3D" parent="."]
+script = ExtResource("s_ramp")
+debut = 165
+longueur = 12
+largeur = 18
+hauteur = 1.8
+couleur = Color(0.5, 0.25, 0.65, 1)
+
+[node name="Fosse" type="Node3D" parent="."]
+script = ExtResource("s_gap")
+debut = 177
+longueur = 12
+
+[node name="Crypte" type="Node3D" parent="."]
+script = ExtResource("s_tunnel")
+debut = 340
+longueur = 180
+montagne = 7
+hauteur = 5.5
+couleur = Color(0.32, 0.28, 0.36, 1)
+couleur_bis = Color(0.26, 0.22, 0.3, 1)
+couleur_roche = Color(0.25, 0.22, 0.28, 1)
+couleur_lampes = Color(1, 0.6, 0.25, 1)
+espacement_lampes = 8
+
+[node name="Lame1" type="Node3D" parent="."]
+script = ExtResource("s_obstacle")
+type = 0
+debut = 398
+periode = 2.6
+amplitude = 55
+hauteur = 7
+couleur = Color(0.7, 0.72, 0.78, 1)
+
+[node name="Lame2" type="Node3D" parent="."]
+script = ExtResource("s_obstacle")
+type = 0
+debut = 428
+periode = 2.6
+phase = 0.33
+amplitude = 55
+hauteur = 7
+couleur = Color(0.7, 0.72, 0.78, 1)
+
+[node name="Lame3" type="Node3D" parent="."]
+script = ExtResource("s_obstacle")
+type = 0
+debut = 458
+periode = 2.6
+phase = 0.66
+amplitude = 55
+hauteur = 7
+couleur = Color(0.7, 0.72, 0.78, 1)
+
+[node name="Cercueil1" type="Node3D" parent="."]
+script = ExtResource("s_obstacle")
+type = 2
+debut = 826
+amplitude = 6
+periode = 2.8
+couleur = Color(0.3, 0.18, 0.12, 1)
+
+[node name="Cercueil2" type="Node3D" parent="."]
+script = ExtResource("s_obstacle")
+type = 2
+debut = 840
+amplitude = 6
+periode = 2.8
+phase = 0.5
+couleur = Color(0.3, 0.18, 0.12, 1)
+
+[node name="Citrouilles" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 18
+debut = 0
+longueur = 901
+decalage = 14.5
+espacement = 26
+symetrique = true
+eviter_la_route = true
+graine = 3
+
+[node name="Fantomes" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 21
+debut = 0
+longueur = 901
+decalage = 11
+espacement = 45
+hauteur = 4
+graine = 8
+
+[node name="Manoirs" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 9
+debut = 0
+longueur = 901
+decalage = 55
+espacement = 90
+echelle = 1.3
+eviter_la_route = true
+hauteur = -10
+graine = 5
+
+[node name="ArbresMorts" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 10
+debut = 20
+longueur = 881
+decalage = 17.5
+espacement = 33
+eviter_la_route = true
+graine = 12

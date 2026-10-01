@@ -14,7 +14,7 @@ extends RefCounted
 ## dans un fil à part, et chaque boucle n'est composée qu'une fois par
 ## partie (cache).
 
-enum Style { COLLINES, PLAGE, FORTERESSE, CIEL, JARDIN, MINE, VILLE, NEIGE }
+enum Style { COLLINES, PLAGE, FORTERESSE, CIEL, JARDIN, MINE, VILLE, NEIGE, CANYON, USINE, ESPACE, HANTE, GLACE, JUNGLE, PIRATE, ORAGE, ABYSSES, ASCENSION, MANEGE, MONTAGNE }
 
 const FREQUENCE := 16000
 const MESURES := 8
@@ -57,6 +57,66 @@ const STYLES := {
 	Style.NEIGE: {
 		tempo = 124.0, tonique = 64, gamme = [0, 2, 4, 5, 7, 9, 11],
 		grille = [0, 5, 3, 4], basse = [1, 0, 0, 1, 1, 0, 0, 0], arpege = 24, graine = 57,
+	},
+	# Western : phrygien dominant, galop de basse, sous le soleil du canyon.
+	Style.CANYON: {
+		tempo = 136.0, tonique = 57, gamme = [0, 1, 4, 5, 7, 8, 10],
+		grille = [0, 1, 0, 6], basse = [1, 0, 1, 1, 0, 1, 1, 0], arpege = 12, graine = 31,
+	},
+	# Mécanique : mineur, rapide, basse martelée comme une presse.
+	Style.USINE: {
+		tempo = 152.0, tonique = 52, gamme = [0, 2, 3, 5, 7, 8, 10],
+		grille = [0, 0, 5, 6], basse = [1, 1, 1, 1, 1, 1, 1, 1], arpege = 0, graine = 64,
+	},
+	# L'espace : par tons entiers, lent et flottant, arpège très haut.
+	Style.ESPACE: {
+		tempo = 108.0, tonique = 62, gamme = [0, 2, 4, 6, 8, 10],
+		grille = [0, 2, 4, 1], basse = [1, 0, 0, 0, 0, 0, 1, 0], arpege = 24, graine = 99,
+	},
+	# Hanté : mineur harmonique, valse grinçante.
+	Style.HANTE: {
+		tempo = 128.0, tonique = 50, gamme = [0, 2, 3, 5, 7, 8, 11],
+		grille = [0, 3, 4, 0], basse = [1, 0, 0, 1, 0, 0, 1, 0], arpege = 12, graine = 13,
+	},
+	# La glace : lydien, cristallin, arpège très haut qui tinte sous la voûte.
+	Style.GLACE: {
+		tempo = 112.0, tonique = 66, gamme = [0, 2, 4, 6, 7, 9, 11],
+		grille = [0, 4, 1, 5], basse = [1, 0, 0, 0, 1, 0, 1, 0], arpege = 24, graine = 23,
+	},
+	# Les tambours de la jungle : pentatonique, basse syncopée.
+	Style.JUNGLE: {
+		tempo = 138.0, tonique = 55, gamme = [0, 2, 4, 7, 9],
+		grille = [0, 3, 4, 1], basse = [1, 0, 1, 1, 0, 1, 0, 1], arpege = 12, graine = 47,
+	},
+	# Une gigue de pirates : dorien, entraînante.
+	Style.PIRATE: {
+		tempo = 150.0, tonique = 62, gamme = [0, 2, 3, 5, 7, 9, 10],
+		grille = [0, 6, 3, 4], basse = [1, 0, 1, 1, 0, 1, 1, 0], arpege = 12, graine = 61,
+	},
+	# L'orage : mineur harmonique, très rapide, basse martelée.
+	Style.ORAGE: {
+		tempo = 164.0, tonique = 53, gamme = [0, 2, 3, 5, 7, 8, 11],
+		grille = [0, 5, 4, 0], basse = [1, 1, 0, 1, 1, 1, 0, 1], arpege = 24, graine = 77,
+	},
+	# Les profondeurs : locrien, grave et lourd, basse qui gronde.
+	Style.ABYSSES: {
+		tempo = 120.0, tonique = 45, gamme = [0, 1, 3, 5, 6, 8, 10],
+		grille = [0, 1, 4, 0], basse = [1, 0, 0, 1, 1, 0, 0, 1], arpege = 0, graine = 101,
+	},
+	# L'ascension : majeur, lumineux, arpège qui grimpe très haut.
+	Style.ASCENSION: {
+		tempo = 132.0, tonique = 67, gamme = [0, 2, 4, 5, 7, 9, 11],
+		grille = [0, 4, 5, 3], basse = [1, 0, 0, 1, 0, 1, 0, 0], arpege = 24, graine = 7,
+	},
+	# La fête foraine : majeur, très rapide, une basse d'orgue de manège.
+	Style.MANEGE: {
+		tempo = 168.0, tonique = 60, gamme = [0, 2, 4, 5, 7, 9, 11],
+		grille = [0, 4, 0, 5], basse = [1, 0, 1, 0, 1, 0, 1, 0], arpege = 12, graine = 83,
+	},
+	# La montagne : mixolydien, ample, arpège qui monte comme un col.
+	Style.MONTAGNE: {
+		tempo = 126.0, tonique = 59, gamme = [0, 2, 4, 5, 7, 9, 10],
+		grille = [0, 6, 3, 0], basse = [1, 0, 0, 1, 0, 0, 1, 1], arpege = 24, graine = 37,
 	},
 }
 

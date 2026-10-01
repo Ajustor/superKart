@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_info")
 id = "ville_neon"
-nom = "Ville Néon"
+nom = "Boulevard Électrique"
 description = "La ville la nuit, entre les tours illuminées : des rues à angle droit, des bordures fluo et une avenue en travaux à franchir d'un saut."
 chemin_scene = "res://scenes/tracks/ville_neon.tscn"
 tours = 3

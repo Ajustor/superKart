@@ -16,6 +16,7 @@ var _auto: CheckButton
 var _vibrations: CheckButton
 var _mini_carte: CheckButton
 var _fps: CheckButton
+var _mises_a_jour: CheckButton
 var _qualite: OptionButton
 var _joystick: CheckButton
 var _sensibilite: HSlider
@@ -53,6 +54,7 @@ func _ready() -> void:
 		"Moyenne": QualiteGraphique.Niveau.MOYENNE, "Basse": QualiteGraphique.Niveau.BASSE})
 	_mini_carte = _interrupteur(gauche, "Mini-carte")
 	_fps = _interrupteur(gauche, "Compteur de FPS")
+	_mises_a_jour = _interrupteur(gauche, "Chercher les mises à jour")
 
 	droite.add_child(_intertitre("Commandes"))
 	_tactile = _liste(droite, "Commandes tactiles", {
@@ -115,6 +117,11 @@ func _ready() -> void:
 	_fps.toggled.connect(func(v: bool) -> void:
 		GameSettings.afficher_fps = v
 		GameSettings.valider())
+	_mises_a_jour.toggled.connect(func(v: bool) -> void:
+		GameSettings.verifier_mises_a_jour = v
+		GameSettings.valider()
+		if v:
+			MiseAJour.verifier())
 	visibility_changed.connect(_sur_visibilite)
 
 
@@ -137,6 +144,7 @@ func _relire() -> void:
 	_vibrations.set_pressed_no_signal(GameSettings.vibrations)
 	_mini_carte.set_pressed_no_signal(GameSettings.mini_carte)
 	_fps.set_pressed_no_signal(GameSettings.afficher_fps)
+	_mises_a_jour.set_pressed_no_signal(GameSettings.verifier_mises_a_jour)
 	_joystick.set_pressed_no_signal(GameSettings.joystick)
 	_sensibilite.set_value_no_signal(GameSettings.sensibilite_joystick)
 	_qualite.select(_qualite.get_item_index(GameSettings.qualite))

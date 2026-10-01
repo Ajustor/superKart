@@ -4,12 +4,12 @@ extends SceneTree
 ## Lancer après toute modification de ce fichier :
 ##   godot --headless --script tools/setup_input_map.gd
 ##
-## Disposition manette calquée sur celle d'un Mario Kart, parce que c'est la
+## Disposition manette calquée sur celle d'un jeu de kart, parce que c'est la
 ## seule que les mains connaissent déjà : A accélère, B freine, la gâchette
 ## droite fait sauter puis déraper, la gâchette gauche lance l'objet.
 ##
 ## Les gâchettes vont donc au saut et à l'objet, pas aux gaz. C'est ce qui
-## coûte l'accélération analogique — et c'est juste : dans un Mario Kart on
+## coûte l'accélération analogique — et c'est juste : dans un jeu de kart on
 ## accélère avec un bouton, tout ou rien, et c'est le dérapage qui module la
 ## vitesse en virage. Chaque gâchette est doublée de sa tranche (R1, L1), comme
 ## R et ZR y font tous deux déraper.

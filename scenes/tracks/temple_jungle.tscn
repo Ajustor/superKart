@@ -1,0 +1,228 @@
+[gd_scene format=3]
+
+[ext_resource type="Shader" path="res://shaders/ciel.gdshader" id="sh_ciel"]
+[ext_resource type="Script" path="res://scripts/track/track.gd" id="1_track"]
+[ext_resource type="Curve3D" path="res://resources/tracks/temple_jungle_curve.tres" id="2_curve"]
+[ext_resource type="Script" path="res://scripts/track/features/track_boost.gd" id="s_boost"]
+[ext_resource type="Script" path="res://scripts/track/features/track_courant.gd" id="s_courant"]
+[ext_resource type="Script" path="res://scripts/track/features/track_decor.gd" id="s_decor"]
+[ext_resource type="Script" path="res://scripts/track/features/track_gap.gd" id="s_gap"]
+[ext_resource type="Script" path="res://scripts/track/features/track_obstacle.gd" id="s_obstacle"]
+[ext_resource type="Script" path="res://scripts/track/features/track_offroad.gd" id="s_offroad"]
+[ext_resource type="Script" path="res://scripts/track/features/track_ramp.gd" id="s_ramp"]
+[ext_resource type="Script" path="res://scripts/track/features/track_terrain.gd" id="s_terrain"]
+[ext_resource type="Script" path="res://scripts/track/features/track_tunnel.gd" id="s_tunnel"]
+[ext_resource type="Script" path="res://scripts/track/features/track_wall.gd" id="s_wall"]
+
+[sub_resource type="ShaderMaterial" id="Ciel"]
+shader = ExtResource("sh_ciel")
+shader_parameter/haut = Color(0.3, 0.55, 0.75, 1)
+shader_parameter/horizon = Color(0.75, 0.88, 0.8, 1)
+shader_parameter/sol_horizon = Color(0.35, 0.5, 0.3, 1)
+shader_parameter/sol_bas = Color(0.2, 0.32, 0.18, 1)
+shader_parameter/nuages = 0.55
+shader_parameter/couleur_nuages = Color(1, 1, 1, 1)
+shader_parameter/etoiles = 0
+shader_parameter/soleil = 1
+
+[sub_resource type="Sky" id="Sky"]
+sky_material = SubResource("Ciel")
+
+[sub_resource type="Environment" id="Env"]
+background_mode = 2
+sky = SubResource("Sky")
+ambient_light_source = 2
+ambient_light_color = Color(0.6, 0.75, 0.6, 1)
+ambient_light_energy = 0.6
+fog_enabled = true
+fog_light_color = Color(0.65, 0.8, 0.7, 1)
+fog_density = 0.003
+
+[node name="Track" type="Node3D"]
+script = ExtResource("1_track")
+curve = ExtResource("2_curve")
+rangees_objets = PackedFloat32Array(0.03, 0.45, 0.72)
+road_color = Color(0.5, 0.42, 0.3, 1)
+musique = 13
+
+[node name="CurveEditor" type="Path3D" parent="."]
+curve = ExtResource("2_curve")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.766, -0.492, 0.414, 0, 0.643, 0.766, -0.643, -0.587, 0.492, 0, 60, 0)
+light_color = Color(1, 0.95, 0.82, 1)
+light_energy = 0.95
+shadow_enabled = true
+
+[node name="Terrain" type="Node3D" parent="."]
+script = ExtResource("s_terrain")
+couleur = Color(0.22, 0.45, 0.18, 1)
+relief = 20
+ravin = 18
+graine = 6
+
+[node name="BasCoteDroite0" type="Node3D" parent="."]
+script = ExtResource("s_offroad")
+debut = 0
+longueur = 60
+decalage = 15.5
+largeur = 13
+sol = 0
+
+[node name="BasCoteGauche0" type="Node3D" parent="."]
+script = ExtResource("s_offroad")
+debut = 0
+longueur = 60
+decalage = -15.5
+largeur = 13
+sol = 0
+
+[node name="BasCoteDroite88" type="Node3D" parent="."]
+script = ExtResource("s_offroad")
+debut = 88
+longueur = 926
+decalage = 15.5
+largeur = 13
+sol = 0
+
+[node name="BasCoteGauche88" type="Node3D" parent="."]
+script = ExtResource("s_offroad")
+debut = 88
+longueur = 926
+decalage = -15.5
+largeur = 13
+sol = 0
+
+[node name="RampeGorge" type="Node3D" parent="."]
+script = ExtResource("s_ramp")
+debut = 62
+longueur = 12
+largeur = 18
+hauteur = 1.8
+couleur = Color(0.55, 0.42, 0.25, 1)
+
+[node name="Gorge" type="Node3D" parent="."]
+script = ExtResource("s_gap")
+debut = 74
+longueur = 12
+
+[node name="TotemsDuTemple" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 16
+debut = 262
+longueur = 1
+decalage = 13
+espacement = 0
+
+[node name="Temple" type="Node3D" parent="."]
+script = ExtResource("s_tunnel")
+debut = 270
+longueur = 80
+montagne = 12
+couleur = Color(0.52, 0.5, 0.4, 1)
+couleur_bis = Color(0.45, 0.43, 0.33, 1)
+couleur_roche = Color(0.45, 0.48, 0.38, 1)
+couleur_lampes = Color(1, 0.6, 0.2, 1)
+espacement_lampes = 8
+
+[node name="CouloirDesMarteaux" type="Node3D" parent="."]
+script = ExtResource("s_wall")
+debut = 425
+longueur = 47
+cote = 2
+hauteur = 2
+couleur = Color(0.52, 0.5, 0.4, 1)
+couleur_bis = Color(0.45, 0.43, 0.33, 1)
+
+[node name="Marteau1" type="Node3D" parent="."]
+script = ExtResource("s_obstacle")
+type = 0
+debut = 430
+periode = 3
+amplitude = 55
+couleur = Color(0.45, 0.4, 0.35, 1)
+
+[node name="Marteau2" type="Node3D" parent="."]
+script = ExtResource("s_obstacle")
+type = 0
+debut = 446
+periode = 3
+phase = 0.33
+amplitude = 55
+couleur = Color(0.45, 0.4, 0.35, 1)
+
+[node name="Marteau3" type="Node3D" parent="."]
+script = ExtResource("s_obstacle")
+type = 0
+debut = 462
+periode = 3
+phase = 0.66
+amplitude = 55
+couleur = Color(0.45, 0.4, 0.35, 1)
+
+[node name="Gue" type="Node3D" parent="."]
+script = ExtResource("s_courant")
+style = 1
+debut = 494
+longueur = 22
+largeur = 60
+poussee_laterale = 6
+
+[node name="PlaqueDuGue" type="Node3D" parent="."]
+script = ExtResource("s_boost")
+debut = 520
+decalage = -3
+
+[node name="Arbres" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 10
+debut = 0
+longueur = 1014
+decalage = 26
+espacement = 18
+eviter_la_route = true
+graine = 2
+
+[node name="ArbresLoin" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 10
+debut = 5
+longueur = 1009
+decalage = 42
+espacement = 15
+echelle = 1.5
+eviter_la_route = true
+graine = 7
+
+[node name="Palmiers" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 0
+debut = 30
+longueur = 984
+decalage = 20
+espacement = 40
+eviter_la_route = true
+graine = 3
+
+[node name="Buissons" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 13
+debut = 0
+longueur = 1014
+decalage = 22.5
+espacement = 9
+eviter_la_route = true
+graine = 11
+
+[node name="Totems" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 16
+debut = 600
+longueur = 300
+decalage = 20
+espacement = 75
+eviter_la_route = true
+graine = 5

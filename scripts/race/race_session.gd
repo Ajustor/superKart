@@ -24,7 +24,7 @@ signal course_terminee
 ## Le départ du joueur : Depart.NORMAL, TURBO ou CALE.
 signal depart_du_joueur(resultat: int)
 
-## Le turbo au départ, comme dans Mario Kart : tenir les gaz à partir du
+## Le turbo au départ, comme dans les jeux de kart : tenir les gaz à partir du
 ## bon moment du décompte fait partir en trombe ; les tenir dès le début
 ## fait caler. Les instants sont comptés en secondes avant le vert.
 enum Depart { NORMAL, TURBO, CALE }
@@ -205,7 +205,7 @@ func demarrer(piste: Track, pilotes: Array[Kart]) -> void:
 		# boucle pour chacun en franchissant la ligne peinte. Donner à tous le
 		# même retard faisait boucler les derniers de la grille jusqu'à
 		# dix-sept mètres avant la ligne. Partir de plus loin coûte quelques
-		# mètres, comme dans Mario Kart.
+		# mètres, comme dans les jeux de kart.
 		entree.progress.total = case_.x
 		entree.nom = noms[i] if i < noms.size() else "Pilote %d" % (i + 1)
 		entree.case_de_grille = cases[i]
@@ -293,6 +293,8 @@ func avancer_decompte(delta: float) -> void:
 			decompte.emit(seconde)
 		return
 	en_course = true
+	# Les obstacles mobiles partent du même instant sur toutes les machines.
+	_track.horloge = 0.0
 	TouchControls.gaz_auto_retenus = false
 	for entree in entries:
 		entree.kart.controle_actif = true
@@ -405,6 +407,17 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 	var plaque := _track.accelerateur_en(d, lateral)
 	if plaque != null and entree.kart.au_sol:
 		entree.kart.motor.accorder_turbo(plaque.duree_turbo, plaque.force_turbo)
+	# La glace, le vent, l'apesanteur : le kart ne sait pas où il est, la
+	# session lui dit ce que le sol et l'air lui font.
+	var glace := _track.verglas_en(d, lateral)
+	entree.kart.motor.adherence = glace.adherence if glace != null else 1.0
+	entree.kart.vent = _track.poussee_en(d, lateral)
+	entree.kart.gravite_facteur = _track.gravite_en(d, lateral)
+	var anneau := _track.anneau_en(d, lateral,
+		(point - _track.track_curve.position_at(d)).dot(_track.track_curve.up_at(d)))
+	if anneau != null:
+		entree.kart.motor.accorder_turbo(anneau.duree_turbo, anneau.force_turbo)
+		anneau.briller()
 
 	if not dehors and _track.trou_en(d) == null:
 		# On remet en piste là où le kart roulait encore, pas là où la courbe

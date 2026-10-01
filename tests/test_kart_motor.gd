@@ -148,7 +148,7 @@ func test_sans_braquage_ce_n_est_qu_un_saut() -> void:
 	_run(5.0)
 	cmd.drift = true
 	motor.step(cmd, 1.0 / 60.0)
-	assert_eq(motor.state, KartMotor.State.HOP, "un appui fait toujours sauter, comme dans Mario Kart")
+	assert_eq(motor.state, KartMotor.State.HOP, "un appui fait toujours sauter, comme dans les jeux de kart")
 	_run(0.5)
 	assert_eq(motor.state, KartMotor.State.GRIP, "sans direction à l'atterrissage, pas de glisse")
 
@@ -224,7 +224,7 @@ func test_l_angle_de_glisse_reste_dans_la_fourchette() -> void:
 
 
 func test_serrer_met_la_caisse_plus_en_travers() -> void:
-	# Comme dans Mario Kart : vers l'intérieur la caisse se met en travers,
+	# Comme dans les jeux de kart : vers l'intérieur la caisse se met en travers,
 	# vers l'extérieur elle se redresse.
 	_enter_drift(1)
 	cmd.steer = 1.0
@@ -333,7 +333,7 @@ func test_le_contre_braquage_elargit_la_glisse_sans_la_casser() -> void:
 	cmd.steer = -1.0
 	var depart := motor.velocity_dir
 	_run(0.5)
-	assert_eq(motor.state, KartMotor.State.DRIFT, "contre-braquer élargit, comme dans Mario Kart")
+	assert_eq(motor.state, KartMotor.State.DRIFT, "contre-braquer élargit, comme dans les jeux de kart")
 	assert_gt(motor.velocity_dir, depart, "la glisse tourne toujours du même côté, plus large")
 
 
@@ -565,7 +565,7 @@ func test_on_bondit_meme_a_l_arret() -> void:
 	cmd.drift = true
 	cmd.steer = 1.0
 	motor.step(cmd, 1.0 / 60.0)
-	assert_eq(motor.state, KartMotor.State.HOP, "comme dans Mario Kart, le bond ne demande pas de vitesse")
+	assert_eq(motor.state, KartMotor.State.HOP, "comme dans les jeux de kart, le bond ne demande pas de vitesse")
 	_run(stats.hop_duration + 0.1)
 	assert_ne(motor.state, KartMotor.State.DRIFT, "la glisse, elle, en demande")
 
@@ -613,7 +613,7 @@ func _lacet_en_adherence() -> float:
 
 
 ## Joué en main : la glisse était trop sèche, même au neutre, et le stick n'y
-## changeait presque rien. Comme dans Mario Kart 8 : au neutre, à peu près le
+## changeait presque rien. Comme dans les jeux de kart : au neutre, à peu près le
 ## braquage à fond ; vers l'intérieur, plus serré ; vers l'extérieur, bien
 ## plus large.
 func test_les_trois_regimes_de_la_glisse() -> void:

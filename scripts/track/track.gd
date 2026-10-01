@@ -16,6 +16,8 @@ extends Node3D
 const NOM_MAILLAGE := "RoadMesh"
 const NOM_CORPS := "RoadBody"
 const NOM_BORDURES := "Bordures"
+const NOM_TABLIER := "Tablier"
+const NOM_MARQUAGE := "Marquage"
 
 ## L'allure de la chaussée.
 enum Motif {
@@ -85,6 +87,12 @@ const ARC_EN_CIEL: PackedColorArray = [
 		bordures = valeur
 		_reconstruire_si_montee()
 
+## Une ligne blanche discontinue au milieu de la chaussée.
+@export var marquage: bool = true:
+	set(valeur):
+		marquage = valeur
+		_reconstruire_si_montee()
+
 @export var couleur_bordure: Color = Color(0.85, 0.12, 0.12):
 	set(valeur):
 		couleur_bordure = valeur
@@ -106,12 +114,21 @@ const ARC_EN_CIEL: PackedColorArray = [
 
 var track_curve: TrackCurve
 
+## Secondes depuis le départ de la course : les obstacles mobiles s'y règlent.
+## La session la remet à zéro au feu vert, sur chaque machine en réseau à la
+## fois : les marteaux battent partout au même rythme.
+var horloge: float = 0.0
+
+var _elements: Array[TrackFeature] = []
+var _elements_a_jour := false
+
 ## En deçà de cette distance avant un trou, un kart remis en piste l'est de
 ## l'autre côté : il faut plus d'élan que ça pour sauter.
 const ELAN_AVANT_UN_TROU := 60.0
 
 
 func _ready() -> void:
+	child_order_changed.connect(func() -> void: _elements_a_jour = false)
 	# En jeu, un circuit sans courbe est une erreur de montage. Dans l'éditeur
 	# c'est l'état normal d'un nœud qu'on vient d'ajouter : on ne crie pas.
 	assert(curve != null or Engine.is_editor_hint(), "un Track doit avoir une courbe")
@@ -144,6 +161,9 @@ func _reconstruire() -> void:
 		# sans que ses couleurs se délavent.
 		materiau.emission_enabled = true
 		materiau.emission = Color(0.22, 0.22, 0.3)
+	else:
+		_asphalte = materiau
+		detailler_l_asphalte(_detail_asphalte)
 	maillage.surface_set_material(0, materiau)
 
 	var affichage := MeshInstance3D.new()
@@ -164,6 +184,31 @@ func _reconstruire() -> void:
 	corps.add_child(forme)
 	add_child(corps)
 
+	# Le dessous de la route, pour qu'un pont se voie d'en bas.
+	var tablier := MeshInstance3D.new()
+	tablier.name = NOM_TABLIER
+	tablier.mesh = TrackBuilder.tablier(track_curve, trous(), 0.9, segment_length)
+	var beton := StandardMaterial3D.new()
+	beton.vertex_color_use_as_albedo = true
+	beton.albedo_color = road_color.lerp(Color(0.5, 0.48, 0.46), 0.5) if not arc_en_ciel else Color(0.3, 0.3, 0.42)
+	beton.roughness = 0.9
+	# Les deux faces : vue de côté ou d'en dessous, la dalle doit rester
+	# pleine, et Godot retourne la normale des faces arrière.
+	beton.cull_mode = BaseMaterial3D.CULL_DISABLED
+	tablier.material_override = beton
+	add_child(tablier)
+
+	if marquage and not arc_en_ciel:
+		var ligne_centrale := MeshInstance3D.new()
+		ligne_centrale.name = NOM_MARQUAGE
+		ligne_centrale.mesh = TrackBuilder.marquage(track_curve, trous())
+		var peinture_blanche := StandardMaterial3D.new()
+		peinture_blanche.albedo_color = Color(0.92, 0.92, 0.88)
+		peinture_blanche.roughness = 0.6
+		ligne_centrale.material_override = peinture_blanche
+		ligne_centrale.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(ligne_centrale)
+
 	if bordures:
 		var bandes := MeshInstance3D.new()
 		bandes.name = NOM_BORDURES
@@ -183,13 +228,119 @@ func _reconstruire() -> void:
 		update_configuration_warnings()
 
 
-## Les murs, tremplins et zones hors-piste posés sur ce circuit.
+func _physics_process(delta: float) -> void:
+	if not Engine.is_editor_hint():
+		horloge += delta
+
+
+var _asphalte: StandardMaterial3D
+## Le grain du bitume coûte trois lectures de texture par pixel de route,
+## deux fois : QualiteGraphique ne le laisse qu'en qualité haute.
+var _detail_asphalte := true
+
+
+## Met ou retire le grain du bitume (voir habiller_l_asphalte).
+func detailler_l_asphalte(actif: bool) -> void:
+	_detail_asphalte = actif
+	if _asphalte == null:
+		return
+	if actif:
+		Track.habiller_l_asphalte(_asphalte)
+	else:
+		_asphalte.albedo_texture = null
+		_asphalte.normal_enabled = false
+		_asphalte.uv1_triplanar = false
+		_asphalte.roughness = 0.85
+
+
+static var _grain: NoiseTexture2D
+static var _relief: NoiseTexture2D
+
+
+## Donne du grain à un bitume uni : une texture de bruit qui le tachète, un
+## relief fin qui accroche la lumière rasante, un peu de reflet. Projetée en
+## coordonnées du monde (la route n'a pas d'UV), et partagée par tous les
+## circuits : deux petites textures, faites une fois.
+static func habiller_l_asphalte(materiau: StandardMaterial3D) -> void:
+	if _grain == null:
+		var bruit := FastNoiseLite.new()
+		bruit.noise_type = FastNoiseLite.TYPE_SIMPLEX
+		bruit.frequency = 0.09
+		bruit.fractal_octaves = 3
+		var rampe := Gradient.new()
+		rampe.set_color(0, Color(0.8, 0.8, 0.8))
+		rampe.set_color(1, Color(1.05, 1.05, 1.05))
+		_grain = NoiseTexture2D.new()
+		_grain.width = 256
+		_grain.height = 256
+		_grain.seamless = true
+		_grain.noise = bruit
+		_grain.color_ramp = rampe
+		_relief = NoiseTexture2D.new()
+		_relief.width = 256
+		_relief.height = 256
+		_relief.seamless = true
+		_relief.as_normal_map = true
+		_relief.bump_strength = 3.0
+		_relief.noise = bruit
+	materiau.albedo_texture = _grain
+	materiau.normal_enabled = true
+	materiau.normal_texture = _relief
+	materiau.normal_scale = 0.6
+	materiau.uv1_triplanar = true
+	materiau.uv1_world_triplanar = true
+	materiau.uv1_scale = Vector3.ONE * 0.18
+	materiau.roughness = 0.78
+	materiau.metallic_specular = 0.35
+
+
+## Les murs, tremplins et zones hors-piste posés sur ce circuit. Gardés en
+## mémoire : la session les parcourt plusieurs fois par kart et par image.
 func elements() -> Array[TrackFeature]:
+	if _elements_a_jour and is_node_ready():
+		return _elements
 	var trouves: Array[TrackFeature] = []
 	for enfant in get_children():
 		if enfant is TrackFeature:
 			trouves.append(enfant)
+	_elements = trouves
+	_elements_a_jour = is_node_ready()
 	return trouves
+
+
+## La plaque de verglas sous ce point, ou null.
+func verglas_en(distance: float, lateral: float) -> TrackVerglas:
+	for element in elements():
+		if element is TrackVerglas and element.contient(distance, lateral, track_curve.length):
+			return element
+	return null
+
+
+## Ce que le vent, le courant ou les tapis roulants poussent en ce point, en
+## m/s dans le repère du monde. Plusieurs zones s'additionnent.
+func poussee_en(distance: float, lateral: float) -> Vector3:
+	var total := Vector3.ZERO
+	for element in elements():
+		if element is TrackCourant and element.contient(distance, lateral, track_curve.length):
+			total += (element as TrackCourant).poussee(track_curve, distance, horloge)
+	return total
+
+
+## Le facteur de gravité en ce point : moins de 1 dans une zone d'apesanteur.
+func gravite_en(distance: float, lateral: float) -> float:
+	for element in elements():
+		if element is TrackApesanteur and element.contient(distance, lateral, track_curve.length):
+			return (element as TrackApesanteur).gravite
+	return 1.0
+
+
+## L'anneau que traverse un kart en ce point, `hauteur` mètres au-dessus de
+## la route, ou null.
+func anneau_en(distance: float, lateral: float, hauteur: float) -> TrackAnneau:
+	for element in elements():
+		if element is TrackAnneau and (element as TrackAnneau).traverse(distance, lateral, hauteur, track_curve.length):
+			return element
+	return null
 
 
 ## Refait la route et tout ce qui est posé dessus. Les trous l'appellent quand
@@ -291,7 +442,7 @@ func _reconstruire_si_montee() -> void:
 
 
 func _vider() -> void:
-	for nom in [NOM_MAILLAGE, NOM_CORPS, NOM_BORDURES]:
+	for nom in [NOM_MAILLAGE, NOM_CORPS, NOM_BORDURES, NOM_TABLIER, NOM_MARQUAGE]:
 		var ancien := get_node_or_null(NodePath(nom))
 		if ancien != null:
 			# Retiré tout de suite plutôt que seulement mis en file : sinon le

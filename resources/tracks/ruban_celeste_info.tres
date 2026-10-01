@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_info")
 id = "ruban_celeste"
-nom = "Ruban Céleste"
+nom = "Prisme de Minuit"
 description = "Une route arc-en-ciel suspendue dans la nuit, sans barrière ou presque. Elle passe au-dessus d'elle-même en huit et finit par un saut dans le vide."
 chemin_scene = "res://scenes/tracks/ruban_celeste.tscn"
 tours = 3

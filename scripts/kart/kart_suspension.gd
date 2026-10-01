@@ -4,7 +4,7 @@ extends Node3D
 ## Quatre amortisseurs, quatre rayons vers le sol, et la caisse qui s'assied
 ## dessus. Purement cosmétique, comme KartVisuals : ne modifie jamais le moteur.
 ##
-## C'est délibéré, et c'est ce que fait un Mario Kart. Le pilotage y est arcade
+## C'est délibéré, et c'est ce que fait un jeu de kart. Le pilotage y est arcade
 ## — une vitesse, un cap — et la suspension ne fait que le raconter : elle
 ## plonge au freinage, s'assied à l'accélération, roule dans les virages et se
 ## détend dans les sauts. Lui confier la trajectoire reviendrait à réécrire

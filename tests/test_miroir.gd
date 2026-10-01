@@ -72,3 +72,22 @@ func test_la_fleche_pointe_vers_l_avant() -> void:
 			aile = x
 	assert_gt(pointe, aile)
 	assert_eq(image.get_pixel(31, 15), fond, "un vide franc entre deux flèches")
+
+
+func test_le_miroir_retourne_le_vent_et_les_obstacles() -> void:
+	var piste := Track.new()
+	var vent := TrackCourant.new()
+	vent.poussee_laterale = 6.0
+	vent.decalage = 2.0
+	piste.add_child(vent)
+	var tonneau := TrackObstacle.new()
+	tonneau.type = TrackObstacle.Type.TONNEAU
+	tonneau.amplitude = 5.0
+	piste.add_child(tonneau)
+	var droit := tonneau.pose_de_la_tete(0.5).x
+	Miroir._retourner_element(vent)
+	Miroir._retourner_element(tonneau)
+	assert_eq(vent.poussee_laterale, -6.0, "il pousse de l'autre côté")
+	assert_eq(vent.decalage, -2.0)
+	assert_almost_eq(tonneau.pose_de_la_tete(0.5).x, -droit, 0.001, "il roule dans l'autre sens")
+	piste.free()

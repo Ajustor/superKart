@@ -19,7 +19,7 @@ extends Resource
 
 @export_group("Dérapage — tenue de route")
 @export var min_drift_speed: float = 8.0
-## La glisse façon Mario Kart 8 : trois régimes au stick, et le kart glisse
+## La glisse à l'arcade : trois régimes au stick, et le kart glisse
 ## de l'un à l'autre en douceur.
 ## - vers l'intérieur : le virage le plus serré (drift_turn_rate) ;
 ## - au neutre : à peu près le braquage à fond en adhérence ;
@@ -59,7 +59,7 @@ extends Resource
 
 ## La charge du mini-turbo monte plus vite quand on serre le virage : braquer
 ## vers l'intérieur la fait monter à plein régime (1), contre-braquer au
-## ralenti. C'est le cœur du dérapage de Mario Kart : la glisse serrée est
+## ralenti. C'est le cœur du dérapage arcade : la glisse serrée est
 ## plus difficile à tenir, elle rapporte plus vite.
 @export var charge_au_contre_braquage: float = 0.55
 
@@ -68,7 +68,7 @@ extends Resource
 ## trajectoire : c'est drift_turn_rate qui pilote le virage.
 ## Mesuré en jeu : à 30-55°, atteints en 0,2 s, la caisse se mettait en
 ## travers d'un coup et, avec la trajectoire qui tourne, le kart semblait
-## partir à 90°. Comme dans Mario Kart, la caisse est d'autant plus en
+## partir à 90°. Comme dans les jeux de kart, la caisse est d'autant plus en
 ## travers qu'on serre : 12° en contre-braquant, 30° en serrant à fond.
 @export var drift_angle_min_deg: float = 12.0
 @export var drift_angle_max_deg: float = 30.0
