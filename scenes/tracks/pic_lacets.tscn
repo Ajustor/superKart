@@ -44,10 +44,10 @@ roughness = 0.9
 
 [sub_resource type="CylinderMesh" id="Col0"]
 material = SubResource("Mat_col0")
-top_radius = 44
-bottom_radius = 62
+top_radius = 42
+bottom_radius = 44
 height = 100
-radial_segments = 18
+radial_segments = 24
 
 [sub_resource type="StandardMaterial3D" id="Mat_col1"]
 albedo_color = Color(0.95, 0.96, 1, 1)
@@ -55,10 +55,10 @@ roughness = 0.9
 
 [sub_resource type="CylinderMesh" id="Col1"]
 material = SubResource("Mat_col1")
-top_radius = 30
-bottom_radius = 44.5
-height = 6
-radial_segments = 18
+top_radius = 26
+bottom_radius = 42.5
+height = 8
+radial_segments = 24
 
 [node name="Track" type="Node3D"]
 script = ExtResource("1_track")
@@ -86,7 +86,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 110, 48, 30)
 mesh = SubResource("Col0")
 
 [node name="Neiges" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 110, 100.5, 30)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 110, 101.5, 30)
 mesh = SubResource("Col1")
 
 [node name="Terrain" type="Node3D" parent="."]
@@ -130,8 +130,8 @@ sol = 0
 
 [node name="TunnelEnSpirale" type="Node3D" parent="."]
 script = ExtResource("s_tunnel")
-debut = 100
-longueur = 500
+debut = 68
+longueur = 532
 montagne = 8
 couleur = Color(0.5, 0.46, 0.42, 1)
 couleur_bis = Color(0.42, 0.38, 0.35, 1)
