@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TrackInfo" format=3]
+
+[ext_resource type="Script" path="res://scripts/race/track_info.gd" id="1_info"]
+
+[resource]
+script = ExtResource("1_info")
+id = "grand_huit"
+nom = "Grand Huit"
+description = "Des montagnes russes en nœud de trèfle, au-dessus de la fête foraine : la piste se croise trois fois, chaque fois sur un pont vingt mètres au-dessus d'elle-même."
+chemin_scene = "res://scenes/tracks/grand_huit.tscn"
+tours = 2

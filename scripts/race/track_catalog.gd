@@ -23,6 +23,8 @@ const PISTES: Array[TrackInfo] = [
 	preload("res://resources/tracks/citadelle_orages_info.tres"),
 	preload("res://resources/tracks/coeur_terre_info.tres"),
 	preload("res://resources/tracks/echelle_celeste_info.tres"),
+	preload("res://resources/tracks/grand_huit_info.tres"),
+	preload("res://resources/tracks/pic_lacets_info.tres"),
 ]
 
 ## Les arènes du mode bataille : des anneaux larges et fermés, où l'on ne
@@ -33,7 +35,7 @@ const ARENES: Array[TrackInfo] = [
 ]
 
 ## Les coupes du Grand Prix : quatre circuits chacune, du plus doux au plus
-## redoutable — deux seulement pour la coupe Vertige, très longs. Le menu les affiche dans cet ordre ; leur index sert de clé
+## redoutable. Le menu les affiche dans cet ordre ; leur index sert de clé
 ## aux trophées, ne les réordonne pas.
 const COUPES := [
 	{
@@ -59,7 +61,7 @@ const COUPES := [
 	{
 		nom = "Coupe Vertige",
 		couleur = Color(0.3, 0.8, 0.9),
-		pistes = ["coeur_terre", "echelle_celeste"],
+		pistes = ["grand_huit", "pic_lacets", "coeur_terre", "echelle_celeste"],
 	},
 ]
 

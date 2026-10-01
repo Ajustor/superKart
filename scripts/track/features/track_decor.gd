@@ -20,7 +20,7 @@ extends TrackFeature
 
 enum Objet { PALMIER, PHARE, PILIER_DE_FEU, ETOILE, CHAMPIGNON, ROCHER, SAPIN, LAMPADAIRE, CRISTAL, IMMEUBLE,
 	ARBRE, BOTTE_DE_FOIN, MOULIN, BUISSON, CACTUS, STALAGMITE, TOTEM, TONNEAU, CITROUILLE, ENGRENAGE,
-	ANTENNE, FANTOME, NUAGE }
+	ANTENNE, FANTOME, NUAGE, PYLONE }
 
 ## Ce qui flotte : on passe dessous ou au travers, sans collision, et sa
 ## hauteur varie d'un objet à l'autre.
@@ -112,17 +112,24 @@ func placements(c: TrackCurve) -> Array[Transform3D]:
 			var sol := _terrain()
 			if sol != null and absf(lateral) > c.half_width:
 				ou.y = sol.hauteur_en(ou.x, ou.z) + envol
+				# Posé sur le relief, il peut tomber sur une route plus basse :
+				# sous des lacets, le sol est celui de la route du dessous.
+				# Un sapin de six mètres posé quatre mètres sous une route la
+				# percerait : on regarde jusqu'à douze mètres plus bas.
+				if eviter_la_route and _sur_la_route(c, ou - Vector3.UP * envol, 12.0):
+					continue
 			var lacet := rng.randf_range(0.0, TAU) if objet != Objet.PHARE else 0.0
 			var base := Basis(Vector3.UP, lacet).scaled(Vector3.ONE * taille)
 			poses.append(Transform3D(base, ou))
 	return poses
 
 
-func _sur_la_route(c: TrackCurve, ou: Vector3) -> bool:
+## `dessous` : jusqu'où sous la route un objet compte encore comme dessus.
+func _sur_la_route(c: TrackCurve, ou: Vector3, dessous := 4.0) -> bool:
 	var d := c.distance_of(ou)
 	var proche := c.position_at(d)
 	# Trop haut ou trop bas : c'est une autre partie du relief, pas la route.
-	if absf(proche.y - ou.y) > 4.0:
+	if ou.y - proche.y > 4.0 or proche.y - ou.y > dessous:
 		return false
 	return absf(c.lateral_offset_at(ou, d)) < c.half_width + 4.0
 
@@ -237,6 +244,9 @@ static func forme_de(quoi: Objet) -> Dictionary:
 			return {type = "cylindre", rayon = 0.6, hauteur = 4.0, centre = Vector3(0.0, 2.0, 0.0)}
 		Objet.ANTENNE:
 			return {type = "cylindre", rayon = 0.9, hauteur = 3.0, centre = Vector3(0.0, 1.5, 0.0)}
+		Objet.PYLONE:
+			# Il pend sous la route : personne ne l'atteint, mais il se touche.
+			return {type = "cylindre", rayon = 0.6, hauteur = 60.0, centre = Vector3(0.0, -30.3, 0.0)}
 	return {}
 
 
@@ -299,6 +309,8 @@ static func maillage_de(quoi: Objet) -> ArrayMesh:
 			_fantome(brille)
 		Objet.NUAGE:
 			_nuage(mat)
+		Objet.PYLONE:
+			_pylone(mat)
 	var maillage := ArrayMesh.new()
 	if not mat.vide():
 		mat.dans(maillage, _materiau(false))
@@ -568,6 +580,16 @@ static func _nuage(m: _Assemblage) -> void:
 	m.boule(Vector3(2.4, -0.4, 0.3), 1.8, blanc.darkened(0.04))
 	m.boule(Vector3(-2.3, -0.5, -0.2), 1.7, blanc.darkened(0.06))
 	m.boule(Vector3(0.6, 1.3, 0.2), 1.6, blanc)
+
+
+static func _pylone(m: _Assemblage) -> void:
+	# Le pilier qui porte une route en l'air : posé au bord, il descend
+	# soixante mètres sous elle, jusqu'au sol, en bandes rouges et blanches.
+	for i in 12:
+		var haut := Vector3.DOWN * (0.3 + 5.0 * i)
+		m.cylindre(haut + Vector3.DOWN * 5.0, haut, 0.6, 0.6,
+			Color(0.85, 0.15, 0.15) if i % 2 == 0 else Color(0.95, 0.95, 0.95), 8)
+	m.pave(Vector3(0, -0.25, 0), Vector3(1.6, 0.3, 1.6), Color(0.3, 0.3, 0.33))
 
 
 static func _rocher(m: _Assemblage) -> void:

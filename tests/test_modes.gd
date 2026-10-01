@@ -94,9 +94,7 @@ func test_les_records_se_rangent_par_cylindree_et_par_mode() -> void:
 func test_les_coupes_se_partagent_tous_les_circuits() -> void:
 	var vus := {}
 	for coupe in TrackCatalog.COUPES:
-		# Quatre courses ; deux pour la coupe Vertige, aux circuits très longs.
-		assert_true(coupe.pistes.size() == 4 or coupe.nom == "Coupe Vertige", "%s : quatre courses" % coupe.nom)
-		assert_gt(coupe.pistes.size(), 1, "%s : au moins deux courses" % coupe.nom)
+		assert_eq(coupe.pistes.size(), 4, "%s : quatre courses" % coupe.nom)
 		for id in coupe.pistes:
 			assert_not_null(TrackCatalog.par_id(id), "%s : circuit inconnu %s" % [coupe.nom, id])
 			assert_false(vus.has(id), "%s est dans deux coupes" % id)

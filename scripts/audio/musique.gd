@@ -14,7 +14,7 @@ extends RefCounted
 ## dans un fil à part, et chaque boucle n'est composée qu'une fois par
 ## partie (cache).
 
-enum Style { COLLINES, PLAGE, FORTERESSE, CIEL, JARDIN, MINE, VILLE, NEIGE, CANYON, USINE, ESPACE, HANTE, GLACE, JUNGLE, PIRATE, ORAGE, ABYSSES, ASCENSION }
+enum Style { COLLINES, PLAGE, FORTERESSE, CIEL, JARDIN, MINE, VILLE, NEIGE, CANYON, USINE, ESPACE, HANTE, GLACE, JUNGLE, PIRATE, ORAGE, ABYSSES, ASCENSION, MANEGE, MONTAGNE }
 
 const FREQUENCE := 16000
 const MESURES := 8
@@ -107,6 +107,16 @@ const STYLES := {
 	Style.ASCENSION: {
 		tempo = 132.0, tonique = 67, gamme = [0, 2, 4, 5, 7, 9, 11],
 		grille = [0, 4, 5, 3], basse = [1, 0, 0, 1, 0, 1, 0, 0], arpege = 24, graine = 7,
+	},
+	# La fête foraine : majeur, très rapide, une basse d'orgue de manège.
+	Style.MANEGE: {
+		tempo = 168.0, tonique = 60, gamme = [0, 2, 4, 5, 7, 9, 11],
+		grille = [0, 4, 0, 5], basse = [1, 0, 1, 0, 1, 0, 1, 0], arpege = 12, graine = 83,
+	},
+	# La montagne : mixolydien, ample, arpège qui monte comme un col.
+	Style.MONTAGNE: {
+		tempo = 126.0, tonique = 59, gamme = [0, 2, 4, 5, 7, 9, 10],
+		grille = [0, 6, 3, 0], basse = [1, 0, 0, 1, 0, 0, 1, 1], arpege = 24, graine = 37,
 	},
 }
 

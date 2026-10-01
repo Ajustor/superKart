@@ -171,6 +171,8 @@ Coupe Vertige :
 
 | Circuit | Longueur | Ce qui le distingue |
 |---|---|---|
+| Grand Huit | 1 698 m | des montagnes russes en nœud de trèfle sur piliers : la piste se croise trois fois, à 21–23 m au-dessus d'elle-même (vers 316/1 056, 488/1 448, 880/1 620 m) ; rails tout du long, anneaux aux sommets, saut (392 à 406 m) |
+| Pic des Lacets | 1 470 m | tunnel en spirale dans la montagne (100 à 600 m), 32 m entre deux tours ; sommet verglacé et venteux ; trois lacets en épingle de 25 m ; ravin à sauter (952 à 966 m) ; le tunnel de retour passe sous les lacets (1 265 à 1 345 m) |
 | Cœur de la Terre | 1 236 m | un puits en hélice (100 à 565 m) plonge à 85 m sous la surface, chaque tour 34 m sous le précédent ; galerie au-dessus du magma, faille à sauter (612 à 626 m), concasseurs ; second puits pour remonter (715 à 1 185 m), parois qui changent de roche avec la profondeur |
 | Échelle Céleste | 1 703 m | une hélice autour d'une tour (100 à 765 m) monte à 105 m, chaque tour 30 m au-dessus du précédent ; pont en apesanteur dans les nuages (trou de 20 m, tremplin et anneaux, rafale) ; large hélice de descente autour d'une seconde tour (1 000 à 1 605 m) |
 

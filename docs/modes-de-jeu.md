@@ -59,8 +59,8 @@ Si c'est le joueur, il passe en pilote automatique comme à une arrivée.
   - Coupe Bolide : Forteresse, Ville, Neiges, Ruban ;
   - Coupe Aventure : Canyon, Grotte, Usine, Temple ;
   - Coupe Tempête : Lune, Port, Château, Citadelle ;
-  - Coupe Vertige : Cœur de la Terre (3 tours), Échelle Céleste (2 tours) —
-    deux circuits très longs. Une manche se court au nombre de tours de la
+  - Coupe Vertige : Grand Huit, Pic des Lacets, Échelle Céleste (2 tours
+    chacun) et Cœur de la Terre (3 tours) — des circuits très longs. Une manche se court au nombre de tours de la
     fiche du circuit (`TrackInfo.tours`).
 - Chaque manche se court en trois tours (sauf la coupe Vertige). Le barème de `RaceScoring`
   s'additionne d'une course à l'autre.
