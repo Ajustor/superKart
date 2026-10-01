@@ -169,8 +169,9 @@ par une instance du jeu sur ce serveur, sans écran et sans pilote
   seulement par son code de 5 caractères, affiché dans le salon).
 - **Code d'un salon** : rejoindre un salon, privé ou non, par son code.
 - La liste des salons publics se met à jour toute seule.
-- **Serveur** : l'adresse d'un autre serveur que celui du jeu (vide : celui
-  inscrit dans le jeu par la CI, `application/config/annuaire_en_ligne`).
+- **Serveur** : l'adresse d'un autre serveur que celui du jeu (vide :
+  `superkart.darthoit.eu`, inscrit dans `project.godot` sous
+  `application/config/annuaire_en_ligne`).
 
 ### Le chef du salon
 

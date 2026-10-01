@@ -1,6 +1,6 @@
 # Sans Dokploy : l'annuaire derrière Caddy, qui obtient seul le certificat.
 #
-#   cd serveur && DOMAINE=superkart.exemple.org docker compose -f docker-compose.caddy.yml up -d --build
+#   cd serveur && DOMAINE=superkart.darthoit.eu docker compose -f docker-compose.caddy.yml up -d --build
 services:
   annuaire:
     build:

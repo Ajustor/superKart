@@ -30,7 +30,7 @@ Prévoir environ un quart de cœur et 190 Mo de mémoire par salon en course
 (mesuré avec 8 karts dont 6 pilotés par l'IA) ; un salon qui attend ne
 consomme presque rien.
 
-1. **DNS** : un sous-domaine (par exemple `superkart.exemple.org`) qui pointe
+1. **DNS** : un sous-domaine (par exemple `superkart.darthoit.eu`) qui pointe
    **directement** sur la machine Dokploy (enregistrement A, sans proxy
    Cloudflare orange : les salons sont en UDP, et seul le https passe par un
    proxy).
@@ -39,13 +39,13 @@ consomme presque rien.
 3. Dans Dokploy, **Create Service → Compose** :
    - *Provider* : le dépôt GitHub `Ajustor/superKart`, branche `main` ;
    - *Compose Path* : `./serveur/docker-compose.yml` ;
-   - onglet **Environment** : `DOMAINE=superkart.exemple.org` ;
+   - onglet **Environment** : `DOMAINE=superkart.darthoit.eu` ;
    - **Deploy**. La première construction prend quelques minutes (Godot est
      téléchargé et le jeu importé dans l'image).
 4. Onglet **Domains** → *Add Domain* : le domaine, service `annuaire`,
    port `8900`, **HTTPS** activé avec Let's Encrypt.
-5. Vérifier : `https://superkart.exemple.org/sante` répond `{"ok": true}`, et
-   `https://superkart.exemple.org/salons` liste le « Salon public 1 ».
+5. Vérifier : `https://superkart.darthoit.eu/sante` répond `{"ok": true}`, et
+   `https://superkart.darthoit.eu/salons` liste le « Salon public 1 ».
 
 Avec l'*Autodeploy* de Dokploy (ou son webhook), chaque push sur `main`
 reconstruit le serveur. Les salons ouverts sont alors fermés : mieux vaut
@@ -68,7 +68,7 @@ Le même serveur derrière Caddy, qui obtient seul son certificat :
 
 ```sh
 cd serveur
-echo "DOMAINE=superkart.exemple.org" > .env
+echo "DOMAINE=superkart.darthoit.eu" > .env
 docker compose -f docker-compose.caddy.yml up -d --build
 ```
 
@@ -80,7 +80,7 @@ Ports à ouvrir : 80 et 443 en TCP, 8910 à 8949 en UDP.
 exporté pour Linux et l'annuaire :
 
 ```sh
-ANNUAIRE_PORT=8900 HOTE_PUBLIC=superkart.exemple.org \
+ANNUAIRE_PORT=8900 HOTE_PUBLIC=superkart.darthoit.eu \
 JEU_COMMANDE="$PWD/SuperKart-serveur.x86_64 --headless" python3 annuaire.py
 ```
 
@@ -90,11 +90,11 @@ avec un proxy https devant le port 8900.
 
 Deux façons :
 
-- **Pour tout le monde** : dans le dépôt GitHub, *Settings → Secrets and
-  variables → Actions → Variables*, créer la variable `ANNUAIRE_EN_LIGNE` avec
-  le nom de domaine (`superkart.exemple.org`). La CI l'inscrit dans le jeu
-  qu'elle exporte (`application/config/annuaire_en_ligne`) : les versions
-  suivantes se connectent toutes seules.
+- **Pour tout le monde** : le jeu vise `superkart.darthoit.eu`, inscrit dans
+  `project.godot` (`application/config/annuaire_en_ligne`). Pour un autre
+  domaine, changer cette ligne, ou créer la variable de dépôt
+  `ANNUAIRE_EN_LIGNE` (*Settings → Secrets and variables → Actions →
+  Variables*) : la CI l'inscrit à la place dans le jeu qu'elle exporte.
 - **Pour soi** : dans le jeu, écran *En ligne*, champ *Serveur*. Un nom de
   domaine est joint en https ; une adresse IP ou `localhost`, en http (pour un
   serveur de test sur son réseau).

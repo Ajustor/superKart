@@ -162,11 +162,11 @@ Release s'il a été construit, sans la retenir s'il échoue.
 
 ### L'adresse du serveur en ligne
 
-La variable de dépôt `ANNUAIRE_EN_LIGNE` (*Settings* → *Secrets and
-variables* → *Actions* → *Variables*), par exemple `superkart.exemple.org`,
-est inscrite par la CI dans le jeu exporté
-(`application/config/annuaire_en_ligne`) : l'écran En ligne s'y connecte de
-lui-même. Sans elle, le joueur tape l'adresse d'un serveur dans cet écran.
+Le jeu se connecte à `superkart.darthoit.eu`, inscrit dans `project.godot`
+(`application/config/annuaire_en_ligne`). La variable de dépôt
+`ANNUAIRE_EN_LIGNE` (*Settings* → *Secrets and variables* → *Actions* →
+*Variables*), si elle existe, remplace cette adresse dans le jeu exporté par
+la CI. Le joueur peut aussi en taper une autre dans l'écran En ligne.
 
 Si on ajoute une option d'export qui compte (architecture, nom de paquet,
 version…), c'est dans `.github/export_presets.ci.cfg` qu'elle doit atterrir,
