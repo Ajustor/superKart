@@ -12,6 +12,7 @@ config_version=5
 
 config/name="Karting"
 config/version="dev"
+config/url_mises_a_jour="https://ajustor.github.io/superKart/telecharger/version.json"
 run/main_scene="res://scenes/ui/main_menu.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://resources/icone/icone.svg"
@@ -22,6 +23,7 @@ config/windows_native_icon="res://resources/icone/icone.ico"
 GameSettings="*res://scripts/core/game_settings.gd"
 Reseau="*res://scripts/net/network_manager.gd"
 PerfOverlay="*res://scripts/core/perf_overlay.gd"
+MiseAJour="*res://scripts/core/mise_a_jour.gd"
 
 [display]
 

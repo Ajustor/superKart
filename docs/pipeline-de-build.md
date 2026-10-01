@@ -103,6 +103,44 @@ GitHub Pages doit avoir la source **GitHub Actions** (*Settings* →
 organisation Team). La page, elle, est toujours publique : n'importe qui
 ayant le lien peut télécharger le jeu.
 
+## Mise à jour intégrée au jeu
+
+Au lancement, le jeu lit `telecharger/version.json` sur la page de
+téléchargement (`scripts/core/mise_a_jour.gd`, autoload `MiseAJour`). Ce
+manifeste est écrit par `.github/scripts/page_de_telechargement.py` à
+chaque publication de la page :
+
+```json
+{
+  "version": "1.3", "date": "2026-10-01", "notes": "…", "page": "../",
+  "windows": {"fichier": "SuperKart-windows.zip", "taille": 81234567, "sha256": "…"},
+  "android": {"fichier": "SuperKart.apk", "taille": 61234567, "sha256": "…"}
+}
+```
+
+Si sa version est plus récente que celle du jeu (comparée nombre par nombre :
+1.10 > 1.9), un encart apparaît en bas à droite de l'accueil avec un bouton
+**Mettre à jour** :
+
+- **Windows** : l'archive est téléchargée et vérifiée (SHA-256), le nouvel
+  exécutable et le nouveau `.pck` en sont extraits à côté des anciens
+  (`.maj`), puis le jeu se ferme ; un script `mise_a_jour_superkart.cmd`
+  attend sa fermeture, remplace les deux fichiers, relance le jeu et
+  s'efface. Le dossier du jeu doit être accessible en écriture (pas
+  `Program Files`) ; sinon, la page de téléchargement s'ouvre.
+- **Android** : l'APK est téléchargé dans les fichiers de l'application puis
+  confié à l'installeur du système, qui demande confirmation (et, la
+  première fois, d'autoriser SuperKart à installer des applications : la
+  permission `REQUEST_INSTALL_PACKAGES` est déclarée dans le preset). Il
+  faut que l'APK soit signé avec la même clé que celui installé : c'est le
+  cas des Releases (voir *Signature Android*).
+- **Ailleurs** (éditeur, Linux) : le bouton ouvre la page de téléchargement.
+
+Une version `dev` (hors CI) ne vérifie rien. Le joueur peut couper la
+vérification dans *Options* → *Chercher les mises à jour*. L'adresse du
+manifeste vit dans `project.godot` (`application/config/url_mises_a_jour`) :
+un fork y met la sienne.
+
 ## Presets d'export
 
 `export_presets.cfg` est gitignoré : il porte les chemins et les clés de chaque

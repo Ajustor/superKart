@@ -35,6 +35,10 @@ var _record: Label
 var _tours: OptionButton
 var _depart: OptionButton
 var _demarrer: Button
+var _bandeau_maj: PanelContainer
+var _texte_maj: Label
+var _barre_maj: ProgressBar
+var _bouton_maj: Button
 
 
 func _ready() -> void:
@@ -43,6 +47,7 @@ func _ready() -> void:
 	_fond()
 	_version()
 	_accueil = _ecran_accueil()
+	_bandeau_mise_a_jour(_accueil)
 	_selection = _ecran_selection()
 	_options = OptionsPanel.new()
 	add_child(_options)
@@ -98,6 +103,67 @@ static func texte_version() -> String:
 	if version == "" or version == "dev":
 		return "dev"
 	return "v" + version
+
+
+## Un encart en bas à droite de l'accueil quand une nouvelle version existe :
+## un bouton la télécharge et l'installe (voir MiseAJour). Caché le reste du
+## temps — un jeu à jour n'a rien à dire.
+func _bandeau_mise_a_jour(ecran: Control) -> void:
+	_bandeau_maj = PanelContainer.new()
+	_bandeau_maj.name = "MiseAJour"
+	_bandeau_maj.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 16)
+	_bandeau_maj.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_bandeau_maj.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	ecran.add_child(_bandeau_maj)
+	var colonne := VBoxContainer.new()
+	colonne.add_theme_constant_override("separation", 8)
+	_bandeau_maj.add_child(colonne)
+	_texte_maj = Label.new()
+	_texte_maj.add_theme_color_override("font_color", UITheme.ACCENT)
+	_texte_maj.add_theme_font_size_override("font_size", 20)
+	_texte_maj.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_texte_maj.custom_minimum_size.x = 340
+	_texte_maj.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	colonne.add_child(_texte_maj)
+	_barre_maj = ProgressBar.new()
+	_barre_maj.max_value = 1.0
+	_barre_maj.custom_minimum_size = Vector2(320, 18)
+	colonne.add_child(_barre_maj)
+	_bouton_maj = UITheme.bouton("Mettre à jour", func() -> void:
+		if MiseAJour.etat == Etat.PRET:
+			MiseAJour.installer()
+		else:
+			MiseAJour.mettre_a_jour())
+	_bouton_maj.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	colonne.add_child(_bouton_maj)
+	MiseAJour.etat_change.connect(func(_e: int) -> void: _rafraichir_mise_a_jour())
+	MiseAJour.progression.connect(func(f: float) -> void: _barre_maj.value = f)
+	_rafraichir_mise_a_jour()
+
+
+const Etat := preload("res://scripts/core/mise_a_jour.gd").Etat
+
+
+func _rafraichir_mise_a_jour() -> void:
+	var etat: int = MiseAJour.etat
+	var version: String = MiseAJour.version_disponible
+	_bandeau_maj.visible = MiseAJour.mise_a_jour_connue() and etat != Etat.A_JOUR
+	_barre_maj.visible = etat == Etat.TELECHARGEMENT
+	_bouton_maj.disabled = etat in [Etat.TELECHARGEMENT, Etat.INSTALLATION, Etat.VERIFICATION]
+	match etat:
+		Etat.DISPONIBLE:
+			_texte_maj.text = "Nouvelle version %s disponible !" % version
+			_bouton_maj.text = "Mettre à jour" if MiseAJour.installation_automatique() else "Télécharger"
+		Etat.TELECHARGEMENT:
+			_texte_maj.text = "Téléchargement de la version %s…" % version
+		Etat.PRET:
+			_texte_maj.text = "Version %s prête à installer" % version
+			_bouton_maj.text = "Installer"
+		Etat.INSTALLATION:
+			_texte_maj.text = "Installation de la version %s…" % version
+		Etat.ERREUR:
+			_texte_maj.text = "Mise à jour %s : %s" % [version, MiseAJour.erreur]
+			_bouton_maj.text = "Réessayer"
 
 
 func _montrer(ecran: Control) -> void:

@@ -14,6 +14,7 @@ version, date, tailles, notes de version.
 
 import argparse
 import datetime
+import hashlib
 import html
 import json
 import pathlib
@@ -34,6 +35,30 @@ def taille(chemin: pathlib.Path) -> str:
 def date_en_francais(iso: str) -> str:
     jour = datetime.date.fromisoformat(iso[:10]) if iso else datetime.date.today()
     return "%d %s %d" % (jour.day, MOIS[jour.month - 1], jour.year)
+
+
+def empreinte(chemin: pathlib.Path) -> str:
+    sha = hashlib.sha256()
+    with chemin.open("rb") as fichier:
+        for bloc in iter(lambda: fichier.read(1 << 20), b""):
+            sha.update(bloc)
+    return sha.hexdigest()
+
+
+def manifeste(release: dict, archive: pathlib.Path, apk: pathlib.Path) -> dict:
+    """Ce que le jeu lit pour se mettre à jour (scripts/core/mise_a_jour.gd).
+    Les fichiers sont relatifs au manifeste : il vit à côté d'eux."""
+    def fichier(chemin: pathlib.Path) -> dict:
+        return {"fichier": chemin.name, "taille": chemin.stat().st_size, "sha256": empreinte(chemin)}
+
+    return {
+        "version": version_du_tag(release["tagName"]),
+        "date": (release.get("publishedAt") or "")[:10],
+        "notes": release.get("body") or "",
+        "page": "../",
+        "windows": fichier(archive),
+        "android": fichier(apk),
+    }
 
 
 def version_du_tag(tag: str) -> str:
@@ -108,6 +133,10 @@ def main() -> None:
     apk = telecharger / "SuperKart.apk"
     shutil.copyfile(a.windows, archive)
     shutil.copyfile(a.apk, apk)
+
+    # Le manifeste de mise à jour, à côté des binaires.
+    (telecharger / "version.json").write_text(
+        json.dumps(manifeste(release, archive, apk), ensure_ascii=False, indent=2), encoding="utf-8")
 
     champs = {
         "{{VERSION}}": html.escape(version_du_tag(release["tagName"])),
