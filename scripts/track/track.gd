@@ -16,6 +16,8 @@ extends Node3D
 const NOM_MAILLAGE := "RoadMesh"
 const NOM_CORPS := "RoadBody"
 const NOM_BORDURES := "Bordures"
+const NOM_TABLIER := "Tablier"
+const NOM_MARQUAGE := "Marquage"
 
 ## L'allure de la chaussée.
 enum Motif {
@@ -83,6 +85,12 @@ const ARC_EN_CIEL: PackedColorArray = [
 @export var bordures: bool = false:
 	set(valeur):
 		bordures = valeur
+		_reconstruire_si_montee()
+
+## Une ligne blanche discontinue au milieu de la chaussée.
+@export var marquage: bool = true:
+	set(valeur):
+		marquage = valeur
 		_reconstruire_si_montee()
 
 @export var couleur_bordure: Color = Color(0.85, 0.12, 0.12):
@@ -153,6 +161,8 @@ func _reconstruire() -> void:
 		# sans que ses couleurs se délavent.
 		materiau.emission_enabled = true
 		materiau.emission = Color(0.22, 0.22, 0.3)
+	else:
+		Track.habiller_l_asphalte(materiau)
 	maillage.surface_set_material(0, materiau)
 
 	var affichage := MeshInstance3D.new()
@@ -172,6 +182,31 @@ func _reconstruire() -> void:
 	forme.shape = pour_la_collision.create_trimesh_shape()
 	corps.add_child(forme)
 	add_child(corps)
+
+	# Le dessous de la route, pour qu'un pont se voie d'en bas.
+	var tablier := MeshInstance3D.new()
+	tablier.name = NOM_TABLIER
+	tablier.mesh = TrackBuilder.tablier(track_curve, trous(), 0.9, segment_length)
+	var beton := StandardMaterial3D.new()
+	beton.vertex_color_use_as_albedo = true
+	beton.albedo_color = road_color.lerp(Color(0.5, 0.48, 0.46), 0.5) if not arc_en_ciel else Color(0.3, 0.3, 0.42)
+	beton.roughness = 0.9
+	# Les deux faces : vue de côté ou d'en dessous, la dalle doit rester
+	# pleine, et Godot retourne la normale des faces arrière.
+	beton.cull_mode = BaseMaterial3D.CULL_DISABLED
+	tablier.material_override = beton
+	add_child(tablier)
+
+	if marquage and not arc_en_ciel:
+		var ligne_centrale := MeshInstance3D.new()
+		ligne_centrale.name = NOM_MARQUAGE
+		ligne_centrale.mesh = TrackBuilder.marquage(track_curve, trous())
+		var peinture_blanche := StandardMaterial3D.new()
+		peinture_blanche.albedo_color = Color(0.92, 0.92, 0.88)
+		peinture_blanche.roughness = 0.6
+		ligne_centrale.material_override = peinture_blanche
+		ligne_centrale.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(ligne_centrale)
 
 	if bordures:
 		var bandes := MeshInstance3D.new()
@@ -195,6 +230,47 @@ func _reconstruire() -> void:
 func _physics_process(delta: float) -> void:
 	if not Engine.is_editor_hint():
 		horloge += delta
+
+
+static var _grain: NoiseTexture2D
+static var _relief: NoiseTexture2D
+
+
+## Donne du grain à un bitume uni : une texture de bruit qui le tachète, un
+## relief fin qui accroche la lumière rasante, un peu de reflet. Projetée en
+## coordonnées du monde (la route n'a pas d'UV), et partagée par tous les
+## circuits : deux petites textures, faites une fois.
+static func habiller_l_asphalte(materiau: StandardMaterial3D) -> void:
+	if _grain == null:
+		var bruit := FastNoiseLite.new()
+		bruit.noise_type = FastNoiseLite.TYPE_SIMPLEX
+		bruit.frequency = 0.09
+		bruit.fractal_octaves = 3
+		var rampe := Gradient.new()
+		rampe.set_color(0, Color(0.8, 0.8, 0.8))
+		rampe.set_color(1, Color(1.05, 1.05, 1.05))
+		_grain = NoiseTexture2D.new()
+		_grain.width = 256
+		_grain.height = 256
+		_grain.seamless = true
+		_grain.noise = bruit
+		_grain.color_ramp = rampe
+		_relief = NoiseTexture2D.new()
+		_relief.width = 256
+		_relief.height = 256
+		_relief.seamless = true
+		_relief.as_normal_map = true
+		_relief.bump_strength = 3.0
+		_relief.noise = bruit
+	materiau.albedo_texture = _grain
+	materiau.normal_enabled = true
+	materiau.normal_texture = _relief
+	materiau.normal_scale = 0.6
+	materiau.uv1_triplanar = true
+	materiau.uv1_world_triplanar = true
+	materiau.uv1_scale = Vector3.ONE * 0.18
+	materiau.roughness = 0.78
+	materiau.metallic_specular = 0.35
 
 
 ## Les murs, tremplins et zones hors-piste posés sur ce circuit. Gardés en
@@ -345,7 +421,7 @@ func _reconstruire_si_montee() -> void:
 
 
 func _vider() -> void:
-	for nom in [NOM_MAILLAGE, NOM_CORPS, NOM_BORDURES]:
+	for nom in [NOM_MAILLAGE, NOM_CORPS, NOM_BORDURES, NOM_TABLIER, NOM_MARQUAGE]:
 		var ancien := get_node_or_null(NodePath(nom))
 		if ancien != null:
 			# Retiré tout de suite plutôt que seulement mis en file : sinon le

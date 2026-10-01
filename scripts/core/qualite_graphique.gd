@@ -45,3 +45,25 @@ static func appliquer_a(racine: Node, niveau: int) -> void:
 			env.set_meta("brouillard_prevu", env.fog_enabled)
 		env.glow_enabled = env.get_meta("lueur_prevue") and n != Niveau.BASSE
 		env.fog_enabled = env.get_meta("brouillard_prevu") and n != Niveau.BASSE
+		etalonner(env, n)
+
+
+## L'étalonnage de l'image, comme au cinéma : un tone mapping qui garde du
+## détail dans les ciels clairs et les braises, un peu plus de contraste et de
+## couleur, et un halo léger autour de ce qui brille (lampes, lave, anneaux)
+## sur les circuits qui n'en prévoyaient pas. En BASSE, l'image reste brute :
+## chaque passe coûte sur un petit téléphone.
+static func etalonner(env: Environment, niveau: int) -> void:
+	var soigne := niveau != Niveau.BASSE
+	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC if soigne else Environment.TONE_MAPPER_LINEAR
+	env.tonemap_exposure = 1.05 if soigne else 1.0
+	env.tonemap_white = 6.0
+	env.adjustment_enabled = soigne
+	env.adjustment_contrast = 1.08
+	env.adjustment_saturation = 1.15
+	env.adjustment_brightness = 1.02
+	if soigne and not env.get_meta("lueur_prevue", false) and niveau == Niveau.HAUTE:
+		env.glow_enabled = true
+		env.glow_intensity = 0.35
+		env.glow_bloom = 0.02
+		env.glow_hdr_threshold = 1.0

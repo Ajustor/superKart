@@ -42,6 +42,12 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
+	# En premier : sous tout le reste du HUD.
+	var effets := EffetsEcran.new()
+	effets.name = "EffetsEcran"
+	effets.session = _session
+	add_child(effets)
+
 	_label = Label.new()
 	_label.position = Vector2(24, 16)
 	_label.add_theme_font_size_override("font_size", 28)

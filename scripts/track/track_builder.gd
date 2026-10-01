@@ -68,6 +68,74 @@ static func bordures(track: TrackCurve, trous: Array[Vector2], largeur: float, p
 	return outil.commit()
 
 
+## Le dessous de la route : une dalle de `epaisseur` mètres sous la chaussée,
+## avec ses deux flancs et un bout à chaque bord de trou. Sans elle, une route
+## vue d'en dessous — un pont, un tour d'hélice, une route qui passe au-dessus
+## d'une autre — était invisible : le ruban n'a qu'une face. Sans collision ;
+## les couleurs de sommet assombrissent le dessous, éclairent les flancs.
+static func tablier(track: TrackCurve, trous: Array[Vector2], epaisseur: float = 0.9,
+		segment_length: float = 2.0) -> ArrayMesh:
+	var outil := SurfaceTool.new()
+	outil.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var demi := track.half_width
+	var sections_totales := maxi(int(track.length / segment_length), 8)
+	for morceau in troncons(track.length, trous):
+		var etendue := morceau.y - morceau.x
+		var n := maxi(int(round(sections_totales * etendue / track.length)), 1)
+		var pas := etendue / float(n)
+		for i in n:
+			var d0 := morceau.x + pas * float(i)
+			var d1 := d0 + pas
+			var g0 := _bord(track, d0, -demi, 0.0)
+			var r0 := _bord(track, d0, demi, 0.0)
+			var g1 := _bord(track, d1, -demi, 0.0)
+			var r1 := _bord(track, d1, demi, 0.0)
+			var gb0 := _bord(track, d0, -demi * 0.92, -epaisseur)
+			var rb0 := _bord(track, d0, demi * 0.92, -epaisseur)
+			var gb1 := _bord(track, d1, -demi * 0.92, -epaisseur)
+			var rb1 := _bord(track, d1, demi * 0.92, -epaisseur)
+			# Le dessous, tourné vers le sol.
+			outil.set_color(Color(0.55, 0.55, 0.58))
+			_quad(outil, gb0, rb0, gb1, rb1)
+			# Les flancs, tournés vers l'extérieur.
+			outil.set_color(Color(0.8, 0.8, 0.82))
+			_quad(outil, g0, gb0, g1, gb1)
+			_quad(outil, rb0, r0, rb1, r1)
+			if i == 0:
+				_quad(outil, g0, r0, gb0, rb0)
+			if i == n - 1:
+				_quad(outil, r1, g1, rb1, gb1)
+	outil.generate_normals()
+	return outil.commit()
+
+
+## La ligne blanche discontinue au milieu de la chaussée : des traits de
+## `tiret` mètres, séparés de `vide` mètres, juste au-dessus du bitume.
+static func marquage(track: TrackCurve, trous: Array[Vector2], tiret: float = 3.0,
+		vide: float = 4.5, largeur: float = 0.22) -> ArrayMesh:
+	var outil := SurfaceTool.new()
+	outil.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for morceau in troncons(track.length, trous):
+		var d := morceau.x + vide * 0.5
+		while d + tiret <= morceau.y:
+			var milieu := d + tiret * 0.5
+			var g0 := _bord(track, d, -largeur, 0.025)
+			var r0 := _bord(track, d, largeur, 0.025)
+			var g1 := _bord(track, milieu, -largeur, 0.025)
+			var r1 := _bord(track, milieu, largeur, 0.025)
+			var g2 := _bord(track, d + tiret, -largeur, 0.025)
+			var r2 := _bord(track, d + tiret, largeur, 0.025)
+			_quad(outil, g0, g1, r0, r1)
+			_quad(outil, g1, g2, r1, r2)
+			d += tiret + vide
+	outil.generate_normals()
+	return outil.commit()
+
+
+static func _bord(track: TrackCurve, d: float, lateral: float, hauteur: float) -> Vector3:
+	return track.position_at(d) + track.right_at(d) * lateral + track.up_at(d) * hauteur
+
+
 static func _sur_la_route(track: TrackCurve, d: float, lateral: float) -> Vector3:
 	return track.position_at(d) + track.right_at(d) * lateral + track.up_at(d) * 0.02
 
