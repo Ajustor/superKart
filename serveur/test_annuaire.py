@@ -116,6 +116,12 @@ class TestAnnuaire(unittest.TestCase):
         self.assertEqual(A.nettoyer_nom(""), "Salon")
         self.assertEqual(len(A.nettoyer_nom("x" * 100)), A.NOM_MAX)
 
+    def test_un_hote_derriere_cloudflare_est_repere(self):
+        # superkart.darthoit.eu proxifié : les salons ne sont pas joignables en UDP.
+        self.assertTrue(A.derriere_cloudflare(["172.67.206.4", "104.21.61.46"]))
+        self.assertTrue(A.derriere_cloudflare(["2606:4700:3032::6815:3d2e"]))
+        self.assertFalse(A.derriere_cloudflare(["51.15.20.30", "2001:db8::1", "pas une ip"]))
+
     def test_la_plage_de_ports(self):
         self.assertEqual(A.plage_de_ports("8910-8912"), [8910, 8911, 8912])
         self.assertEqual(A.plage_de_ports("8910"), [8910])
