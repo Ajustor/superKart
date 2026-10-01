@@ -188,6 +188,17 @@ d'un circuit et de ses éléments, en PNG :
 godot --headless --path . -s tools/plan_circuit.gd -- <id> plan.png
 ```
 
+## Filmer un circuit
+
+`tools/film_circuit.gd` filme un tour depuis la caméra de poursuite, le kart
+du joueur confié à l'IA, avec le mode Movie Maker de Godot (image et son) :
+
+```
+xvfb-run -a godot --path . --rendering-driver opengl3 --fixed-fps 30 \
+    --write-movie tour.avi -s tools/film_circuit.gd -- <id> [case] [tours]
+ffmpeg -i tour.avi -vf scale=960:-2 -c:v libx264 -crf 27 -c:a aac tour.mp4
+```
+
 ## Exemples sur le circuit 1
 
 - `MurEpingle` : mur extérieur de l'épingle en montée (400 à 465 m).
