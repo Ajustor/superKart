@@ -129,3 +129,11 @@ func test_le_serveur_simule_tout_sans_piloter() -> void:
 			simules += 1
 	assert_eq(simules, 6, "l'IA tourne sur le serveur")
 	course.free()
+
+
+func test_le_champ_remonte_au_dessus_du_clavier() -> void:
+	# Écran de jeu haut de 720, fenêtre de 1080 pixels, clavier de 540 : le
+	# clavier couvre la moitié basse, à partir de 360.
+	assert_eq(MultiplayerPanel.decalage_pour_clavier(300.0, 720.0, 540, 1080), 0.0, "déjà visible")
+	assert_almost_eq(MultiplayerPanel.decalage_pour_clavier(500.0, 720.0, 540, 1080), 156.0, 0.01)
+	assert_eq(MultiplayerPanel.decalage_pour_clavier(500.0, 720.0, 0, 1080), 0.0, "pas de clavier")
