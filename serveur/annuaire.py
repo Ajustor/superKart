@@ -21,18 +21,21 @@ Réglages (variables d'environnement) :
                         (« /opt/superkart/SuperKart-serveur.x86_64 --headless »)
     PORTS_SALONS        plage des ports UDP des salons (« 8910-8949 »)
     HOTE_PUBLIC         l'adresse que les joueurs utilisent pour joindre les
-                        salons (le nom de domaine du serveur)
+                        salons en UDP : elle doit pointer directement sur la
+                        machine (pas sur un proxy comme Cloudflare)
     SALONS_MAX          nombre de salons en même temps (20)
     SALONS_PERMANENTS   salons publics toujours ouverts (1)
     CREATIONS_PAR_MINUTE  créations par adresse IP et par minute (4)
 """
 
+import ipaddress
 import json
 import os
 import re
 import secrets
 import shlex
 import signal
+import socket
 import subprocess
 import sys
 import threading
@@ -58,6 +61,46 @@ def plage_de_ports(texte):
     debut = int(debut)
     fin = int(fin or debut)
     return list(range(debut, fin + 1))
+
+
+# Les adresses de Cloudflare (https://www.cloudflare.com/ips/) : un nom qui y
+# mène passe par leur proxy, qui ne relaie pas l'UDP des salons.
+RESEAUX_CLOUDFLARE = [ipaddress.ip_network(r) for r in (
+    "173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22",
+    "141.101.64.0/18", "108.162.192.0/18", "190.93.240.0/20", "188.114.96.0/20",
+    "197.234.240.0/22", "198.41.128.0/17", "162.158.0.0/15", "104.16.0.0/13",
+    "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22",
+    "2400:cb00::/32", "2606:4700::/32", "2803:f800::/32", "2405:b500::/32",
+    "2405:8100::/32", "2a06:98c0::/29", "2c0f:f248::/32")]
+
+
+def derriere_cloudflare(adresses):
+    """Vrai si l'une des adresses (texte) appartient à Cloudflare."""
+    for a in adresses:
+        try:
+            ip = ipaddress.ip_address(a.split("%")[0])
+        except ValueError:
+            continue
+        if any(ip in r for r in RESEAUX_CLOUDFLARE if r.version == ip.version):
+            return True
+    return False
+
+
+def verifier_hote_public(hote):
+    """Prévient dans le journal si les joueurs ne pourront pas joindre les salons."""
+    try:
+        adresses = {info[4][0] for info in socket.getaddrinfo(hote, None)}
+    except OSError:
+        print("annuaire : attention, %s ne se résout pas : les joueurs ne pourront pas "
+              "joindre les salons." % hote, file=sys.stderr)
+        return False
+    if derriere_cloudflare(adresses):
+        print("annuaire : attention, %s passe par le proxy Cloudflare, qui ne relaie pas "
+              "l'UDP : les joueurs verront les salons sans pouvoir y entrer. Réglez "
+              "HOTE_SALONS sur un nom non proxifié (nuage gris) ou sur l'adresse IP de "
+              "la machine." % hote, file=sys.stderr)
+        return False
+    return True
 
 
 class Salon:
@@ -293,6 +336,7 @@ def main():
     serveur.daemon_threads = True
     threading.Thread(target=serveur.serve_forever, daemon=True).start()
     print("annuaire : à l'écoute sur le port %d, salons joignables sur %s" % (port, annuaire.hote_public))
+    verifier_hote_public(annuaire.hote_public)
     # docker stop envoie SIGTERM : on arrête proprement les salons.
     def arreter(*_):
         raise KeyboardInterrupt

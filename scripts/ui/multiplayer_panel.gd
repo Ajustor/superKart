@@ -47,6 +47,8 @@ var _boutons_en_ligne: Array[Button] = []
 var _rafraichissement: Timer
 ## Une partie rapide attend la liste des salons pour en choisir un.
 var _partie_rapide := false
+## Le salon en ligne qu'on essaie de rejoindre, pour expliquer un échec.
+var _salon_vise: Dictionary = {}
 
 var _titre_salon: Label
 var _joueurs: VBoxContainer
@@ -81,8 +83,14 @@ func _ready() -> void:
 			_client.lister())
 	add_child(_rafraichissement)
 	Reseau.salon_change.connect(_rafraichir_salon)
-	Reseau.connecte.connect(func() -> void: _montrer(_salon))
-	Reseau.erreur.connect(_afficher_erreur)
+	Reseau.connecte.connect(func() -> void:
+		_salon_vise = {}
+		_montrer(_salon))
+	Reseau.erreur.connect(func(message: String) -> void:
+		if message == Reseau.ECHEC_CONNEXION and not _salon_vise.is_empty():
+			message = MultiplayerPanel.salon_injoignable(_salon_vise)
+		_salon_vise = {}
+		_afficher_erreur(message))
 	Reseau.deconnecte.connect(func(raison: String) -> void:
 		_montrer(_porte)
 		_afficher_erreur(raison))
@@ -641,6 +649,13 @@ func _sur_liste(salons: Array) -> void:
 		_liste_en_ligne.add_child(b)
 
 
+## La liste des salons arrive (en https) mais le salon lui-même, en UDP, ne
+## répond pas : c'est le serveur qui bloque, pas le joueur qui s'est trompé.
+static func salon_injoignable(salon: Dictionary) -> String:
+	return "Le salon ne répond pas (%s, port UDP %d) : le serveur ne laisse pas passer la connexion de jeu. Réessaie plus tard, ou préviens l'administrateur du serveur." \
+		% [salon.get("hote", "?"), int(salon.get("port", 0))]
+
+
 ## Une ligne de la liste des salons.
 static func texte_salon(s: Dictionary) -> String:
 	var texte := "%s — %d/%d joueurs" % [s.get("nom", "Salon"), int(s.get("joueurs", 0)),
@@ -696,6 +711,7 @@ func _rejoindre_salon(salon: Dictionary) -> void:
 	if hote == "" or int(salon.get("port", 0)) <= 0:
 		_afficher_erreur("Ce salon n'est pas joignable.")
 		return
+	_salon_vise = salon
 	_patienter("Connexion au salon « %s »…" % salon.get("nom", ""))
 	if Reseau.rejoindre(hote, _pseudo_choisi(), int(salon.port)) != OK:
 		_activer_en_ligne(true)

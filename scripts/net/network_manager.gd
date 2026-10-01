@@ -32,6 +32,14 @@ const VERSION := 6
 ## Pas de coupe : une course seule.
 const SANS_COUPE := -1
 
+## Délais d'ENet avant de déclarer l'hôte perdu, en ms : à la connexion,
+## puis une fois connecté (les valeurs d'ENet par défaut).
+const DELAI_LIMITE := 32
+const DELAI_CONNEXION_MIN := 2000
+const DELAI_CONNEXION_MAX := 4000
+const DELAI_MIN := 5000
+const DELAI_MAX := 30000
+
 var lobby := Lobby.new()
 var config: Dictionary = {piste = "", tours = 3, cylindree = Cylindree.Classe.CC150, coupe = SANS_COUPE}
 var en_course: bool = false
@@ -156,6 +164,10 @@ func rejoindre(adresse: String, nom: String, port: int = PORT) -> Error:
 	if err != OK:
 		erreur.emit("Adresse invalide : %s" % adresse)
 		return err
+	# Un hôte injoignable se signale vite : sans réponse au bout de quelques
+	# secondes, on abandonne (30 s par défaut). Le délai normal, plus
+	# tolérant aux hoquets du Wi-Fi, revient une fois connecté.
+	peer.get_peer(1).set_timeout(DELAI_LIMITE, DELAI_CONNEXION_MIN, DELAI_CONNEXION_MAX)
 	_nom_voulu = nom
 	multiplayer.multiplayer_peer = peer
 	return OK
@@ -239,6 +251,9 @@ func _sur_depart(peer: int) -> void:
 
 
 func _sur_connexion() -> void:
+	var peer := multiplayer.multiplayer_peer as ENetMultiplayerPeer
+	if peer != null and peer.get_peer(1) != null:
+		peer.get_peer(1).set_timeout(DELAI_LIMITE, DELAI_MIN, DELAI_MAX)
 	_bonjour.rpc_id(1, _nom_voulu, VERSION)
 	annoncer_vehicule()
 
@@ -267,9 +282,12 @@ func _vehicule(modele: int, couleur: int) -> void:
 	_diffuser_salon()
 
 
+const ECHEC_CONNEXION := "Impossible de joindre l'hôte."
+
+
 func _sur_echec() -> void:
 	quitter()
-	erreur.emit("Impossible de joindre l'hôte.")
+	erreur.emit(ECHEC_CONNEXION)
 
 
 func _sur_perte_hote() -> void:

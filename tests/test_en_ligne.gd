@@ -137,3 +137,9 @@ func test_le_champ_remonte_au_dessus_du_clavier() -> void:
 	assert_eq(MultiplayerPanel.decalage_pour_clavier(300.0, 720.0, 540, 1080), 0.0, "déjà visible")
 	assert_almost_eq(MultiplayerPanel.decalage_pour_clavier(500.0, 720.0, 540, 1080), 156.0, 0.01)
 	assert_eq(MultiplayerPanel.decalage_pour_clavier(500.0, 720.0, 0, 1080), 0.0, "pas de clavier")
+
+
+func test_un_salon_injoignable_est_explique() -> void:
+	var texte := MultiplayerPanel.salon_injoignable({hote = "jeu.exemple.org", port = 8910})
+	assert_string_contains(texte, "jeu.exemple.org")
+	assert_string_contains(texte, "8910")

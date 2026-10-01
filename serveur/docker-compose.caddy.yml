@@ -8,7 +8,10 @@ services:
       dockerfile: serveur/Dockerfile
     restart: unless-stopped
     environment:
-      HOTE_PUBLIC: ${DOMAINE:?indique le nom de domaine du serveur dans DOMAINE}
+      # Le nom que les joueurs utilisent pour joindre les salons en UDP. Il
+      # doit pointer directement sur la machine : un proxy https (Cloudflare)
+      # ne laisse pas passer l'UDP. Par défaut, le même que DOMAINE.
+      HOTE_PUBLIC: ${HOTE_SALONS:-${DOMAINE:?indique le nom de domaine du serveur dans DOMAINE}}
       PORTS_SALONS: ${PORTS_SALONS:-8910-8949}
       SALONS_MAX: ${SALONS_MAX:-20}
       SALONS_PERMANENTS: ${SALONS_PERMANENTS:-1}

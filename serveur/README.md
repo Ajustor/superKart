@@ -30,16 +30,26 @@ Prévoir environ un quart de cœur et 190 Mo de mémoire par salon en course
 (mesuré avec 8 karts dont 6 pilotés par l'IA) ; un salon qui attend ne
 consomme presque rien.
 
-1. **DNS** : un sous-domaine (par exemple `superkart.darthoit.eu`) qui pointe
-   **directement** sur la machine Dokploy (enregistrement A, sans proxy
-   Cloudflare orange : les salons sont en UDP, et seul le https passe par un
-   proxy).
+1. **DNS** : deux noms peuvent servir, ou un seul.
+   - Le **domaine https** (par exemple `superkart.darthoit.eu`), celui de la
+     liste des salons : il peut passer par Cloudflare (nuage orange).
+   - L'**adresse des salons**, que les joueurs joignent en **UDP** : elle doit
+     pointer **directement** sur la machine. Cloudflare ne relaie pas l'UDP :
+     derrière son proxy, les joueurs voient les salons mais ne peuvent pas y
+     entrer. Si le domaine https est proxifié, créer un second nom en nuage
+     gris (par exemple `jeu.darthoit.eu`, enregistrement A vers l'IP de la
+     machine) et le mettre dans `HOTE_SALONS` (voir *Réglages*). On peut aussi
+     y mettre directement l'adresse IP de la machine.
+
+   Au démarrage, l'annuaire prévient dans ses logs si l'adresse des salons
+   passe par Cloudflare.
 2. **Pare-feu** : ouvrir **8910 à 8949 en UDP** (les salons), en plus des 80
    et 443 que Dokploy utilise déjà, sur la machine et chez l'hébergeur.
 3. Dans Dokploy, **Create Service → Compose** :
    - *Provider* : le dépôt GitHub `Ajustor/superKart`, branche `main` ;
    - *Compose Path* : `./serveur/docker-compose.yml` ;
-   - onglet **Environment** : `DOMAINE=superkart.darthoit.eu` ;
+   - onglet **Environment** : `DOMAINE=superkart.darthoit.eu`, et
+     `HOTE_SALONS=…` si ce domaine passe par Cloudflare ;
    - **Deploy**. La première construction prend quelques minutes (Godot est
      téléchargé et le jeu importé dans l'image).
 4. Onglet **Domains** → *Add Domain* : le domaine, service `annuaire`,
@@ -57,6 +67,7 @@ Dans l'onglet Environment, à côté de `DOMAINE` :
 
 | Variable               | Défaut      | Rôle                                               |
 |------------------------|-------------|----------------------------------------------------|
+| `HOTE_SALONS`          | `DOMAINE`   | Le nom ou l'IP que les joueurs joignent en UDP : il doit pointer directement sur la machine, sans proxy |
 | `PORTS_SALONS`         | `8910-8949` | Ports UDP des salons, publiés tels quels (à ouvrir dans le pare-feu) |
 | `SALONS_MAX`           | 20          | Salons ouverts en même temps (pas plus que de ports ; ~200 Mo chacun en course) |
 | `SALONS_PERMANENTS`    | 1           | Salons publics toujours ouverts                    |
