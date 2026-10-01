@@ -46,6 +46,15 @@ static func appliquer_a(racine: Node, niveau: int) -> void:
 		env.glow_enabled = env.get_meta("lueur_prevue") and n != Niveau.BASSE
 		env.fog_enabled = env.get_meta("brouillard_prevu") and n != Niveau.BASSE
 		etalonner(env, n)
+	# find_children ne connaît que les classes du moteur, pas celles des
+	# scripts : on trie à la main.
+	for noeud in racine.find_children("*", "Node", true, false):
+		if noeud is Track:
+			(noeud as Track).detailler_l_asphalte(n == Niveau.HAUTE)
+		elif noeud is EffetsEcran:
+			# Un rectangle transparent sur tout l'écran : sur un petit
+			# téléphone, autant de pixels à mélanger une fois de plus.
+			(noeud as CanvasItem).visible = n != Niveau.BASSE
 
 
 ## L'étalonnage de l'image, comme au cinéma : un tone mapping qui garde du
@@ -58,7 +67,8 @@ static func etalonner(env: Environment, niveau: int) -> void:
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC if soigne else Environment.TONE_MAPPER_LINEAR
 	env.tonemap_exposure = 1.05 if soigne else 1.0
 	env.tonemap_white = 6.0
-	env.adjustment_enabled = soigne
+	# Une passe de plus sur toute l'image : en haute seulement.
+	env.adjustment_enabled = niveau == Niveau.HAUTE
 	env.adjustment_contrast = 1.08
 	env.adjustment_saturation = 1.15
 	env.adjustment_brightness = 1.02

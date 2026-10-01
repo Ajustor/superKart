@@ -162,7 +162,8 @@ func _reconstruire() -> void:
 		materiau.emission_enabled = true
 		materiau.emission = Color(0.22, 0.22, 0.3)
 	else:
-		Track.habiller_l_asphalte(materiau)
+		_asphalte = materiau
+		detailler_l_asphalte(_detail_asphalte)
 	maillage.surface_set_material(0, materiau)
 
 	var affichage := MeshInstance3D.new()
@@ -230,6 +231,26 @@ func _reconstruire() -> void:
 func _physics_process(delta: float) -> void:
 	if not Engine.is_editor_hint():
 		horloge += delta
+
+
+var _asphalte: StandardMaterial3D
+## Le grain du bitume coûte trois lectures de texture par pixel de route,
+## deux fois : QualiteGraphique ne le laisse qu'en qualité haute.
+var _detail_asphalte := true
+
+
+## Met ou retire le grain du bitume (voir habiller_l_asphalte).
+func detailler_l_asphalte(actif: bool) -> void:
+	_detail_asphalte = actif
+	if _asphalte == null:
+		return
+	if actif:
+		Track.habiller_l_asphalte(_asphalte)
+	else:
+		_asphalte.albedo_texture = null
+		_asphalte.normal_enabled = false
+		_asphalte.uv1_triplanar = false
+		_asphalte.roughness = 0.85
 
 
 static var _grain: NoiseTexture2D

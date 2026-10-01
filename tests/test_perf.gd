@@ -129,3 +129,42 @@ func test_la_course_joue_la_musique_du_circuit() -> void:
 	await wait_until(func() -> bool: return musique._lecteur.playing, 5.0)
 	assert_true(musique._lecteur.playing, "elle part au vert")
 	assert_same(musique._lecteur.stream, Musique.deja_composee(Musique.Style.FORTERESSE))
+
+
+func test_les_finitions_suivent_la_qualite() -> void:
+	var racine := Node.new()
+	var piste: Track = load("res://scenes/tracks/canyon_venteux.tscn").instantiate()
+	racine.add_child(piste)
+	var effets := EffetsEcran.new()
+	racine.add_child(effets)
+	add_child_autofree(racine)
+	var route := piste.get_node(Track.NOM_MAILLAGE) as MeshInstance3D
+	var bitume := route.mesh.surface_get_material(0) as StandardMaterial3D
+	QualiteGraphique.appliquer_a(racine, QualiteGraphique.Niveau.HAUTE)
+	assert_true(bitume.uv1_triplanar, "le grain du bitume en haute")
+	assert_true(effets.visible)
+	QualiteGraphique.appliquer_a(racine, QualiteGraphique.Niveau.MOYENNE)
+	assert_false(bitume.uv1_triplanar, "pas de grain sur téléphone")
+	assert_null(bitume.albedo_texture)
+	assert_true(effets.visible)
+	QualiteGraphique.appliquer_a(racine, QualiteGraphique.Niveau.BASSE)
+	assert_false(effets.visible, "en basse, pas d'effets d'écran")
+
+
+func test_l_etalonnage_suit_la_qualite() -> void:
+	var env := Environment.new()
+	QualiteGraphique.etalonner(env, QualiteGraphique.Niveau.HAUTE)
+	assert_eq(env.tonemap_mode, Environment.TONE_MAPPER_FILMIC)
+	assert_true(env.adjustment_enabled)
+	QualiteGraphique.etalonner(env, QualiteGraphique.Niveau.MOYENNE)
+	assert_false(env.adjustment_enabled, "une passe de moins sur téléphone")
+	QualiteGraphique.etalonner(env, QualiteGraphique.Niveau.BASSE)
+	assert_eq(env.tonemap_mode, Environment.TONE_MAPPER_LINEAR)
+
+
+func test_chaque_route_a_son_dessous() -> void:
+	var piste: Track = load("res://scenes/tracks/grand_huit.tscn").instantiate()
+	add_child_autofree(piste)
+	var tablier := piste.get_node_or_null(Track.NOM_TABLIER) as MeshInstance3D
+	assert_not_null(tablier, "une route vue d'en dessous ne doit pas être invisible")
+	assert_eq(tablier.find_children("*", "CollisionObject3D").size(), 0, "sans collision")
