@@ -250,8 +250,9 @@ jobs:
             "$PWD/build/serveur/SuperKart-serveur/SuperKart-serveur.x86_64"
           test -s build/serveur/SuperKart-serveur/SuperKart-serveur.x86_64
           test -s build/serveur/SuperKart-serveur/SuperKart-serveur.pck
-          cp serveur/annuaire.py serveur/Dockerfile serveur/docker-compose.yml serveur/Caddyfile \
-            serveur/README.md build/serveur/SuperKart-serveur/
+          # Pour un serveur sans Docker ; avec Docker (Dokploy), l'image se
+          # construit depuis le dépôt (serveur/Dockerfile).
+          cp serveur/annuaire.py serveur/README.md build/serveur/SuperKart-serveur/
 
       - name: Vérifier qu'un salon s'ouvre
         run: |
@@ -330,10 +331,16 @@ jobs:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_USER: ${{ secrets.ANDROID_KEYSTORE_USER }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_NOUVELLE_CLE_BASE64: ${{ secrets.ANDROID_NOUVELLE_CLE_BASE64 }}
           REF_TYPE: ${{ github.ref_type }}
         run: |
           set -euo pipefail
           mkdir -p "$HOME/.android"
+
+          # Une nouvelle clé à faire attester par l'ancienne (voir plus bas) ?
+          if [ -n "${ANDROID_NOUVELLE_CLE_BASE64:-}" ]; then
+            echo "rotation=true" >> "$GITHUB_OUTPUT"
+          fi
 
           # Godot exige toujours une clé de debug, même pour un export release.
           debug_keystore="$HOME/.android/debug.keystore"
@@ -512,6 +519,55 @@ jobs:
           ls -lh build/android
 
           echo "apk=$apk" >> "$GITHUB_OUTPUT"
+
+      - name: Passer à la clé au nom du développeur
+        # Rotation de clé (schéma de signature v3.1) : l'APK reste signé par
+        # l'ancienne clé, qui atteste la nouvelle. Les téléphones qui ont déjà
+        # le jeu acceptent donc la mise à jour, et Android 9+ retient la
+        # nouvelle clé. Seulement si les secrets de la nouvelle clé existent.
+        if: ${{ steps.signing.outputs.mode == 'release' && steps.signing.outputs.rotation == 'true' }}
+        env:
+          NOUVELLE_CLE: ${{ secrets.ANDROID_NOUVELLE_CLE_BASE64 }}
+          NOUVELLE_CLE_USER: ${{ secrets.ANDROID_NOUVELLE_CLE_USER }}
+          NOUVELLE_CLE_PASSWORD: ${{ secrets.ANDROID_NOUVELLE_CLE_PASSWORD }}
+          ANCIENNE_CLE: ${{ steps.signing.outputs.release-keystore }}
+          ANCIENNE_CLE_USER: ${{ secrets.ANDROID_KEYSTORE_USER }}
+          ANCIENNE_CLE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          APK: build/android/${{ steps.export.outputs.apk }}
+        run: |
+          set -euo pipefail
+          apksigner="$(ls -d "$ANDROID_SDK_ROOT"/build-tools/*/ | sort -V | tail -n 1)apksigner"
+          nouvelle="$RUNNER_TEMP/nouvelle.keystore"
+          printf '%s' "$NOUVELLE_CLE" | base64 -d > "$nouvelle"
+          # Les mots de passe passent par l'environnement, jamais par la ligne
+          # de commande ni les journaux.
+          "$apksigner" rotate --out "$RUNNER_TEMP/lignee" \
+            --old-signer --ks "$ANCIENNE_CLE" --ks-key-alias "$ANCIENNE_CLE_USER" \
+              --ks-pass env:ANCIENNE_CLE_PASSWORD --key-pass env:ANCIENNE_CLE_PASSWORD \
+            --new-signer --ks "$nouvelle" --ks-key-alias "$NOUVELLE_CLE_USER" \
+              --ks-pass env:NOUVELLE_CLE_PASSWORD --key-pass env:NOUVELLE_CLE_PASSWORD
+          "$apksigner" sign \
+            --ks "$ANCIENNE_CLE" --ks-key-alias "$ANCIENNE_CLE_USER" \
+              --ks-pass env:ANCIENNE_CLE_PASSWORD --key-pass env:ANCIENNE_CLE_PASSWORD \
+            --next-signer --ks "$nouvelle" --ks-key-alias "$NOUVELLE_CLE_USER" \
+              --ks-pass env:NOUVELLE_CLE_PASSWORD --key-pass env:NOUVELLE_CLE_PASSWORD \
+            --lineage "$RUNNER_TEMP/lignee" --rotation-min-sdk-version 28 \
+            "$APK"
+          rm -f "$nouvelle" "$RUNNER_TEMP/lignee"
+
+      - name: Indiquer le signataire de l'APK
+        env:
+          APK: build/android/${{ steps.export.outputs.apk }}
+        run: |
+          set -euo pipefail
+          apksigner="$(ls -d "$ANDROID_SDK_ROOT"/build-tools/*/ | sort -V | tail -n 1)apksigner"
+          "$apksigner" verify --print-certs "$APK" | tee "$RUNNER_TEMP/certs.txt"
+          {
+            echo "### Signature de l'APK"
+            echo '```'
+            grep -E "certificate DN|certificate SHA-256" "$RUNNER_TEMP/certs.txt" || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publier l'artefact
         uses: actions/upload-artifact@v4

@@ -234,9 +234,11 @@ def fabriquer_gestionnaire(annuaire):
             return lu if isinstance(lu, dict) else None
 
         def _ip(self):
-            # Derrière Caddy, l'adresse du joueur est dans X-Forwarded-For.
+            # Derrière un proxy (Traefik pour Dokploy, ou Caddy), l'adresse du
+            # joueur est la dernière de X-Forwarded-For : celle qu'a ajoutée le
+            # proxy. Les précédentes viennent du client, qui peut les inventer.
             transmise = self.headers.get("X-Forwarded-For", "")
-            return transmise.split(",")[0].strip() or self.client_address[0]
+            return transmise.split(",")[-1].strip() or self.client_address[0]
 
         def do_GET(self):
             chemin = self.path.split("?")[0].rstrip("/")

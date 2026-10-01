@@ -8,7 +8,7 @@ port UDP. Les joueurs demandent un salon à l'annuaire, puis s'y connectent
 directement en UDP.
 
 ```
-joueur ──https──▶ Caddy :443 ──▶ annuaire :8900 ──lance──▶ salon (jeu) :8910…8949/udp
+joueur ──https──▶ Traefik ou Caddy :443 ──▶ annuaire :8900 ──lance──▶ salon (jeu) :8910…8949/udp
 joueur ─────────────────────── UDP ─────────────────────▶ salon
 ```
 
@@ -18,41 +18,73 @@ enchaîne seul les fins de course et les manches d'une coupe si le chef tarde,
 et ferme le salon quand il n'y a plus personne (sauf le salon public
 permanent, qui reste toujours ouvert).
 
-## Mettre le serveur en ligne
+## Mettre le serveur en ligne avec Dokploy
 
-Il faut une machine Linux joignable depuis Internet (un petit VPS suffit :
-un salon en course prend environ un quart de cœur et 190 Mo de mémoire,
-mesuré avec 8 karts dont 6 pilotés par l'IA),
-avec Docker, et un nom de domaine qui pointe dessus.
+L'image se construit depuis le dépôt (`serveur/Dockerfile`) : Godot y fait
+tourner le jeu depuis ses sources, sans export. Le serveur suit donc le commit
+déployé, sans attendre de Release ; il faut seulement que sa version du
+protocole réseau (`Reseau.VERSION`) soit celle du jeu des joueurs, sinon le
+salon les refuse poliment.
 
-1. Ouvrir les ports **80 et 443 en TCP** (Caddy, pour le certificat https) et
-   **8910 à 8949 en UDP** (les salons) dans le pare-feu de la machine et chez
-   l'hébergeur.
-2. Télécharger `SuperKart-serveur-linux.zip` sur la page de la Release
-   (même version que le jeu des joueurs : une autre version est refusée), et
-   le décompresser.
-3. Dans le dossier `SuperKart-serveur` :
+Prévoir environ un quart de cœur et 190 Mo de mémoire par salon en course
+(mesuré avec 8 karts dont 6 pilotés par l'IA) ; un salon qui attend ne
+consomme presque rien.
 
-   ```sh
-   echo "DOMAINE=superkart.exemple.org" > .env
-   docker compose up -d --build
-   ```
+1. **DNS** : un sous-domaine (par exemple `superkart.exemple.org`) qui pointe
+   **directement** sur la machine Dokploy (enregistrement A, sans proxy
+   Cloudflare orange : les salons sont en UDP, et seul le https passe par un
+   proxy).
+2. **Pare-feu** : ouvrir **8910 à 8949 en UDP** (les salons), en plus des 80
+   et 443 que Dokploy utilise déjà, sur la machine et chez l'hébergeur.
+3. Dans Dokploy, **Create Service → Compose** :
+   - *Provider* : le dépôt GitHub `Ajustor/superKart`, branche `main` ;
+   - *Compose Path* : `./serveur/docker-compose.yml` ;
+   - onglet **Environment** : `DOMAINE=superkart.exemple.org` ;
+   - **Deploy**. La première construction prend quelques minutes (Godot est
+     téléchargé et le jeu importé dans l'image).
+4. Onglet **Domains** → *Add Domain* : le domaine, service `annuaire`,
+   port `8900`, **HTTPS** activé avec Let's Encrypt.
+5. Vérifier : `https://superkart.exemple.org/sante` répond `{"ok": true}`, et
+   `https://superkart.exemple.org/salons` liste le « Salon public 1 ».
 
-4. Vérifier : `https://superkart.exemple.org/sante` répond `{"ok": true}`, et
-   `https://superkart.exemple.org/salons` liste le salon public permanent.
-
-Pour une nouvelle version du jeu : télécharger le nouveau zip, et relancer
-`docker compose up -d --build` depuis son dossier.
+Avec l'*Autodeploy* de Dokploy (ou son webhook), chaque push sur `main`
+reconstruit le serveur. Les salons ouverts sont alors fermés : mieux vaut
+déployer quand personne ne joue.
 
 ### Réglages
 
-Dans `.env`, à côté de `DOMAINE` :
+Dans l'onglet Environment, à côté de `DOMAINE` :
 
-| Variable               | Défaut | Rôle                                               |
-|------------------------|--------|----------------------------------------------------|
-| `SALONS_MAX`           | 20     | Salons ouverts en même temps (40 au plus : un port chacun ; ~200 Mo de mémoire chacun) |
-| `SALONS_PERMANENTS`    | 1      | Salons publics toujours ouverts                    |
-| `CREATIONS_PAR_MINUTE` | 4      | Salons créés par adresse IP et par minute          |
+| Variable               | Défaut      | Rôle                                               |
+|------------------------|-------------|----------------------------------------------------|
+| `PORTS_SALONS`         | `8910-8949` | Ports UDP des salons, publiés tels quels (à ouvrir dans le pare-feu) |
+| `SALONS_MAX`           | 20          | Salons ouverts en même temps (pas plus que de ports ; ~200 Mo chacun en course) |
+| `SALONS_PERMANENTS`    | 1           | Salons publics toujours ouverts                    |
+| `CREATIONS_PAR_MINUTE` | 4           | Salons créés par adresse IP et par minute          |
+
+### Sans Dokploy
+
+Le même serveur derrière Caddy, qui obtient seul son certificat :
+
+```sh
+cd serveur
+echo "DOMAINE=superkart.exemple.org" > .env
+docker compose -f docker-compose.caddy.yml up -d --build
+```
+
+Ports à ouvrir : 80 et 443 en TCP, 8910 à 8949 en UDP.
+
+### Sans Docker
+
+`SuperKart-serveur-linux.zip`, attaché à chaque Release, contient le jeu
+exporté pour Linux et l'annuaire :
+
+```sh
+ANNUAIRE_PORT=8900 HOTE_PUBLIC=superkart.exemple.org \
+JEU_COMMANDE="$PWD/SuperKart-serveur.x86_64 --headless" python3 annuaire.py
+```
+
+avec un proxy https devant le port 8900.
 
 ## Brancher le jeu dessus
 

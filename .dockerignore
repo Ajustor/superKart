@@ -1,0 +1,12 @@
+# L'image du serveur en ligne (serveur/Dockerfile) n'a besoin que du jeu.
+.git
+.github
+.godot
+build
+export
+docs
+site
+tests
+tools
+**/__pycache__
+export_presets.cfg

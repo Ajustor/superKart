@@ -191,9 +191,10 @@ un joueur.
 `serveur/annuaire.py` (Python, bibliothèque standard) tient la liste des
 salons et lance un processus du jeu par salon, chacun sur son port UDP ; le
 salon lui envoie son état toutes les 5 s et s'arrête quand il est vide depuis
-2 min (5 min s'il n'a encore vu personne). Installation avec Docker et Caddy
-(https) : [serveur/README.md](../serveur/README.md). La CI construit le jeu
-pour Linux (`SuperKart-serveur-linux.zip`) et l'attache à chaque Release.
+2 min (5 min s'il n'a encore vu personne). Installation avec Dokploy (ou
+Docker et Caddy) : [serveur/README.md](../serveur/README.md). L'image Docker
+se construit depuis le dépôt ; pour un serveur sans Docker, la CI construit le
+jeu pour Linux (`SuperKart-serveur-linux.zip`) et l'attache à chaque Release.
 
 Le jeu lancé en serveur :
 
