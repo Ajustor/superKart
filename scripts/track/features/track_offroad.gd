@@ -18,6 +18,14 @@ enum Sol { HERBE, SABLE, BOUE, NEIGE }
 		_modifie()
 
 
+## Une couleur à soi plutôt que celle du sol : du béton, de la poussière
+## lunaire, l'herbe noire d'un parc hanté. Transparente : celle du sol.
+@export var teinte: Color = Color(0, 0, 0, 0):
+	set(valeur):
+		teinte = valeur
+		_modifie()
+
+
 func _init() -> void:
 	longueur = 30.0
 	largeur = 12.0
@@ -48,5 +56,7 @@ func _materiau() -> StandardMaterial3D:
 			m.albedo_color = Color(0.4, 0.28, 0.16)
 		Sol.NEIGE:
 			m.albedo_color = Color(0.92, 0.95, 1.0)
+	if teinte.a > 0.0:
+		m.albedo_color = Color(teinte, 1.0)
 	m.roughness = 1.0
 	return m

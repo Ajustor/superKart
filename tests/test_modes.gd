@@ -341,6 +341,32 @@ func test_l_or_partout_debloque_200cc_puis_miroir() -> void:
 	r.free()
 
 
+func test_les_nouvelles_coupes_ne_reprennent_pas_ce_qui_etait_debloque() -> void:
+	# Des réglages d'avant les coupes Fleur et Éclair : l'or dans les deux
+	# premières coupes, et pas de section des déblocages.
+	var r := _reglages()
+	var ancien := ConfigFile.new()
+	ancien.set_value("trophees", GameSettings.cle_de_trophee(0, Cylindree.Classe.CC150), 1)
+	ancien.set_value("trophees", GameSettings.cle_de_trophee(1, Cylindree.Classe.CC150), 1)
+	ancien.save(r.chemin)
+	r.charger()
+	assert_true(r.debloque_200cc(), "la 200cc gagnée avant reste gagnée")
+	assert_false(r.debloque_miroir())
+	r.sauver()
+	r.charger()
+	assert_true(r.debloque_200cc(), "et le reste une fois les réglages réécrits")
+	r.free()
+
+
+func test_une_nouvelle_partie_doit_gagner_toutes_les_coupes() -> void:
+	var r := _reglages()
+	r.proposer_trophee(0, Cylindree.Classe.CC150, 1)
+	r.proposer_trophee(1, Cylindree.Classe.CC150, 1)
+	r.charger()
+	assert_false(r.debloque_200cc(), "deux coupes ne suffisent plus")
+	r.free()
+
+
 func test_le_miroir_a_ses_propres_records() -> void:
 	var reglage := RaceSetup.new()
 	reglage.choisir_piste(TrackCatalog.PISTES[0])

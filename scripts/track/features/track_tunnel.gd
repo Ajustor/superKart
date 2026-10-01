@@ -53,7 +53,7 @@ func _init() -> void:
 	cote = Cote.LES_DEUX
 	hauteur = 4.5
 	epaisseur = 0.8
-	marge = 0.5
+	marge = 0.2
 	couleur = Color(0.48, 0.42, 0.36)
 	couleur_bis = Color(0.4, 0.35, 0.3)
 

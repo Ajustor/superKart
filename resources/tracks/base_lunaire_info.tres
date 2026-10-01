@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TrackInfo" format=3]
+
+[ext_resource type="Script" path="res://scripts/race/track_info.gd" id="1_info"]
+
+[resource]
+script = ExtResource("1_info")
+id = "base_lunaire"
+nom = "Base Lunaire"
+description = "Sur la Lune, la gravité faiblit par endroits : on vole au-dessus des cratères en visant les anneaux d'or, et on file sous les dômes de la base."
+chemin_scene = "res://scenes/tracks/base_lunaire.tscn"
+tours = 3

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TrackInfo" format=3]
+
+[ext_resource type="Script" path="res://scripts/race/track_info.gd" id="1_info"]
+
+[resource]
+script = ExtResource("1_info")
+id = "grotte_glacee"
+nom = "Grotte Glacée"
+description = "On plonge sous le glacier : des salles de stalagmites, des plaques de verglas, une galerie qui passe sous la ligne de départ et une crevasse à sauter."
+chemin_scene = "res://scenes/tracks/grotte_glacee.tscn"
+tours = 3

@@ -13,7 +13,18 @@ pose **sur le tracé**, comme enfant du nœud `Track`.
 | `TrackGap` | un trou : la route n'est pas construite sur cette portion, on la franchit en sautant | — |
 | `TrackJump` | une zone de saut peinte : le kart qui passe dessus décolle d'une impulsion fixe, avec un turbo en option | non, c'est une zone |
 | `TrackOffroad` | une zone d'herbe, de sable ou de boue : on y roule, mais au ralenti | oui : elle crée du sol, même à côté de la route |
+| `TrackTunnel` | un passage sous terre : deux parois (des `TrackWall`), une voûte, un massif par-dessus (`montagne`), des lampes au plafond et deux portails. `marge`, `hauteur` et `fleche` élargissent la galerie en salle | les parois seulement |
+| `TrackVerglas` | une plaque de glace : le nez tourne, la trajectoire suit avec retard (`adherence`), les roues patinent | non, c'est une zone |
+| `TrackCourant` | une poussée : vent en rafales (`periode`, `phase`), courant d'eau ou tapis roulant (`style`), en travers (`poussee_laterale`) ou le long du tracé (`poussee_avant`, négative à contre-sens). Le vent pousse aussi en l'air | non, c'est une zone |
+| `TrackApesanteur` | la gravité faiblit (`gravite`) : chaque saut dure plus longtemps. Une arche violette à chaque bout | non, c'est une zone |
+| `TrackAnneau` | un anneau d'or flottant à `hauteur` m : le traverser donne un turbo | non |
+| `TrackObstacle` | un obstacle mobile : marteau qui balance (`PENDULE`), pilon qui s'abat (`PISTON`), bloc ou tonneau qui va et vient (`BLOC`, `TONNEAU`). Le kart pris part en tête-à-queue | non : une zone qui fait tourner le kart |
 | `TrackDecor` | une rangée de décor le long du tracé : palmiers, phare, piliers enflammés, étoiles, champignons géants, rochers. `espacement` 0 pose un objet seul | oui, sauf les étoiles : une forme simple au pied de chaque objet (tronc, pied de champignon, base d'immeuble) ; `solide` à faux pour qu'on la traverse. Un test vérifie qu'aucun décor solide ne mord sur la route |
+
+Les obstacles battent sur l'horloge du circuit (`Track.horloge`), remise à
+zéro au feu vert : en réseau, toutes les machines voient le même marteau au
+même endroit. `TrackOffroad` accepte une `teinte` pour sortir des quatre sols
+(béton, poussière lunaire, herbe sombre).
 
 ## Habiller le circuit
 
@@ -142,6 +153,27 @@ déplacer un point de contrôle emmène les murs et les zones avec lui.
 | Mine Scintillante | 724 m | descente de 14 m entre des étais (90 à 280 m), fond de galerie aux cristaux, remontée étayée (420 à 620 m), gouffre à sauter (636 à 661 m) juste avant la ligne |
 | Ville Néon | 746 m | la nuit, rues à angle droit entre les tours, bordures fluo, lampadaires, avenue en travaux à sauter (550 à 576 m) |
 | Station des Neiges | 869 m | départ à 30 m, descente à bosses (292, 398 m), vallée, remontée par le col (bosse à 640 m) ; larges bas-côtés de neige, sapins |
+
+Coupes Fleur et Éclair :
+
+| Circuit | Longueur | Ce qui le distingue |
+|---|---|---|
+| Canyon Venteux | 939 m | tunnel dans une mesa (300 à 400 m), rafales alternées qui poussent à droite puis à gauche (560 à 680 m), ravin à sauter (874 à 886 m) avec un anneau d'or décentré |
+| Grotte Glacée | 1 099 m | en huit, presque tout sous le glacier : galeries et trois salles à stalagmites et cristaux, plaques de verglas, la galerie passe 22 m sous la ligne de départ (608 m), crevasse à sauter (892 à 905 m) |
+| Usine à Engrenages | 934 m | tapis roulants (dans le sens, en travers, et à contre-sens sur une voie de la ligne d'arrivée), passage sous la presse (150 à 230 m), pilons (538, 550, 623 m) |
+| Temple de la Jungle | 1 014 m | gorge à sauter dès le départ (74 à 86 m), galeries du temple (270 à 350 m), couloir de trois marteaux (430 à 462 m), gué dans le courant (494 à 516 m) |
+| Base Lunaire | 1 054 m | deux zones d'apesanteur : cratères de 22 m à sauter dans des anneaux (392 et 482 m), tremplin et anneaux en l'air (700 à 732 m) ; dôme (560 à 660 m) |
+| Port des Pirates | 889 m | sur les quais au-dessus de la mer : grotte marine (330 à 420 m), saut depuis le pont du galion (560 à 572 m), tonneaux qui roulent (614, 624 m), courant de la crique (640 à 700 m) |
+| Manoir Hanté | 901 m | la nuit, en huit : la crypte passe 22 m sous la cour du départ, entre trois lames (398 à 458 m) ; fosse à sauter (177 à 189 m), cercueils qui glissent (826, 840 m) ; lac de brume sous le circuit |
+| Citadelle des Orages | 963 m | au-dessus d'une mer de nuages : rafales alternées, vide à sauter (350 et 848 m), tremplin en apesanteur dans un anneau (416 m), porte de la citadelle (540 à 640 m), pilons de foudre sur la ligne droite finale |
+
+Les scènes de ces huit circuits sont écrites comme les autres : on les
+retouche dans l'éditeur. `tools/plan_circuit.gd` dessine le plan vu du ciel
+d'un circuit et de ses éléments, en PNG :
+
+```
+godot --headless --path . -s tools/plan_circuit.gd -- <id> plan.png
+```
 
 ## Exemples sur le circuit 1
 

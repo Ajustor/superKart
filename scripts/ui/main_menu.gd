@@ -27,7 +27,7 @@ var _boutons_coupe: Array[Button] = []
 var _coupe: int = 0
 var _classe: OptionButton
 var _miroir: CheckButton
-var _coupes: HBoxContainer
+var _coupes: GridContainer
 var _circuits: GridContainer
 var _reglages: HBoxContainer
 var _description: Label
@@ -275,12 +275,15 @@ func _ecran_selection() -> Control:
 		_rafraichir())
 	haut.add_child(_miroir)
 
-	# Les coupes, pour le Grand Prix.
-	_coupes = HBoxContainer.new()
-	_coupes.add_theme_constant_override("separation", 12)
+	# Les coupes, pour le Grand Prix : deux par ligne, pour tenir sur l'écran
+	# d'un téléphone en paysage.
+	_coupes = GridContainer.new()
+	_coupes.columns = 2
+	_coupes.add_theme_constant_override("h_separation", 12)
+	_coupes.add_theme_constant_override("v_separation", 10)
 	var groupe_coupes := ButtonGroup.new()
 	for i in TrackCatalog.COUPES.size():
-		var b := _bascule("", groupe_coupes, Vector2(470, 124), 20)
+		var b := _bascule("", groupe_coupes, Vector2(470, 104), 19)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.button_pressed = i == _coupe
 		b.pressed.connect(func() -> void:
@@ -297,14 +300,14 @@ func _ecran_selection() -> Control:
 	_circuits.add_theme_constant_override("v_separation", 8)
 	var groupe := ButtonGroup.new()
 	for piste in TrackCatalog.PISTES:
-		var b := _bascule(piste.nom, groupe, Vector2(234, 58), 20)
+		var b := _bascule(piste.nom, groupe, Vector2(234, 52), 19)
 		b.button_pressed = piste == reglage.piste
 		b.pressed.connect(_choisir_piste.bind(piste))
 		_circuits.add_child(b)
 		_boutons_piste.append(b)
 	# Les arènes, pour la bataille, dans la même grille (même groupe).
 	for arene in TrackCatalog.ARENES:
-		var b := _bascule(arene.nom, groupe, Vector2(234, 58), 20)
+		var b := _bascule(arene.nom, groupe, Vector2(234, 52), 19)
 		b.button_pressed = arene == reglage.piste
 		b.pressed.connect(_choisir_piste.bind(arene))
 		_circuits.add_child(b)

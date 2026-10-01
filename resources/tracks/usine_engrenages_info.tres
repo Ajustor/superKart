@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TrackInfo" format=3]
+
+[ext_resource type="Script" path="res://scripts/race/track_info.gd" id="1_info"]
+
+[resource]
+script = ExtResource("1_info")
+id = "usine_engrenages"
+nom = "Usine à Engrenages"
+description = "Une usine qui tourne à plein : des tapis roulants qui portent ou qui freinent, des pilons qui s'abattent et un passage sous la grande presse."
+chemin_scene = "res://scenes/tracks/usine_engrenages.tscn"
+tours = 3

@@ -13,6 +13,14 @@ const PISTES: Array[TrackInfo] = [
 	preload("res://resources/tracks/ville_neon_info.tres"),
 	preload("res://resources/tracks/station_neiges_info.tres"),
 	preload("res://resources/tracks/ruban_celeste_info.tres"),
+	preload("res://resources/tracks/canyon_venteux_info.tres"),
+	preload("res://resources/tracks/grotte_glacee_info.tres"),
+	preload("res://resources/tracks/usine_engrenages_info.tres"),
+	preload("res://resources/tracks/temple_jungle_info.tres"),
+	preload("res://resources/tracks/base_lunaire_info.tres"),
+	preload("res://resources/tracks/port_pirate_info.tres"),
+	preload("res://resources/tracks/manoir_hante_info.tres"),
+	preload("res://resources/tracks/citadelle_orages_info.tres"),
 ]
 
 ## Les arènes du mode bataille : des anneaux larges et fermés, où l'on ne
@@ -35,6 +43,16 @@ const COUPES := [
 		nom = "Coupe Étoile",
 		couleur = Color(1.0, 0.8, 0.2),
 		pistes = ["forteresse_lave", "ville_neon", "station_neiges", "ruban_celeste"],
+	},
+	{
+		nom = "Coupe Fleur",
+		couleur = Color(1.0, 0.55, 0.15),
+		pistes = ["canyon_venteux", "grotte_glacee", "usine_engrenages", "temple_jungle"],
+	},
+	{
+		nom = "Coupe Éclair",
+		couleur = Color(0.55, 0.45, 1.0),
+		pistes = ["base_lunaire", "port_pirate", "manoir_hante", "citadelle_orages"],
 	},
 ]
 

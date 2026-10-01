@@ -5,7 +5,7 @@ extends Resource
 ## une scène : cette fiche dit seulement comment l'appeler et où le trouver.
 ##
 ## Le chemin de la scène, et non la scène : la fiche la chargeait avec elle,
-## si bien que lire le catalogue chargeait les huit circuits dès le menu. Le
+## si bien que lire le catalogue chargeait tous les circuits dès le menu. Le
 ## circuit se charge maintenant quand on le court, derrière l'écran de
 ## chargement (EcranChargement), dans un fil à part.
 

@@ -14,7 +14,7 @@ extends RefCounted
 ## dans un fil à part, et chaque boucle n'est composée qu'une fois par
 ## partie (cache).
 
-enum Style { COLLINES, PLAGE, FORTERESSE, CIEL, JARDIN, MINE, VILLE, NEIGE, CANYON, USINE, ESPACE, HANTE }
+enum Style { COLLINES, PLAGE, FORTERESSE, CIEL, JARDIN, MINE, VILLE, NEIGE, CANYON, USINE, ESPACE, HANTE, GLACE, JUNGLE, PIRATE, ORAGE }
 
 const FREQUENCE := 16000
 const MESURES := 8
@@ -77,6 +77,26 @@ const STYLES := {
 	Style.HANTE: {
 		tempo = 128.0, tonique = 50, gamme = [0, 2, 3, 5, 7, 8, 11],
 		grille = [0, 3, 4, 0], basse = [1, 0, 0, 1, 0, 0, 1, 0], arpege = 12, graine = 13,
+	},
+	# La glace : lydien, cristallin, arpège très haut qui tinte sous la voûte.
+	Style.GLACE: {
+		tempo = 112.0, tonique = 66, gamme = [0, 2, 4, 6, 7, 9, 11],
+		grille = [0, 4, 1, 5], basse = [1, 0, 0, 0, 1, 0, 1, 0], arpege = 24, graine = 23,
+	},
+	# Les tambours de la jungle : pentatonique, basse syncopée.
+	Style.JUNGLE: {
+		tempo = 138.0, tonique = 55, gamme = [0, 2, 4, 7, 9],
+		grille = [0, 3, 4, 1], basse = [1, 0, 1, 1, 0, 1, 0, 1], arpege = 12, graine = 47,
+	},
+	# Une gigue de pirates : dorien, entraînante.
+	Style.PIRATE: {
+		tempo = 150.0, tonique = 62, gamme = [0, 2, 3, 5, 7, 9, 10],
+		grille = [0, 6, 3, 4], basse = [1, 0, 1, 1, 0, 1, 1, 0], arpege = 12, graine = 61,
+	},
+	# L'orage : mineur harmonique, très rapide, basse martelée.
+	Style.ORAGE: {
+		tempo = 164.0, tonique = 53, gamme = [0, 2, 3, 5, 7, 8, 11],
+		grille = [0, 5, 4, 0], basse = [1, 1, 0, 1, 1, 1, 0, 1], arpege = 24, graine = 77,
 	},
 }
 

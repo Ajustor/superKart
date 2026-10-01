@@ -66,6 +66,9 @@ const PISTON_REMONTE := 0.85
 ## En dessous, une tête qui descend écrase : au-dessus, on passe dessous.
 const HAUTEUR_DANGEREUSE := 2.2
 
+## Le mouvement retourné gauche-droite : posé par le mode miroir.
+var retourne: bool = false
+
 var _tete: MeshInstance3D
 var _bras: MeshInstance3D
 var _zone: Area3D
@@ -91,9 +94,10 @@ func cycle(horloge: float) -> float:
 func pose_de_la_tete(horloge: float) -> Vector3:
 	var t := cycle(horloge)
 	var demi := (TETE[type] as Vector3).y * 0.5
+	var sens := -1.0 if retourne else 1.0
 	match type:
 		Type.PENDULE:
-			var angle := deg_to_rad(amplitude) * sin(t * TAU)
+			var angle := deg_to_rad(amplitude) * sin(t * TAU) * sens
 			var bras := hauteur - demi - 0.3
 			return Vector3(decalage + sin(angle) * bras, hauteur - cos(angle) * bras, angle)
 		Type.PISTON:
@@ -109,7 +113,7 @@ func pose_de_la_tete(horloge: float) -> Vector3:
 				y = lerpf(bas, haut, (t - PISTON_REMONTE) / (1.0 - PISTON_REMONTE))
 			return Vector3(decalage, y, 0.0)
 		_:
-			var x := amplitude * sin(t * TAU)
+			var x := amplitude * sin(t * TAU) * sens
 			# Un tonneau roule : il tourne d'autant qu'il avance.
 			var roulis := -x / demi if type == Type.TONNEAU else 0.0
 			return Vector3(decalage + x, demi + 0.05, roulis)
