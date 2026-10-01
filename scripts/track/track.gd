@@ -106,12 +106,21 @@ const ARC_EN_CIEL: PackedColorArray = [
 
 var track_curve: TrackCurve
 
+## Secondes depuis le départ de la course : les obstacles mobiles s'y règlent.
+## La session la remet à zéro au feu vert, sur chaque machine en réseau à la
+## fois : les marteaux battent partout au même rythme.
+var horloge: float = 0.0
+
+var _elements: Array[TrackFeature] = []
+var _elements_a_jour := false
+
 ## En deçà de cette distance avant un trou, un kart remis en piste l'est de
 ## l'autre côté : il faut plus d'élan que ça pour sauter.
 const ELAN_AVANT_UN_TROU := 60.0
 
 
 func _ready() -> void:
+	child_order_changed.connect(func() -> void: _elements_a_jour = false)
 	# En jeu, un circuit sans courbe est une erreur de montage. Dans l'éditeur
 	# c'est l'état normal d'un nœud qu'on vient d'ajouter : on ne crie pas.
 	assert(curve != null or Engine.is_editor_hint(), "un Track doit avoir une courbe")
@@ -183,13 +192,58 @@ func _reconstruire() -> void:
 		update_configuration_warnings()
 
 
-## Les murs, tremplins et zones hors-piste posés sur ce circuit.
+func _physics_process(delta: float) -> void:
+	if not Engine.is_editor_hint():
+		horloge += delta
+
+
+## Les murs, tremplins et zones hors-piste posés sur ce circuit. Gardés en
+## mémoire : la session les parcourt plusieurs fois par kart et par image.
 func elements() -> Array[TrackFeature]:
+	if _elements_a_jour and is_node_ready():
+		return _elements
 	var trouves: Array[TrackFeature] = []
 	for enfant in get_children():
 		if enfant is TrackFeature:
 			trouves.append(enfant)
+	_elements = trouves
+	_elements_a_jour = is_node_ready()
 	return trouves
+
+
+## La plaque de verglas sous ce point, ou null.
+func verglas_en(distance: float, lateral: float) -> TrackVerglas:
+	for element in elements():
+		if element is TrackVerglas and element.contient(distance, lateral, track_curve.length):
+			return element
+	return null
+
+
+## Ce que le vent, le courant ou les tapis roulants poussent en ce point, en
+## m/s dans le repère du monde. Plusieurs zones s'additionnent.
+func poussee_en(distance: float, lateral: float) -> Vector3:
+	var total := Vector3.ZERO
+	for element in elements():
+		if element is TrackCourant and element.contient(distance, lateral, track_curve.length):
+			total += (element as TrackCourant).poussee(track_curve, distance, horloge)
+	return total
+
+
+## Le facteur de gravité en ce point : moins de 1 dans une zone d'apesanteur.
+func gravite_en(distance: float, lateral: float) -> float:
+	for element in elements():
+		if element is TrackApesanteur and element.contient(distance, lateral, track_curve.length):
+			return (element as TrackApesanteur).gravite
+	return 1.0
+
+
+## L'anneau que traverse un kart en ce point, `hauteur` mètres au-dessus de
+## la route, ou null.
+func anneau_en(distance: float, lateral: float, hauteur: float) -> TrackAnneau:
+	for element in elements():
+		if element is TrackAnneau and (element as TrackAnneau).traverse(distance, lateral, hauteur, track_curve.length):
+			return element
+	return null
 
 
 ## Refait la route et tout ce qui est posé dessus. Les trous l'appellent quand

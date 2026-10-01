@@ -182,8 +182,8 @@ func test_aucun_decor_solide_ne_mord_sur_la_route() -> void:
 func test_chaque_objet_qui_se_touche_a_une_forme_de_collision() -> void:
 	for objet in TrackDecor.Objet.values():
 		var forme := TrackDecor.forme_de(objet)
-		if objet == TrackDecor.Objet.ETOILE:
-			assert_true(forme.is_empty(), "une étoile flotte")
+		if TrackDecor.flotte(objet):
+			assert_true(forme.is_empty(), "ce qui flotte se traverse")
 		else:
 			assert_false(forme.is_empty(), "objet %s" % TrackDecor.Objet.keys()[objet])
 

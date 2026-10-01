@@ -14,7 +14,7 @@ extends RefCounted
 ## dans un fil à part, et chaque boucle n'est composée qu'une fois par
 ## partie (cache).
 
-enum Style { COLLINES, PLAGE, FORTERESSE, CIEL, JARDIN, MINE, VILLE, NEIGE }
+enum Style { COLLINES, PLAGE, FORTERESSE, CIEL, JARDIN, MINE, VILLE, NEIGE, CANYON, USINE, ESPACE, HANTE }
 
 const FREQUENCE := 16000
 const MESURES := 8
@@ -57,6 +57,26 @@ const STYLES := {
 	Style.NEIGE: {
 		tempo = 124.0, tonique = 64, gamme = [0, 2, 4, 5, 7, 9, 11],
 		grille = [0, 5, 3, 4], basse = [1, 0, 0, 1, 1, 0, 0, 0], arpege = 24, graine = 57,
+	},
+	# Western : phrygien dominant, galop de basse, sous le soleil du canyon.
+	Style.CANYON: {
+		tempo = 136.0, tonique = 57, gamme = [0, 1, 4, 5, 7, 8, 10],
+		grille = [0, 1, 0, 6], basse = [1, 0, 1, 1, 0, 1, 1, 0], arpege = 12, graine = 31,
+	},
+	# Mécanique : mineur, rapide, basse martelée comme une presse.
+	Style.USINE: {
+		tempo = 152.0, tonique = 52, gamme = [0, 2, 3, 5, 7, 8, 10],
+		grille = [0, 0, 5, 6], basse = [1, 1, 1, 1, 1, 1, 1, 1], arpege = 0, graine = 64,
+	},
+	# L'espace : par tons entiers, lent et flottant, arpège très haut.
+	Style.ESPACE: {
+		tempo = 108.0, tonique = 62, gamme = [0, 2, 4, 6, 8, 10],
+		grille = [0, 2, 4, 1], basse = [1, 0, 0, 0, 0, 0, 1, 0], arpege = 24, graine = 99,
+	},
+	# Hanté : mineur harmonique, valse grinçante.
+	Style.HANTE: {
+		tempo = 128.0, tonique = 50, gamme = [0, 2, 3, 5, 7, 8, 11],
+		grille = [0, 3, 4, 0], basse = [1, 0, 0, 1, 0, 0, 1, 0], arpege = 12, graine = 13,
 	},
 }
 
