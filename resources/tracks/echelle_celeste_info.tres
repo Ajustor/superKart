@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TrackInfo" format=3]
+
+[ext_resource type="Script" path="res://scripts/race/track_info.gd" id="1_info"]
+
+[resource]
+script = ExtResource("1_info")
+id = "echelle_celeste"
+nom = "Échelle Céleste"
+description = "Une route qui monte au ciel : une hélice autour d'une tour, chaque tour au-dessus du précédent, jusqu'à 105 m ; un pont en apesanteur dans les nuages, puis la grande descente."
+chemin_scene = "res://scenes/tracks/echelle_celeste.tscn"
+tours = 2

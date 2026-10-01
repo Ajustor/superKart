@@ -14,7 +14,7 @@ extends RefCounted
 ## dans un fil à part, et chaque boucle n'est composée qu'une fois par
 ## partie (cache).
 
-enum Style { COLLINES, PLAGE, FORTERESSE, CIEL, JARDIN, MINE, VILLE, NEIGE, CANYON, USINE, ESPACE, HANTE, GLACE, JUNGLE, PIRATE, ORAGE }
+enum Style { COLLINES, PLAGE, FORTERESSE, CIEL, JARDIN, MINE, VILLE, NEIGE, CANYON, USINE, ESPACE, HANTE, GLACE, JUNGLE, PIRATE, ORAGE, ABYSSES, ASCENSION }
 
 const FREQUENCE := 16000
 const MESURES := 8
@@ -97,6 +97,16 @@ const STYLES := {
 	Style.ORAGE: {
 		tempo = 164.0, tonique = 53, gamme = [0, 2, 3, 5, 7, 8, 11],
 		grille = [0, 5, 4, 0], basse = [1, 1, 0, 1, 1, 1, 0, 1], arpege = 24, graine = 77,
+	},
+	# Les profondeurs : locrien, grave et lourd, basse qui gronde.
+	Style.ABYSSES: {
+		tempo = 120.0, tonique = 45, gamme = [0, 1, 3, 5, 6, 8, 10],
+		grille = [0, 1, 4, 0], basse = [1, 0, 0, 1, 1, 0, 0, 1], arpege = 0, graine = 101,
+	},
+	# L'ascension : majeur, lumineux, arpège qui grimpe très haut.
+	Style.ASCENSION: {
+		tempo = 132.0, tonique = 67, gamme = [0, 2, 4, 5, 7, 9, 11],
+		grille = [0, 4, 5, 3], basse = [1, 0, 0, 1, 0, 1, 0, 0], arpege = 24, graine = 7,
 	},
 }
 

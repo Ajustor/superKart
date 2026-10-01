@@ -147,25 +147,38 @@ déplacer un point de contrôle emmène les murs et les zones avec lui.
 |---|---|---|
 | Circuit des Collines | 774 m | le circuit d'origine : collines, épingle en montée bordée de deux murs (375 à 470 m), un trou à sauter (314 à 338 m), bas-côtés d'herbe tout le tour sauf au trou. Pentes adoucies (35 % → 22 % au plus dans l'épingle) |
 | Plage aux Palmiers | 1 032 m | bordures, bas-côtés de sable, dune à tremplin (262 m), lacet autour du phare, bras de mer à sauter (766 à 790 m), raccourci de sable à l'intérieur du virage 380 à 475 m |
-| Forteresse de Lave | 773 m | remparts presque partout, montée vers une chicane à 10 m de haut (340 à 470 m), douve de lave à sauter (542 à 566 m), piliers enflammés |
-| Ruban Céleste | 1 099 m | route arc-en-ciel dans la nuit, en huit : le pont (560 à 650 m) passe 20 m au-dessus de la ligne droite de départ ; saut dans le vide (866 à 892 m), garde-fous seulement dans les virages serrés |
-| Jardin Champignon | 855 m | bosses douces, bas-côtés d'herbe, champignons géants, deux champignons rebondissants (392 et 650 m) ; prairie à 2,5 m sous la route |
+| Bastion de Magma | 773 m | remparts presque partout, montée vers une chicane à 10 m de haut (340 à 470 m), douve de lave à sauter (542 à 566 m), piliers enflammés |
+| Prisme de Minuit | 1 099 m | route arc-en-ciel dans la nuit, en huit : le pont (560 à 650 m) passe 20 m au-dessus de la ligne droite de départ ; saut dans le vide (866 à 892 m), garde-fous seulement dans les virages serrés |
+| Clairière Enchantée | 855 m | bosses douces, bas-côtés d'herbe, champignons géants, deux champignons rebondissants (392 et 650 m) ; prairie à 2,5 m sous la route |
 | Mine Scintillante | 724 m | descente de 14 m entre des étais (90 à 280 m), fond de galerie aux cristaux, remontée étayée (420 à 620 m), gouffre à sauter (636 à 661 m) juste avant la ligne |
-| Ville Néon | 746 m | la nuit, rues à angle droit entre les tours, bordures fluo, lampadaires, avenue en travaux à sauter (550 à 576 m) |
+| Boulevard Électrique | 746 m | la nuit, rues à angle droit entre les tours, bordures fluo, lampadaires, avenue en travaux à sauter (550 à 576 m) |
 | Station des Neiges | 869 m | départ à 30 m, descente à bosses (292, 398 m), vallée, remontée par le col (bosse à 640 m) ; larges bas-côtés de neige, sapins |
 
-Coupes Fleur et Éclair :
+Coupes Aventure et Tempête :
 
 | Circuit | Longueur | Ce qui le distingue |
 |---|---|---|
 | Canyon Venteux | 939 m | tunnel dans une mesa (300 à 400 m), rafales alternées qui poussent à droite puis à gauche (560 à 680 m), ravin à sauter (874 à 886 m) avec un anneau d'or décentré |
 | Grotte Glacée | 1 099 m | en huit, presque tout sous le glacier : galeries et trois salles à stalagmites et cristaux, plaques de verglas, la galerie passe 22 m sous la ligne de départ (608 m), crevasse à sauter (892 à 905 m) |
 | Usine à Engrenages | 934 m | tapis roulants (dans le sens, en travers, et à contre-sens sur une voie de la ligne d'arrivée), passage sous la presse (150 à 230 m), pilons (538, 550, 623 m) |
-| Temple de la Jungle | 1 014 m | gorge à sauter dès le départ (74 à 86 m), galeries du temple (270 à 350 m), couloir de trois marteaux (430 à 462 m), gué dans le courant (494 à 516 m) |
+| Ruines d'Émeraude | 1 014 m | gorge à sauter dès le départ (74 à 86 m), galeries du temple (270 à 350 m), couloir de trois marteaux (430 à 462 m), gué dans le courant (494 à 516 m) |
 | Base Lunaire | 1 054 m | deux zones d'apesanteur : cratères de 22 m à sauter dans des anneaux (392 et 482 m), tremplin et anneaux en l'air (700 à 732 m) ; dôme (560 à 660 m) |
 | Port des Pirates | 889 m | sur les quais au-dessus de la mer : grotte marine (330 à 420 m), saut depuis le pont du galion (560 à 572 m), tonneaux qui roulent (614, 624 m), courant de la crique (640 à 700 m) |
-| Manoir Hanté | 901 m | la nuit, en huit : la crypte passe 22 m sous la cour du départ, entre trois lames (398 à 458 m) ; fosse à sauter (177 à 189 m), cercueils qui glissent (826, 840 m) ; lac de brume sous le circuit |
+| Château des Brumes | 901 m | la nuit, en huit : la crypte passe 22 m sous la cour du départ, entre trois lames (398 à 458 m) ; fosse à sauter (177 à 189 m), cercueils qui glissent (826, 840 m) ; lac de brume sous le circuit |
 | Citadelle des Orages | 963 m | au-dessus d'une mer de nuages : rafales alternées, vide à sauter (350 et 848 m), tremplin en apesanteur dans un anneau (416 m), porte de la citadelle (540 à 640 m), pilons de foudre sur la ligne droite finale |
+
+Coupe Vertige :
+
+| Circuit | Longueur | Ce qui le distingue |
+|---|---|---|
+| Cœur de la Terre | 1 236 m | un puits en hélice (100 à 565 m) plonge à 85 m sous la surface, chaque tour 34 m sous le précédent ; galerie au-dessus du magma, faille à sauter (612 à 626 m), concasseurs ; second puits pour remonter (715 à 1 185 m), parois qui changent de roche avec la profondeur |
+| Échelle Céleste | 1 703 m | une hélice autour d'une tour (100 à 765 m) monte à 105 m, chaque tour 30 m au-dessus du précédent ; pont en apesanteur dans les nuages (trou de 20 m, tremplin et anneaux, rafale) ; large hélice de descente autour d'une seconde tour (1 000 à 1 605 m) |
+
+Une hélice se dessine point par point, tous les 45° : `tools/build_track_curves.gd`
+en contient deux. Ne pas lui appliquer l'élargissement de
+`shape_track_curve.gd` (il resserrerait les tours empilés) : un rayon minimal
+de 12 suffit à ne garder que le dévers. Entre deux tours, au moins vingt mètres
+de hauteur.
 
 Les scènes de ces huit circuits sont écrites comme les autres : on les
 retouche dans l'éditeur. `tools/plan_circuit.gd` dessine le plan vu du ciel

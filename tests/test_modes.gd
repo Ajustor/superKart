@@ -94,7 +94,9 @@ func test_les_records_se_rangent_par_cylindree_et_par_mode() -> void:
 func test_les_coupes_se_partagent_tous_les_circuits() -> void:
 	var vus := {}
 	for coupe in TrackCatalog.COUPES:
-		assert_eq(coupe.pistes.size(), 4, "%s : quatre courses" % coupe.nom)
+		# Quatre courses ; deux pour la coupe Vertige, aux circuits très longs.
+		assert_true(coupe.pistes.size() == 4 or coupe.nom == "Coupe Vertige", "%s : quatre courses" % coupe.nom)
+		assert_gt(coupe.pistes.size(), 1, "%s : au moins deux courses" % coupe.nom)
 		for id in coupe.pistes:
 			assert_not_null(TrackCatalog.par_id(id), "%s : circuit inconnu %s" % [coupe.nom, id])
 			assert_false(vus.has(id), "%s est dans deux coupes" % id)
@@ -342,7 +344,7 @@ func test_l_or_partout_debloque_200cc_puis_miroir() -> void:
 
 
 func test_les_nouvelles_coupes_ne_reprennent_pas_ce_qui_etait_debloque() -> void:
-	# Des réglages d'avant les coupes Fleur et Éclair : l'or dans les deux
+	# Des réglages d'avant les coupes Aventure et Tempête : l'or dans les deux
 	# premières coupes, et pas de section des déblocages.
 	var r := _reglages()
 	var ancien := ConfigFile.new()

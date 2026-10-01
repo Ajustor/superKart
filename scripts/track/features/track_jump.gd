@@ -4,7 +4,7 @@ extends TrackFeature
 
 ## Un tremplin : le kart qui roule dessus décolle. De quoi franchir un virage
 ## par la voie des airs, sauter un trou, ou atteindre un raccourci — tout ce
-## qu'un Mario Kart fait avec ses rampes bleues.
+## qu'un jeu de kart fait avec ses rampes bleues.
 ##
 ## Pendant le vol, le kart n'est pas remis en piste même s'il survole le
 ## décor : il ne l'est qu'en atterrissant hors de tout sol praticable, ou en

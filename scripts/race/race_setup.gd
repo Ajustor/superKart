@@ -76,7 +76,7 @@ func preparer_manche() -> void:
 
 
 ## La cylindrée réellement courue : le contre-la-montre se court en 150cc,
-## comme dans Mario Kart, pour que les records se comparent.
+## comme dans les jeux de kart, pour que les records se comparent.
 func classe_effective() -> int:
 	return Cylindree.Classe.CC150 if mode == Mode.CONTRE_LA_MONTRE else classe
 

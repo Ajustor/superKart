@@ -24,7 +24,7 @@ signal course_terminee
 ## Le départ du joueur : Depart.NORMAL, TURBO ou CALE.
 signal depart_du_joueur(resultat: int)
 
-## Le turbo au départ, comme dans Mario Kart : tenir les gaz à partir du
+## Le turbo au départ, comme dans les jeux de kart : tenir les gaz à partir du
 ## bon moment du décompte fait partir en trombe ; les tenir dès le début
 ## fait caler. Les instants sont comptés en secondes avant le vert.
 enum Depart { NORMAL, TURBO, CALE }
@@ -205,7 +205,7 @@ func demarrer(piste: Track, pilotes: Array[Kart]) -> void:
 		# boucle pour chacun en franchissant la ligne peinte. Donner à tous le
 		# même retard faisait boucler les derniers de la grille jusqu'à
 		# dix-sept mètres avant la ligne. Partir de plus loin coûte quelques
-		# mètres, comme dans Mario Kart.
+		# mètres, comme dans les jeux de kart.
 		entree.progress.total = case_.x
 		entree.nom = noms[i] if i < noms.size() else "Pilote %d" % (i + 1)
 		entree.case_de_grille = cases[i]

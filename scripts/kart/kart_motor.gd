@@ -204,7 +204,7 @@ func _update_grip_steering(cmd: KartCommand, delta: float) -> void:
 
 
 ## Un appui sur DRIFT fait toujours sauter le kart, braquage ou pas : c'est
-## pendant le saut qu'on choisit son côté, comme dans Mario Kart. Sans
+## pendant le saut qu'on choisit son côté, comme dans les jeux de kart. Sans
 ## direction à l'atterrissage, ce n'était qu'un saut.
 ##
 ## Tenu sans braquer, le bouton ne refait pas sauter en boucle : seul un
@@ -214,7 +214,7 @@ func _try_enter_drift(cmd: KartCommand) -> void:
 		return
 	if _drift_locked_out:
 		return
-	# Le bond se fait à toute vitesse, même à l'arrêt, comme dans Mario Kart :
+	# Le bond se fait à toute vitesse, même à l'arrêt, comme dans les jeux de kart :
 	# c'est la glisse qui demande de la vitesse, vérifiée à l'atterrissage.
 	var braque := absf(cmd.steer) >= STEER_DEADZONE
 	if not braque and _derapage_avant:
@@ -262,7 +262,7 @@ func _end_drift() -> void:
 	heading = velocity_dir
 
 
-## Pendant la glisse, le stick module le virage, comme dans Mario Kart 8 :
+## Pendant la glisse, le stick module le virage, comme dans les jeux de kart :
 ## vers l'intérieur on serre et la caisse se met plus en travers, vers
 ## l'extérieur on ouvre en grand et la caisse se redresse. La glisse ne
 ## change jamais de côté : contre-braquer l'élargit, sans l'inverser.

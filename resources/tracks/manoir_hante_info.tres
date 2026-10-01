@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_info")
 id = "manoir_hante"
-nom = "Manoir Hanté"
-description = "La nuit au manoir : on descend dans la crypte, sous la cour du départ, entre des lames qui balancent, puis on remonte entre les cercueils qui glissent."
+nom = "Château des Brumes"
+description = "La nuit au château : on descend dans la crypte, sous la cour du départ, entre des lames qui balancent, puis on remonte entre les cercueils qui glissent."
 chemin_scene = "res://scenes/tracks/manoir_hante.tscn"
 tours = 3

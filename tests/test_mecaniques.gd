@@ -1,6 +1,6 @@
 extends GutTest
 
-## Les mécaniques des coupes Fleur et Éclair : verglas, vent et tapis
+## Les mécaniques des coupes Aventure et Tempête : verglas, vent et tapis
 ## roulants, apesanteur, anneaux de turbo, obstacles mobiles et tunnels.
 
 var track: Track

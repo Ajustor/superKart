@@ -3,7 +3,7 @@ class_name TrackBoost
 extends TrackFeature
 
 ## Une plaque d'accélération : le kart qui roule dessus prend un turbo, comme
-## sur les flèches d'un Mario Kart. Posée sur la trajectoire idéale, elle
+## sur les flèches d'un jeu de kart. Posée sur la trajectoire idéale, elle
 ## récompense qui la suit ; posée à côté, elle vaut un écart.
 ##
 ## Ses flèches défilent dans le sens de la course : on la reconnaît de loin,

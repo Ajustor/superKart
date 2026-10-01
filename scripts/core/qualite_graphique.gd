@@ -29,7 +29,7 @@ static func echelle_3d(niveau: int) -> float:
 
 ## Règle les ombres, la lueur et le brouillard de tout ce qui est sous
 ## `racine`. Ce que le circuit a prévu est retenu la première fois : repasser
-## en HAUTE rend au Ruban Céleste sa lueur, sans en donner à qui n'en avait pas.
+## en HAUTE rend au Prisme de Minuit sa lueur, sans en donner à qui n'en avait pas.
 static func appliquer_a(racine: Node, niveau: int) -> void:
 	var n := effectif(niveau)
 	for lumiere in racine.find_children("*", "DirectionalLight3D", true, false):

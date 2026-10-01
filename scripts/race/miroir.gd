@@ -1,7 +1,7 @@
 class_name Miroir
 extends RefCounted
 
-## Le mode miroir : le circuit retourné gauche-droite, comme dans Mario Kart.
+## Le mode miroir : le circuit retourné gauche-droite, comme dans les jeux de kart.
 ## Les virages à gauche deviennent des virages à droite ; le sens de la
 ## course, lui, ne change pas.
 ##

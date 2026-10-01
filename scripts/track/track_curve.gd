@@ -34,7 +34,7 @@ var length: float
 
 ## Pas de cuisson de la courbe, en mètres. Godot cuit par défaut tous les
 ## 20 cm, et get_closest_offset parcourt TOUS les points cuits : 37 µs par
-## projection sur le Ruban Céleste, plusieurs fois par kart et par image — un
+## projection sur le Prisme de Minuit, plusieurs fois par kart et par image — un
 ## gros morceau de la physique sur téléphone. Au mètre, la projection coûte
 ## cinq fois moins, la longueur du tour bouge d'un millimètre, et la corde
 ## d'un virage de 25 m de rayon s'écarte de l'arc de 5 mm.

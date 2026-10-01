@@ -66,7 +66,7 @@ func test_les_liaisons_manette_acceptent_toutes_les_manettes() -> void:
 
 
 func test_accelerer_et_deraper_ne_partagent_pas_de_bouton() -> void:
-	# Disposition Mario Kart : A accélère, R1 dérape. Les mettre sur le même
+	# Disposition classique des jeux de kart : A accélère, R1 dérape. Les mettre sur le même
 	# bouton rendrait le dérapage injouable, puisqu'on accélère en permanence.
 	var boutons_gaz := {}
 	for e in _manette("throttle"):
@@ -79,7 +79,7 @@ func test_accelerer_et_deraper_ne_partagent_pas_de_bouton() -> void:
 
 
 func test_deraper_et_lancer_un_objet_sont_sur_les_gachettes() -> void:
-	# Disposition Mario Kart : la gâchette droite fait sauter puis déraper, la
+	# Disposition classique des jeux de kart : la gâchette droite fait sauter puis déraper, la
 	# gauche lance l'objet. Les gaz occupent le pouce droit en permanence, donc
 	# tout ce qui se déclenche en virage doit tomber sous un index.
 	var attendu := {

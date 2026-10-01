@@ -283,7 +283,7 @@ func _ecran_selection() -> Control:
 	_coupes.add_theme_constant_override("v_separation", 10)
 	var groupe_coupes := ButtonGroup.new()
 	for i in TrackCatalog.COUPES.size():
-		var b := _bascule("", groupe_coupes, Vector2(470, 104), 19)
+		var b := _bascule("", groupe_coupes, Vector2(470, 88), 18)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.button_pressed = i == _coupe
 		b.pressed.connect(func() -> void:
@@ -453,7 +453,9 @@ func _rafraichir() -> void:
 
 	match reglage.mode:
 		RaceSetup.Mode.GRAND_PRIX:
-			_description.text = "Quatre courses de trois tours contre sept pilotes. Les points s'additionnent, et les trois premiers de la coupe montent sur le podium."
+			var coupe: Dictionary = TrackCatalog.COUPES[_coupe]
+			_description.text = "%s courses contre sept pilotes. Les points s'additionnent, et les trois premiers de la coupe montent sur le podium." \
+				% {2: "Deux", 3: "Trois", 4: "Quatre", 5: "Cinq"}.get(coupe.pistes.size(), str(coupe.pistes.size()))
 			_record.text = ""
 		RaceSetup.Mode.BATAILLE:
 			_description.text = "Trois ballons chacun, et chaque objet qui vous touche en crève un. Le dernier en lice gagne ; au bout de %d minutes, on compte les ballons." % int(Bataille.DUREE / 60.0)

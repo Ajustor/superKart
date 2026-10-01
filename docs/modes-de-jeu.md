@@ -47,19 +47,22 @@ Si c'est le joueur, il passe en pilote automatique comme à une arrivée.
 
 - Les deux ont leurs propres records (`@200cc`, `@miroir`).
 - Un déblocage gagné reste gagné (section `deblocages` des réglages) :
-  l'arrivée des coupes Fleur et Éclair ne reprend rien à qui avait l'or dans
+  l'arrivée des coupes Aventure et Tempête ne reprend rien à qui avait l'or dans
   les deux premières, mais une nouvelle partie doit gagner les quatre.
 - Le podium annonce ce qu'un trophée vient de débloquer.
 - En réseau, c'est ce que l'hôte a débloqué qui compte.
 
 ## Grand Prix (`GrandPrix`)
 
-- Quatre coupes de quatre circuits, définies dans `TrackCatalog.COUPES` :
-  - Coupe Champignon : Collines, Jardin, Plage, Mine ;
-  - Coupe Étoile : Forteresse, Ville, Neiges, Ruban ;
-  - Coupe Fleur : Canyon, Grotte, Usine, Temple ;
-  - Coupe Éclair : Lune, Port, Manoir, Citadelle.
-- Chaque manche se court en trois tours. Le barème de `RaceScoring`
+- Cinq coupes, définies dans `TrackCatalog.COUPES` :
+  - Coupe Grand Air : Collines, Jardin, Plage, Mine ;
+  - Coupe Bolide : Forteresse, Ville, Neiges, Ruban ;
+  - Coupe Aventure : Canyon, Grotte, Usine, Temple ;
+  - Coupe Tempête : Lune, Port, Château, Citadelle ;
+  - Coupe Vertige : Cœur de la Terre (3 tours), Échelle Céleste (2 tours) —
+    deux circuits très longs. Une manche se court au nombre de tours de la
+    fiche du circuit (`TrackInfo.tours`).
+- Chaque manche se court en trois tours (sauf la coupe Vertige). Le barème de `RaceScoring`
   s'additionne d'une course à l'autre.
 - Ceux qui n'ont pas franchi la ligne quand le joueur passe à la suite
   prennent la place qu'ils occupaient.

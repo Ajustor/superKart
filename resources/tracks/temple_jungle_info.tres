@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_info")
 id = "temple_jungle"
-nom = "Temple de la Jungle"
+nom = "Ruines d'Émeraude"
 description = "Une gorge à sauter dès le départ, les galeries du temple, un couloir de marteaux qui balancent et un gué où le courant emporte les karts."
 chemin_scene = "res://scenes/tracks/temple_jungle.tscn"
 tours = 3

@@ -8,7 +8,7 @@ extends Node
 ## n'est pas prête au vert, elle démarre dès qu'elle l'est. Une boucle déjà
 ## composée dans la partie démarre tout de suite.
 
-## Au dernier tour, la musique accélère — et monte un peu, comme dans Mario Kart.
+## Au dernier tour, la musique accélère — et monte un peu, comme dans les jeux de kart.
 const DERNIER_TOUR := 1.12
 const VOLUME_DB := -4.0
 

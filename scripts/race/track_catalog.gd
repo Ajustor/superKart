@@ -21,6 +21,8 @@ const PISTES: Array[TrackInfo] = [
 	preload("res://resources/tracks/port_pirate_info.tres"),
 	preload("res://resources/tracks/manoir_hante_info.tres"),
 	preload("res://resources/tracks/citadelle_orages_info.tres"),
+	preload("res://resources/tracks/coeur_terre_info.tres"),
+	preload("res://resources/tracks/echelle_celeste_info.tres"),
 ]
 
 ## Les arènes du mode bataille : des anneaux larges et fermés, où l'on ne
@@ -31,28 +33,33 @@ const ARENES: Array[TrackInfo] = [
 ]
 
 ## Les coupes du Grand Prix : quatre circuits chacune, du plus doux au plus
-## redoutable. Le menu les affiche dans cet ordre ; leur index sert de clé
+## redoutable — deux seulement pour la coupe Vertige, très longs. Le menu les affiche dans cet ordre ; leur index sert de clé
 ## aux trophées, ne les réordonne pas.
 const COUPES := [
 	{
-		nom = "Coupe Champignon",
+		nom = "Coupe Grand Air",
 		couleur = Color(0.95, 0.3, 0.25),
 		pistes = ["circuit_01", "jardin_champignon", "plage_palmiers", "mine_scintillante"],
 	},
 	{
-		nom = "Coupe Étoile",
+		nom = "Coupe Bolide",
 		couleur = Color(1.0, 0.8, 0.2),
 		pistes = ["forteresse_lave", "ville_neon", "station_neiges", "ruban_celeste"],
 	},
 	{
-		nom = "Coupe Fleur",
+		nom = "Coupe Aventure",
 		couleur = Color(1.0, 0.55, 0.15),
 		pistes = ["canyon_venteux", "grotte_glacee", "usine_engrenages", "temple_jungle"],
 	},
 	{
-		nom = "Coupe Éclair",
+		nom = "Coupe Tempête",
 		couleur = Color(0.55, 0.45, 1.0),
 		pistes = ["base_lunaire", "port_pirate", "manoir_hante", "citadelle_orages"],
+	},
+	{
+		nom = "Coupe Vertige",
+		couleur = Color(0.3, 0.8, 0.9),
+		pistes = ["coeur_terre", "echelle_celeste"],
 	},
 ]
 

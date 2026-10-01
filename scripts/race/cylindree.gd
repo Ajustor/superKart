@@ -1,7 +1,7 @@
 class_name Cylindree
 extends RefCounted
 
-## Les trois cylindrées, comme dans Mario Kart : même circuit, même kart, mais
+## Les trois cylindrées, comme dans les jeux de kart : même circuit, même kart, mais
 ## tout va moins vite en 50cc. La 150cc est le réglage d'origine, celui sur
 ## lequel les circuits ont été validés : les deux autres n'en sont que des
 ## réductions.
