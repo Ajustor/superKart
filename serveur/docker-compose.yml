@@ -1,0 +1,39 @@
+# Le mode en ligne de SuperKart : l'annuaire (et ses salons) derrière Caddy,
+# qui lui donne une adresse https avec un certificat Let's Encrypt.
+#
+#   DOMAINE=superkart.exemple.org docker compose up -d --build
+#
+# Voir README.md : le nom de domaine doit pointer sur la machine, et les ports
+# 80, 443 (TCP) et 8910-8949 (UDP) être ouverts.
+services:
+  annuaire:
+    build: .
+    restart: unless-stopped
+    environment:
+      # L'adresse que les joueurs utilisent pour joindre les salons.
+      HOTE_PUBLIC: ${DOMAINE:?indique le nom de domaine du serveur dans DOMAINE}
+      SALONS_MAX: ${SALONS_MAX:-20}
+      SALONS_PERMANENTS: ${SALONS_PERMANENTS:-1}
+      CREATIONS_PAR_MINUTE: ${CREATIONS_PAR_MINUTE:-4}
+    # Les salons : un port UDP chacun. L'annuaire lui-même (8900) ne sort que
+    # par Caddy.
+    ports:
+      - "8910-8949:8910-8949/udp"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on: [annuaire]
+    environment:
+      DOMAINE: ${DOMAINE}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

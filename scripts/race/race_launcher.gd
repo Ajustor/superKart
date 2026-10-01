@@ -67,6 +67,12 @@ static func _par_l_ecran(arbre: SceneTree, ecran: EcranChargement) -> void:
 
 static func retour_au_menu(arbre: SceneTree) -> void:
 	arbre.paused = false
+	# Un serveur dédié n'a pas de menu : il attend la course suivante.
+	if Reseau.dedie:
+		var vide := Node.new()
+		vide.name = "Serveur"
+		arbre.change_scene_to_node(vide)
+		return
 	arbre.change_scene_to_file(SCENE_MENU)
 
 
@@ -196,6 +202,11 @@ static func monter_reseau(plan: Array, config: Dictionary, moi: int, hote: bool)
 	var session := course.get_node("Session") as RaceSession
 
 	var libres: Array[String] = []
+	# Sur un serveur dédié, personne ne pilote ici : le kart du joueur de la
+	# scène prend un humain comme les autres.
+	var spectateur := plan.all(func(place: Dictionary) -> bool: return int(place.peer) != moi)
+	if spectateur:
+		libres.append("Kart")
 	for i in range(1, Lobby.PLACES):
 		libres.append("AIKart%d" % i)
 	var noeuds := {}  # gid -> nom de nœud
@@ -212,7 +223,7 @@ static func monter_reseau(plan: Array, config: Dictionary, moi: int, hote: bool)
 			noeuds[place.gid] = libres.pop_front()
 
 	# Le joueur local d'abord : le HUD suit toujours la première entrée.
-	var ordre: Array = [local_gid]
+	var ordre: Array = [] if spectateur else [local_gid]
 	for place in plan:
 		if place.gid != local_gid:
 			ordre.append(place.gid)

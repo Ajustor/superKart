@@ -4,9 +4,14 @@ extends Node
 ## course. Déclaré en autoload sous le nom `Reseau`, pour que les appels RPC
 ## trouvent le même nœud au même chemin sur toutes les machines.
 ##
-## L'hôte est aussi un joueur (peer 1). Il tient le salon, choisit le circuit,
-## et arbitre la course ; les autres rejoignent par son adresse IP, ou le
-## trouvent sur le réseau local.
+## En réseau local, l'hôte est aussi un joueur (peer 1). Il tient le salon,
+## choisit le circuit, et arbitre la course ; les autres rejoignent par son
+## adresse IP, ou le trouvent sur le réseau local.
+##
+## En ligne, l'hôte est un serveur dédié (ServeurDedie), sans pilote : il tient
+## le salon et arbitre la course de la même façon, mais c'est le chef du salon
+## (le premier joueur arrivé, Lobby.chef) qui choisit le circuit et lance la
+## course, par des demandes que le serveur vérifie.
 
 signal salon_change
 signal erreur(message: String)
@@ -22,7 +27,7 @@ signal depart
 const PORT := 8910
 ## Monté à chaque changement du protocole : un client d'une autre version est
 ## refusé poliment plutôt que de désynchroniser la course en silence.
-const VERSION := 5
+const VERSION := 6
 
 ## Pas de coupe : une course seule.
 const SANS_COUPE := -1
@@ -48,6 +53,11 @@ var plan: Array = []
 var decouverte := LanDiscovery.new()
 ## Le port de l'hôte ouvert sur sa box, pour jouer par Internet.
 var port_internet := PortInternet.new()
+
+## Vrai sur un serveur dédié : hôte sans pilote (voir ServeurDedie).
+var dedie := false
+## Ce que les joueurs savent du salon : en ligne ou non, son nom, son code.
+var infos_salon: Dictionary = {}
 
 var _nom_voulu: String = ""
 ## Le port réellement ouvert, celui qu'on annonce sur le réseau local.
@@ -82,6 +92,21 @@ func mon_id() -> int:
 	return multiplayer.get_unique_id() if actif() else 1
 
 
+## Cette machine choisit-elle le circuit et lance-t-elle la course ? L'hôte en
+## réseau local ; en ligne, le chef du salon.
+func peut_diriger() -> bool:
+	if not actif():
+		return false
+	if est_hote():
+		return not dedie
+	return lobby.chef() == mon_id()
+
+
+## Le salon est-il tenu par un serveur en ligne ?
+func en_ligne() -> bool:
+	return bool(infos_salon.get("dedie", false))
+
+
 # --- Héberger, rejoindre, partir ----------------------------------------------
 
 func heberger(nom: String, port: int = PORT) -> Error:
@@ -101,6 +126,25 @@ func heberger(nom: String, port: int = PORT) -> Error:
 	port_internet.ouvrir(port)
 	salon_change.emit()
 	connecte.emit()
+	return OK
+
+
+## Un serveur dédié : un salon sans pilote, que les joueurs rejoignent par
+## Internet. `infos` : son nom et son code, montrés aux joueurs.
+func heberger_dedie(port: int, infos: Dictionary = {}) -> Error:
+	quitter()
+	var peer := ENetMultiplayerPeer.new()
+	var err := peer.create_server(port, Lobby.PLACES)
+	if err != OK:
+		erreur.emit("Impossible d'ouvrir le port %d (erreur %d)." % [port, err])
+		return err
+	multiplayer.multiplayer_peer = peer
+	dedie = true
+	_port = port
+	lobby = Lobby.new()
+	infos_salon = infos.duplicate()
+	infos_salon.dedie = true
+	en_course = false
 	return OK
 
 
@@ -138,6 +182,8 @@ func quitter() -> void:
 	en_course = false
 	plan = []
 	grand_prix = null
+	dedie = false
+	infos_salon = {}
 
 
 ## Les adresses sous lesquelles les autres peuvent joindre cet appareil : à
@@ -156,6 +202,8 @@ static func adresses_locales() -> PackedStringArray:
 func choisir_config(piste: String, tours: int, cylindree: int = Cylindree.Classe.CC150,
 		coupe: int = SANS_COUPE, miroir := false) -> void:
 	if not est_hote():
+		if peut_diriger():
+			_demande.rpc_id(1, "config", [piste, tours, cylindree, coupe, miroir])
 		return
 	config = {
 		piste = piste, tours = clampi(tours, 1, 9),
@@ -175,7 +223,14 @@ func _sur_depart(peer: int) -> void:
 	if not multiplayer.is_server():
 		return
 	lobby.retirer(peer)
-	_diffuser_salon()
+	# À l'image suivante : celui qui part est encore parmi les pairs, et un
+	# envoi qui lui serait adressé pendant qu'il se déconnecte échoue.
+	_diffuser_salon.call_deferred()
+	# Un serveur en ligne que tout le monde a quitté en pleine course revient
+	# au salon : il n'y a plus personne pour l'y ramener.
+	if dedie and en_course and lobby.joueurs.is_empty():
+		retour_salon()
+		return
 	# Celui qu'on attendait pour partir s'en va : on part sans lui.
 	if en_course and charges.has(peer):
 		charges.erase(peer)
@@ -219,8 +274,9 @@ func _sur_echec() -> void:
 
 func _sur_perte_hote() -> void:
 	var etait_en_course := en_course
+	var etait_en_ligne := en_ligne()
 	quitter()
-	deconnecte.emit("L'hôte a quitté la partie.")
+	deconnecte.emit("Le serveur a fermé le salon." if etait_en_ligne else "L'hôte a quitté la partie.")
 	if etait_en_course:
 		RaceLauncher.retour_au_menu(get_tree())
 
@@ -232,7 +288,7 @@ func _bonjour(nom: String, version: int) -> void:
 	var peer := multiplayer.get_remote_sender_id()
 	var raison := ""
 	if version != VERSION:
-		raison = "Version différente de celle de l'hôte : mettez le jeu à jour."
+		raison = "Version différente de celle %s : mettez le jeu à jour." % ("du serveur" if dedie else "de l'hôte")
 	elif en_course:
 		raison = "Une course est en cours : réessayez à la fin."
 	elif lobby.est_plein():
@@ -255,23 +311,25 @@ func _refus(raison: String) -> void:
 
 
 func _diffuser_salon() -> void:
-	_etat_salon.rpc(lobby.en_liste(), config)
-	_etat_salon(lobby.en_liste(), config)
+	if not multiplayer.get_peers().is_empty():
+		_etat_salon.rpc(lobby.en_liste(), config, infos_salon)
+	_etat_salon(lobby.en_liste(), config, infos_salon)
 	_annoncer()
 
 
 @rpc("authority", "reliable")
-func _etat_salon(liste: Array, reglages: Dictionary) -> void:
+func _etat_salon(liste: Array, reglages: Dictionary, infos: Dictionary = {}) -> void:
 	var nouveau := not lobby.joueurs.has(mon_id()) and not multiplayer.is_server()
 	lobby.depuis_liste(liste)
 	config = reglages
+	infos_salon = infos
 	if nouveau and lobby.joueurs.has(mon_id()):
 		connecte.emit()
 	salon_change.emit()
 
 
 func _annoncer() -> void:
-	if not est_hote() or en_course:
+	if not est_hote() or en_course or dedie:
 		decouverte.arreter_annonce()
 		return
 	decouverte.annoncer({nom = lobby.joueurs.get(1, "Hôte"), port = _port, joueurs = lobby.joueurs.size()})
@@ -281,6 +339,10 @@ func _annoncer() -> void:
 
 func lancer_course() -> void:
 	if not est_hote():
+		if peut_diriger():
+			_demande.rpc_id(1, "lancer", [])
+		return
+	if lobby.joueurs.is_empty():
 		return
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
@@ -311,7 +373,13 @@ static func config_de_manche(base: Dictionary, gp: GrandPrix) -> Dictionary:
 ## L'hôte compte la manche qui s'achève (les noms dans l'ordre d'arrivée),
 ## puis lance la suivante — ou le podium.
 func manche_suivante(ordre_d_arrivee: PackedStringArray) -> void:
-	if not est_hote() or grand_prix == null:
+	if not est_hote():
+		# Le serveur compte la manche d'après sa propre course : il ne croit
+		# pas un classement envoyé par un joueur.
+		if peut_diriger():
+			_demande.rpc_id(1, "manche", [])
+		return
+	if grand_prix == null:
 		return
 	grand_prix.compter(ordre_d_arrivee)
 	if grand_prix.terminee():
@@ -352,9 +420,50 @@ func _lancer(nouveau_plan: Array, reglages: Dictionary) -> void:
 ## L'hôte ramène tout le monde au salon, pour la course suivante.
 func retour_salon() -> void:
 	if not est_hote():
+		if peut_diriger():
+			_demande.rpc_id(1, "salon", [])
 		return
 	_retour.rpc()
 	_retour()
+
+
+## Le chef d'un salon en ligne demande au serveur de faire ce qu'un hôte ferait
+## lui-même. Le serveur vérifie que la demande vient bien du chef.
+@rpc("any_peer", "reliable")
+func _demande(action: String, args: Array) -> void:
+	if not multiplayer.is_server() or not dedie:
+		return
+	if multiplayer.get_remote_sender_id() != lobby.chef():
+		return
+	match action:
+		"config":
+			if args.size() == 5 and not en_course:
+				choisir_config(str(args[0]), int(args[1]), int(args[2]), int(args[3]), bool(args[4]))
+		"lancer":
+			if not en_course:
+				lancer_course()
+		"manche":
+			if en_course and grand_prix != null:
+				var ordre := ordre_de_la_course(get_tree())
+				if not ordre.is_empty():
+					manche_suivante(ordre)
+		"salon":
+			if en_course:
+				retour_salon()
+
+
+## Les noms dans l'ordre d'arrivée de la course montée ici : de quoi compter
+## une manche sans rien demander à personne.
+static func ordre_de_la_course(arbre: SceneTree) -> PackedStringArray:
+	var ordre := PackedStringArray()
+	for noeud in arbre.root.find_children("Session", "Node", true, false):
+		var session := noeud as RaceSession
+		if session == null or not session.terminee:
+			continue
+		for e in session.classement():
+			ordre.append(session.nom_reel(e))
+		break
+	return ordre
 
 
 @rpc("authority", "reliable")

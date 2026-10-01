@@ -37,6 +37,7 @@ Un nouveau push sur la même référence annule le run précédent.
 | --- | --- |
 | `superkart-windows-<branche>-<sha>` | `SuperKart.exe` + `SuperKart.pck` (x86_64) |
 | `superkart-android-<branche>-<sha>` | `SuperKart.apk` (arm64-v8a), ou `SuperKart-debug.apk` |
+| `superkart-serveur-<branche>-<sha>` | `SuperKart-serveur-linux.zip` : le jeu pour Linux, l'annuaire et de quoi les lancer avec Docker (voir `serveur/README.md`) |
 
 Conservés 14 jours.
 
@@ -150,6 +151,22 @@ jamais touché.
 
 Les presets excluent `tests/`, `tools/`, `docs/` et `addons/gut/` du paquet
 exporté : le jeu livré ne contient que ce qui tourne à l'exécution.
+
+Le preset **Serveur Linux** exporte le jeu complet pour le serveur du mode en
+ligne, lancé ensuite avec `--headless --serveur`. Ce n'est volontairement pas
+un export « serveur dédié » de Godot, qui remplacerait les maillages par des
+substituts : le serveur doit simuler la course exactement comme les joueurs.
+Le job vérifie que le serveur exporté ouvre bien un salon, et passe les tests
+de l'annuaire (`serveur/test_annuaire.py`). Pour un tag, le zip rejoint la
+Release s'il a été construit, sans la retenir s'il échoue.
+
+### L'adresse du serveur en ligne
+
+La variable de dépôt `ANNUAIRE_EN_LIGNE` (*Settings* → *Secrets and
+variables* → *Actions* → *Variables*), par exemple `superkart.exemple.org`,
+est inscrite par la CI dans le jeu exporté
+(`application/config/annuaire_en_ligne`) : l'écran En ligne s'y connecte de
+lui-même. Sans elle, le joueur tape l'adresse d'un serveur dans cet écran.
 
 Si on ajoute une option d'export qui compte (architecture, nom de paquet,
 version…), c'est dans `.github/export_presets.ci.cfg` qu'elle doit atterrir,
