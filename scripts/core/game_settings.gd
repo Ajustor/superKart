@@ -51,6 +51,8 @@ var derniere_adresse: String = ""
 
 ## Chercher une nouvelle version du jeu au lancement (voir MiseAJour).
 var verifier_mises_a_jour: bool = true
+## L'annuaire du mode en ligne choisi par le joueur ; vide : celui du jeu.
+var serveur_en_ligne: String = ""
 
 ## Sensibilité du joystick tactile : à 1,5, le pouce n'a à parcourir que les
 ## deux tiers du chemin pour braquer à fond.
@@ -115,6 +117,7 @@ func charger() -> void:
 	pseudo = str(fichier.get_value("reseau", "pseudo", pseudo))
 	derniere_adresse = str(fichier.get_value("reseau", "adresse", derniere_adresse))
 	verifier_mises_a_jour = bool(fichier.get_value("reseau", "mises_a_jour", verifier_mises_a_jour))
+	serveur_en_ligne = str(fichier.get_value("reseau", "en_ligne", serveur_en_ligne))
 	course.classe = clampi(int(fichier.get_value("course", "cylindree", course.classe)),
 		Cylindree.Classe.CC50, Cylindree.Classe.CC200)
 	course.modele = clampi(int(fichier.get_value("garage", "modele", course.modele)), 0, ModeleKart.nombre() - 1)
@@ -159,6 +162,7 @@ func sauver() -> void:
 	fichier.set_value("reseau", "pseudo", pseudo)
 	fichier.set_value("reseau", "adresse", derniere_adresse)
 	fichier.set_value("reseau", "mises_a_jour", verifier_mises_a_jour)
+	fichier.set_value("reseau", "en_ligne", serveur_en_ligne)
 	fichier.set_value("course", "cylindree", course.classe)
 	fichier.set_value("garage", "modele", course.modele)
 	fichier.set_value("garage", "couleur", course.couleur)

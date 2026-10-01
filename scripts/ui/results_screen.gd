@@ -207,7 +207,7 @@ func _ouvrir() -> void:
 			_rejouer.text = "Retour au salon"
 		else:
 			_rejouer.text = "Podium" if gp.manche == gp.manches() - 1 else "Course suivante"
-		_rejouer.visible = Reseau.est_hote()
+		_rejouer.visible = Reseau.peut_diriger()
 	var pause := get_node_or_null(pause_path) as PauseMenu
 	if pause != null:
 		pause.fermer()

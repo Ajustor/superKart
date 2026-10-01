@@ -1,0 +1,4 @@
+# Caddy obtient et renouvelle seul le certificat du domaine.
+{$DOMAINE} {
+	reverse_proxy annuaire:8900
+}

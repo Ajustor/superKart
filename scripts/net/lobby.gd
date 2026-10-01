@@ -56,6 +56,13 @@ func est_plein() -> bool:
 	return joueurs.size() >= PLACES
 
 
+## Le chef du salon : le premier arrivé encore là. C'est l'hôte quand il
+## joue ; sur un serveur en ligne, qui n'a pas de pilote, c'est le premier
+## joueur, et le suivant prend la main s'il s'en va. 0 : salon vide.
+func chef() -> int:
+	return ordre[0] if not ordre.is_empty() else 0
+
+
 func noms() -> Array:
 	return joueurs.values()
 

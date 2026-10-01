@@ -37,6 +37,7 @@ Un nouveau push sur la même référence annule le run précédent.
 | --- | --- |
 | `superkart-windows-<branche>-<sha>` | `SuperKart.exe` + `SuperKart.pck` (x86_64) |
 | `superkart-android-<branche>-<sha>` | `SuperKart.apk` (arm64-v8a), ou `SuperKart-debug.apk` |
+| `superkart-serveur-<branche>-<sha>` | `SuperKart-serveur-linux.zip` : le jeu pour Linux, l'annuaire et de quoi les lancer avec Docker (voir `serveur/README.md`) |
 
 Conservés 14 jours.
 
@@ -151,6 +152,22 @@ jamais touché.
 Les presets excluent `tests/`, `tools/`, `docs/` et `addons/gut/` du paquet
 exporté : le jeu livré ne contient que ce qui tourne à l'exécution.
 
+Le preset **Serveur Linux** exporte le jeu complet pour le serveur du mode en
+ligne, lancé ensuite avec `--headless --serveur`. Ce n'est volontairement pas
+un export « serveur dédié » de Godot, qui remplacerait les maillages par des
+substituts : le serveur doit simuler la course exactement comme les joueurs.
+Le job vérifie que le serveur exporté ouvre bien un salon, et passe les tests
+de l'annuaire (`serveur/test_annuaire.py`). Pour un tag, le zip rejoint la
+Release s'il a été construit, sans la retenir s'il échoue.
+
+### L'adresse du serveur en ligne
+
+Le jeu se connecte à `superkart.darthoit.eu`, inscrit dans `project.godot`
+(`application/config/annuaire_en_ligne`). La variable de dépôt
+`ANNUAIRE_EN_LIGNE` (*Settings* → *Secrets and variables* → *Actions* →
+*Variables*), si elle existe, remplace cette adresse dans le jeu exporté par
+la CI. Le joueur peut aussi en taper une autre dans l'écran En ligne.
+
 Si on ajoute une option d'export qui compte (architecture, nom de paquet,
 version…), c'est dans `.github/export_presets.ci.cfg` qu'elle doit atterrir,
 sinon la CI ne la verra pas.
@@ -205,6 +222,44 @@ L'alias (`superkart`) va dans `ANDROID_KEYSTORE_USER`, le mot de passe dans
 `ANDROID_KEYSTORE_PASSWORD`. Le passage d'un APK de debug à un APK release
 change la signature : il faut désinstaller une dernière fois la version de
 debug.
+
+### Signer au nom du développeur
+
+Le nom qu'Android associe à l'application est celui du certificat de la clé
+de signature. Pour passer à une clé au nom d'**Alexandre Gambier** sans
+casser les mises à jour (une clé différente ferait refuser la mise à jour par
+les téléphones qui ont déjà le jeu), la pipeline fait une **rotation de
+clé** :
+
+1. Créer la nouvelle clé, une fois : `sh tools/cle_android.sh` (le nom est
+   inscrit dans le certificat : `CN=Alexandre Gambier, O=Alexandre Gambier,
+   C=FR`).
+2. Ajouter trois secrets, **en gardant** les trois `ANDROID_KEYSTORE_*` :
+
+   | Secret | Valeur |
+   | --- | --- |
+   | `ANDROID_NOUVELLE_CLE_BASE64` | Le contenu de `superkart-alexandre.keystore.base64` |
+   | `ANDROID_NOUVELLE_CLE_USER` | `superkart-alexandre` |
+   | `ANDROID_NOUVELLE_CLE_PASSWORD` | Le mot de passe choisi |
+
+3. À la Release suivante, l'APK est signé par l'ancienne clé, qui atteste la
+   nouvelle (`apksigner rotate`, puis `apksigner sign --next-signer
+   --lineage`). Android 9 et plus installent la mise à jour par-dessus
+   l'ancienne version et retiennent désormais la nouvelle clé, au nom
+   d'Alexandre Gambier. Les Android 7 et 8 continuent de voir l'ancienne.
+
+Le résumé de chaque build Android affiche le signataire de l'APK
+(*certificate DN*), de quoi vérifier le nom.
+
+Les deux clés restent nécessaires pour toutes les versions suivantes : ne
+supprimer aucun des six secrets.
+
+Le **nom affiché** par l'installeur et par Play Protect ne vient pas
+seulement du certificat. Pour les applications installées hors Play Store,
+Google demande aussi, de plus en plus, que le développeur fasse **vérifier
+son identité** dans l'Android Developer Console et y déclare le paquet
+(`com.ajustor.superkart`) avec l'empreinte SHA-256 de la clé. Ça se fait sur
+le compte Google du développeur, pas dans le dépôt.
 
 ## Changer de version de Godot
 

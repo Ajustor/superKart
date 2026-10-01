@@ -66,7 +66,9 @@ func _ready() -> void:
 	_url_manifeste = str(ProjectSettings.get_setting("application/config/url_mises_a_jour", URL_PAR_DEFAUT))
 	# Différé : les réglages (GameSettings) doivent être chargés, et le menu
 	# s'affiche avant que le réseau ne réponde.
-	if GameSettings.verifier_mises_a_jour:
+	# Un serveur de jeu ne se met pas à jour tout seul : c'est l'annuaire
+	# qui en lance la bonne version.
+	if GameSettings.verifier_mises_a_jour and not OS.get_cmdline_user_args().has("--serveur"):
 		verifier.call_deferred()
 
 

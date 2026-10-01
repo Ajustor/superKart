@@ -21,6 +21,7 @@ on:
           - all
           - windows
           - android
+          - serveur
       build_type:
         description: "Type d'export"
         type: choice
@@ -143,6 +144,9 @@ jobs:
       - name: Inscrire la version dans le jeu
         env:
           VERSION_NAME: ${{ needs.prepare.outputs.version-name }}
+          # L'adresse de l'annuaire du mode en ligne (variable du dépôt) : sans
+          # elle, le joueur la tape lui-même dans l'écran En ligne.
+          ANNUAIRE_EN_LIGNE: ${{ vars.ANNUAIRE_EN_LIGNE }}
         run: |
           set -euo pipefail
           # Le menu l'affiche en bas à gauche (application/config/version).
@@ -156,6 +160,13 @@ jobs:
                                content, count=1, flags=re.MULTILINE)
           if n != 1:
               raise SystemExit("config/version absent de project.godot")
+          annuaire = os.environ.get("ANNUAIRE_EN_LIGNE", "").strip()
+          if annuaire:
+              content, n = re.subn(r'^config/annuaire_en_ligne="[^"]*"$',
+                                   'config/annuaire_en_ligne="%s"' % annuaire.replace('"', ''),
+                                   content, count=1, flags=re.MULTILINE)
+              if n != 1:
+                  raise SystemExit("config/annuaire_en_ligne absent de project.godot")
           with open("project.godot", "w", encoding="utf-8") as handle:
               handle.write(content)
           PY
@@ -193,6 +204,81 @@ jobs:
         with:
           name: superkart-windows-${{ needs.prepare.outputs.build-id }}
           path: build/windows
+          if-no-files-found: error
+          retention-days: 14
+
+  serveur:
+    name: Serveur en ligne (Linux x86_64)
+    needs: prepare
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.platforms == 'all' || inputs.platforms == 'serveur' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Tester l'annuaire
+        run: python3 -m unittest serveur/test_annuaire.py -v
+
+      - name: Installer Godot
+        uses: ./.github/actions/setup-godot
+        with:
+          version: ${{ needs.prepare.outputs.godot-version }}
+
+      - name: Mettre en place les presets d'export
+        run: cp .github/export_presets.ci.cfg export_presets.cfg
+
+      - name: Inscrire la version dans le jeu
+        env:
+          VERSION_NAME: ${{ needs.prepare.outputs.version-name }}
+        run: |
+          set -euo pipefail
+          sed -i "s/^config\/version=\"[^\"]*\"$/config\/version=\"$VERSION_NAME\"/" project.godot
+          grep -q "^config/version=\"$VERSION_NAME\"$" project.godot
+
+      - name: Importer les ressources
+        run: |
+          set -euo pipefail
+          godot --headless --path . --import \
+            || echo "::warning title=Import Godot::L'import est sorti en erreur, on continue vers l'export."
+
+      - name: Exporter le serveur
+        run: |
+          set -euo pipefail
+          mkdir -p build/serveur/SuperKart-serveur
+          # Un export release : le serveur tourne sans console de debug.
+          godot --headless --path . --export-release "Serveur Linux" \
+            "$PWD/build/serveur/SuperKart-serveur/SuperKart-serveur.x86_64"
+          test -s build/serveur/SuperKart-serveur/SuperKart-serveur.x86_64
+          test -s build/serveur/SuperKart-serveur/SuperKart-serveur.pck
+          # Pour un serveur sans Docker ; avec Docker (Dokploy), l'image se
+          # construit depuis le dépôt (serveur/Dockerfile).
+          cp serveur/annuaire.py serveur/README.md build/serveur/SuperKart-serveur/
+
+      - name: Vérifier qu'un salon s'ouvre
+        run: |
+          set -euo pipefail
+          # Le serveur exporté, lancé comme l'annuaire le lance : il doit
+          # ouvrir son salon dans les secondes qui suivent.
+          cd build/serveur/SuperKart-serveur
+          ./SuperKart-serveur.x86_64 --headless -- --serveur --port 8930 --nom Essai > "$RUNNER_TEMP/serveur.txt" 2>&1 &
+          pid=$!
+          sleep 15
+          kill "$pid" || true
+          cat "$RUNNER_TEMP/serveur.txt"
+          grep -q "salon « Essai » ouvert sur le port 8930" "$RUNNER_TEMP/serveur.txt" \
+            || { echo "::error title=Serveur::Le serveur exporté n'a pas ouvert de salon."; exit 1; }
+
+      - name: Empaqueter
+        run: |
+          set -euo pipefail
+          (cd build/serveur && zip -9 -r SuperKart-serveur-linux.zip SuperKart-serveur)
+          ls -lh build/serveur
+
+      - name: Publier l'artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: superkart-serveur-${{ needs.prepare.outputs.build-id }}
+          path: build/serveur/SuperKart-serveur-linux.zip
           if-no-files-found: error
           retention-days: 14
 
@@ -245,10 +331,16 @@ jobs:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_USER: ${{ secrets.ANDROID_KEYSTORE_USER }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_NOUVELLE_CLE_BASE64: ${{ secrets.ANDROID_NOUVELLE_CLE_BASE64 }}
           REF_TYPE: ${{ github.ref_type }}
         run: |
           set -euo pipefail
           mkdir -p "$HOME/.android"
+
+          # Une nouvelle clé à faire attester par l'ancienne (voir plus bas) ?
+          if [ -n "${ANDROID_NOUVELLE_CLE_BASE64:-}" ]; then
+            echo "rotation=true" >> "$GITHUB_OUTPUT"
+          fi
 
           # Godot exige toujours une clé de debug, même pour un export release.
           debug_keystore="$HOME/.android/debug.keystore"
@@ -363,6 +455,9 @@ jobs:
       - name: Inscrire la version dans le jeu
         env:
           VERSION_NAME: ${{ needs.prepare.outputs.version-name }}
+          # L'adresse de l'annuaire du mode en ligne (variable du dépôt) : sans
+          # elle, le joueur la tape lui-même dans l'écran En ligne.
+          ANNUAIRE_EN_LIGNE: ${{ vars.ANNUAIRE_EN_LIGNE }}
         run: |
           set -euo pipefail
           # Le menu l'affiche en bas à gauche (application/config/version).
@@ -376,6 +471,13 @@ jobs:
                                content, count=1, flags=re.MULTILINE)
           if n != 1:
               raise SystemExit("config/version absent de project.godot")
+          annuaire = os.environ.get("ANNUAIRE_EN_LIGNE", "").strip()
+          if annuaire:
+              content, n = re.subn(r'^config/annuaire_en_ligne="[^"]*"$',
+                                   'config/annuaire_en_ligne="%s"' % annuaire.replace('"', ''),
+                                   content, count=1, flags=re.MULTILINE)
+              if n != 1:
+                  raise SystemExit("config/annuaire_en_ligne absent de project.godot")
           with open("project.godot", "w", encoding="utf-8") as handle:
               handle.write(content)
           PY
@@ -418,6 +520,55 @@ jobs:
 
           echo "apk=$apk" >> "$GITHUB_OUTPUT"
 
+      - name: Passer à la clé au nom du développeur
+        # Rotation de clé (schéma de signature v3.1) : l'APK reste signé par
+        # l'ancienne clé, qui atteste la nouvelle. Les téléphones qui ont déjà
+        # le jeu acceptent donc la mise à jour, et Android 9+ retient la
+        # nouvelle clé. Seulement si les secrets de la nouvelle clé existent.
+        if: ${{ steps.signing.outputs.mode == 'release' && steps.signing.outputs.rotation == 'true' }}
+        env:
+          NOUVELLE_CLE: ${{ secrets.ANDROID_NOUVELLE_CLE_BASE64 }}
+          NOUVELLE_CLE_USER: ${{ secrets.ANDROID_NOUVELLE_CLE_USER }}
+          NOUVELLE_CLE_PASSWORD: ${{ secrets.ANDROID_NOUVELLE_CLE_PASSWORD }}
+          ANCIENNE_CLE: ${{ steps.signing.outputs.release-keystore }}
+          ANCIENNE_CLE_USER: ${{ secrets.ANDROID_KEYSTORE_USER }}
+          ANCIENNE_CLE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          APK: build/android/${{ steps.export.outputs.apk }}
+        run: |
+          set -euo pipefail
+          apksigner="$(ls -d "$ANDROID_SDK_ROOT"/build-tools/*/ | sort -V | tail -n 1)apksigner"
+          nouvelle="$RUNNER_TEMP/nouvelle.keystore"
+          printf '%s' "$NOUVELLE_CLE" | base64 -d > "$nouvelle"
+          # Les mots de passe passent par l'environnement, jamais par la ligne
+          # de commande ni les journaux.
+          "$apksigner" rotate --out "$RUNNER_TEMP/lignee" \
+            --old-signer --ks "$ANCIENNE_CLE" --ks-key-alias "$ANCIENNE_CLE_USER" \
+              --ks-pass env:ANCIENNE_CLE_PASSWORD --key-pass env:ANCIENNE_CLE_PASSWORD \
+            --new-signer --ks "$nouvelle" --ks-key-alias "$NOUVELLE_CLE_USER" \
+              --ks-pass env:NOUVELLE_CLE_PASSWORD --key-pass env:NOUVELLE_CLE_PASSWORD
+          "$apksigner" sign \
+            --ks "$ANCIENNE_CLE" --ks-key-alias "$ANCIENNE_CLE_USER" \
+              --ks-pass env:ANCIENNE_CLE_PASSWORD --key-pass env:ANCIENNE_CLE_PASSWORD \
+            --next-signer --ks "$nouvelle" --ks-key-alias "$NOUVELLE_CLE_USER" \
+              --ks-pass env:NOUVELLE_CLE_PASSWORD --key-pass env:NOUVELLE_CLE_PASSWORD \
+            --lineage "$RUNNER_TEMP/lignee" --rotation-min-sdk-version 28 \
+            "$APK"
+          rm -f "$nouvelle" "$RUNNER_TEMP/lignee"
+
+      - name: Indiquer le signataire de l'APK
+        env:
+          APK: build/android/${{ steps.export.outputs.apk }}
+        run: |
+          set -euo pipefail
+          apksigner="$(ls -d "$ANDROID_SDK_ROOT"/build-tools/*/ | sort -V | tail -n 1)apksigner"
+          "$apksigner" verify --print-certs "$APK" | tee "$RUNNER_TEMP/certs.txt"
+          {
+            echo "### Signature de l'APK"
+            echo '```'
+            grep -E "certificate DN|certificate SHA-256" "$RUNNER_TEMP/certs.txt" || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Publier l'artefact
         uses: actions/upload-artifact@v4
         with:
@@ -428,10 +579,11 @@ jobs:
 
   publier:
     name: Publier la Release
-    needs: [prepare, windows, android]
+    needs: [prepare, windows, android, serveur]
     # Seulement pour un tag de version, et seulement si les deux plateformes
-    # sont là : la page propose toujours les deux.
-    if: ${{ github.ref_type == 'tag' && needs.windows.result == 'success' && needs.android.result == 'success' }}
+    # sont là : la page propose toujours les deux. Le serveur en ligne suit
+    # s'il a été construit, sans retenir la Release.
+    if: ${{ always() && github.ref_type == 'tag' && needs.windows.result == 'success' && needs.android.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -448,6 +600,13 @@ jobs:
         with:
           name: superkart-android-${{ needs.prepare.outputs.build-id }}
           path: build/android
+
+      - name: Récupérer le serveur en ligne
+        if: ${{ needs.serveur.result == 'success' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: superkart-serveur-${{ needs.prepare.outputs.build-id }}
+          path: build/serveur
 
       - name: Attacher les binaires à la Release
         env:
@@ -467,6 +626,9 @@ jobs:
             gh release create "$TAG" --verify-tag --title "SuperKart ${TAG#v}" --generate-notes
           fi
           gh release upload "$TAG" publication/SuperKart-windows.zip publication/SuperKart.apk --clobber
+          if [ -s build/serveur/SuperKart-serveur-linux.zip ]; then
+            gh release upload "$TAG" build/serveur/SuperKart-serveur-linux.zip --clobber
+          fi
           ls -lh publication
 
       - name: Mettre à jour la page de téléchargement

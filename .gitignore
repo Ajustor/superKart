@@ -19,3 +19,11 @@ Thumbs.db
 
 # Sorties de test laissées par les agents
 test_output.txt
+
+# Python (annuaire du mode en ligne)
+__pycache__/
+
+# Clés de signature : jamais dans le dépôt
+*.keystore
+*.keystore.base64
+*.jks

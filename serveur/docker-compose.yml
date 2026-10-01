@@ -1,0 +1,31 @@
+# Le mode en ligne de SuperKart pour Dokploy (Traefik fournit le https).
+#
+# Dans Dokploy : une application « Compose » sur ce dépôt, chemin
+# ./serveur/docker-compose.yml ; DOMAINE dans l'onglet Environment ; puis un
+# domaine sur le service « annuaire », port 8900, en HTTPS. Voir README.md.
+services:
+  annuaire:
+    build:
+      context: ..
+      dockerfile: serveur/Dockerfile
+    restart: unless-stopped
+    environment:
+      # L'adresse que les joueurs utilisent pour joindre les salons en UDP :
+      # le domaine doit pointer sur la machine elle-même (pas de proxy UDP).
+      HOTE_PUBLIC: ${DOMAINE:?indique le nom de domaine du serveur dans DOMAINE}
+      PORTS_SALONS: ${PORTS_SALONS:-8910-8949}
+      SALONS_MAX: ${SALONS_MAX:-20}
+      SALONS_PERMANENTS: ${SALONS_PERMANENTS:-1}
+      CREATIONS_PAR_MINUTE: ${CREATIONS_PAR_MINUTE:-4}
+    # Les salons : un port UDP chacun, publié tel quel sur la machine.
+    # L'annuaire (8900) ne sort que par Traefik.
+    ports:
+      - "${PORTS_SALONS:-8910-8949}:${PORTS_SALONS:-8910-8949}/udp"
+    expose:
+      - "8900"
+    networks:
+      - dokploy-network
+
+networks:
+  dokploy-network:
+    external: true

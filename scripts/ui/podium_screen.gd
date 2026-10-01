@@ -58,7 +58,7 @@ func _ready() -> void:
 ## partir sans l'attendre.
 func _sortir() -> void:
 	if Reseau.actif():
-		if Reseau.est_hote():
+		if Reseau.peut_diriger():
 			Reseau.retour_salon()
 		else:
 			Reseau.abandonner()
@@ -71,7 +71,7 @@ func _sortir() -> void:
 ## `nouveaute` : ce que ce trophée vient de débloquer, s'il y a lieu.
 func montrer(gp: GrandPrix, moi: String, nouveaute: String = "") -> void:
 	if Reseau.actif():
-		_menu.text = "Retour au salon" if Reseau.est_hote() else "Quitter la partie"
+		_menu.text = "Retour au salon" if Reseau.peut_diriger() else "Quitter la partie"
 	var classement := gp.classement()
 	_titre.text = "%s  ·  %s" % [gp.nom().to_upper(), Cylindree.nom(gp.classe)]
 

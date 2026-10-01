@@ -177,6 +177,13 @@ func _montrer(ecran: Control) -> void:
 		_demarrer.grab_focus()
 
 
+func _ouvrir_multi(en_ligne: bool) -> void:
+	_multi.mode_en_ligne = en_ligne
+	# Déjà visible (retour d'une course) : _montrer ne le rouvrirait pas.
+	_multi.hide()
+	_montrer(_multi)
+
+
 func _ouvrir_garage(depuis: Control) -> void:
 	_avant_garage = depuis
 	_montrer(_garage)
@@ -210,7 +217,11 @@ func _ecran_accueil() -> Control:
 	var garage := UITheme.bouton("Garage", func() -> void: _ouvrir_garage(_accueil))
 	garage.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	colonne.add_child(garage)
-	var multi := UITheme.bouton("Multijoueur", func() -> void: _montrer(_multi))
+	var en_ligne := UITheme.bouton("En ligne", func() -> void: _ouvrir_multi(true))
+	en_ligne.name = "EnLigne"
+	en_ligne.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	colonne.add_child(en_ligne)
+	var multi := UITheme.bouton("Multijoueur local", func() -> void: _ouvrir_multi(false))
 	multi.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	colonne.add_child(multi)
 	var options := UITheme.bouton("Options", func() -> void: _montrer(_options))

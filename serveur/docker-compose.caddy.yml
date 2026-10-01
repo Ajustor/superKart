@@ -1,0 +1,35 @@
+# Sans Dokploy : l'annuaire derrière Caddy, qui obtient seul le certificat.
+#
+#   cd serveur && DOMAINE=superkart.darthoit.eu docker compose -f docker-compose.caddy.yml up -d --build
+services:
+  annuaire:
+    build:
+      context: ..
+      dockerfile: serveur/Dockerfile
+    restart: unless-stopped
+    environment:
+      HOTE_PUBLIC: ${DOMAINE:?indique le nom de domaine du serveur dans DOMAINE}
+      PORTS_SALONS: ${PORTS_SALONS:-8910-8949}
+      SALONS_MAX: ${SALONS_MAX:-20}
+      SALONS_PERMANENTS: ${SALONS_PERMANENTS:-1}
+      CREATIONS_PAR_MINUTE: ${CREATIONS_PAR_MINUTE:-4}
+    ports:
+      - "${PORTS_SALONS:-8910-8949}:${PORTS_SALONS:-8910-8949}/udp"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on: [annuaire]
+    environment:
+      DOMAINE: ${DOMAINE}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

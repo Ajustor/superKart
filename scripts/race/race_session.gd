@@ -460,7 +460,9 @@ func _arriver(entree: RaceEntry, place: int, point: Vector3) -> void:
 	entree.finished = true
 	_arrives += 1
 	entree.place_finale = place
-	if entree.kart.est_pilote_par_le_joueur():
+	# Seulement s'il roule ici : sur un serveur en ligne, le kart du joueur de
+	# la scène porte un autre humain, piloté chez lui.
+	if entree.kart.est_pilote_par_le_joueur() and entree.kart.simule:
 		_passer_en_pilote_automatique(entree, point)
 	arrivee.emit(entree)
 	if _arrives >= entries.size():

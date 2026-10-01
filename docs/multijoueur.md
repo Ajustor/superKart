@@ -3,9 +3,15 @@
 Jusqu'à 8 joueurs humains, sur PC et Android mélangés. Les places libres de la
 grille sont prises par l'IA.
 
-## Jouer
+Deux façons de jouer ensemble :
 
-1. **Menu → Multijoueur**, choisir son pseudo.
+- **En ligne** : par un serveur public, sans rien ouvrir chez soi. Voir
+  [Mode en ligne](#mode-en-ligne) plus bas.
+- **Multijoueur local** : un des joueurs héberge la partie sur son appareil.
+
+## Jouer en local
+
+1. **Menu → Multijoueur local**, choisir son pseudo.
 2. L'un des joueurs clique **Héberger une partie**. Son salon affiche
    l'adresse à laquelle les autres peuvent le joindre.
 3. Les autres le trouvent dans **Parties sur ce réseau** (même Wi-Fi), ou
@@ -148,5 +154,70 @@ adresse telle quelle : `Reseau.decouper_adresse` sépare l'hôte et le port.
   désactivé, ou accès derrière le réseau de l'opérateur (CGNAT, adresse
   publique privée ou en 100.64.0.0/10). Il reste alors à ouvrir le port à la
   main, ou à jouer en réseau local.
-- Pas de relais : sans serveur à héberger, un hôte derrière un CGNAT ne peut
-  pas être rejoint depuis Internet.
+- Pas de relais : un hôte derrière un CGNAT ne peut pas être rejoint depuis
+  Internet. C'est à ça que sert le mode en ligne.
+
+## Mode en ligne
+
+**Menu → En ligne** : les salons d'un serveur public. Chaque salon est tenu
+par une instance du jeu sur ce serveur, sans écran et sans pilote
+(`ServeurDedie`) ; les joueurs n'ont rien à ouvrir chez eux.
+
+- **Partie rapide** : rejoint le salon public le plus rempli qui a de la
+  place et n'est pas en pleine course ; à défaut, en crée un.
+- **Créer un salon** : public (dans la liste) ou **privé** (on y entre
+  seulement par son code de 5 caractères, affiché dans le salon).
+- **Code d'un salon** : rejoindre un salon, privé ou non, par son code.
+- La liste des salons publics se met à jour toute seule.
+- **Serveur** : l'adresse d'un autre serveur que celui du jeu (vide :
+  `superkart.darthoit.eu`, inscrit dans `project.godot` sous
+  `application/config/annuaire_en_ligne`).
+
+### Le chef du salon
+
+Le serveur ne pilote pas : c'est le **premier joueur arrivé** (`Lobby.chef`)
+qui choisit le mode, le circuit et lance la course, comme l'hôte en local.
+S'il s'en va, le suivant prend la main. Ses choix partent au serveur par
+`Reseau._demande`, qui vérifie qu'ils viennent bien du chef ; le serveur
+monte la course et l'arbitre comme le ferait un hôte, en simulant l'IA.
+
+Pour qu'un salon ne reste jamais bloqué, le serveur enchaîne seul si le chef
+tarde : retour au salon 25 s après la dernière arrivée, manche suivante d'une
+coupe au bout de 12 s, retour au salon 20 s après le podium. Une manche est
+comptée d'après la course du serveur, jamais d'après un classement envoyé par
+un joueur.
+
+### Le serveur
+
+`serveur/annuaire.py` (Python, bibliothèque standard) tient la liste des
+salons et lance un processus du jeu par salon, chacun sur son port UDP ; le
+salon lui envoie son état toutes les 5 s et s'arrête quand il est vide depuis
+2 min (5 min s'il n'a encore vu personne). Installation avec Dokploy (ou
+Docker et Caddy) : [serveur/README.md](../serveur/README.md). L'image Docker
+se construit depuis le dépôt ; pour un serveur sans Docker, la CI construit le
+jeu pour Linux (`SuperKart-serveur-linux.zip`) et l'attache à chaque Release.
+
+Le jeu lancé en serveur :
+
+```
+godot --headless --path . -- --serveur --port 8930 --nom "Salon" \
+    [--code ABCDE] [--prive] [--permanent] [--annuaire URL --jeton SECRET]
+```
+
+### Tester sans serveur public
+
+Un serveur et deux joueurs sans écran, sur la même machine :
+
+```
+godot --headless --path . -- --serveur --port 8930 --nom Essai &
+godot --headless --path . -s tools/essai_en_ligne.gd -- chef 8930 &
+godot --headless --path . -s tools/essai_en_ligne.gd -- invite 8930
+```
+
+Le chef règle le salon et lance la course à distance ; les deux journaux
+doivent donner le même classement. Avec `coupe` en dernier argument, une
+coupe entière, que le serveur enchaîne seul jusqu'au podium.
+
+Pour l'écran En ligne, lancer l'annuaire en local (voir
+[serveur/README.md](../serveur/README.md#essayer-sans-docker)) et régler
+**Serveur** sur `127.0.0.1:8900`.
