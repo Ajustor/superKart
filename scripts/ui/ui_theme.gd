@@ -120,3 +120,53 @@ static func panneau_centre(parent: Control, largeur: float = 560.0) -> VBoxConta
 	colonne.add_theme_constant_override("separation", 10)
 	panneau.add_child(colonne)
 	return colonne
+
+
+## Un grand panneau centré, en largeur, qui défile s'il dépasse de l'écran (petit
+## écran, clavier virtuel ouvert) : rien n'est jamais coupé. Rend la colonne.
+static func panneau_defilant(parent: Control, largeur: float) -> VBoxContainer:
+	var defilement := ScrollContainer.new()
+	defilement.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	defilement.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	defilement.follow_focus = true
+	parent.add_child(defilement)
+	var marges := MarginContainer.new()
+	marges.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	marges.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	for cote in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		marges.add_theme_constant_override(cote, 8)
+	defilement.add_child(marges)
+	var centre := CenterContainer.new()
+	marges.add_child(centre)
+	var panneau := PanelContainer.new()
+	panneau.custom_minimum_size = Vector2(largeur, 0)
+	centre.add_child(panneau)
+	var colonne := VBoxContainer.new()
+	colonne.add_theme_constant_override("separation", 10)
+	panneau.add_child(colonne)
+	return colonne
+
+
+## Deux colonnes côte à côte dans `parent` : l'écran d'un téléphone est
+## large et bas, mieux vaut s'étaler que s'empiler. Rend [gauche, droite].
+static func deux_colonnes(parent: Control, separation: int = 28) -> Array[VBoxContainer]:
+	var ligne := HBoxContainer.new()
+	ligne.add_theme_constant_override("separation", separation)
+	parent.add_child(ligne)
+	var colonnes: Array[VBoxContainer] = []
+	for i in 2:
+		var c := VBoxContainer.new()
+		c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		c.size_flags_stretch_ratio = 1.0
+		c.add_theme_constant_override("separation", 10)
+		ligne.add_child(c)
+		colonnes.append(c)
+	return colonnes
+
+
+static func intertitre(texte: String) -> Label:
+	var l := Label.new()
+	l.text = texte
+	l.add_theme_color_override("font_color", ACCENT)
+	l.add_theme_font_size_override("font_size", 20)
+	return l

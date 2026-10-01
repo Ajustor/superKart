@@ -14,6 +14,10 @@ signal ferme
 ## Le joueur veut changer de kart : le menu ouvre le garage, puis revient ici.
 signal garage
 
+## La largeur des panneaux : celle de l'écran de référence (1280), moins une
+## marge. Un téléphone en paysage est large et bas : on s'étale en colonnes.
+const LARGEUR := 1180.0
+
 var _entree: Control
 var _en_ligne: Control
 var _salon: Control
@@ -27,11 +31,13 @@ var _adresse: LineEdit
 var _liste_lan: VBoxContainer
 var _aucune: Label
 var _message: Label
+var _heberger_bouton: Button
+var _rapide: Button
 
 var _client: EnLigne
 var _pseudo_en_ligne: LineEdit
 var _nom_salon: LineEdit
-var _prive: CheckButton
+var _prive: Button
 var _code: LineEdit
 var _serveur: LineEdit
 var _liste_en_ligne: VBoxContainer
@@ -110,7 +116,7 @@ func _montrer(ecran: Control) -> void:
 		_activer_en_ligne(true)
 		_rafraichissement.start()
 		_actualiser()
-		_pseudo_en_ligne.grab_focus()
+		_donner_le_focus(_rapide)
 	else:
 		_rafraichissement.stop()
 	if ecran == _entree:
@@ -118,88 +124,121 @@ func _montrer(ecran: Control) -> void:
 		_pseudo.text = GameSettings.pseudo
 		Reseau.decouverte.ecouter()
 		_rafraichir_lan()
-		_pseudo.grab_focus()
+		_donner_le_focus(_heberger_bouton)
 	elif ecran == _salon:
 		_rafraichir_salon()
+
+
+## Le focus pour le clavier et la manette, sur le bouton principal plutôt
+## que sur un champ de texte : sur un téléphone, un champ qui prend le focus
+## ouvre le clavier virtuel par-dessus l'écran sans qu'on l'ait demandé. Au
+## doigt, pas de focus du tout : un bouton surligné ressemblerait à un choix.
+func _donner_le_focus(bouton: Button) -> void:
+	if not GameSettings.tactile_actif():
+		bouton.grab_focus()
+
+
+func _process(_delta: float) -> void:
+	if not visible:
+		return
+	_message.visible = _message.text != ""
+	_message_en_ligne.visible = _message_en_ligne.text != ""
+	_eviter_le_clavier()
+
+
+## Le clavier virtuel cache le bas de l'écran : l'écran remonte juste assez
+## pour que le champ où l'on tape reste visible au-dessus.
+func _eviter_le_clavier() -> void:
+	var decalage := 0.0
+	var champ := get_viewport().gui_get_focus_owner() as LineEdit
+	var clavier := DisplayServer.virtual_keyboard_get_height()
+	if champ != null and clavier > 0 and is_ancestor_of(champ):
+		decalage = MultiplayerPanel.decalage_pour_clavier(champ.get_global_rect().end.y - position.y,
+			get_viewport_rect().size.y, clavier, DisplayServer.window_get_size().y)
+	position.y = -decalage
+
+
+## De combien remonter l'écran pour qu'un champ dont le bas est à `bas_champ`
+## (unités de l'écran de jeu, haut `hauteur_vue`) dépasse d'un clavier haut
+## de `clavier` pixels d'une fenêtre haute de `hauteur_fenetre` pixels.
+static func decalage_pour_clavier(bas_champ: float, hauteur_vue: float, clavier: int,
+		hauteur_fenetre: int) -> float:
+	if clavier <= 0 or hauteur_fenetre <= 0:
+		return 0.0
+	var haut_du_clavier := hauteur_vue * (1.0 - float(clavier) / float(hauteur_fenetre))
+	return maxf(0.0, bas_champ + 16.0 - haut_du_clavier)
 
 
 func _ecran_entree() -> Control:
 	var ecran := Control.new()
 	ecran.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(ecran)
-	var colonne := UITheme.panneau_centre(ecran, 720.0)
-	colonne.add_child(UITheme.titre("MULTIJOUEUR", 40))
+	var colonne := UITheme.panneau_defilant(ecran, LARGEUR)
+	colonne.add_child(UITheme.titre("MULTIJOUEUR LOCAL", 40))
+	var cotes := UITheme.deux_colonnes(colonne)
 
 	_pseudo = LineEdit.new()
 	_pseudo.placeholder_text = "Ton pseudo"
 	_pseudo.max_length = 16
 	_pseudo.text = GameSettings.pseudo
-	_pseudo.custom_minimum_size = Vector2(320, 0)
-	colonne.add_child(_ligne("Pseudo", _pseudo))
-
-	var heberger := UITheme.bouton("Héberger une partie", _heberger)
-	heberger.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	colonne.add_child(heberger)
-
-	var intertitre := Label.new()
-	intertitre.text = "PARTIES SUR CE RÉSEAU"
-	intertitre.add_theme_color_override("font_color", UITheme.ACCENT)
-	intertitre.add_theme_font_size_override("font_size", 20)
-	colonne.add_child(intertitre)
-	_liste_lan = VBoxContainer.new()
-	colonne.add_child(_liste_lan)
-	_aucune = Label.new()
-	_aucune.text = "Aucune partie trouvée pour l'instant…"
-	_aucune.add_theme_color_override("font_color", UITheme.TEXTE_DOUX)
-	_liste_lan.add_child(_aucune)
-
+	cotes[0].add_child(_ligne("Pseudo", _pseudo))
+	_heberger_bouton = UITheme.bouton("Héberger une partie", _heberger)
+	_heberger_bouton.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cotes[0].add_child(_heberger_bouton)
+	cotes[0].add_child(UITheme.intertitre("REJOINDRE PAR ADRESSE"))
 	_adresse = LineEdit.new()
 	_adresse.placeholder_text = "192.168.1.20"
 	_adresse.text = GameSettings.derniere_adresse
-	_adresse.custom_minimum_size = Vector2(260, 0)
+	_adresse.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_URL
+	_adresse.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_adresse.text_submitted.connect(func(t: String) -> void: _rejoindre(t))
 	var rejoindre := HBoxContainer.new()
 	rejoindre.add_theme_constant_override("separation", 10)
-	var etiquette := Label.new()
-	etiquette.text = "Adresse de l'hôte"
-	etiquette.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rejoindre.add_child(etiquette)
 	rejoindre.add_child(_adresse)
-	var bouton := Button.new()
-	bouton.text = "Rejoindre"
-	bouton.pressed.connect(func() -> void: _rejoindre(_adresse.text))
+	var bouton := UITheme.bouton("Rejoindre", func() -> void: _rejoindre(_adresse.text))
+	bouton.custom_minimum_size.x = 180
 	rejoindre.add_child(bouton)
-	colonne.add_child(rejoindre)
+	cotes[0].add_child(rejoindre)
 
-	_message = Label.new()
-	_message.add_theme_color_override("font_color", Color(1.0, 0.5, 0.4))
-	_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	cotes[1].add_child(UITheme.intertitre("PARTIES SUR CE RÉSEAU"))
+	_liste_lan = VBoxContainer.new()
+	cotes[1].add_child(MultiplayerPanel._liste_defilante(_liste_lan, 300))
+	_aucune = Label.new()
+	_aucune.text = "Aucune partie trouvée pour l'instant…"
+	_aucune.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_aucune.add_theme_color_override("font_color", UITheme.TEXTE_DOUX)
+	_liste_lan.add_child(_aucune)
+
+	_message = _etiquette_message()
 	colonne.add_child(_message)
-
 	var retour := UITheme.bouton("Retour", _fermer)
 	retour.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	colonne.add_child(retour)
 	return ecran
 
-
 func _ecran_salon() -> Control:
 	var ecran := Control.new()
 	ecran.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(ecran)
-	var colonne := UITheme.panneau_centre(ecran, 720.0)
+	var colonne := UITheme.panneau_defilant(ecran, LARGEUR)
 	_titre_salon = UITheme.titre("SALON", 40)
 	colonne.add_child(_titre_salon)
+	# Le code du salon, à donner aux amis ; en local, l'adresse Internet ou
+	# pourquoi il n'y en a pas : parfois deux lignes.
 	_adresses = Label.new()
-	# L'adresse Internet, ou pourquoi il n'y en a pas : parfois deux lignes.
 	_adresses.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_adresses.custom_minimum_size.x = 660
 	_adresses.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_adresses.add_theme_color_override("font_color", UITheme.TEXTE_DOUX)
-	_adresses.add_theme_font_size_override("font_size", 20)
+	_adresses.add_theme_font_size_override("font_size", 22)
 	colonne.add_child(_adresses)
 
+	# Les pilotes à gauche, les réglages de la course à droite.
+	var cotes := UITheme.deux_colonnes(colonne)
+	cotes[0].add_child(UITheme.intertitre("PILOTES"))
 	_joueurs = VBoxContainer.new()
-	colonne.add_child(_joueurs)
+	_joueurs.add_theme_constant_override("separation", 4)
+	cotes[0].add_child(_joueurs)
 
+	cotes[1].add_child(UITheme.intertitre("COURSE"))
 	# Une course seule, ou une des coupes. L'id est l'index de la coupe plus
 	# un : un id de -1 veut dire « prends l'index » pour OptionButton.
 	_mode = OptionButton.new()
@@ -207,27 +246,27 @@ func _ecran_salon() -> Control:
 	for i in TrackCatalog.COUPES.size():
 		_mode.add_item("Grand Prix : %s" % TrackCatalog.COUPES[i].nom, i + 1)
 	_mode.item_selected.connect(func(_i: int) -> void: _envoyer_config())
-	colonne.add_child(_ligne("Mode", _mode))
+	cotes[1].add_child(_ligne("Mode", _mode))
 	_classe = OptionButton.new()
 	for c in Cylindree.NOMS.size():
 		_classe.add_item(Cylindree.nom(c), c)
 	_classe.item_selected.connect(func(_i: int) -> void: _envoyer_config())
-	colonne.add_child(_ligne("Cylindrée", _classe))
-	_miroir = CheckButton.new()
-	_miroir.text = "Circuits en miroir"
-	_miroir.toggled.connect(func(_actif: bool) -> void: _envoyer_config())
-	colonne.add_child(_miroir)
-
+	cotes[1].add_child(_ligne("Cylindrée", _classe))
 	_piste = OptionButton.new()
 	for i in TrackCatalog.PISTES.size():
 		_piste.add_item(TrackCatalog.PISTES[i].nom, i)
 	_piste.item_selected.connect(func(_i: int) -> void: _envoyer_config())
-	colonne.add_child(_ligne("Circuit", _piste))
+	cotes[1].add_child(_ligne("Circuit", _piste))
 	_tours = OptionButton.new()
 	for n in range(1, 6):
 		_tours.add_item("%d tour%s" % [n, "s" if n > 1 else ""], n)
 	_tours.item_selected.connect(func(_i: int) -> void: _envoyer_config())
-	colonne.add_child(_ligne("Nombre de tours", _tours))
+	cotes[1].add_child(_ligne("Tours", _tours))
+	_miroir = CheckButton.new()
+	_miroir.text = "Circuits en miroir"
+	_miroir.custom_minimum_size.y = 56
+	_miroir.toggled.connect(func(_actif: bool) -> void: _envoyer_config())
+	cotes[1].add_child(_miroir)
 
 	_attente = Label.new()
 	_attente.text = "En attente du lancement par l'hôte…"
@@ -241,17 +280,16 @@ func _ecran_salon() -> Control:
 	var quitter := UITheme.bouton("Quitter le salon", func() -> void:
 		Reseau.quitter()
 		_montrer(_porte))
-	quitter.custom_minimum_size.x = 220
+	quitter.custom_minimum_size.x = 260
 	boutons.add_child(quitter)
 	var vers_garage := UITheme.bouton("Garage", func() -> void: garage.emit())
-	vers_garage.custom_minimum_size.x = 160
+	vers_garage.custom_minimum_size.x = 200
 	boutons.add_child(vers_garage)
 	_lancer = UITheme.bouton("Lancer la course", Reseau.lancer_course)
-	_lancer.custom_minimum_size.x = 240
+	_lancer.custom_minimum_size.x = 300
 	boutons.add_child(_lancer)
 	colonne.add_child(boutons)
 	return ecran
-
 
 func _pseudo_choisi() -> String:
 	var champ := _pseudo_en_ligne if _en_ligne.visible else _pseudo
@@ -325,6 +363,9 @@ func _rafraichir_salon() -> void:
 		var toi := "  ← toi" if peer == Reseau.mon_id() else ""
 		l.text = "%s%s — %s%s" % [Reseau.lobby.joueurs[peer], marque, ModeleKart.nom(vehicule[0]), toi]
 		l.add_theme_color_override("font_color", UITheme.ACCENT if peer == Reseau.mon_id() else UITheme.TEXTE)
+		# Un long pseudo se termine en « … » plutôt que d'écraser les réglages.
+		l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		ligne.add_child(l)
 		_joueurs.add_child(ligne)
 	var places_ia := Lobby.PLACES - Reseau.lobby.joueurs.size()
@@ -335,6 +376,8 @@ func _rafraichir_salon() -> void:
 		_joueurs.add_child(l)
 
 	var adresses := ""
+	# Le code d'un salon en ligne se donne aux amis : bien en vue.
+	_adresses.add_theme_color_override("font_color", UITheme.ACCENT if en_ligne else UITheme.TEXTE_DOUX)
 	if en_ligne:
 		_titre_salon.text = str(Reseau.infos_salon.get("nom", "Salon")).to_upper()
 		adresses = MultiplayerPanel.texte_code(Reseau.infos_salon)
@@ -403,9 +446,11 @@ func _ligne(texte: String, controle: Control) -> HBoxContainer:
 	var ligne := HBoxContainer.new()
 	var etiquette := Label.new()
 	etiquette.text = texte
-	etiquette.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Une largeur d'étiquette fixe : les champs s'alignent d'une ligne à
+	# l'autre et prennent tout le reste.
+	etiquette.custom_minimum_size.x = 210
 	ligne.add_child(etiquette)
-	controle.custom_minimum_size.x = maxf(controle.custom_minimum_size.x, 320)
+	controle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ligne.add_child(controle)
 	return ligne
 
@@ -430,94 +475,123 @@ func _ecran_en_ligne() -> Control:
 	var ecran := Control.new()
 	ecran.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(ecran)
-	var colonne := UITheme.panneau_centre(ecran, 760.0)
+	var colonne := UITheme.panneau_defilant(ecran, LARGEUR)
 	colonne.add_child(UITheme.titre("EN LIGNE", 40))
+	var cotes := UITheme.deux_colonnes(colonne)
 
+	# À gauche : qui l'on est, et comment entrer dans un salon.
 	_pseudo_en_ligne = LineEdit.new()
 	_pseudo_en_ligne.placeholder_text = "Ton pseudo"
 	_pseudo_en_ligne.max_length = 16
-	_pseudo_en_ligne.custom_minimum_size = Vector2(320, 0)
-	colonne.add_child(_ligne("Pseudo", _pseudo_en_ligne))
+	cotes[0].add_child(_ligne("Pseudo", _pseudo_en_ligne))
 
-	var rapide := UITheme.bouton("Partie rapide", _lancer_partie_rapide)
-	rapide.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	colonne.add_child(rapide)
-	_boutons_en_ligne.append(rapide)
+	_rapide = UITheme.bouton("Partie rapide", _lancer_partie_rapide)
+	_rapide.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cotes[0].add_child(_rapide)
+	_boutons_en_ligne.append(_rapide)
 
 	# Créer son salon : public, il apparaît dans la liste ; privé, on y entre
 	# par son code.
+	cotes[0].add_child(UITheme.intertitre("CRÉER UN SALON"))
 	var creer := HBoxContainer.new()
 	creer.add_theme_constant_override("separation", 10)
 	_nom_salon = LineEdit.new()
 	_nom_salon.placeholder_text = "Nom du salon"
 	_nom_salon.max_length = 32
 	_nom_salon.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_nom_salon.text_submitted.connect(func(_t: String) -> void: _creer_salon())
 	creer.add_child(_nom_salon)
-	_prive = CheckButton.new()
-	_prive.text = "Privé"
+	# Un bouton à bascule qui dit en toutes lettres ce qu'on va créer :
+	# l'interrupteur d'un CheckButton se voit mal sur fond sombre.
+	_prive = Button.new()
+	_prive.toggle_mode = true
+	_prive.text = "Public"
+	_prive.custom_minimum_size = Vector2(150, 60)
+	_prive.toggled.connect(func(prive: bool) -> void:
+		_prive.text = "Privé 🔒" if prive else "Public")
 	creer.add_child(_prive)
-	var bouton_creer := Button.new()
-	bouton_creer.text = "Créer un salon"
-	bouton_creer.pressed.connect(_creer_salon)
+	var bouton_creer := UITheme.bouton("Créer", _creer_salon)
+	bouton_creer.custom_minimum_size.x = 130
 	creer.add_child(bouton_creer)
 	_boutons_en_ligne.append(bouton_creer)
-	colonne.add_child(creer)
+	cotes[0].add_child(creer)
 
+	cotes[0].add_child(UITheme.intertitre("REJOINDRE UN AMI"))
 	var par_code := HBoxContainer.new()
 	par_code.add_theme_constant_override("separation", 10)
-	var etiquette := Label.new()
-	etiquette.text = "Code d'un salon"
-	etiquette.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	par_code.add_child(etiquette)
 	_code = LineEdit.new()
-	_code.placeholder_text = "ABCDE"
+	_code.placeholder_text = "Code, ex. K7XQ2"
 	_code.max_length = 5
-	_code.custom_minimum_size.x = 140
+	_code.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# En majuscules à mesure qu'on tape : le code se lit tel qu'on l'a reçu.
+	_code.text_changed.connect(func(texte: String) -> void:
+		if texte != texte.to_upper():
+			var curseur := _code.caret_column
+			_code.text = texte.to_upper()
+			_code.caret_column = curseur)
 	_code.text_submitted.connect(func(_t: String) -> void: _rejoindre_par_code())
 	par_code.add_child(_code)
-	var bouton_code := Button.new()
-	bouton_code.text = "Rejoindre"
-	bouton_code.pressed.connect(_rejoindre_par_code)
+	var bouton_code := UITheme.bouton("Rejoindre", _rejoindre_par_code)
+	bouton_code.custom_minimum_size.x = 180
 	par_code.add_child(bouton_code)
 	_boutons_en_ligne.append(bouton_code)
-	colonne.add_child(par_code)
-
-	var entete := HBoxContainer.new()
-	var intertitre := Label.new()
-	intertitre.text = "SALONS PUBLICS"
-	intertitre.add_theme_color_override("font_color", UITheme.ACCENT)
-	intertitre.add_theme_font_size_override("font_size", 20)
-	intertitre.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	entete.add_child(intertitre)
-	var actualiser := Button.new()
-	actualiser.text = "Actualiser"
-	actualiser.pressed.connect(_actualiser)
-	entete.add_child(actualiser)
-	colonne.add_child(entete)
-	_liste_en_ligne = VBoxContainer.new()
-	colonne.add_child(_liste_en_ligne)
-	_aucun_salon = Label.new()
-	_aucun_salon.add_theme_color_override("font_color", UITheme.TEXTE_DOUX)
-	_liste_en_ligne.add_child(_aucun_salon)
-
-	_message_en_ligne = Label.new()
-	_message_en_ligne.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	colonne.add_child(_message_en_ligne)
+	cotes[0].add_child(par_code)
 
 	# Un autre serveur que celui du jeu : le sien, ou celui d'un ami.
 	_serveur = LineEdit.new()
 	_serveur.placeholder_text = str(ProjectSettings.get_setting(EnLigne.REGLAGE, "")) \
 		if str(ProjectSettings.get_setting(EnLigne.REGLAGE, "")) != "" else "superkart.exemple.org"
 	_serveur.text = GameSettings.serveur_en_ligne
+	_serveur.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_URL
 	_serveur.text_submitted.connect(func(_t: String) -> void: _actualiser())
 	_serveur.focus_exited.connect(_retenir_serveur)
-	colonne.add_child(_ligne("Serveur", _serveur))
+	cotes[0].add_child(_ligne("Serveur", _serveur))
 
+	# À droite : les salons publics.
+	var entete := HBoxContainer.new()
+	var intertitre := UITheme.intertitre("SALONS PUBLICS")
+	intertitre.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	entete.add_child(intertitre)
+	var actualiser := UITheme.bouton("Actualiser", _actualiser)
+	actualiser.custom_minimum_size.x = 180
+	entete.add_child(actualiser)
+	cotes[1].add_child(entete)
+	_liste_en_ligne = VBoxContainer.new()
+	cotes[1].add_child(MultiplayerPanel._liste_defilante(_liste_en_ligne, 300))
+	_aucun_salon = Label.new()
+	_aucun_salon.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_aucun_salon.add_theme_color_override("font_color", UITheme.TEXTE_DOUX)
+	_liste_en_ligne.add_child(_aucun_salon)
+
+	_message_en_ligne = _etiquette_message()
+	colonne.add_child(_message_en_ligne)
 	var retour := UITheme.bouton("Retour", _fermer)
 	retour.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	colonne.add_child(retour)
 	return ecran
 
+
+## Une liste dans une boîte de hauteur fixe qui défile : la colonne garde sa
+## taille quel que soit le nombre de parties trouvées.
+static func _liste_defilante(liste: VBoxContainer, hauteur: float) -> ScrollContainer:
+	var boite := ScrollContainer.new()
+	boite.custom_minimum_size.y = hauteur
+	boite.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	boite.follow_focus = true
+	liste.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	liste.add_theme_constant_override("separation", 8)
+	boite.add_child(liste)
+	return boite
+
+
+## Une ligne pour les erreurs et les « connexion… », cachée quand elle est
+## vide pour ne pas creuser un trou dans l'écran.
+static func _etiquette_message() -> Label:
+	var l := Label.new()
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.visible = false
+	return l
 
 func _retenir_serveur() -> void:
 	var adresse := _serveur.text.strip_edges()

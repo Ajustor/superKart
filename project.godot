@@ -9,6 +9,9 @@
 config_version=5
 
 [application]
+; Un serveur exporté en release écrit ses journaux tout de suite (docker logs,
+; CI) au lieu de les garder en mémoire jusqu'à sa sortie.
+run/flush_stdout_on_print=true
 
 config/name="Karting"
 config/version="dev"

@@ -196,17 +196,18 @@ func _ecran_accueil() -> Control:
 	var centre := CenterContainer.new()
 	centre.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	ecran.add_child(centre)
+	# Serré : sept boutons doivent tenir sur un écran haut de 720.
 	var colonne := VBoxContainer.new()
-	colonne.add_theme_constant_override("separation", 18)
+	colonne.add_theme_constant_override("separation", 12)
 	centre.add_child(colonne)
 
-	colonne.add_child(UITheme.titre("SUPERKART", 96))
+	colonne.add_child(UITheme.titre("SUPERKART", 88))
 	var sous_titre := Label.new()
 	sous_titre.text = "Course de karts"
 	sous_titre.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sous_titre.add_theme_color_override("font_color", UITheme.TEXTE_DOUX)
 	colonne.add_child(sous_titre)
-	colonne.add_child(_espace(24))
+	colonne.add_child(_espace(6))
 
 	# Une lambda et non _montrer.bind(_selection) : l'écran de sélection est
 	# construit après celui-ci, bind aurait capturé null.
