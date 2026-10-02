@@ -75,8 +75,11 @@ signal bouscule(force: float)
 ## En deçà, en m/s, une retombée ne s'entend pas : le contact au sol vacille
 ## aux coutures du maillage.
 const ATTERRISSAGE_AUDIBLE := 2.5
-## Temps en l'air avant qu'une figure soit possible, en secondes.
-const FIGURE_APRES := 0.12
+## Temps en l'air avant qu'une figure parte, en secondes. Un appui fait plus
+## tôt, dès le décollage, n'est pas perdu : il attend ce moment. À 0,12 s et
+## sans attente, l'appui du joueur qui sautait en même temps que le kart
+## était avalé, et la figure ne venait qu'au second appui, bien trop tard.
+const FIGURE_APRES := 0.05
 const FIGURE_TURBO := 0.7
 const FIGURE_FORCE := 1.25
 ## Une IA au moins aussi vive fait ses figures : sinon le joueur gagnerait
@@ -92,6 +95,8 @@ var figure_faite: bool = false
 var figures: int = 0
 var _en_l_air: float = 0.0
 var _derapage_avant: bool = false
+## Un appui en l'air pas encore servi (voir FIGURE_APRES).
+var _figure_demandee: bool = false
 
 ## Posé à vrai l'image où le kart quitte le sol en montant — sommet d'une
 ## rampe, rebord —, lu et remis à faux par la session.
@@ -258,7 +263,9 @@ func _figures(cmd: KartCommand, delta: float) -> void:
 	if not en_saut or au_sol:
 		return
 	_en_l_air += delta
-	if not figure_faite and _en_l_air >= FIGURE_APRES and (appui or _figure_de_l_ia()):
+	if appui:
+		_figure_demandee = true
+	if not figure_faite and _en_l_air >= FIGURE_APRES and (_figure_demandee or _figure_de_l_ia()):
 		figure_faite = true
 		figures += 1
 		figure.emit()
@@ -269,7 +276,7 @@ func _figures(cmd: KartCommand, delta: float) -> void:
 
 func _figure_de_l_ia() -> bool:
 	var cerveau := _input as AIInput
-	return cerveau != null and cerveau.reaction_delay <= IA_REACTION_FIGURE and _en_l_air >= 0.25
+	return cerveau != null and cerveau.reaction_delay <= IA_REACTION_FIGURE and _en_l_air >= 0.15
 
 
 func _atterrir() -> void:
@@ -277,6 +284,7 @@ func _atterrir() -> void:
 		motor.accorder_turbo(FIGURE_TURBO, FIGURE_FORCE)
 	en_saut = false
 	figure_faite = false
+	_figure_demandee = false
 	_en_l_air = 0.0
 
 
@@ -323,6 +331,7 @@ func _orienter_la_caisse() -> void:
 func respawn_at(where: Transform3D) -> void:
 	en_saut = false
 	figure_faite = false
+	_figure_demandee = false
 	_en_l_air = 0.0
 	global_transform = where
 	velocity = Vector3.ZERO

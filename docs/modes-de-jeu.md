@@ -388,3 +388,15 @@ au clavier sur des cercles de 12 à 90 m ; le palier 3 y tombe entre 3,2 et
 3,9 s, à 1,7 m au plus du milieu de la route, et `tests/test_glisse.gd` le
 garde ainsi. L'IA, réglée sur l'ancienne courbe, contre-braque moins fort
 (`AIInput.CONTRE_BRAQUAGE_MAX`, -0,4 au lieu de -0,7) pour garder ses temps.
+
+## Figures (`Kart._figures`)
+
+Un appui sur Glisse pendant un vrai saut (tremplin ou rampe) fait faire un
+tonneau au kart, et l'atterrissage donne un turbo.
+- **Le moment de l'appui** : la figure part 0,05 s après le décollage. Un
+  appui fait plus tôt, en même temps que le saut, n'est pas perdu : il
+  attend ce moment.
+- **Avant la correction** : le délai était de 0,12 s, et un appui fait
+  pendant ce temps était avalé. Il fallait appuyer une seconde fois, et la
+  figure venait trop tard.
+- **L'IA** qui en fait les siennes les lance 0,15 s après le décollage.
