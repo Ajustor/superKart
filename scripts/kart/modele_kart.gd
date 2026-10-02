@@ -20,18 +20,25 @@ extends RefCounted
 ## cylindrées, la gravité suit la vitesse de pointe, et chaque saut garde sa
 ## parabole. La pointe se paie en virage : le braquage ne la suit pas.
 ##
-## L'allure suit : chaque pièce a sa forme, faite de formes simples en une
-## seule maillage à couleurs de sommets, comme les pilotes.
+## L'allure suit : chaque pièce a sa forme (AtelierPieces), faite de formes
+## simples en une seule maillage à couleurs de sommets, comme les pilotes.
+## Quinze de chaque, des plus sages aux plus farfelues : une baignoire, un
+## caddie, des roues en pizza, une cape de super-héros…
 
-enum { STANDARD, FUSEE, PLUME, DERIVEUR, COSTAUD, BUGGY }
-enum { ROUES_STANDARD, SLICKS, MONSTRE, ROLLER, NEON }
-enum { BECQUET, GRAND_AILERON, AILETTES, VOILE }
+enum { STANDARD, FUSEE, PLUME, DERIVEUR, COSTAUD, BUGGY, BAIGNOIRE, CADDIE, SOUCOUPE, CITROUILLE, REQUIN,
+	CHRONOMOBILE, HOT_DOG, TRACTEUR, CHAUVE_SOURIS }
+enum { ROUES_STANDARD, SLICKS, MONSTRE, ROLLER, NEON, DONUTS, PIZZAS, PIERRE, VINYLES, BOUEES, COOKIES,
+	ENGRENAGES, BLING, FROMAGES, WESTERN }
+enum { BECQUET, GRAND_AILERON, AILETTES, VOILE, HELICE, PARASOL, AILES_ANGE, AILES_DRAGON, CAPE,
+	DRAPEAU_PIRATE, BALLONS, PARABOLE, REACTEUR, NAGEOIRE, FEUX_ARTIFICE }
 
 ## Les clés des caractéristiques, dans l'ordre des jauges.
 const CLES := ["vitesse", "acceleration", "virage", "glisse", "poids", "terrain"]
 ## Les caractéristiques affichées au garage, de 0 à 1, dans cet ordre.
 const JAUGES := ["Vitesse", "Accélération", "Maniabilité", "Glisse", "Poids", "Tout-terrain"]
 
+## Les carrosseries. `caisse` étire la caisse d'origine ; les formes propres à
+## chacune sont dans AtelierPieces.
 const CARROSSERIES := [
 	{nom = "Standard", description = "Équilibré en tout.",
 		vitesse = 1.0, acceleration = 1.0, virage = 1.0, glisse = 1.0, poids = 1.0, terrain = 1.0,
@@ -51,6 +58,33 @@ const CARROSSERIES := [
 	{nom = "Buggy", description = "Taillé pour le sable et l'herbe, à l'aise partout.",
 		vitesse = 0.99, acceleration = 1.1, virage = 1.0, glisse = 0.95, poids = 1.05, terrain = 1.3,
 		caisse = Vector3(1.0, 1.05, 0.98)},
+	{nom = "Baignoire", description = "Le bain moussant le plus rapide du quartier. Canard compris.",
+		vitesse = 0.985, acceleration = 1.15, virage = 1.04, glisse = 1.1, poids = 0.95, terrain = 0.9,
+		caisse = Vector3(1.0, 1.0, 1.0)},
+	{nom = "Caddie", description = "Échappé du supermarché : il file entre les rayons comme entre les virages.",
+		vitesse = 0.99, acceleration = 1.2, virage = 1.05, glisse = 0.95, poids = 0.75, terrain = 0.85,
+		caisse = Vector3(0.95, 1.0, 1.0)},
+	{nom = "Soucoupe", description = "Venue d'une galaxie lointaine, elle glisse comme sur un coussin d'air.",
+		vitesse = 1.005, acceleration = 0.9, virage = 1.02, glisse = 1.1, poids = 0.9, terrain = 1.0,
+		caisse = Vector3(1.0, 0.9, 1.0)},
+	{nom = "Citrouille", description = "Un carrosse de conte de fées : il redevient potiron à minuit.",
+		vitesse = 0.98, acceleration = 1.05, virage = 1.0, glisse = 1.05, poids = 1.2, terrain = 1.15,
+		caisse = Vector3(1.0, 1.0, 1.0)},
+	{nom = "Requin", description = "On va avoir besoin d'un plus grand circuit.",
+		vitesse = 1.015, acceleration = 0.9, virage = 1.03, glisse = 0.95, poids = 1.1, terrain = 0.9,
+		caisse = Vector3(1.0, 1.0, 1.05)},
+	{nom = "Chronomobile", description = "À 88 miles à l'heure, on va voir du sérieux.",
+		vitesse = 1.02, acceleration = 0.85, virage = 0.98, glisse = 1.05, poids = 1.05, terrain = 0.9,
+		caisse = Vector3(1.05, 0.95, 1.05)},
+	{nom = "Hot-dog", description = "Moutarde, ketchup et mini-turbos.",
+		vitesse = 0.995, acceleration = 1.05, virage = 1.0, glisse = 1.0, poids = 1.15, terrain = 1.05,
+		caisse = Vector3(1.0, 1.0, 1.05)},
+	{nom = "Tracteur", description = "Le hors-piste ? Il le laboure.",
+		vitesse = 0.98, acceleration = 1.0, virage = 0.97, glisse = 0.9, poids = 1.5, terrain = 1.4,
+		caisse = Vector3(1.05, 1.1, 1.0)},
+	{nom = "Chauve-souris", description = "Pas le kart qu'on mérite, mais celui dont on a besoin.",
+		vitesse = 1.015, acceleration = 0.95, virage = 1.0, glisse = 1.0, poids = 1.2, terrain = 1.0,
+		caisse = Vector3(1.02, 0.92, 1.08)},
 ]
 
 ## Rayon, largeur et couleurs de chaque train de roues. `voie` les écarte de
@@ -76,6 +110,46 @@ const ROUES := [
 		vitesse = 1.0, acceleration = 1.05, virage = 1.0, glisse = 1.1, poids = 1.0, terrain = 0.9,
 		rayon = 0.17, largeur = 0.15, jante = 0.12, voie = 0.0,
 		pneu = Color(0.1, 0.1, 0.25), couleur_jante = Color(1.0, 0.3, 0.9)},
+	{nom = "Donuts", description = "Glacés, saupoudrés de vermicelles, et étonnamment vifs.",
+		vitesse = 0.992, acceleration = 1.1, virage = 1.0, glisse = 1.05, poids = 1.0, terrain = 0.9,
+		rayon = 0.17, largeur = 0.16, jante = 0.06, voie = 0.01,
+		pneu = Color(0.85, 0.6, 0.35), couleur_jante = Color(0.97, 0.5, 0.72)},
+	{nom = "Pizzas", description = "Bien grasses : la glisse vient toute seule.",
+		vitesse = 1.0, acceleration = 1.0, virage = 0.99, glisse = 1.08, poids = 1.05, terrain = 0.95,
+		rayon = 0.17, largeur = 0.12, jante = 0.135, voie = 0.0,
+		pneu = Color(0.86, 0.62, 0.3), couleur_jante = Color(0.85, 0.25, 0.12)},
+	{nom = "Pierre", description = "Taillées à l'âge de pierre : lourdes, mais rien ne les arrête.",
+		vitesse = 0.992, acceleration = 0.85, virage = 1.0, glisse = 0.95, poids = 1.25, terrain = 1.3,
+		rayon = 0.19, largeur = 0.17, jante = 0.045, voie = 0.02,
+		pneu = Color(0.55, 0.53, 0.5), couleur_jante = Color(0.3, 0.29, 0.28)},
+	{nom = "Vinyles", description = "Elles tournent à 33 tours, précises sur le bitume.",
+		vitesse = 1.004, acceleration = 1.0, virage = 1.02, glisse = 1.0, poids = 0.95, terrain = 0.8,
+		rayon = 0.17, largeur = 0.06, jante = 0.065, voie = 0.03,
+		pneu = Color(0.05, 0.05, 0.06), couleur_jante = Color(0.85, 0.2, 0.2)},
+	{nom = "Bouées", description = "Gonflées pour la plage : légères, un peu flottantes en virage.",
+		vitesse = 0.992, acceleration = 1.05, virage = 0.99, glisse = 1.1, poids = 0.85, terrain = 1.0,
+		rayon = 0.18, largeur = 0.14, jante = 0.08, voie = 0.02,
+		pneu = Color(0.95, 0.3, 0.25), couleur_jante = Color(0.97, 0.97, 0.97)},
+	{nom = "Cookies", description = "Aux pépites de chocolat : un vrai coup de fourchette à l'accélérateur.",
+		vitesse = 0.996, acceleration = 1.15, virage = 1.0, glisse = 1.0, poids = 0.95, terrain = 0.9,
+		rayon = 0.17, largeur = 0.1, jante = 0.0, voie = 0.0,
+		pneu = Color(0.76, 0.55, 0.3), couleur_jante = Color(0.25, 0.14, 0.08)},
+	{nom = "Engrenages", description = "Mécanique de précision : elles mordent le hors-piste.",
+		vitesse = 1.004, acceleration = 0.95, virage = 1.0, glisse = 1.0, poids = 1.1, terrain = 1.15,
+		rayon = 0.16, largeur = 0.14, jante = 0.09, voie = 0.01,
+		pneu = Color(0.72, 0.56, 0.24), couleur_jante = Color(0.35, 0.3, 0.25)},
+	{nom = "Bling", description = "Jantes dorées, pour frimer dans la ligne droite.",
+		vitesse = 1.006, acceleration = 0.97, virage = 1.01, glisse = 1.0, poids = 1.05, terrain = 0.85,
+		rayon = 0.17, largeur = 0.13, jante = 0.14, voie = 0.01,
+		pneu = Color(0.08, 0.08, 0.09), couleur_jante = Color(1.0, 0.8, 0.25)},
+	{nom = "Fromages", description = "Des meules bien affinées : elles tiennent la route comme le chemin.",
+		vitesse = 0.996, acceleration = 1.0, virage = 0.99, glisse = 1.0, poids = 1.1, terrain = 1.1,
+		rayon = 0.18, largeur = 0.16, jante = 0.0, voie = 0.01,
+		pneu = Color(0.98, 0.8, 0.3), couleur_jante = Color(0.82, 0.62, 0.18)},
+	{nom = "Western", description = "Des roues de diligence, tout droit du Far West.",
+		vitesse = 0.996, acceleration = 1.05, virage = 0.99, glisse = 1.05, poids = 1.0, terrain = 1.05,
+		rayon = 0.2, largeur = 0.08, jante = 0.04, voie = 0.02,
+		pneu = Color(0.45, 0.3, 0.15), couleur_jante = Color(0.3, 0.2, 0.1)},
 ]
 
 const AILERONS := [
@@ -87,6 +161,28 @@ const AILERONS := [
 		vitesse = 0.997, acceleration = 1.06, virage = 1.02, glisse = 1.0, poids = 0.95, terrain = 1.0},
 	{nom = "Voile", description = "Prend le vent en glisse : des mini-turbos plus rapides.",
 		vitesse = 0.997, acceleration = 1.0, virage = 1.0, glisse = 1.08, poids = 1.0, terrain = 1.05},
+	{nom = "Hélice", description = "Elle brasse l'air : les mini-turbos durent, la reprise un peu moins.",
+		vitesse = 1.003, acceleration = 0.97, virage = 1.0, glisse = 1.05, poids = 1.0, terrain = 1.0},
+	{nom = "Parasol", description = "Pour la course comme pour la sieste.",
+		vitesse = 0.997, acceleration = 1.02, virage = 1.0, glisse = 1.03, poids = 1.0, terrain = 1.05},
+	{nom = "Ailes d'ange", description = "Légères comme une plume. Ou deux cents.",
+		vitesse = 0.997, acceleration = 1.05, virage = 1.0, glisse = 1.0, poids = 0.92, terrain = 1.0},
+	{nom = "Ailes de dragon", description = "Pour qui veut voler la vedette.",
+		vitesse = 1.003, acceleration = 0.97, virage = 1.0, glisse = 1.05, poids = 1.05, terrain = 1.0},
+	{nom = "Cape", description = "Les super-héros en portent toujours une, même quand on le leur déconseille.",
+		vitesse = 1.002, acceleration = 1.0, virage = 1.02, glisse = 1.0, poids = 1.0, terrain = 0.97},
+	{nom = "Drapeau pirate", description = "À l'abordage ! Une reprise de flibustier.",
+		vitesse = 1.0, acceleration = 1.03, virage = 1.0, glisse = 1.02, poids = 1.0, terrain = 0.97},
+	{nom = "Ballons", description = "De quoi faire décoller une maison. Ou un kart, presque.",
+		vitesse = 0.997, acceleration = 1.04, virage = 0.99, glisse = 1.0, poids = 0.9, terrain = 1.0},
+	{nom = "Parabole", description = "Capte la trajectoire idéale en haute définition.",
+		vitesse = 1.0, acceleration = 0.98, virage = 1.03, glisse = 1.0, poids = 1.02, terrain = 1.0},
+	{nom = "Réacteur", description = "Une poussée de jet… et un peu de mal à tourner.",
+		vitesse = 1.003, acceleration = 1.04, virage = 0.995, glisse = 0.97, poids = 1.05, terrain = 1.0},
+	{nom = "Nageoire", description = "Pour filer dans les virages comme un poisson dans l'eau.",
+		vitesse = 1.0, acceleration = 1.0, virage = 1.01, glisse = 1.04, poids = 1.0, terrain = 0.96},
+	{nom = "Feux d'artifice", description = "Le bouquet final, avant même l'arrivée.",
+		vitesse = 1.003, acceleration = 1.03, virage = 1.0, glisse = 0.98, poids = 1.0, terrain = 0.98},
 ]
 
 ## Ancien nom des carrosseries : un kart d'avant la v1.9 n'avait qu'elles.
@@ -100,13 +196,13 @@ const MODELES := CARROSSERIES
 ## Fixés plutôt que tirés au sort, pour que chaque machine d'une partie en
 ## réseau habille l'IA de la même façon.
 const KARTS_IA := [
-	[DERIVEUR, NEON, VOILE],
-	[PLUME, SLICKS, GRAND_AILERON],
-	[FUSEE, ROLLER, AILETTES],
-	[COSTAUD, ROLLER, AILETTES],
-	[BUGGY, SLICKS, VOILE],
-	[STANDARD, MONSTRE, GRAND_AILERON],
-	[DERIVEUR, SLICKS, AILETTES],
+	[REQUIN, BOUEES, NAGEOIRE],
+	[SOUCOUPE, NEON, PARABOLE],
+	[CHRONOMOBILE, ROLLER, AILETTES],
+	[CITROUILLE, SLICKS, HELICE],
+	[CHAUVE_SOURIS, DONUTS, CAPE],
+	[BAIGNOIRE, BLING, FEUX_ARTIFICE],
+	[HOT_DOG, WESTERN, DRAPEAU_PIRATE],
 ]
 
 ## Les couleurs de carrosserie. La première est celle d'origine du kart du
@@ -123,9 +219,6 @@ const COULEURS: Array[Color] = [
 ]
 const NOMS_COULEURS := ["Bleu", "Rouge", "Vert", "Jaune", "Violet", "Orange", "Rose", "Noir"]
 
-const BLANC := Color(0.93, 0.94, 0.96)
-const SOMBRE := Color(0.14, 0.14, 0.16)
-const CHROME := Color(0.8, 0.81, 0.84)
 
 static var _pieces: Dictionary = {}
 static var _bornes: Array = []
@@ -258,8 +351,8 @@ static func habiller(kart: Node3D, carrosserie: int, teinte: Color, train: int =
 		return
 	caisse.scale = modele(carrosserie).caisse
 	_peindre(caisse, teinte)
-	_poser(caisse, "Carrosserie", _piece("c%d" % carrosserie, teinte, _carrosserie.bind(carrosserie)))
-	_poser(caisse, "Aileron", _piece("a%d" % aile, teinte, _aileron.bind(aile)))
+	_poser(caisse, "Carrosserie", _piece("c%d" % carrosserie, teinte, AtelierPieces.carrosserie.bind(carrosserie)))
+	_poser(caisse, "Aileron", _piece("a%d" % aile, teinte, AtelierPieces.aileron.bind(aile)))
 	_monter_les_roues(kart, train)
 
 
@@ -305,7 +398,7 @@ static func _piece(cle: String, teinte: Color, faire: Callable) -> Mesh:
 ## rayon : c'est lui qui la pose au sol.
 static func _monter_les_roues(kart: Node3D, train: int) -> void:
 	var r := roues(train)
-	var maillage := _piece("r%d" % train, Color.BLACK, _roue.bind(train))
+	var maillage := _piece("r%d" % train, Color.BLACK, AtelierPieces.roue.bind(train))
 	var rayon: float = r.rayon
 	var suspension := kart.get_node_or_null("Suspension") as KartSuspension
 	var rayon_origine := 0.17
@@ -333,89 +426,6 @@ static func _monter_les_roues(kart: Node3D, train: int) -> void:
 		var moyeu := r3.get_node_or_null("Hub") as Node3D
 		if moyeu != null:
 			moyeu.visible = false
-
-
-## Un pneu et sa jante, dans le repère du cylindre (axe vertical) : le nœud
-## Tire de la scène les couche sur le côté.
-static func _roue(a: Personnage.Atelier, _teinte: Color, train: int) -> void:
-	var r := roues(train)
-	a.ajouter(Personnage._cylindre(r.rayon, r.rayon, r.largeur, 18), Vector3.ZERO, r.pneu)
-	a.ajouter(Personnage._cylindre(r.jante, r.jante, r.largeur + 0.012, 12), Vector3.ZERO, r.couleur_jante)
-	if train == MONSTRE:
-		# Des crampons : un anneau de blocs autour du pneu.
-		for k in 10:
-			var angle := TAU * k / 10.0
-			a.ajouter(Personnage._boite(Vector3(0.05, r.largeur * 0.9, 0.035)),
-				Vector3(cos(angle), 0.0, sin(angle)) * r.rayon, r.pneu, Vector3(0.0, -rad_to_deg(angle), 0.0))
-
-
-## Ce que chaque carrosserie ajoute au kart d'origine, dans le repère de la
-## caisse : le plancher y est à 0,3 m, le nez finit à 1,07 m devant, le
-## moteur à 0,84 m derrière.
-static func _carrosserie(a: Personnage.Atelier, teinte: Color, carrosserie: int) -> void:
-	match carrosserie:
-		STANDARD:
-			a.ajouter(Personnage._boite(Vector3(0.7, 0.08, 0.08)), Vector3(0, 0.28, -1.1), BLANC)
-		FUSEE:
-			# Un nez en ogive, deux dérives, deux tuyères.
-			a.ajouter(Personnage._cylindre(0.2, 0.02, 0.45), Vector3(0, 0.34, -1.28), teinte, Vector3(-90, 0, 0))
-			for x in [-0.3, 0.3]:
-				a.ajouter(Personnage._boite(Vector3(0.04, 0.3, 0.3)), Vector3(x, 0.55, 0.72), teinte, Vector3(-20, 0, 0))
-				a.ajouter(Personnage._cylindre(0.06, 0.07, 0.16), Vector3(x * 0.4, 0.5, 0.9), SOMBRE, Vector3(90, 0, 0))
-		PLUME:
-			# Deux ailes fines, un arceau.
-			for x in [-0.58, 0.58]:
-				a.ajouter(Personnage._boite(Vector3(0.3, 0.02, 0.5)), Vector3(x, 0.42, 0.0), BLANC,
-					Vector3(0, 0, -8.0 * signf(x)))
-			a.ajouter(Personnage._anneau(0.26, 0.3), Vector3(0, 0.62, 0.42), CHROME, Vector3(90, 0, 0),
-				Vector3(1, 1, 1.4))
-		DERIVEUR:
-			# Des jupes basses et un becquet avant : un kart qui rase le sol.
-			for x in [-0.5, 0.5]:
-				a.ajouter(Personnage._boite(Vector3(0.08, 0.1, 1.4)), Vector3(x, 0.24, 0.0), teinte)
-			a.ajouter(Personnage._boite(Vector3(0.9, 0.03, 0.25)), Vector3(0, 0.24, -1.05), SOMBRE)
-		COSTAUD:
-			# Un pare-buffle et des flancs blindés.
-			for x in [-0.25, 0.25]:
-				a.ajouter(Personnage._cylindre(0.03, 0.03, 0.3, 8), Vector3(x, 0.42, -1.12), CHROME)
-			a.ajouter(Personnage._cylindre(0.035, 0.035, 0.62, 8), Vector3(0, 0.56, -1.12), CHROME, Vector3(0, 0, 90))
-			a.ajouter(Personnage._cylindre(0.035, 0.035, 0.62, 8), Vector3(0, 0.36, -1.14), CHROME, Vector3(0, 0, 90))
-			for x in [-0.55, 0.55]:
-				a.ajouter(Personnage._boite(Vector3(0.06, 0.25, 0.7)), Vector3(x, 0.38, 0.0), SOMBRE)
-		BUGGY:
-			# Un arceau-cage autour du pilote et des phares sur le toit.
-			for x in [-0.34, 0.34]:
-				for z in [-0.12, 0.5]:
-					a.ajouter(Personnage._cylindre(0.025, 0.025, 0.72, 8), Vector3(x, 0.74, z), SOMBRE)
-				a.ajouter(Personnage._cylindre(0.025, 0.025, 0.62, 8), Vector3(x, 1.1, 0.19), SOMBRE, Vector3(90, 0, 0))
-			for z in [-0.12, 0.5]:
-				a.ajouter(Personnage._cylindre(0.025, 0.025, 0.7, 8), Vector3(0, 1.1, z), SOMBRE, Vector3(0, 0, 90))
-			for x in [-0.18, 0.18]:
-				a.ajouter(Personnage._boule(0.06), Vector3(x, 1.14, -0.14), Color(1.0, 0.92, 0.55))
-			a.ajouter(Personnage._boite(Vector3(0.8, 0.12, 0.1)), Vector3(0, 0.3, -1.12), teinte)
-
-
-## Les ailerons, derrière le moteur.
-static func _aileron(a: Personnage.Atelier, teinte: Color, aile: int) -> void:
-	match aile:
-		BECQUET:
-			for x in [-0.2, 0.2]:
-				a.ajouter(Personnage._boite(Vector3(0.04, 0.1, 0.04)), Vector3(x, 0.66, 0.86), SOMBRE)
-			a.ajouter(Personnage._boite(Vector3(0.7, 0.04, 0.2)), Vector3(0, 0.72, 0.88), teinte)
-		GRAND_AILERON:
-			for x in [-0.25, 0.25]:
-				a.ajouter(Personnage._boite(Vector3(0.04, 0.38, 0.06)), Vector3(x, 0.74, 0.9), SOMBRE)
-			a.ajouter(Personnage._boite(Vector3(1.0, 0.05, 0.3)), Vector3(0, 0.94, 0.92), teinte, Vector3(-8, 0, 0))
-			for x in [-0.5, 0.5]:
-				a.ajouter(Personnage._boite(Vector3(0.03, 0.18, 0.34)), Vector3(x, 0.94, 0.92), BLANC)
-		AILETTES:
-			for x in [-0.22, 0.22]:
-				a.ajouter(Personnage._boite(Vector3(0.03, 0.3, 0.28)), Vector3(x, 0.74, 0.86), teinte,
-					Vector3(0, 0, 18.0 * signf(x)))
-		VOILE:
-			a.ajouter(Personnage._cylindre(0.02, 0.02, 0.8, 8), Vector3(0, 1.0, 0.78), SOMBRE)
-			a.ajouter(Personnage._boite(Vector3(0.02, 0.55, 0.36)), Vector3(0, 1.05, 0.98), BLANC)
-			a.ajouter(Personnage._boite(Vector3(0.025, 0.12, 0.37)), Vector3(0, 0.84, 0.98), teinte)
 
 
 ## Les couleurs de l'IA : celles de la palette que personne n'a prises, dans

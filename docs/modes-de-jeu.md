@@ -212,7 +212,14 @@ dédié.
 ## Garage (`ModeleKart`, `GaragePanel`)
 
 On monte son kart en trois pièces, comme dans les jeux de kart : une
-carrosserie, des roues et un aileron. On choisit aussi l'une des huit
+carrosserie, des roues et un aileron, quinze de chaque. Les pièces vont des
+plus sages aux plus farfelues, avec quelques clins d'œil à la culture
+populaire :
+- une baignoire avec son canard, un caddie, une soucoupe volante ;
+- un carrosse-citrouille, un requin, une chronomobile qui file à 88 miles à
+  l'heure, une chauve-souris justicière ;
+- des roues en donut, en pizza ou en pierre ;
+- une cape de super-héros, des ballons à soulever une maison. On choisit aussi l'une des huit
 couleurs et le pilote. Le garage s'ouvre depuis l'accueil et depuis le salon
 multijoueur. Chaque pièce se choisit avec ◀ ▶ ; les jauges suivent la
 combinaison, et la description dit ce que fait la dernière pièce changée.
@@ -224,19 +231,38 @@ des deux autres pièces :
 | Carrosserie | Vitesse | Accél. | Virage | Glisse | Poids | Terrain |
 | --- | --- | --- | --- | --- | --- | --- |
 | Standard | 1 | 1 | 1 | 1 | 1 | 1 |
-| Fusée | 1,02 | 0,80 | 1 | 0,90 | 1,1 | 0,95 |
-| Plume | 0,985 | 1,30 | 1,08 | 1,05 | 0,8 | 1 |
-| Dériveur | 0,995 | 0,95 | 1 | 1,30 | 0,95 | 0,95 |
+| Fusée | 1,02 | 0,8 | 1 | 0,9 | 1,1 | 0,95 |
+| Plume | 0,985 | 1,3 | 1,08 | 1,05 | 0,8 | 1 |
+| Dériveur | 0,995 | 0,95 | 1 | 1,3 | 0,95 | 0,95 |
 | Costaud | 1,01 | 0,88 | 0,97 | 0,95 | 1,4 | 1,05 |
-| Buggy | 0,99 | 1,10 | 1 | 0,95 | 1,05 | 1,30 |
+| Buggy | 0,99 | 1,1 | 1 | 0,95 | 1,05 | 1,3 |
+| Baignoire | 0,985 | 1,15 | 1,04 | 1,1 | 0,95 | 0,9 |
+| Caddie | 0,99 | 1,2 | 1,05 | 0,95 | 0,75 | 0,85 |
+| Soucoupe | 1,005 | 0,9 | 1,02 | 1,1 | 0,9 | 1 |
+| Citrouille | 0,98 | 1,05 | 1 | 1,05 | 1,2 | 1,15 |
+| Requin | 1,015 | 0,9 | 1,03 | 0,95 | 1,1 | 0,9 |
+| Chronomobile | 1,02 | 0,85 | 0,98 | 1,05 | 1,05 | 0,9 |
+| Hot-dog | 0,995 | 1,05 | 1 | 1 | 1,15 | 1,05 |
+| Tracteur | 0,98 | 1 | 0,97 | 0,9 | 1,5 | 1,4 |
+| Chauve-souris | 1,015 | 0,95 | 1 | 1 | 1,2 | 1 |
 
 | Roues | Vitesse | Accél. | Virage | Glisse | Poids | Terrain |
 | --- | --- | --- | --- | --- | --- | --- |
 | Standard | 1 | 1 | 1 | 1 | 1 | 1 |
-| Slicks | 1,008 | 0,95 | 1,03 | 1 | 1 | 0,80 |
-| Monstre | 0,992 | 0,90 | 0,98 | 0,97 | 1,15 | 1,35 |
-| Roller | 0,992 | 1,20 | 1,02 | 1,08 | 0,9 | 0,85 |
-| Néon | 1 | 1,05 | 1 | 1,10 | 1 | 0,90 |
+| Slicks | 1,008 | 0,95 | 1,03 | 1 | 1 | 0,8 |
+| Monstre | 0,992 | 0,9 | 0,98 | 0,97 | 1,15 | 1,35 |
+| Roller | 0,992 | 1,2 | 1,02 | 1,08 | 0,9 | 0,85 |
+| Néon | 1 | 1,05 | 1 | 1,1 | 1 | 0,9 |
+| Donuts | 0,992 | 1,1 | 1 | 1,05 | 1 | 0,9 |
+| Pizzas | 1 | 1 | 0,99 | 1,08 | 1,05 | 0,95 |
+| Pierre | 0,992 | 0,85 | 1 | 0,95 | 1,25 | 1,3 |
+| Vinyles | 1,004 | 1 | 1,02 | 1 | 0,95 | 0,8 |
+| Bouées | 0,992 | 1,05 | 0,99 | 1,1 | 0,85 | 1 |
+| Cookies | 0,996 | 1,15 | 1 | 1 | 0,95 | 0,9 |
+| Engrenages | 1,004 | 0,95 | 1 | 1 | 1,1 | 1,15 |
+| Bling | 1,006 | 0,97 | 1,01 | 1 | 1,05 | 0,85 |
+| Fromages | 0,996 | 1 | 0,99 | 1 | 1,1 | 1,1 |
+| Western | 0,996 | 1,05 | 0,99 | 1,05 | 1 | 1,05 |
 
 | Aileron | Vitesse | Accél. | Virage | Glisse | Poids | Terrain |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -244,9 +270,22 @@ des deux autres pièces :
 | Grand aileron | 1,003 | 0,95 | 1,03 | 1 | 1,03 | 1 |
 | Ailettes | 0,997 | 1,06 | 1,02 | 1 | 0,95 | 1 |
 | Voile | 0,997 | 1 | 1 | 1,08 | 1 | 1,05 |
+| Hélice | 1,003 | 0,97 | 1 | 1,05 | 1 | 1 |
+| Parasol | 0,997 | 1,02 | 1 | 1,03 | 1 | 1,05 |
+| Ailes d'ange | 0,997 | 1,05 | 1 | 1 | 0,92 | 1 |
+| Ailes de dragon | 1,003 | 0,97 | 1 | 1,05 | 1,05 | 1 |
+| Cape | 1,002 | 1 | 1,02 | 1 | 1 | 0,97 |
+| Drapeau pirate | 1 | 1,03 | 1 | 1,02 | 1 | 0,97 |
+| Ballons | 0,997 | 1,04 | 0,99 | 1 | 0,9 | 1 |
+| Parabole | 1 | 0,98 | 1,03 | 1 | 1,02 | 1 |
+| Réacteur | 1,003 | 1,04 | 0,995 | 0,97 | 1,05 | 1 |
+| Nageoire | 1 | 1 | 1,01 | 1,04 | 1 | 0,96 |
+| Feux d'artifice | 1,003 | 1,03 | 1 | 0,98 | 1 | 0,98 |
 
 Aucune pièce n'est meilleure en tout : chacune gagne quelque chose et en perd
-autre chose.
+autre chose (le poids n'est compté ni comme l'un ni comme l'autre). Les
+tests le vérifient, et vérifient aussi deux garde-fous sur les
+3 375 combinaisons : les sauts et le rayon de braquage (voir plus bas).
 
 La vitesse de pointe ne varie que de quelques pour cent, parce que c'est elle
 qui décide d'un chrono. Mesuré en contre-la-montre, avec une IA sans erreurs
@@ -278,11 +317,12 @@ combinaison :
 Chaque pièce a son allure : des formes simples en une seule maillage à
 couleurs de sommets, peintes de la couleur du kart et partagées entre les
 karts identiques.
-- **Carrosseries** : ogive et dérives (Fusée), ailes fines (Plume), jupes
-  basses (Dériveur), pare-buffle (Costaud), arceau-cage et phares (Buggy).
-- **Roues** : chaque train a son rayon, sa largeur et ses couleurs. Les
-  Monstre ont des crampons et une voie plus large. Une roue plus grande se
-  monte plus haut, et la suspension apprend son rayon.
+Les formes sont dans `AtelierPieces`.
+- **Carrosseries et ailerons** : ils se posent dans le repère de la caisse.
+- **Roues** : chaque train a son rayon, sa largeur et ses couleurs. Leurs
+  décors (vermicelles, pepperoni, sillons, pépites…) vont sur les deux faces,
+  puisqu'on voit l'une à gauche du kart et l'autre à droite. Une roue plus
+  grande se monte plus haut, et la suspension apprend son rayon.
 
 Les sept adversaires de l'IA courent dans des karts variés et fixes
 (`ModeleKart.KARTS_IA`) : chaque machine d'une partie en réseau les habille

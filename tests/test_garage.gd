@@ -32,7 +32,7 @@ func test_chaque_modele_gagne_et_perd_quelque_chose() -> void:
 		var m := ModeleKart.modele(i)
 		var gains := 0
 		var pertes := 0
-		for cle in ["vitesse", "acceleration", "virage", "glisse"]:
+		for cle in ["vitesse", "acceleration", "virage", "glisse", "terrain"]:
 			if m[cle] > 1.0:
 				gains += 1
 			elif m[cle] < 1.0:
