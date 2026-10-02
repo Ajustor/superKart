@@ -39,6 +39,9 @@ var _bandeau_maj: PanelContainer
 var _texte_maj: Label
 var _barre_maj: ProgressBar
 var _bouton_maj: Button
+## Le dégradé du fond, et la course qui se joue derrière quand il y en a une.
+var _degrade: TextureRect
+var _course_de_fond: CourseDeFond
 
 
 func _ready() -> void:
@@ -52,6 +55,7 @@ func _ready() -> void:
 	_options = OptionsPanel.new()
 	add_child(_options)
 	_options.ferme.connect(_montrer.bind(_accueil))
+	_options.fond_change.connect(_rafraichir_course_de_fond)
 	_multi = MultiplayerPanel.new()
 	add_child(_multi)
 	_multi.ferme.connect(_montrer.bind(_accueil))
@@ -80,6 +84,30 @@ func _fond() -> void:
 	fond.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	fond.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(fond)
+	_degrade = fond
+	# Après le premier affichage : monter un circuit prend un instant, le menu
+	# doit apparaître sans l'attendre.
+	_rafraichir_course_de_fond.call_deferred()
+
+
+## Allume ou éteint la course derrière le menu, selon les réglages. Quand elle
+## tourne, le dégradé ne fait plus que voiler l'image, pour que le texte reste
+## lisible.
+func _rafraichir_course_de_fond() -> void:
+	var voulue := CourseDeFond.possible()
+	if voulue and _course_de_fond == null:
+		_course_de_fond = CourseDeFond.new()
+		_course_de_fond.prete.connect(func() -> void:
+			create_tween().tween_property(_degrade, "modulate:a", VOILE, 0.8))
+		add_child(_course_de_fond)
+		move_child(_course_de_fond, 0)
+	elif not voulue and _course_de_fond != null:
+		_course_de_fond.queue_free()
+		_course_de_fond = null
+		_degrade.modulate.a = 1.0
+
+
+const VOILE := 0.45
 
 
 ## Le numéro de version, discret, en bas à gauche : qu'on sache sans

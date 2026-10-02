@@ -55,6 +55,28 @@ static func choc(duree: float, grave: float, clair: float, volume: float = 0.5) 
 	return en_wav(echantillons)
 
 
+## Un klaxon : deux notes tenues ensemble, à une tierce l'une de l'autre,
+## comme les deux trompes d'une voiture. Un léger tremblé pour qu'il sonne
+## mécanique plutôt qu'électronique. `hauteur` décale le tout (1 : normal).
+static func klaxon(duree: float = 0.32, hauteur: float = 1.0, volume: float = 0.4) -> AudioStreamWAV:
+	var n := int(duree * FREQUENCE)
+	var echantillons := PackedFloat32Array()
+	echantillons.resize(n)
+	var phases := [0.0, 0.0]
+	var frequences := [392.0 * hauteur, 494.0 * hauteur]
+	for i in n:
+		var t := float(i) / float(FREQUENCE)
+		var enveloppe := minf(t / 0.012, 1.0) * minf((duree - t) / 0.04, 1.0)
+		var tremble := 1.0 + 0.006 * sin(t * TAU * 28.0)
+		var e := 0.0
+		for k in 2:
+			phases[k] = fmod(phases[k] + frequences[k] * tremble / FREQUENCE, 1.0)
+			# Une dent de scie adoucie : riche en harmoniques, comme une trompe.
+			e += 0.5 * (2.0 * phases[k] - 1.0) * 0.7 + 0.3 * sin(phases[k] * TAU)
+		echantillons[i] = clampf(e * 0.5 * enveloppe * volume, -1.0, 1.0)
+	return en_wav(echantillons)
+
+
 ## Des échantillons de -1 à 1 en un son 16 bits mono.
 static func en_wav(echantillons: PackedFloat32Array) -> AudioStreamWAV:
 	var donnees := PackedByteArray()

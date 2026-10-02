@@ -13,6 +13,12 @@ const DUREE_ROULETTE := 1.0
 var objet: int = ItemKind.NONE
 var charges: int = 0
 var roulette: float = 0.0
+## Tenu derrière le kart, bouton maintenu : la banane ou la carapace traîne
+## au cul du kart et le protège, jusqu'à ce qu'on la lâche.
+var tenu: bool = false
+## Depuis combien de temps il est tenu : un appui bref garde l'usage
+## classique, un maintien laisse choisir le sens du lancer.
+var tenu_depuis: float = 0.0
 
 
 func est_vide() -> bool:
@@ -50,7 +56,15 @@ func utiliser() -> int:
 	return lance
 
 
+## Les objets qu'on peut garder derrière soi : ceux qui existent sur la piste.
+## Les autres (champignon, étoile, éclair…) agissent tout de suite.
+static func tenable(quoi: int) -> bool:
+	return quoi in [ItemKind.BANANA, ItemKind.FAKE_BOX, ItemKind.GREEN_SHELL, ItemKind.RED_SHELL]
+
+
 func vider() -> void:
 	objet = ItemKind.NONE
 	charges = 0
 	roulette = 0.0
+	tenu = false
+	tenu_depuis = 0.0

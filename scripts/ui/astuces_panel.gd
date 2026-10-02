@@ -13,7 +13,7 @@ const ACTIONS := {
 	&"steer_left": "Tourner à gauche",
 	&"steer_right": "Tourner à droite",
 	&"drift": "Sauter / déraper / figure",
-	&"use_item": "Utiliser l'objet",
+	&"use_item": "Objet (tenir : derrière soi) / klaxon",
 	&"pause": "Pause",
 }
 
@@ -89,7 +89,7 @@ static func texte_des_touches(action: StringName) -> String:
 static func nom_de_l_evenement(e: InputEvent) -> String:
 	if e is InputEventKey:
 		var k := e as InputEventKey
-		var code := k.physical_keycode if k.physical_keycode != 0 else k.keycode
+		var code := Touches.touche_affichee(k.physical_keycode) if k.physical_keycode != 0 else k.keycode
 		var nom := OS.get_keycode_string(code)
 		return NOMS_DE_TOUCHES.get(nom, nom)
 	if e is InputEventJoypadButton:

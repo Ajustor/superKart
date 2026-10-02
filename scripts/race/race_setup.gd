@@ -28,6 +28,8 @@ var classe: int = Cylindree.Classe.CC150
 ## Le kart du joueur (ModeleKart) et sa couleur, choisis au garage.
 var modele: int = ModeleKart.STANDARD
 var couleur: int = 0
+## Le pilote assis dedans (Personnage).
+var personnage: int = Personnage.CHEVALIER
 ## Le circuit retourné gauche-droite (Miroir). Se débloque.
 var miroir := false
 var piste: TrackInfo

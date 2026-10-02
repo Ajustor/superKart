@@ -1,7 +1,7 @@
 class_name GaragePanel
 extends Control
 
-## Le garage : le kart du joueur et sa couleur. Le choix s'enregistre aussitôt,
+## Le garage : le kart du joueur, sa couleur et le pilote assis dedans. Le choix s'enregistre aussitôt,
 ## comme les options, et part à l'hôte si l'on est dans un salon.
 
 signal ferme
@@ -14,6 +14,8 @@ var _description: Label
 var _jauges: Jauges
 var _vitrine: Node3D
 var _retour: Button
+var _nom_pilote: Label
+var _origine_pilote: Label
 
 
 ## Les caractéristiques du modèle, en barres.
@@ -39,13 +41,39 @@ class Jauges:
 func _ready() -> void:
 	theme = UITheme.theme()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var colonne := UITheme.panneau_centre(self, 980.0)
+	var colonne := UITheme.panneau_defilant(self, 1000.0)
 	colonne.add_child(UITheme.titre("GARAGE", 36))
 
 	var milieu := HBoxContainer.new()
 	milieu.add_theme_constant_override("separation", 24)
 	colonne.add_child(milieu)
-	milieu.add_child(_apercu())
+	var gauche := VBoxContainer.new()
+	gauche.add_theme_constant_override("separation", 6)
+	milieu.add_child(gauche)
+	gauche.add_child(_apercu())
+	# Le pilote : on fait défiler la galerie, flèche par flèche.
+	var pilote := HBoxContainer.new()
+	pilote.alignment = BoxContainer.ALIGNMENT_CENTER
+	pilote.add_theme_constant_override("separation", 10)
+	gauche.add_child(pilote)
+	var precedent := UITheme.bouton("◀", _changer_pilote.bind(-1))
+	precedent.custom_minimum_size = Vector2(70, 56)
+	pilote.add_child(precedent)
+	_nom_pilote = Label.new()
+	_nom_pilote.custom_minimum_size.x = 260
+	_nom_pilote.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_nom_pilote.add_theme_color_override("font_color", UITheme.ACCENT)
+	pilote.add_child(_nom_pilote)
+	var suivant := UITheme.bouton("▶", _changer_pilote.bind(1))
+	suivant.custom_minimum_size = Vector2(70, 56)
+	pilote.add_child(suivant)
+	_origine_pilote = Label.new()
+	_origine_pilote.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_origine_pilote.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_origine_pilote.custom_minimum_size.x = 440
+	_origine_pilote.add_theme_color_override("font_color", UITheme.TEXTE_DOUX)
+	_origine_pilote.add_theme_font_size_override("font_size", 18)
+	gauche.add_child(_origine_pilote)
 
 	var droite := VBoxContainer.new()
 	droite.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -122,7 +150,7 @@ func _unhandled_input(event: InputEvent) -> void:
 ## Le kart qui tourne sur lui-même, dans un monde à lui.
 func _apercu() -> Control:
 	var cadre := SubViewportContainer.new()
-	cadre.custom_minimum_size = Vector2(440, 300)
+	cadre.custom_minimum_size = Vector2(440, 270)
 	cadre.stretch = true
 	var vue := SubViewport.new()
 	vue.own_world_3d = true
@@ -172,6 +200,14 @@ func _relire() -> void:
 	_jauges.valeurs = ModeleKart.jauges(reglage.modele)
 	_jauges.queue_redraw()
 	ModeleKart.habiller(_vitrine, reglage.modele, ModeleKart.couleur(reglage.couleur))
+	Personnage.habiller(_vitrine, reglage.personnage)
+	_nom_pilote.text = Personnage.nom(reglage.personnage)
+	_origine_pilote.text = "D'après : %s" % Personnage.origine(reglage.personnage)
+
+
+func _changer_pilote(pas: int) -> void:
+	GameSettings.course.personnage = posmod(GameSettings.course.personnage + pas, Personnage.nombre())
+	_enregistrer()
 
 
 func _choisir_modele(i: int) -> void:

@@ -119,6 +119,51 @@ simule, et l'étoile et le rétrécissement voyagent dans l'instantané du kart
 (`KartSnapshot`) : l'hôte doit savoir qu'une carapace ne touche pas un kart
 sous étoile.
 
+### Tenir, lancer devant ou derrière, klaxon
+
+Le bouton OBJET se tient (`KartCommand.item_held`, `KartInventory.tenu`) :
+
+- **Appui bref** : l'usage habituel, la banane tombe derrière, la carapace
+  part devant.
+- **Maintenu** avec une banane, une fausse boîte, une carapace verte ou
+  rouge : l'objet traîne derrière le kart (`DISTANCE_TRAINE`). Il arrête les
+  carapaces qui arrivent derrière (les deux disparaissent), et un kart qui le
+  percute part en tête-à-queue ; dans les deux cas l'objet est perdu, comme
+  quand son porteur est sonné.
+- **Au lâcher**, après un vrai maintien (`SEUIL_TAPE`) : devant, ou derrière
+  si l'on freine (frein tenu, flèche bas, stick vers soi, bouton FREIN au
+  doigt). Une banane lancée devant retombe une quinzaine de mètres plus loin ;
+  une carapace rouge lancée derrière ne poursuit personne.
+- **Sans objet**, le bouton klaxonne (`ItemManager.klaxon`, pas plus d'un coup
+  toutes les 0,45 s). Chaque pilote a son ton ; les klaxons des autres
+  s'entendent depuis leur kart.
+
+En tête, l'IA garde une banane ou une verte derrière elle et la lâche en
+arrière quand un poursuivant approche. En réseau, le client envoie l'état
+du bouton à l'hôte (`RaceSync._tenue`) avant l'appui, l'objet tenu voyage
+dans le classement, et l'hôte relaie les klaxons à tous les autres.
+
+## Pilotes (`Personnage`)
+
+Douze pilotes assis dans les karts, tirés d'œuvres et de traditions du
+domaine public, redessinés en formes simples : Chevalier (légendes
+arthuriennes), Pirate, Robot (R.U.R., Čapek), Sorcière, Fantôme, Chaperon
+(Perrault), Viking (sagas), Momie, Renart (Roman de Renart), Chat botté
+(Perrault), Tortue et Lièvre (La Fontaine). Purement d'allure : ils ne
+changent que le ton du klaxon.
+
+Chaque pilote est une seule maillage à couleurs de sommets, construite une
+fois et partagée : huit pilotes coûtent huit appels de dessin. Le choix se
+fait au garage (flèches sous l'aperçu), s'enregistre avec le kart et voyage
+dans le salon en réseau ; l'IA prend les pilotes restants.
+
+## Course en fond du menu (`CourseDeFond`)
+
+Derrière l'accueil, huit IA courent sur un circuit tiré au sort, sans
+décompte, sans son ni écran de course ; la caméra coupe d'un kart à l'autre
+toutes les 8 s, et le dégradé du menu ne fait plus que voiler l'image. Coupée
+en qualité basse, sans écran, et par l'option « Course en fond du menu ».
+
 ## Garage (`ModeleKart`, `GaragePanel`)
 
 Cinq karts au choix, accessibles depuis l'accueil et depuis le salon
@@ -166,3 +211,14 @@ survivants sont classés au nombre de ballons.
 - Solo contre l'IA pour l'instant ; pas encore en réseau.
 
 Harnais : `tools/essai_circuit.gd -- arene_ovale 1 150 bataille`.
+
+## Touches (`Touches`, `TouchesPanel`)
+
+Au clavier, chaque action a deux touches : les flèches (plus Espace, Ctrl,
+Échap) et des lettres rangées par **position physique** : WASD sur un QWERTY,
+ZQSD sur un AZERTY, sans rien régler (Maj pour déraper, E pour l'objet).
+L'écran *Options → Changer les touches* montre ces deux emplacements et la
+manette, nomme les touches telles qu'elles sont écrites sur le clavier du
+joueur (`DisplayServer.keyboard_get_label_from_physical`) et affiche la
+disposition détectée. Une touche ne sert qu'à une action, et qu'à un
+emplacement.

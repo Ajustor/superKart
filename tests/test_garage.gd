@@ -106,8 +106,8 @@ func test_le_salon_transporte_les_karts() -> void:
 	l.choisir_vehicule(42, ModeleKart.COSTAUD, 4)
 	var copie := Lobby.new()
 	copie.depuis_liste(l.en_liste())
-	assert_eq(copie.vehicule(42), [ModeleKart.COSTAUD, 4])
-	assert_eq(copie.vehicule(1), [ModeleKart.STANDARD, 0], "sans choix, le kart d'origine")
+	assert_eq(copie.vehicule(42), [ModeleKart.COSTAUD, 4, Personnage.CHEVALIER])
+	assert_eq(copie.vehicule(1), [ModeleKart.STANDARD, 0, Personnage.CHEVALIER], "sans choix, le kart d'origine")
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 2
 	for place in copie.plan_de_course(rng):

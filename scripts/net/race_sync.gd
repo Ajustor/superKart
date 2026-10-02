@@ -67,6 +67,8 @@ var _horloge_course: float = 0.0
 ## classement parti avant que l'hôte ne sache.
 var _champignons_predits: int = 0
 var _inventaire_fige_jusqua: float = 0.0
+## Ce que l'hôte sait du bouton d'objet de ce joueur : tenu, et vers l'arrière.
+var _tenue_envoyee := [false, false]
 
 
 ## Appelé par RaceLauncher avant l'entrée dans l'arbre.
@@ -100,6 +102,7 @@ func _ready() -> void:
 		objets.objet_utilise.connect(_relayer_utilise)
 		objets.kart_touche.connect(_relayer_choc)
 		objets.kart_foudroye.connect(func(e: RaceEntry) -> void: _vers_proprietaire(e, "eclair", ItemKind.NONE))
+		objets.klaxon.connect(_relayer_klaxon)
 	# Le départ, comme le chargement, passe par Reseau : il a pu être donné
 	# avant que cette course ne soit montée.
 	Reseau.depart.connect(_partir)
@@ -149,8 +152,19 @@ func _physics_process(delta: float) -> void:
 	# La demande d'objet du joueur local part vers l'hôte, qui décide.
 	if not _hote:
 		var moi := _entree_locale()
+		# Le bouton tenu ou relâché part avant l'appui : l'hôte doit savoir,
+		# en recevant l'appui, si le joueur garde l'objet derrière lui.
+		if moi != null:
+			var tenue := [moi.kart.objet_tenu_presse, moi.kart.vise_arriere]
+			if tenue != _tenue_envoyee:
+				_tenue_envoyee = tenue
+				_tenue.rpc_id(1, _gid_de(moi), tenue[0], tenue[1])
 		if moi != null and moi.kart.demande_objet:
 			moi.kart.demande_objet = false
+			# Sans objet : le klaxon, tout de suite ici ; l'hôte le fera
+			# entendre aux autres.
+			if moi.inventaire.est_vide() and objets != null:
+				objets.klaxon.emit(moi)
 			_predire_objet(moi)
 			_demande_objet.rpc_id(1, _gid_de(moi))
 
@@ -302,7 +316,7 @@ func _photo_classement() -> Array:
 	for gid in entrees:
 		var e: RaceEntry = entrees[gid]
 		photo.append([gid, e.position, e.tours_comptes, e.finished, e.place_finale, e.temps_course,
-			e.inventaire.objet, e.inventaire.charges, e.inventaire.roulette, e.hors_temps])
+			e.inventaire.objet, e.inventaire.charges, e.inventaire.roulette, e.hors_temps, e.inventaire.tenu])
 	return photo
 
 
@@ -320,6 +334,7 @@ func _classement(photo: Array) -> void:
 		e.inventaire.objet = int(ligne[6])
 		e.inventaire.charges = int(ligne[7])
 		e.inventaire.roulette = float(ligne[8])
+		e.inventaire.tenu = ligne.size() > 10 and bool(ligne[10])
 
 
 @rpc("authority", "unreliable_ordered")
@@ -363,6 +378,24 @@ func _demande_objet(gid: int) -> void:
 	if not is_inside_tree() or not _hote or proprietaires.get(gid, -1) != multiplayer.get_remote_sender_id():
 		return
 	entrees[gid].kart.demande_objet = true
+
+
+@rpc("any_peer", "reliable")
+func _tenue(gid: int, presse: bool, arriere: bool) -> void:
+	if not is_inside_tree() or not _hote or proprietaires.get(gid, -1) != multiplayer.get_remote_sender_id():
+		return
+	entrees[gid].kart.objet_tenu_presse = presse
+	entrees[gid].kart.vise_arriere = arriere
+
+
+## Un klaxon s'entend de tous, sauf de celui qui l'a donné et l'a déjà
+## entendu chez lui.
+func _relayer_klaxon(entree: RaceEntry) -> void:
+	var gid := _gid_de(entree)
+	var auteur: int = proprietaires.get(gid, 1)
+	for peer in _pairs_prets():
+		if peer != auteur:
+			_effet.rpc_id(peer, gid, "klaxon", ItemKind.NONE)
 
 
 func _relayer_recu(entree: RaceEntry, objet: int) -> void:
@@ -412,6 +445,8 @@ func _effet(gid: int, quoi: String, objet: int) -> void:
 		"eclair":
 			if e.kart.motor.foudroyer():
 				objets.kart_foudroye.emit(e)
+		"klaxon":
+			objets.klaxon.emit(e)
 
 
 # --- Départs en cours de course -----------------------------------------------------

@@ -17,6 +17,8 @@ signal kart_touche(entree: RaceEntry)
 signal kart_foudroye(entree: RaceEntry)
 ## Une carapace bleue vient d'exploser, ici.
 signal explosion(ou: Vector3)
+## Le bouton d'objet, sans objet en main : un coup de klaxon.
+signal klaxon(entree: RaceEntry)
 
 ## Rayon de ramassage d'une boîte. Généreux : une boîte frôlée qui ne donne
 ## rien est vécue comme une injustice.
@@ -61,6 +63,17 @@ const PIECES_PAR_OBJET := 2
 const GRACE_LANCEUR := 0.4
 const RECUL_BANANE := 2.4
 const AVANCE_CARAPACE := 2.2
+## L'objet tenu traîne à cette distance derrière le kart.
+const DISTANCE_TRAINE := 1.8
+## Un appui plus bref que ça garde l'usage classique : la banane tombe
+## derrière, la carapace part devant. Au-delà, on a tenu l'objet : il part
+## devant au lâcher, ou derrière si l'on freine.
+const SEUIL_TAPE := 0.3
+## Une banane lancée devant retombe à cette distance.
+const PORTEE_BANANE := 14.0
+## Deux coups de klaxon pas plus près que ça : un bouton martelé ne fait pas
+## une sirène.
+const REPOS_KLAXON := 0.45
 ## Au-delà, la plus ancienne banane disparaît : une piste jonchée de dizaines
 ## de bananes ne se joue plus.
 const MAX_BANANES := 16
@@ -87,6 +100,13 @@ var _session: RaceSession
 var _piste: TrackCurve
 var _circuit: Track
 var _materiaux: Dictionary = {}
+## RaceEntry -> secondes avant le prochain coup de klaxon permis.
+var _klaxons: Dictionary = {}
+## RaceEntry -> point où traîne l'objet qu'il tient, pour cette image.
+var _traines: Dictionary = {}
+## RaceEntry -> [genre d'objet, visuel] de l'objet tenu, sur toutes les
+## machines (il se déduit de l'inventaire, recopié en réseau).
+var _visuels_tenus: Dictionary = {}
 
 
 class Boite:
@@ -174,6 +194,7 @@ func _process(delta: float) -> void:
 	for boite in boites:
 		if boite.noeud != null:
 			boite.noeud.rotate_y(1.6 * delta)
+	_placer_les_objets_tenus()
 
 
 ## Une image de jeu. `positions` suit l'ordre de session.entries.
@@ -191,16 +212,91 @@ func avancer(positions: Array[Vector3], delta: float) -> void:
 			continue
 		entree.inventaire.avancer(delta)
 		_ramasser(entree, positions[i])
+		_klaxons[entree] = maxf(_klaxons.get(entree, 0.0) - delta, 0.0)
 		if entree.kart.demande_objet:
 			entree.kart.demande_objet = false
-			var lance := entree.inventaire.utiliser()
-			if lance != ItemKind.NONE:
-				_lancer(entree, positions[i], lance)
-				objet_utilise.emit(entree, lance)
+			_appui(entree, positions[i])
+		if entree.inventaire.tenu:
+			entree.inventaire.tenu_depuis += delta
+			if not entree.kart.objet_tenu_presse or not entree.inventaire.pret():
+				_lacher(entree, positions[i])
 
+	_traines.clear()
+	for i in entrees.size():
+		if entrees[i].inventaire.tenu:
+			_traines[entrees[i]] = positions[i] - _avant(entrees[i]) * DISTANCE_TRAINE
 	_avancer_carapaces(positions, delta)
 	_avancer_bananes(positions, delta)
+	_heurter_les_objets_tenus(positions)
 	_nourrir_ia(positions)
+
+
+## Le bouton d'objet vient d'être enfoncé. Sans objet : le klaxon. Avec un
+## objet qu'on peut garder et le bouton encore tenu : il passe derrière le
+## kart. Sinon il part tout de suite, comme avant.
+func _appui(entree: RaceEntry, point: Vector3) -> void:
+	var inventaire := entree.inventaire
+	if inventaire.est_vide():
+		if _klaxons.get(entree, 0.0) <= 0.0:
+			_klaxons[entree] = REPOS_KLAXON
+			klaxon.emit(entree)
+		return
+	if not inventaire.pret() or inventaire.tenu:
+		return
+	if KartInventory.tenable(inventaire.objet) and entree.kart.objet_tenu_presse:
+		inventaire.tenu = true
+		inventaire.tenu_depuis = 0.0
+		return
+	var lance := inventaire.utiliser()
+	if lance != ItemKind.NONE:
+		_lancer(entree, point, lance)
+		objet_utilise.emit(entree, lance)
+
+
+## Le bouton est relâché : l'objet tenu part. Vers l'arrière si le joueur
+## freinait, vers l'avant sinon ; un appui bref garde le sens habituel.
+func _lacher(entree: RaceEntry, point: Vector3) -> void:
+	var inventaire := entree.inventaire
+	var bref := inventaire.tenu_depuis < SEUIL_TAPE
+	inventaire.tenu = false
+	inventaire.tenu_depuis = 0.0
+	var lance := inventaire.utiliser()
+	if lance == ItemKind.NONE:
+		return
+	var sens := Sens.HABITUEL if bref else (Sens.ARRIERE if entree.kart.vise_arriere else Sens.AVANT)
+	_lancer(entree, point, lance, sens)
+	objet_utilise.emit(entree, lance)
+
+
+enum Sens { HABITUEL, AVANT, ARRIERE }
+
+
+static func sens_effectif(objet: int, sens: int) -> int:
+	if sens != Sens.HABITUEL:
+		return sens
+	return Sens.ARRIERE if objet == ItemKind.BANANA or objet == ItemKind.FAKE_BOX else Sens.AVANT
+
+
+func _avant(entree: RaceEntry) -> Vector3:
+	var moteur := entree.kart.motor
+	return Vector3(sin(moteur.velocity_dir), 0.0, -cos(moteur.velocity_dir))
+
+
+## Un objet traîné protège : une carapace qui le touche s'y brise (voir
+## _carapace_touche), et un kart qui le percute est sonné — l'objet est
+## perdu dans les deux cas.
+func _heurter_les_objets_tenus(positions: Array[Vector3]) -> void:
+	for porteur: RaceEntry in _traines.keys():
+		var ou: Vector3 = _traines[porteur]
+		for j in _session.entries.size():
+			var autre := _session.entries[j]
+			if autre == porteur or not _en_jeu(autre):
+				continue
+			if positions[j].distance_to(ou) <= RAYON_IMPACT:
+				_toucher(autre)
+				porteur.inventaire.vider()
+				_traines.erase(porteur)
+				break
 
 
 func _ramasser(entree: RaceEntry, point: Vector3) -> void:
@@ -217,21 +313,28 @@ func _ramasser(entree: RaceEntry, point: Vector3) -> void:
 		return
 
 
-func _lancer(entree: RaceEntry, point: Vector3, objet: int) -> void:
+func _lancer(entree: RaceEntry, point: Vector3, objet: int, sens: int = Sens.HABITUEL) -> void:
 	var moteur := entree.kart.motor
-	var avant := Vector3(sin(moteur.velocity_dir), 0.0, -cos(moteur.velocity_dir))
+	var avant := _avant(entree)
 	if effet_sur_soi(moteur, objet):
 		return
+	var arriere := sens_effectif(objet, sens) == Sens.ARRIERE
 	match objet:
-		ItemKind.BANANA:
-			poser_banane(point - avant * RECUL_BANANE, entree)
-		ItemKind.FAKE_BOX:
-			poser_banane(point - avant * RECUL_BANANE, entree, true)
+		ItemKind.BANANA, ItemKind.FAKE_BOX:
+			# Derrière : posée au sol. Devant : lancée par-dessus le kart, elle
+			# retombe une quinzaine de mètres plus loin.
+			var ou := point - avant * RECUL_BANANE if arriere else point + avant * PORTEE_BANANE
+			poser_banane(ou, entree, objet == ItemKind.FAKE_BOX)
 		ItemKind.GREEN_SHELL:
-			lancer_carapace(point + avant * AVANCE_CARAPACE, avant, entree, null)
+			var sens_tir := -avant if arriere else avant
+			lancer_carapace(point + sens_tir * AVANCE_CARAPACE, sens_tir, entree, null)
 		ItemKind.RED_SHELL:
-			var cible := cible_proche(entree, point, avant) if bataille else cible_devant(entree)
-			lancer_carapace(point + avant * AVANCE_CARAPACE, avant, entree, cible)
+			if arriere:
+				# Lancée derrière, la rouge ne cherche personne : elle file droit.
+				lancer_carapace(point - avant * AVANCE_CARAPACE, -avant, entree, null)
+			else:
+				var cible := cible_proche(entree, point, avant) if bataille else cible_devant(entree)
+				lancer_carapace(point + avant * AVANCE_CARAPACE, avant, entree, cible)
 		ItemKind.BLUE_SHELL:
 			lancer_carapace(point + avant * AVANCE_CARAPACE, avant, entree, cible_bleue(entree), true)
 		ItemKind.LIGHTNING:
@@ -445,6 +548,14 @@ func _carapace_touche(c: Carapace, positions: Array[Vector3]) -> bool:
 		explosion.emit(c.position)
 		_visuel_explosion(c.position)
 		return true
+	# Un objet traîné derrière un kart lui sert de bouclier.
+	for porteur: RaceEntry in _traines.keys():
+		if porteur == c.lanceur and c.age < GRACE_LANCEUR:
+			continue
+		if (_traines[porteur] as Vector3).distance_to(c.position) <= RAYON_IMPACT:
+			porteur.inventaire.vider()
+			_traines.erase(porteur)
+			return true
 	for j in _session.entries.size():
 		var entree := _session.entries[j]
 		if (entree == c.lanceur and c.age < GRACE_LANCEUR) or not _en_jeu(entree):
@@ -483,6 +594,9 @@ func _avancer_bananes(positions: Array[Vector3], delta: float) -> void:
 
 func _toucher(entree: RaceEntry) -> void:
 	if entree.kart.motor.stun():
+		# Sonné, il lâche ce qu'il traînait.
+		if entree.inventaire.tenu:
+			entree.inventaire.vider()
 		kart_touche.emit(entree)
 
 
@@ -495,6 +609,7 @@ func _nourrir_ia(positions: Array[Vector3]) -> void:
 		if cerveau == null:
 			continue
 		cerveau.objet_pret = entree.inventaire.objet if entree.inventaire.pret() else ItemKind.NONE
+		cerveau.objet_tenu = entree.inventaire.tenu
 		cerveau.en_tete = entree.position == 1
 		cerveau.ecart_poursuivant = INF
 		for autre in _session.entries:
@@ -614,6 +729,35 @@ func _au_sol(distance: float, lateral: float, hauteur: float) -> Vector3:
 	return _piste.position_at(distance) \
 		+ _piste.right_at(distance) * lateral \
 		+ _piste.up_at(distance) * hauteur
+
+
+## L'objet tenu, derrière chaque kart qui en traîne un. Sur toutes les
+## machines : il se déduit de l'inventaire, recopié en réseau.
+func _placer_les_objets_tenus() -> void:
+	if _session == null:
+		return
+	for entree in _session.entries:
+		var inventaire := entree.inventaire
+		var genre := inventaire.objet if inventaire.tenu else ItemKind.NONE
+		var actuel: Array = _visuels_tenus.get(entree, [ItemKind.NONE, null])
+		if actuel[0] != genre:
+			if actuel[1] != null:
+				(actuel[1] as Node3D).queue_free()
+			var noeud: Node3D = null
+			match genre:
+				ItemKind.BANANA: noeud = _visuel_banane()
+				ItemKind.FAKE_BOX: noeud = _visuel_fausse_boite()
+				ItemKind.GREEN_SHELL: noeud = _visuel_carapace(Genre.VERTE)
+				ItemKind.RED_SHELL: noeud = _visuel_carapace(Genre.ROUGE)
+			if noeud != null:
+				add_child(noeud)
+			actuel = [genre, noeud]
+			_visuels_tenus[entree] = actuel
+		if actuel[1] != null and entree.kart.is_inside_tree():
+			var kart := entree.kart
+			# Juste derrière le kart, posé sur son plancher : il suit les
+			# pentes et les virages comme une remorque.
+			(actuel[1] as Node3D).global_position = kart.global_transform * Vector3(0.0, 0.35, DISTANCE_TRAINE)
 
 
 func _retirer_banane(index: int) -> void:

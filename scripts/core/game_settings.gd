@@ -36,6 +36,8 @@ var joystick: bool = true
 
 ## La mini-carte en haut à droite pendant la course.
 var mini_carte: bool = true
+## Une course d'IA derrière le menu (voir CourseDeFond).
+var course_de_fond: bool = true
 
 ## Le compteur de performances (PerfOverlay), en haut de l'écran.
 var afficher_fps: bool = false
@@ -111,6 +113,7 @@ func charger() -> void:
 		for action in fichier.get_section_keys("touches"):
 			touches[action] = fichier.get_value("touches", action)
 	mini_carte = bool(fichier.get_value("affichage", "mini_carte", mini_carte))
+	course_de_fond = bool(fichier.get_value("affichage", "course_de_fond", course_de_fond))
 	afficher_fps = bool(fichier.get_value("affichage", "fps", afficher_fps))
 	qualite = clampi(int(fichier.get_value("affichage", "qualite", qualite)),
 		QualiteGraphique.Niveau.AUTO, QualiteGraphique.Niveau.BASSE)
@@ -122,6 +125,7 @@ func charger() -> void:
 		Cylindree.Classe.CC50, Cylindree.Classe.CC200)
 	course.modele = clampi(int(fichier.get_value("garage", "modele", course.modele)), 0, ModeleKart.nombre() - 1)
 	course.couleur = posmod(int(fichier.get_value("garage", "couleur", course.couleur)), ModeleKart.COULEURS.size())
+	course.personnage = clampi(int(fichier.get_value("garage", "personnage", course.personnage)), 0, Personnage.nombre() - 1)
 	_trophees.clear()
 	if fichier.has_section("trophees"):
 		for cle in fichier.get_section_keys("trophees"):
@@ -157,6 +161,7 @@ func sauver() -> void:
 	for action in touches:
 		fichier.set_value("touches", action, touches[action])
 	fichier.set_value("affichage", "mini_carte", mini_carte)
+	fichier.set_value("affichage", "course_de_fond", course_de_fond)
 	fichier.set_value("affichage", "fps", afficher_fps)
 	fichier.set_value("affichage", "qualite", qualite)
 	fichier.set_value("reseau", "pseudo", pseudo)
@@ -166,6 +171,7 @@ func sauver() -> void:
 	fichier.set_value("course", "cylindree", course.classe)
 	fichier.set_value("garage", "modele", course.modele)
 	fichier.set_value("garage", "couleur", course.couleur)
+	fichier.set_value("garage", "personnage", course.personnage)
 	for cle in _records:
 		fichier.set_value("records", cle, _records[cle])
 	for cle in _trophees:
@@ -304,8 +310,8 @@ func _or_dans(classe: int, coupes: int) -> bool:
 
 
 ## Remplace une touche et l'enregistre (voir Touches.remplacer).
-func changer_touche(action: StringName, nouveau: InputEvent) -> void:
-	for changee in Touches.remplacer(action, nouveau):
+func changer_touche(action: StringName, nouveau: InputEvent, rang: int = 0) -> void:
+	for changee in Touches.remplacer(action, nouveau, rang):
 		touches[String(changee)] = Touches.decrire_action(changee)
 	sauver()
 

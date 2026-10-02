@@ -369,7 +369,8 @@ func _rafraichir_salon() -> void:
 		elif not en_ligne and peer == 1:
 			marque = " (hôte)"
 		var toi := "  ← toi" if peer == Reseau.mon_id() else ""
-		l.text = "%s%s — %s%s" % [Reseau.lobby.joueurs[peer], marque, ModeleKart.nom(vehicule[0]), toi]
+		l.text = "%s%s — %s, %s%s" % [Reseau.lobby.joueurs[peer], marque, Personnage.nom(vehicule[2]),
+			ModeleKart.nom(vehicule[0]), toi]
 		l.add_theme_color_override("font_color", UITheme.ACCENT if peer == Reseau.mon_id() else UITheme.TEXTE)
 		# Un long pseudo se termine en « … » plutôt que d'écraser les réglages.
 		l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS

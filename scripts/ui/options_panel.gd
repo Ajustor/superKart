@@ -6,6 +6,8 @@ extends Control
 ## oublie, et le volume se règle en entendant le résultat.
 
 signal ferme
+## La course du menu est à allumer ou éteindre (option, ou qualité changée).
+signal fond_change
 
 var _general: HSlider
 var _effets: HSlider
@@ -15,6 +17,7 @@ var _tactile: OptionButton
 var _auto: CheckButton
 var _vibrations: CheckButton
 var _mini_carte: CheckButton
+var _course_de_fond: CheckButton
 var _fps: CheckButton
 var _mises_a_jour: CheckButton
 var _qualite: OptionButton
@@ -27,7 +30,7 @@ var _touches: TouchesPanel
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UITheme.theme()
-	var colonne := UITheme.panneau_centre(self, 1080.0)
+	var colonne := UITheme.panneau_defilant(self, 1080.0)
 	_principal = colonne.get_parent().get_parent()
 	colonne.add_child(UITheme.titre("OPTIONS", 38))
 	# Deux colonnes : sur un téléphone tenu en paysage, une seule dépassait
@@ -53,8 +56,8 @@ func _ready() -> void:
 		"Automatique": QualiteGraphique.Niveau.AUTO, "Haute": QualiteGraphique.Niveau.HAUTE,
 		"Moyenne": QualiteGraphique.Niveau.MOYENNE, "Basse": QualiteGraphique.Niveau.BASSE})
 	_mini_carte = _interrupteur(gauche, "Mini-carte")
+	_course_de_fond = _interrupteur(gauche, "Course en fond du menu")
 	_fps = _interrupteur(gauche, "Compteur de FPS")
-	_mises_a_jour = _interrupteur(gauche, "Chercher les mises à jour")
 
 	droite.add_child(_intertitre("Commandes"))
 	_tactile = _liste(droite, "Commandes tactiles", {
@@ -68,6 +71,8 @@ func _ready() -> void:
 	var changer := UITheme.bouton("Changer les touches…", _montrer_touches)
 	changer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	droite.add_child(changer)
+	droite.add_child(_intertitre("Jeu"))
+	_mises_a_jour = _interrupteur(droite, "Chercher les mises à jour")
 
 	_touches = TouchesPanel.new()
 	_touches.visible = false
@@ -105,12 +110,17 @@ func _ready() -> void:
 	_mini_carte.toggled.connect(func(v: bool) -> void:
 		GameSettings.mini_carte = v
 		GameSettings.valider())
+	_course_de_fond.toggled.connect(func(v: bool) -> void:
+		GameSettings.course_de_fond = v
+		GameSettings.valider()
+		fond_change.emit())
 	_joystick.toggled.connect(func(v: bool) -> void:
 		GameSettings.joystick = v
 		GameSettings.valider())
 	_qualite.item_selected.connect(func(i: int) -> void:
 		GameSettings.qualite = _qualite.get_item_id(i)
-		GameSettings.valider())
+		GameSettings.valider()
+		fond_change.emit())
 	_sensibilite.value_changed.connect(func(v: float) -> void:
 		GameSettings.sensibilite_joystick = v
 		GameSettings.valider())
@@ -143,6 +153,7 @@ func _relire() -> void:
 	_auto.set_pressed_no_signal(GameSettings.acceleration_auto)
 	_vibrations.set_pressed_no_signal(GameSettings.vibrations)
 	_mini_carte.set_pressed_no_signal(GameSettings.mini_carte)
+	_course_de_fond.set_pressed_no_signal(GameSettings.course_de_fond)
 	_fps.set_pressed_no_signal(GameSettings.afficher_fps)
 	_mises_a_jour.set_pressed_no_signal(GameSettings.verifier_mises_a_jour)
 	_joystick.set_pressed_no_signal(GameSettings.joystick)

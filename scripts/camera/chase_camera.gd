@@ -60,6 +60,15 @@ func _ready() -> void:
 				orbite = 0.0)
 
 
+## Passe derrière un autre kart, d'un coup (la course du menu, voir
+## CourseDeFond).
+func suivre(kart: Kart) -> void:
+	_kart = kart
+	_placee = false
+	_vitesse_avant = kart.motor.speed
+	orbite = -1.0
+
+
 func _physics_process(delta: float) -> void:
 	var motor := _kart.motor
 	if orbite >= 0.0:

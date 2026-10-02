@@ -124,10 +124,11 @@ static func monter(reglage: RaceSetup, rng: RandomNumberGenerator = null) -> Nod
 	return course
 
 
-## Le kart du joueur prend le modèle et la couleur choisis au garage ; l'IA,
-## les autres couleurs de la palette.
+## Le kart du joueur prend le modèle, la couleur et le pilote choisis au
+## garage ; l'IA, les autres couleurs de la palette et les autres pilotes.
 static func _habiller(session: RaceSession, reglage: RaceSetup) -> void:
 	var libres := ModeleKart.couleurs_libres([reglage.couleur])
+	var pilotes := Personnage.libres([reglage.personnage])
 	for k in session.kart_paths.size():
 		var kart := session.get_node_or_null(session.kart_paths[k]) as Kart
 		if kart == null:
@@ -135,8 +136,10 @@ static func _habiller(session: RaceSession, reglage: RaceSetup) -> void:
 		if k == 0:
 			kart.stats = ModeleKart.stats(kart.stats, reglage.modele)
 			ModeleKart.habiller(kart, reglage.modele, ModeleKart.couleur(reglage.couleur))
+			Personnage.habiller(kart, reglage.personnage)
 		else:
 			ModeleKart.habiller(kart, ModeleKart.STANDARD, ModeleKart.couleur(libres[(k - 1) % libres.size()]))
+			Personnage.habiller(kart, pilotes[(k - 1) % pilotes.size()])
 
 
 ## La bataille : pas de tours ni de record, la table d'objets de l'arène, et
@@ -256,10 +259,13 @@ static func monter_reseau(plan: Array, config: Dictionary, moi: int, hote: bool)
 	# couleur se voit, le poids compte dans les chocs. L'IA prend les
 	# couleurs restantes.
 	var prises := []
+	var pilotes_pris := []
 	for place in plan:
 		if int(place.peer) != 0:
 			prises.append(int(place.get("couleur", 0)))
+			pilotes_pris.append(int(place.get("personnage", 0)))
 	var teintes_ia := ModeleKart.couleurs_libres(prises)
+	var pilotes_ia := Personnage.libres(pilotes_pris)
 	var n_ia := 0
 	for place in plan:
 		var kart := course.get_node(noeuds[place.gid]) as Kart
@@ -267,8 +273,10 @@ static func monter_reseau(plan: Array, config: Dictionary, moi: int, hote: bool)
 			var modele := int(place.get("modele", ModeleKart.STANDARD))
 			kart.stats = ModeleKart.stats(kart.stats, modele)
 			ModeleKart.habiller(kart, modele, ModeleKart.couleur(int(place.get("couleur", 0))))
+			Personnage.habiller(kart, int(place.get("personnage", 0)))
 		else:
 			ModeleKart.habiller(kart, ModeleKart.STANDARD, ModeleKart.couleur(teintes_ia[n_ia % teintes_ia.size()]))
+			Personnage.habiller(kart, pilotes_ia[n_ia % pilotes_ia.size()])
 			n_ia += 1
 
 	var objets := course.get_node_or_null("Objets") as ItemManager
