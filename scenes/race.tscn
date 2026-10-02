@@ -61,6 +61,9 @@ lateral_bias = 1.0
 reaction_delay = 0.0
 audace = 0.8
 regularite = 0.92
+envie_de_glisser = 0.95
+envie_de_figures = 0.9
+envie_de_plaques = 0.85
 drift_release_tier = 3
 full_steer_angle_deg = 12.0
 
@@ -72,6 +75,9 @@ lateral_bias = -0.6
 reaction_delay = 0.0
 audace = 0.35
 regularite = 0.95
+envie_de_glisser = 0.85
+envie_de_figures = 0.55
+envie_de_plaques = 0.5
 drift_release_tier = 3
 full_steer_angle_deg = 18.0
 
@@ -83,6 +89,9 @@ lateral_bias = 0.6
 reaction_delay = 0.3
 audace = 0.65
 regularite = 0.85
+envie_de_glisser = 0.8
+envie_de_figures = 0.8
+envie_de_plaques = 0.7
 drift_release_tier = 2
 full_steer_angle_deg = 22.0
 
@@ -94,6 +103,9 @@ lateral_bias = -1.0
 reaction_delay = 0.36
 audace = 0.9
 regularite = 0.75
+envie_de_glisser = 0.75
+envie_de_figures = 0.5
+envie_de_plaques = 0.9
 drift_release_tier = 2
 full_steer_angle_deg = 26.0
 
@@ -105,6 +117,9 @@ lateral_bias = 0.2
 reaction_delay = 0.4
 audace = 0.3
 regularite = 0.88
+envie_de_glisser = 0.6
+envie_de_figures = 0.35
+envie_de_plaques = 0.4
 drift_release_tier = 2
 full_steer_angle_deg = 30.0
 
@@ -116,6 +131,9 @@ lateral_bias = -0.2
 reaction_delay = 0.44
 audace = 0.55
 regularite = 0.8
+envie_de_glisser = 0.7
+envie_de_figures = 0.7
+envie_de_plaques = 0.3
 drift_release_tier = 1
 full_steer_angle_deg = 36.0
 
@@ -127,6 +145,9 @@ lateral_bias = 1.2
 reaction_delay = 0.48
 audace = 0.75
 regularite = 0.7
+envie_de_glisser = 0.5
+envie_de_figures = 0.45
+envie_de_plaques = 0.6
 drift_release_tier = 1
 full_steer_angle_deg = 44.0
 

@@ -37,7 +37,7 @@ extends KartInput
 ## elle suivait bien sa ligne, moins elle dérapait, ce qui est exactement
 ## l'inverse de ce qu'on veut. Un joueur dérape parce qu'il voit arriver le
 ## virage, pas parce qu'il a déjà raté sa trajectoire.
-@export var drift_entry_radius: float = 22.0
+@export var drift_entry_radius: float = 30.0
 
 ## Rayon au-delà duquel elle lâche une glisse en cours. Plus large que
 ## l'entrée, pour ne pas battre de l'aile à la frontière du virage.
@@ -46,7 +46,7 @@ extends KartInput
 ## et 6,77 m d'écart, 42 m donne 0,50 s et 7,40 m, 50 m donne 0,55 s et 8,00 m,
 ## 60 m atteint enfin le palier 1 mais à 9,21 m — hors d'une piste qui en fait
 ## 9,00. On garde la glisse la plus longue qui reste sur le bitume.
-@export var drift_exit_radius: float = 42.0
+@export var drift_exit_radius: float = 55.0
 
 ## Palier de mini-turbo visé avant de lâcher, de 1 à 3. Une IA gourmande tient
 ## la glisse plus longtemps et sort plus vite — c'est un des quatre leviers de
@@ -62,6 +62,15 @@ extends KartInput
 ## de temps en temps (trajectoire trop large, hésitation, glisse ratée).
 @export var audace: float = 0.5
 @export var regularite: float = 0.85
+
+## Ses habitudes, comme celles d'un joueur : la chance qu'elle glisse dans un
+## virage, qu'elle fasse une figure dans un saut, et qu'elle s'écarte de sa
+## ligne pour passer sur une plaque d'accélération. Tirée une fois par
+## virage, par saut, par plaque : elle ne joue pas deux fois le même tour.
+## À 1 (par défaut), elle le fait toujours, comme l'IA d'avant.
+@export_range(0.0, 1.0) var envie_de_glisser: float = 1.0
+@export_range(0.0, 1.0) var envie_de_figures: float = 1.0
+@export_range(0.0, 1.0) var envie_de_plaques: float = 1.0
 
 ## Intervalle entre deux décisions, en secondes. Zéro veut dire une décision
 ## par image. Au-delà, l'IA tient sa commande précédente : elle braque en
@@ -81,6 +90,10 @@ extends KartInput
 ## la courbe que -0,7 donnait avant, et l'IA, réglée sur celle-là, ne se
 ## mettait plus à zigzaguer dans ses glisses.
 const CONTRE_BRAQUAGE_MAX := -0.4
+## Dans une grande courbe, elle ouvre sa glisse jusque-là (le moteur la casse
+## à -0,8).
+const CONTRE_BRAQUAGE_LARGE := -0.72
+const ECART_GLISSE_MAX := 3.0
 
 ## Renseignés par la session avant chaque image. Les lire soi-même coûterait
 ## une projection de plus par kart, et global_position interdirait de tester
@@ -114,6 +127,9 @@ var boite_laterale: float = NAN
 ## Les portions (début, fin) où l'on ne joue pas : avant une rampe ou un trou,
 ## on reprend sa ligne et on ne se trompe pas. Donné par la session.
 var zones_prudentes := PackedVector2Array()
+## Les plaques d'accélération du circuit : (début, longueur, décalage,
+## largeur). Données par la session.
+var plaques := PackedVector4Array()
 
 ## La ligne qu'elle se donne s'écarte de sa ligne préférée d'au plus ça, en
 ## mètres, et lentement : deux ondes de quelques secondes, propres à chacune.
@@ -123,6 +139,9 @@ const FLANERIE := 1.4
 const CHANGEMENT_DE_LIGNE := 3.0
 ## La route qu'elle s'autorise : jamais plus près du bord que ça.
 const MARGE_BORD := 1.8
+## Une plaque d'accélération se repère à cette distance (m) : de quoi
+## changer de ligne avant d'arriver dessus.
+const PORTEE_PLAQUE := 40.0
 ## Pas d'objet lâché ni lancé à moins de ça (m) en amont d'une portion
 ## prudente, en plus de la portion elle-même.
 const MARGE_OBJETS := 40.0
@@ -152,6 +171,17 @@ var _depassement_reste: float = 0.0
 var _erreur: int = Erreur.AUCUNE
 var _erreur_reste: float = 0.0
 var _champignon_depuis: float = 0.0
+## Le virage en cours : glisse-t-elle dans celui-ci, et jusqu'à quel palier ?
+var _dans_un_virage := false
+var _glisse_ce_virage := true
+var _palier_ce_virage: int = 0
+## Le saut en cours : figure prévue, et à quel moment du vol.
+var _en_vol := false
+var _vol: float = 0.0
+var _figure_prevue := false
+var _moment_figure: float = 0.0
+## Plaque (son indice) -> y va-t-elle ? Tiré quand elle la voit venir.
+var _plaques_choisies: Dictionary = {}
 
 var _depuis_decision: float = 0.0
 var _steer_decide: float = 0.0
@@ -205,6 +235,29 @@ func _fill(delta: float) -> void:
 	_objet(delta)
 	command.drift = _drift_decide
 	command.steer = _brider_pour_tenir_la_glisse(_steer_decide)
+	_figure_en_vol(delta)
+
+
+## En l'air après un tremplin ou une rampe : un appui sur la glisse fait la
+## figure (voir Kart._figures). Pas à tous les sauts, ni au même moment.
+func _figure_en_vol(delta: float) -> void:
+	if kart == null or not kart.en_saut or kart.au_sol:
+		_en_vol = false
+		return
+	if not _en_vol:
+		_en_vol = true
+		_vol = 0.0
+		_figure_prevue = _tirer(envie_de_figures)
+		_moment_figure = 0.1 if envie_de_figures >= 1.0 else _rng.randf_range(0.06, 0.3)
+	_vol += delta
+	# Relâchée jusqu'au moment choisi : l'appui qui suit est un vrai appui,
+	# même si elle tenait la glisse en décollant.
+	command.drift = _figure_prevue and _vol >= _moment_figure
+
+
+## Vrai avec cette probabilité ; toujours à 1, jamais à 0.
+func _tirer(chance: float) -> bool:
+	return chance >= 1.0 or (chance > 0.0 and _rng.randf() < chance)
 
 
 # --- La course des autres -----------------------------------------------------
@@ -292,6 +345,9 @@ func _choisir_sa_ligne(delta: float) -> void:
 			voulu = lerpf(voulu, voisins[derriere].y, 0.4 + 0.3 * audace)
 	if devant < 0 and not is_nan(boite_laterale):
 		voulu = lerpf(voulu, boite_laterale, 0.8)
+	var plaque := plaque_visee()
+	if devant < 0 and not is_nan(plaque):
+		voulu = plaque
 
 	if _erreur == Erreur.LARGE:
 		# La trajectoire trop large : poussée vers l'extérieur du virage.
@@ -306,6 +362,25 @@ func _aller_vers(voulu: float, delta: float) -> void:
 	if is_nan(_lateral):
 		_lateral = voulu
 	_lateral = move_toward(_lateral, voulu, CHANGEMENT_DE_LIGNE * delta)
+
+
+## Le décalage de la plaque d'accélération qu'elle a décidé d'aller prendre,
+## devant ou sous elle ; NAN sinon. Chaque plaque est tirée une fois, quand
+## elle entre en vue, et oubliée une fois passée.
+func plaque_visee() -> float:
+	var visee := NAN
+	for i in plaques.size():
+		var p := plaques[i]
+		var devant := wrapf(p.x - distance, 0.0, track.length)
+		var dessus := wrapf(distance - p.x, 0.0, track.length) <= p.y
+		if devant > PORTEE_PLAQUE and not dessus:
+			_plaques_choisies.erase(i)
+			continue
+		if not _plaques_choisies.has(i):
+			_plaques_choisies[i] = _tirer(envie_de_plaques)
+		if _plaques_choisies[i] and is_nan(visee):
+			visee = p.z
+	return visee
 
 
 ## Le kart est-il dans une portion où l'on ne joue pas ?
@@ -456,7 +531,27 @@ func _brider_pour_tenir_la_glisse(braquage: float) -> float:
 	var sens := float(kart.motor.drift_dir)
 	if sens == 0.0:
 		return braquage
-	return maxf(braquage * sens, CONTRE_BRAQUAGE_MAX) * sens
+	return maxf(braquage * sens, contre_braquage_permis()) * sens
+
+
+## Le contre-braquage qu'elle s'autorise en glisse : modéré dans une épingle,
+## presque jusqu'à la casse dans une grande courbe, où la glisse doit s'ouvrir
+## pour suivre la route (KartStats.drift_rapport_exterieur).
+func contre_braquage_permis() -> float:
+	if track == null:
+		return CONTRE_BRAQUAGE_MAX
+	var rayon := track.radius_at(distance)
+	var ouverture := clampf((rayon - 20.0) / 30.0, 0.0, 1.0) if rayon < INF else 1.0
+	return lerpf(CONTRE_BRAQUAGE_MAX, CONTRE_BRAQUAGE_LARGE, ouverture)
+
+
+## Elle a quitté sa ligne de plus de ça en glisse : elle lâche, comme un joueur
+## qui sent qu'il part au mur.
+func glisse_qui_derape() -> bool:
+	if track == null or is_nan(_lateral):
+		return false
+	var ecart := (position - track.position_at(distance)).dot(track.right_at(distance)) - _lateral
+	return absf(ecart) > ECART_GLISSE_MAX
 
 
 ## Distance à laquelle on juge la sévérité du virage. Bien plus courte que la
@@ -481,8 +576,14 @@ func _distance_de_decision() -> float:
 func _veut_deraper() -> bool:
 	if kart.motor.speed < kart.stats.min_drift_speed:
 		return false
+	# Pas de glisse sur l'élan d'un saut, sur le verglas ni dans le vent :
+	# le petit bond d'entrée, pris au bord d'une rampe, l'empêche de décoller.
+	if prudente():
+		return false
 
 	var rayon := track.radius_at(_distance_de_decision())
+	_suivre_le_virage(rayon)
+	var palier_vise := _palier_ce_virage if _palier_ce_virage > 0 else drift_release_tier
 
 	# Le saut fait partie de l'engagement : un joueur garde la gâchette
 	# enfoncée pendant qu'il décolle. En repassant par le seuil d'entrée,
@@ -491,10 +592,27 @@ func _veut_deraper() -> bool:
 	if kart.motor.state == KartMotor.State.HOP:
 		return rayon < drift_exit_radius
 
+	if kart.motor.state == KartMotor.State.DRIFT and glisse_qui_derape():
+		return false
+
 	if kart.motor.state == KartMotor.State.DRIFT:
 		# Une glisse tenue en ligne droite finit dans le décor, et une glisse
 		# lâchée trop tôt ne rapporte rien : on sort au premier des deux.
 		var palier := kart.motor.tier_for_charge(kart.motor.drift_charge)
-		return palier < drift_release_tier and rayon < drift_exit_radius
+		return palier < palier_vise and rayon < drift_exit_radius
 
-	return rayon < drift_entry_radius
+	return rayon < drift_entry_radius and _glisse_ce_virage
+
+
+## À l'entrée de chaque virage, elle décide si elle y glisse et jusqu'à quel
+## palier : parfois elle le passe en adhérence, parfois elle lâche son
+## mini-turbo un palier plus tôt, comme un joueur qui ne tente pas tout.
+func _suivre_le_virage(rayon: float) -> void:
+	if not _dans_un_virage and rayon < drift_entry_radius:
+		_dans_un_virage = true
+		_glisse_ce_virage = _tirer(envie_de_glisser)
+		_palier_ce_virage = drift_release_tier
+		if envie_de_glisser < 1.0 and _rng.randf() < 0.3:
+			_palier_ce_virage = clampi(drift_release_tier + (1 if _rng.randf() < 0.4 else -1), 1, 3)
+	elif _dans_un_virage and rayon > drift_exit_radius:
+		_dans_un_virage = false

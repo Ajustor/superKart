@@ -255,3 +255,147 @@ func test_derriere_la_tete_elle_garde_une_banane_en_bouclier() -> void:
 	assert_true(ia.veut_garder_derriere(), "personne derrière : elle la garde en bouclier")
 	_avec_un_autre(0.0, Vector2(0.0, 20.0), Vector3(-5.0, 0.0, 22.0))
 	assert_false(ia.veut_garder_derriere(), "un poursuivant colle : elle la lâche")
+
+
+# --- Ses habitudes : glisser, figurer, aller chercher les plaques ---------------
+
+## Un virage serré (14 m), de quoi glisser ; le kart lancé, pile sur la ligne.
+func _dans_une_epingle() -> void:
+	piste = TrackCurve.new(_anneau(14.0, 24), 9.0)
+	ia.track = piste
+	ia.distance = 0.0
+	ia.position = piste.racing_line_at(0.0)
+	kart.motor.heading = piste.yaw_at(0.0)
+	kart.motor.velocity_dir = kart.motor.heading
+	kart.motor.speed = 15.0
+
+
+func test_sans_envie_de_glisser_elle_passe_le_virage_en_adherence() -> void:
+	_dans_une_epingle()
+	ia.envie_de_glisser = 0.0
+	assert_false(ia.poll(PAS).drift)
+
+
+func test_l_envie_de_glisser_se_tire_une_fois_par_virage() -> void:
+	ia.envie_de_glisser = 0.5
+	ia._rng.seed = 3
+	var glisses := 0
+	for k in 40:
+		ia._dans_un_virage = false
+		_dans_une_epingle()
+		var premiere := ia.poll(PAS).drift
+		# Dans le même virage, la décision tient.
+		for i in 10:
+			kart.motor.state = KartMotor.State.GRIP
+			assert_eq(ia.poll(PAS).drift, premiere, "elle ne change pas d'avis en plein virage")
+		if premiere:
+			glisses += 1
+	assert_between(glisses, 8, 32, "à 50 %, elle glisse dans certains virages, pas dans tous")
+
+
+func test_un_virage_fini_en_appelle_un_nouveau() -> void:
+	ia.envie_de_glisser = 0.5
+	ia._suivre_le_virage(10.0)
+	assert_true(ia._dans_un_virage)
+	ia._suivre_le_virage(ia.drift_entry_radius + 5.0)
+	assert_true(ia._dans_un_virage, "entre l'entrée et la sortie, toujours le même virage")
+	ia._suivre_le_virage(ia.drift_exit_radius + 5.0)
+	assert_false(ia._dans_un_virage)
+
+
+func _en_l_air() -> void:
+	kart.en_saut = true
+	kart.au_sol = false
+
+
+func test_une_ia_qui_aime_les_figures_appuie_en_l_air() -> void:
+	ia.envie_de_figures = 1.0
+	_en_l_air()
+	var appuis := 0
+	var avant := false
+	for i in 30:
+		var glisse := ia.poll(PAS).drift
+		if glisse and not avant:
+			appuis += 1
+		avant = glisse
+	assert_eq(appuis, 1, "un appui franc, une seule fois")
+
+
+func test_une_ia_sans_envie_de_figure_n_en_fait_pas() -> void:
+	ia.envie_de_figures = 0.0
+	_en_l_air()
+	for i in 30:
+		assert_false(ia.poll(PAS).drift)
+
+
+func test_la_figure_de_l_ia_passe_par_le_kart() -> void:
+	ia.envie_de_figures = 1.0
+	_en_l_air()
+	watch_signals(kart)
+	for i in 30:
+		kart._figures(ia.poll(PAS), PAS)
+	assert_signal_emit_count(kart, "figure", 1)
+
+
+func test_au_sol_elle_oublie_son_vol() -> void:
+	ia.envie_de_figures = 1.0
+	_en_l_air()
+	ia.poll(PAS)
+	kart.au_sol = true
+	kart.en_saut = false
+	ia.poll(PAS)
+	assert_false(ia._en_vol)
+
+
+func test_elle_s_ecarte_pour_une_plaque_qu_elle_a_choisie() -> void:
+	ia.envie_de_plaques = 1.0
+	ia.plaques = PackedVector4Array([Vector4(30.0, 6.0, 4.0, 3.0)])
+	ia.distance = 5.0
+	assert_almost_eq(ia.plaque_visee(), 4.0, 0.001)
+	_rouler(3.0, 5.0)
+	assert_gt(ia.ligne_visee(), 3.0, "elle a changé de ligne pour passer dessus")
+
+
+func test_une_ia_sans_envie_de_plaque_ne_fait_pas_l_ecart() -> void:
+	ia.envie_de_plaques = 0.0
+	ia.plaques = PackedVector4Array([Vector4(30.0, 6.0, 4.0, 3.0)])
+	ia.distance = 5.0
+	assert_true(is_nan(ia.plaque_visee()))
+
+
+func test_une_plaque_passee_est_oubliee_puis_retiree() -> void:
+	ia.envie_de_plaques = 0.5
+	ia.plaques = PackedVector4Array([Vector4(30.0, 6.0, 4.0, 3.0)])
+	ia.distance = 5.0
+	ia.plaque_visee()
+	assert_true(ia._plaques_choisies.has(0))
+	ia.distance = 33.0
+	ia.plaque_visee()
+	assert_true(ia._plaques_choisies.has(0), "sur la plaque, la décision tient")
+	ia.distance = 60.0
+	ia.plaque_visee()
+	assert_false(ia._plaques_choisies.has(0), "passée, elle sera retirée au prochain tour")
+
+
+func test_pas_de_plaque_sur_l_elan_d_un_saut() -> void:
+	ia.envie_de_plaques = 1.0
+	ia.plaques = PackedVector4Array([Vector4(30.0, 6.0, 4.0, 3.0)])
+	ia.zones_prudentes = PackedVector2Array([Vector2(0.0, 40.0)])
+	_rouler(2.0, 10.0)
+	assert_almost_eq(ia.ligne_visee(), ia.lateral_de_la_ligne(ia.distance_visee()), 0.2)
+
+
+func test_pas_de_glisse_sur_l_elan_d_un_saut() -> void:
+	_dans_une_epingle()
+	ia.zones_prudentes = PackedVector2Array([Vector2(-10.0, 30.0)])
+	assert_false(ia.poll(PAS).drift, "le bond de la glisse au bord d'une rampe, et c'est le trou")
+
+
+func test_en_glisse_large_elle_ouvre_plus_qu_en_epingle() -> void:
+	piste = TrackCurve.new(_anneau(14.0, 24), 9.0)
+	ia.track = piste
+	var en_epingle := ia.contre_braquage_permis()
+	piste = TrackCurve.new(_anneau(60.0, 24), 9.0)
+	ia.track = piste
+	assert_lt(ia.contre_braquage_permis(), en_epingle)
+	assert_gt(ia.contre_braquage_permis(), -0.8, "jamais jusqu'à casser la glisse")

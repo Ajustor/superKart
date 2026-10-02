@@ -82,9 +82,6 @@ const ATTERRISSAGE_AUDIBLE := 2.5
 const FIGURE_APRES := 0.05
 const FIGURE_TURBO := 0.7
 const FIGURE_FORCE := 1.25
-## Une IA au moins aussi vive fait ses figures : sinon le joueur gagnerait
-## un turbo à chaque saut sur des adversaires qui n'en font jamais.
-const IA_REACTION_FIGURE := 0.3
 
 ## En l'air à cause d'un tremplin ou d'une rampe.
 var en_saut: bool = false
@@ -265,18 +262,13 @@ func _figures(cmd: KartCommand, delta: float) -> void:
 	_en_l_air += delta
 	if appui:
 		_figure_demandee = true
-	if not figure_faite and _en_l_air >= FIGURE_APRES and (_figure_demandee or _figure_de_l_ia()):
+	if not figure_faite and _en_l_air >= FIGURE_APRES and _figure_demandee:
 		figure_faite = true
 		figures += 1
 		figure.emit()
 	# Pas de bond de dérapage en plein vol : il relançait le kart vers le
 	# haut, un double saut qui allongeait n'importe quel tremplin.
 	cmd.drift = false
-
-
-func _figure_de_l_ia() -> bool:
-	var cerveau := _input as AIInput
-	return cerveau != null and cerveau.reaction_delay <= IA_REACTION_FIGURE and _en_l_air >= 0.15
 
 
 func _atterrir() -> void:

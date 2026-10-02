@@ -679,3 +679,15 @@ func test_les_rampes_et_les_trous_sont_des_zones_prudentes() -> void:
 	assert_eq(zones.size(), 1)
 	assert_almost_eq(zones[0].x, 100.0 - Track.ELAN_PRUDENT, 0.001, "dès l'élan")
 	assert_almost_eq(zones[0].y, 110.0 + Track.RETOMBEE_PRUDENTE, 0.001, "jusqu'à la retombée")
+
+
+func test_les_plaques_d_acceleration_sont_donnees_a_l_ia() -> void:
+	_monter(1)
+	var plaque := TrackBoost.new()
+	plaque.debut = 50.0
+	plaque.decalage = -3.0
+	track.add_child(plaque)
+	var plaques := track.plaques_d_acceleration()
+	assert_eq(plaques.size(), 1)
+	assert_almost_eq(plaques[0].x, 50.0, 0.001)
+	assert_almost_eq(plaques[0].z, -3.0, 0.001)

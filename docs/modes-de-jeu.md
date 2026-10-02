@@ -169,6 +169,30 @@ L'IA ne recopie plus la trajectoire idéale : elle court comme un joueur.
   - Le champignon attend une ligne droite ou un kart à doubler, sans attendre
     plus de 4 s.
   - La verte attend une cible.
+- **Ses habitudes**, comme celles d'un joueur (`envie_de_glisser`,
+  `envie_de_figures`, `envie_de_plaques`, de 0 à 1). Elle les tire au sort une
+  fois par virage, par saut ou par plaque, si bien que deux tours ne se
+  ressemblent pas.
+  - **Les virages** : elle en passe certains en adhérence. Dans les autres,
+    elle lâche parfois son mini-turbo un palier plus tôt ou plus tard.
+  - **Les sauts** : elle ne fait pas une figure à chaque saut, et pas toujours
+    au même moment du vol.
+  - **Les plaques d'accélération** : elle fait parfois l'écart pour passer
+    dessus, et parfois les laisse filer.
+
+  - **Où elle glisse** : jusque dans les courbes moyennes (rayon de 30 m,
+    tenue jusqu'à 55 m), et plus seulement dans les épingles (22 m). Elle y
+    ouvre sa glisse en contre-braquant plus fort que dans une épingle. Elle
+    la lâche si elle s'écarte de plus de 3 m de sa ligne, et ne glisse jamais
+    en zone prudente : le bond d'entrée, pris au bord d'une rampe,
+    l'empêchait de décoller.
+
+  Mesuré sur les 20 circuits, 3 passages : 430 à 500 glisses par passage
+  au lieu de 35. Les temps sont un peu meilleurs, et il y a 4 remises en
+  piste en 60 courses.
+
+  Chaque IA de `race.tscn` a les siennes. À 1, la valeur par défaut, l'IA
+  fait tout, toujours : c'est le cas du kart du joueur confié à l'IA.
 - **La prudence.** Avant une rampe ou un trou, sur le verglas et dans le vent
   (`Track.zones_prudentes`), elle reprend sa ligne. Elle ne double plus, ne se
   trompe pas et ne lâche aucun objet, pour ne laisser personne sans élan
@@ -399,4 +423,5 @@ tonneau au kart, et l'atterrissage donne un turbo.
 - **Avant la correction** : le délai était de 0,12 s, et un appui fait
   pendant ce temps était avalé. Il fallait appuyer une seconde fois, et la
   figure venait trop tard.
-- **L'IA** qui en fait les siennes les lance 0,15 s après le décollage.
+- **L'IA** décide à chaque saut si elle fait une figure, selon son
+  `envie_de_figures`, et appuie entre 0,06 et 0,3 s après le décollage.

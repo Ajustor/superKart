@@ -37,6 +37,11 @@ var _temps := 0.0
 var _images: PackedFloat32Array = []
 var _derniere := 0
 var _seul := false
+## Par kart : glisses engagées, et passages sur une plaque d'accélération.
+var _glisses: Array[int] = []
+var _plaques: Array[int] = []
+var _etat_avant: Array[int] = []
+var _sur_plaque: Array[bool] = []
 
 
 func _ready() -> void:
@@ -99,6 +104,14 @@ func _physics_process(delta: float) -> void:
 				_remises[i] += 1
 				var ou := int(e.derniere_en_piste / 10.0) * 10
 				_ou[ou] = int(_ou.get(ou, 0)) + 1
+			var etat := e.kart.motor.state
+			if etat == KartMotor.State.DRIFT and _etat_avant[i] != KartMotor.State.DRIFT:
+				_glisses[i] += 1
+			_etat_avant[i] = etat
+			var plaque := _session.circuit().accelerateur_en(e.progress.distance, e.lateral) != null
+			if plaque and not _sur_plaque[i]:
+				_plaques[i] += 1
+			_sur_plaque[i] = plaque
 			if e.kart.motor.speed < 2.0 and e.kart.motor.state != KartMotor.State.STUNNED:
 				_arrets[i] += 1
 				var ici := int(e.progress.distance / 10.0) * 10
@@ -115,6 +128,10 @@ func _brancher() -> void:
 		_precedent.append(e.kart.global_position)
 		_remises.append(0)
 		_arrets.append(0)
+		_glisses.append(0)
+		_plaques.append(0)
+		_etat_avant.append(KartMotor.State.GRIP)
+		_sur_plaque.append(false)
 	var kart: Kart = _session.entries[0].kart
 	var ia := AIInput.new()
 	kart.add_child(ia)
@@ -133,8 +150,9 @@ func _bilan() -> void:
 		var e := _session.entries[i]
 		if e.finished:
 			arrives += 1
-		print("  %-10s %s  remises %2d  arrêts %4d" % [e.kart.name,
-			("%6.1f s" % e.temps_course) if e.finished else "  ---   ", _remises[i], _arrets[i]])
+		print("  %-10s %s  remises %2d  arrêts %4d  glisses %3d  figures %2d  plaques %2d" % [e.kart.name,
+			("%6.1f s" % e.temps_course) if e.finished else "  ---   ", _remises[i], _arrets[i], _glisses[i],
+			e.kart.figures, _plaques[i]])
 	var cles := _ou.keys()
 	cles.sort()
 	var lieux := PackedStringArray()
