@@ -63,7 +63,12 @@ extends KartInput
 ## 11, donc l'IA sur-tournait, contre-braquait à fond et cassait sa propre
 ## glisse en six images — jamais un seul mini-turbo encaissé. Un pilote
 ## contre-braque dans la glisse, pas assez fort pour la perdre.
-const CONTRE_BRAQUAGE_MAX := -0.7
+##
+## Ramené de -0,7 à -0,4 quand le contre-braquage a ouvert la glisse presque en
+## ligne droite (KartStats.drift_rapport_exterieur) : -0,4 donne aujourd'hui
+## la courbe que -0,7 donnait avant, et l'IA, réglée sur celle-là, ne se
+## mettait plus à zigzaguer dans ses glisses.
+const CONTRE_BRAQUAGE_MAX := -0.4
 
 ## Renseignés par la session avant chaque image. Les lire soi-même coûterait
 ## une projection de plus par kart, et global_position interdirait de tester

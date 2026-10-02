@@ -346,7 +346,9 @@ func test_serrer_le_virage_charge_plus_vite() -> void:
 	cmd.steer = -1.0
 	motor.drift_charge = 0.0
 	_run(0.5)
-	assert_gt(serre, motor.drift_charge * 1.5, "vers l'intérieur, le mini-turbo se charge nettement plus vite")
+	# 1 contre 0,7 (charge_au_contre_braquage) : la glisse large des grandes
+	# courbes doit aussi mener au grand turbo, juste un peu moins vite.
+	assert_gt(serre, motor.drift_charge * 1.3, "vers l'intérieur, le mini-turbo se charge nettement plus vite")
 
 
 func test_chaque_palier_franchi_est_annonce() -> void:

@@ -222,3 +222,20 @@ manette, nomme les touches telles qu'elles sont écrites sur le clavier du
 joueur (`DisplayServer.keyboard_get_label_from_physical`) et affiche la
 disposition détectée. Une touche ne sert qu'à une action, et qu'à un
 emplacement.
+
+## Glisse et grand turbo (`KartMotor`, `KartStats`)
+
+Pendant une glisse, le stick choisit la courbe, en douceur : vers
+l'intérieur, la plus serrée (9,6 m de rayon à 22 m/s) ; au neutre, 12,3 m ;
+en contre-braquant, presque une ligne droite (environ 190 m). La charge du
+mini-turbo monte à plein régime vers l'intérieur, à 70 % en contre-braquant.
+Paliers à 0,6 s, 1,5 s et 2,6 s de charge pleine.
+
+Le contre-braquage ouvrait autrefois la glisse à 27 m seulement : les grandes
+courbes des circuits, de 50 à 90 m de rayon et souvent longues de plus de
+cinq secondes, ne se tenaient pas en glisse, et le grand turbo n'existait que
+dans les épingles. `tools/essai_glisse.gd` fait tenir la glisse à un joueur
+au clavier sur des cercles de 12 à 90 m ; le palier 3 y tombe entre 3,2 et
+3,9 s, à 1,7 m au plus du milieu de la route, et `tests/test_glisse.gd` le
+garde ainsi. L'IA, réglée sur l'ancienne courbe, contre-braque moins fort
+(`AIInput.CONTRE_BRAQUAGE_MAX`, -0,4 au lieu de -0,7) pour garder ses temps.
