@@ -638,3 +638,44 @@ func test_l_ia_en_tete_traine_sa_banane_puis_la_lache_derriere() -> void:
 func test_un_klaxon_se_synthetise() -> void:
 	var son := Synth.klaxon()
 	assert_gt(son.data.size(), 1000)
+
+
+# --- L'IA dans la course -----------------------------------------------------
+
+func test_l_ia_les_mains_vides_vise_la_boite_la_plus_proche_devant() -> void:
+	_monter(1)
+	var rangee := _piste().length * 0.25
+	var visee := objets.boite_visee(rangee - 20.0, 5.0)
+	assert_false(is_nan(visee), "une rangée vingt mètres devant se voit")
+	assert_gt(visee, 2.0, "dans la rangée, celle qui demande le moins de détour")
+	assert_true(is_nan(objets.boite_visee(rangee + 10.0)), "une rangée passée ne compte plus")
+	assert_true(is_nan(objets.boite_visee(rangee - ItemManager.PORTEE_BOITE_IA - 5.0)),
+		"ni une rangée trop loin")
+	for b in objets.boites:
+		b.attente = ItemManager.REAPPARITION
+	assert_true(is_nan(objets.boite_visee(rangee - 20.0)), "ni des boîtes déjà prises")
+
+
+func test_la_session_raconte_la_course_a_l_ia() -> void:
+	_monter(3)
+	var ia := AIInput.new()
+	a_liberer.append(ia)
+	ia.kart = karts[1]
+	session.brancher_ia(ia)
+	session.entries[2].lateral = 3.5
+	session.partager_la_course()
+	assert_eq(ia.voisins.size(), 3, "un état par concurrent")
+	assert_eq(ia.mon_index, 1, "et sa propre place dans le tableau")
+	assert_almost_eq(ia.voisins[2].y, 3.5, 0.001, "avec l'écart latéral de chacun")
+
+
+func test_les_rampes_et_les_trous_sont_des_zones_prudentes() -> void:
+	_monter(1)
+	var trou := TrackGap.new()
+	trou.debut = 100.0
+	trou.longueur = 10.0
+	track.add_child(trou)
+	var zones := track.zones_prudentes()
+	assert_eq(zones.size(), 1)
+	assert_almost_eq(zones[0].x, 100.0 - Track.ELAN_PRUDENT, 0.001, "dès l'élan")
+	assert_almost_eq(zones[0].y, 110.0 + Track.RETOMBEE_PRUDENTE, 0.001, "jusqu'à la retombée")

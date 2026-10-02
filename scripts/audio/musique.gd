@@ -14,7 +14,7 @@ extends RefCounted
 ## dans un fil à part, et chaque boucle n'est composée qu'une fois par
 ## partie (cache).
 
-enum Style { COLLINES, PLAGE, FORTERESSE, CIEL, JARDIN, MINE, VILLE, NEIGE, CANYON, USINE, ESPACE, HANTE, GLACE, JUNGLE, PIRATE, ORAGE, ABYSSES, ASCENSION, MANEGE, MONTAGNE }
+enum Style { COLLINES, PLAGE, FORTERESSE, CIEL, JARDIN, MINE, VILLE, NEIGE, CANYON, USINE, ESPACE, HANTE, GLACE, JUNGLE, PIRATE, ORAGE, ABYSSES, ASCENSION, MANEGE, MONTAGNE, MENU }
 
 const FREQUENCE := 16000
 const MESURES := 8
@@ -118,6 +118,14 @@ const STYLES := {
 		tempo = 126.0, tonique = 59, gamme = [0, 2, 4, 5, 7, 9, 10],
 		grille = [0, 6, 3, 0], basse = [1, 0, 0, 1, 0, 0, 1, 1], arpege = 24, graine = 37,
 	},
+	# Le menu : un air d'attente, posé et chantant. La grille des chansons
+	# (I, vi, IV, V), un arpège qui ondule, et une batterie à demi-voix : on
+	# l'écoute en choisissant sa course, pas en la courant.
+	Style.MENU: {
+		tempo = 104.0, tonique = 62, gamme = [0, 2, 4, 5, 7, 9, 11],
+		grille = [0, 5, 3, 4], basse = [1, 0, 0, 1, 0, 0, 1, 0], arpege = 12, graine = 64,
+		batterie = 0.45, charleston = false,
+	},
 }
 
 static var _cache: Dictionary = {}
@@ -179,13 +187,15 @@ static func composer(style: int) -> AudioStreamWAV:
 			t += duree
 		# Batterie : grosse caisse sur 1 et 3, caisse claire sur 2 et 4,
 		# charleston à chaque croche.
+		var batterie: float = s.get("batterie", 1.0)
 		for c in 8:
 			var quand := debut_mesure + c * croche
 			if c % 4 == 0:
-				_frapper(piste, quand, 0.12, 0.45, true)
+				_frapper(piste, quand, 0.12, 0.45 * batterie, true)
 			elif c % 4 == 2:
-				_frapper(piste, quand, 0.1, 0.22, false)
-			_bruit(piste, quand, 0.03, 0.05)
+				_frapper(piste, quand, 0.1, 0.22 * batterie, false)
+			if s.get("charleston", true):
+				_bruit(piste, quand, 0.03, 0.05)
 
 	var flux := _en_wav(piste)
 	_cache[style] = flux

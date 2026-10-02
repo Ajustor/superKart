@@ -1,9 +1,15 @@
 class_name AIInput
 extends KartInput
 
-## Pilote automatique. Elle vise un point de la ligne de course situé à une
+## Pilote automatique. Elle vise un point de la route situé à une
 ## demi-seconde de trajet devant elle, mesure l'écart entre son cap et la
 ## direction de ce point, et en tire un braquage.
+##
+## Ce point n'est pas sur un rail : l'IA court comme un joueur. Sa ligne
+## s'écarte lentement de la ligne idéale, à sa façon ; elle double par le côté
+## libre, ferme la porte à qui la talonne, va chercher les boîtes, garde un
+## champignon pour la ligne droite et lâche sa banane sous le nez de son
+## poursuivant. Et elle se trompe parfois — d'autant moins qu'elle est forte.
 ##
 ## Elle passe par le même KartCommand que le joueur, donc elle est enfermée
 ## dans la même physique : elle ne peut pas prendre un virage que le joueur ne
@@ -47,9 +53,15 @@ extends KartInput
 ## difficulté, et le seul qui se voie à l'œil nu.
 @export var drift_release_tier: int = 2
 
-## Décalage constant par rapport à la ligne idéale, en mètres vers la droite.
-## Une IA qui vise systématiquement à côté pilote mal sans jamais être bridée.
+## Décalage moyen par rapport à la ligne idéale, en mètres vers la droite :
+## la ligne préférée de ce pilote. Il s'en écarte en roulant (voir FLANERIE).
 @export var lateral_bias: float = 0.0
+
+## Le tempérament, de 0 à 1. Audace : doubler plus tôt, fermer la porte à
+## qui la talonne. Régularité : 1 ne se trompe jamais ; plus bas, une erreur
+## de temps en temps (trajectoire trop large, hésitation, glisse ratée).
+@export var audace: float = 0.5
+@export var regularite: float = 0.85
 
 ## Intervalle entre deux décisions, en secondes. Zéro veut dire une décision
 ## par image. Au-delà, l'IA tient sa commande précédente : elle braque en
@@ -90,10 +102,66 @@ var _tenu_depuis: float = 0.0
 ## en protection : le poursuivant est assez près pour rouler dessus.
 const ALERTE_POURSUIVANT := 12.0
 
+## Ce que la session dit des autres : un Vector3 par concurrent (distance le
+## long de l'axe, écart latéral, vitesse), dans l'ordre de la session, et la
+## place de cette IA dans ce tableau. Vide hors course (et dans les tests qui
+## ne la renseignent pas) : l'IA roule alors seule, comme avant.
+var voisins := PackedVector3Array()
+var mon_index: int = -1
+## Écart latéral de la boîte la plus proche devant, quand l'emplacement est
+## vide ; NAN sinon (renseigné par ItemManager).
+var boite_laterale: float = NAN
+## Les portions (début, fin) où l'on ne joue pas : avant une rampe ou un trou,
+## on reprend sa ligne et on ne se trompe pas. Donné par la session.
+var zones_prudentes := PackedVector2Array()
+
+## La ligne qu'elle se donne s'écarte de sa ligne préférée d'au plus ça, en
+## mètres, et lentement : deux ondes de quelques secondes, propres à chacune.
+const FLANERIE := 1.4
+## Une IA s'écarte de la ligne au plus à cette vitesse, en m/s : elle change
+## de trajectoire, elle ne zigzague pas.
+const CHANGEMENT_DE_LIGNE := 3.0
+## La route qu'elle s'autorise : jamais plus près du bord que ça.
+const MARGE_BORD := 1.8
+## Pas d'objet lâché ni lancé à moins de ça (m) en amont d'une portion
+## prudente, en plus de la portion elle-même.
+const MARGE_OBJETS := 40.0
+## On double un kart qui est devant, à moins de ça, et dans notre file.
+const PORTEE_DEPASSEMENT := 16.0
+const LARGEUR_FILE := 2.2
+const ECART_DEPASSEMENT := 2.6
+## On ferme la porte à un kart qui nous talonne à moins de ça.
+const PORTEE_DEFENSE := 9.0
+## Une carapace part sur un kart devant, à moins de ça, dans notre file.
+const PORTEE_TIR := 32.0
+## Un champignon attend un virage moins serré que ça… pas plus que ça.
+const RAYON_CHAMPIGNON := 45.0
+const ATTENTE_CHAMPIGNON := 4.0
+const ATTENTE_TENU_MAX := 9.0
+
+enum Erreur { AUCUNE, LARGE, HESITATION, GLISSE_RATEE }
+
+var _rng := RandomNumberGenerator.new()
+var _temps: float = 0.0
+var _phases := Vector3.ZERO
+## L'écart à l'axe qu'elle vise maintenant, en mètres, et celui qu'elle
+## voudrait (vers lequel le premier glisse doucement).
+var _lateral: float = NAN
+var _cote_depassement: float = 0.0
+var _depassement_reste: float = 0.0
+var _erreur: int = Erreur.AUCUNE
+var _erreur_reste: float = 0.0
+var _champignon_depuis: float = 0.0
+
 var _depuis_decision: float = 0.0
 var _steer_decide: float = 0.0
 var _drift_decide: bool = false
 var _jamais_decide: bool = true
+
+
+func _ready() -> void:
+	_rng.randomize()
+	_phases = Vector3(_rng.randf() * TAU, _rng.randf() * TAU, _rng.randf_range(0.18, 0.32))
 
 
 ## Distance de mire le long de l'axe : là où l'IA regarde.
@@ -106,21 +174,178 @@ func distance_visee() -> float:
 ## viser plus loin.
 func point_vise() -> Vector3:
 	var ou := distance_visee()
-	return track.racing_line_at(ou) + track.right_at(ou) * lateral_bias
+	if is_nan(_lateral):
+		return track.racing_line_at(ou) + track.right_at(ou) * lateral_bias
+	return track.position_at(ou) + track.right_at(ou) * _lateral
+
+
+## L'écart à l'axe que l'IA s'est choisi, NAN tant qu'elle ne l'a pas fait.
+func ligne_visee() -> float:
+	return _lateral
+
+
+## L'écart à l'axe de la ligne idéale, à cette distance.
+func lateral_de_la_ligne(ou: float) -> float:
+	return (track.racing_line_at(ou) - track.position_at(ou)).dot(track.right_at(ou))
 
 
 func _fill(delta: float) -> void:
+	_temps += delta
+	if track != null:
+		_choisir_sa_ligne(delta)
+	_vivre_ses_erreurs(delta)
 	_depuis_decision += delta
 	if _jamais_decide or _depuis_decision >= reaction_delay:
 		_jamais_decide = false
 		_depuis_decision = 0.0
 		_steer_decide = _braquage()
-		_drift_decide = _veut_deraper()
+		_drift_decide = _veut_deraper() and _erreur != Erreur.GLISSE_RATEE
 
-	command.throttle = 1.0
+	command.throttle = 0.72 if _erreur == Erreur.HESITATION else 1.0
 	_objet(delta)
 	command.drift = _drift_decide
 	command.steer = _brider_pour_tenir_la_glisse(_steer_decide)
+
+
+# --- La course des autres -----------------------------------------------------
+
+## Le kart `i` vu d'ici : [avance le long de la route (positive devant),
+## écart latéral, vitesse].
+func _relatif(i: int) -> Vector3:
+	var autre := voisins[i]
+	var moi := voisins[mon_index]
+	var avance := wrapf(autre.x - moi.x, -track.length * 0.5, track.length * 0.5)
+	return Vector3(avance, autre.y, autre.z)
+
+
+func _connait_la_course() -> bool:
+	return track != null and mon_index >= 0 and mon_index < voisins.size()
+
+
+## Le kart le plus proche devant, dans notre file, à moins de `portee` : son
+## indice, ou -1.
+func kart_devant(portee: float, file: float) -> int:
+	if not _connait_la_course():
+		return -1
+	var mon_lateral := voisins[mon_index].y
+	var meilleur := -1
+	var plus_pres := portee
+	for i in voisins.size():
+		if i == mon_index:
+			continue
+		var r := _relatif(i)
+		if r.x > 1.0 and r.x < plus_pres and absf(r.y - mon_lateral) < file:
+			plus_pres = r.x
+			meilleur = i
+	return meilleur
+
+
+## Le kart le plus proche derrière, à moins de `portee` : son indice, ou -1.
+func kart_derriere(portee: float) -> int:
+	if not _connait_la_course():
+		return -1
+	var meilleur := -1
+	var plus_pres := portee
+	for i in voisins.size():
+		if i == mon_index:
+			continue
+		var r := _relatif(i)
+		if r.x < -1.0 and -r.x < plus_pres:
+			plus_pres = -r.x
+			meilleur = i
+	return meilleur
+
+
+## La ligne que l'IA se donne, en écart à l'axe, et qu'elle rejoint doucement.
+## Par ordre de priorité : doubler, fermer la porte, aller chercher une boîte,
+## et sinon sa ligne à elle, qui flâne autour de la ligne idéale.
+func _choisir_sa_ligne(delta: float) -> void:
+	var ou := distance_visee()
+	var ligne := lateral_de_la_ligne(ou)
+	var rayon := track.radius_at(ou)
+	# Dans un virage serré, on colle à la ligne : c'est là que la route se
+	# paie, et qu'un écart finit au mur.
+	var liberte := clampf((rayon - 15.0) / 45.0, 0.15, 1.0) if rayon < INF else 1.0
+	var flanerie := (sin(_temps * _phases.z + _phases.x) * 0.7 + sin(_temps * _phases.z * 2.3 + _phases.y) * 0.3) \
+		* FLANERIE * liberte
+	var voulu := ligne + (lateral_bias + flanerie) * liberte
+	if prudente():
+		# Une rampe, un trou : on ne joue plus, on prend son élan droit.
+		_depassement_reste = 0.0
+		_aller_vers(ligne + lateral_bias, delta)
+		return
+
+	_depassement_reste = maxf(_depassement_reste - delta, 0.0)
+	var devant := kart_devant(PORTEE_DEPASSEMENT, LARGEUR_FILE)
+	if devant >= 0 and (voisins[mon_index].z > voisins[devant].z - 0.5 or audace > 0.6):
+		if _depassement_reste <= 0.0:
+			_cote_depassement = cote_pour_doubler(voisins[devant].y)
+		_depassement_reste = 1.5
+	if _depassement_reste > 0.0 and devant >= 0:
+		voulu = voisins[devant].y + _cote_depassement * ECART_DEPASSEMENT
+	elif audace >= 0.5 and liberte > 0.8:
+		var derriere := kart_derriere(PORTEE_DEFENSE)
+		if derriere >= 0 and voisins[derriere].z > voisins[mon_index].z - 1.0:
+			# Fermer la porte : se décaler vers le côté du poursuivant, sans
+			# aller jusqu'à lui — un pilote couvre l'intérieur, il ne freine
+			# pas devant le capot de l'autre.
+			voulu = lerpf(voulu, voisins[derriere].y, 0.4 + 0.3 * audace)
+	if devant < 0 and not is_nan(boite_laterale):
+		voulu = lerpf(voulu, boite_laterale, 0.8)
+
+	if _erreur == Erreur.LARGE:
+		# La trajectoire trop large : poussée vers l'extérieur du virage.
+		voulu -= signf(track.turn_at(ou)) * 2.0
+
+	_aller_vers(voulu, delta)
+
+
+func _aller_vers(voulu: float, delta: float) -> void:
+	var bord := track.half_width - MARGE_BORD
+	voulu = clampf(voulu, -bord, bord)
+	if is_nan(_lateral):
+		_lateral = voulu
+	_lateral = move_toward(_lateral, voulu, CHANGEMENT_DE_LIGNE * delta)
+
+
+## Le kart est-il dans une portion où l'on ne joue pas ?
+## `avant` l'étend en amont : un objet lâché là traînerait encore sur l'élan.
+func prudente(avant: float = 0.0) -> bool:
+	if track == null:
+		return false
+	for zone in zones_prudentes:
+		if wrapf(distance - zone.x + avant, 0.0, track.length) <= zone.y - zone.x + avant:
+			return true
+	return false
+
+
+## Le côté par où doubler un kart placé à `son_lateral` : celui où la route
+## laisse le plus de place. +1 à droite, -1 à gauche.
+func cote_pour_doubler(son_lateral: float) -> float:
+	var a_droite := track.half_width - son_lateral
+	var a_gauche := son_lateral + track.half_width
+	return 1.0 if a_droite >= a_gauche else -1.0
+
+
+## Une erreur de temps en temps, d'autant plus rare que l'IA est régulière,
+## et jamais deux à la fois.
+func _vivre_ses_erreurs(delta: float) -> void:
+	if prudente():
+		_erreur = Erreur.AUCUNE
+		return
+	if _erreur != Erreur.AUCUNE:
+		_erreur_reste -= delta
+		if _erreur_reste <= 0.0:
+			_erreur = Erreur.AUCUNE
+		return
+	var frequence := (1.0 - regularite) * 0.12
+	if _rng.randf() < frequence * delta:
+		_erreur = _rng.randi_range(Erreur.LARGE, Erreur.GLISSE_RATEE)
+		_erreur_reste = _rng.randf_range(0.6, 1.2)
+
+
+func erreur_en_cours() -> int:
+	return _erreur
 
 
 ## En tête, une banane ou une carapace verte reste derrière le kart, en
@@ -131,20 +356,61 @@ func _objet(delta: float) -> void:
 		_tenu_depuis += delta
 		# Tenu au moins le temps d'un vrai maintien : relâché trop tôt, le
 		# lâcher compterait pour un appui bref, et la verte partirait devant.
-		command.item_held = veut_garder_derriere() or _tenu_depuis < ItemManager.SEUIL_TAPE + 0.05
-		command.throw_back = true
+		var minimum := _tenu_depuis < ItemManager.SEUIL_TAPE + 0.05
+		var cible := _cible_alignee_devant()
+		command.item_held = minimum or (veut_garder_derriere() and not cible and _tenu_depuis < ATTENTE_TENU_MAX)
+		# Une carapace part sur qui est aligné devant ; sinon, tout part
+		# derrière, sur le poursuivant.
+		var carapace := objet_pret in [ItemKind.GREEN_SHELL, ItemKind.RED_SHELL]
+		command.throw_back = not (carapace and (cible or _tenu_depuis >= ATTENTE_TENU_MAX))
+		if prudente(MARGE_OBJETS):
+			# Rien ne tombe sur l'élan d'un saut : un kart qui y glisse
+			# n'aurait plus de quoi passer le trou.
+			command.item_held = true
 		return
 	_tenu_depuis = 0.0
+	var champignon := objet_pret in [ItemKind.MUSHROOM, ItemKind.TRIPLE_MUSHROOM]
+	if prudente(MARGE_OBJETS) and not champignon:
+		return
 	if veut_garder_derriere():
 		command.use_item = true
 		command.item_held = true
 	elif veut_utiliser_objet():
 		command.use_item = true
+	if champignon:
+		_champignon_depuis += delta
+	else:
+		_champignon_depuis = 0.0
 
 
+## Garder l'objet derrière soi : en tête, ou faute de mieux. Une banane ou une
+## fausse boîte traîne en bouclier tant que personne n'est assez près pour
+## rouler dessus ; une carapace aussi, tant que personne n'est à viser devant.
 func veut_garder_derriere() -> bool:
-	return en_tete and ecart_poursuivant >= ALERTE_POURSUIVANT \
-		and objet_pret in [ItemKind.BANANA, ItemKind.FAKE_BOX, ItemKind.GREEN_SHELL]
+	if not objet_pret in [ItemKind.BANANA, ItemKind.FAKE_BOX, ItemKind.GREEN_SHELL, ItemKind.RED_SHELL]:
+		return false
+	if objet_pret == ItemKind.RED_SHELL and not en_tete:
+		return false
+	var poursuivant := _poursuivant_proche()
+	if not _connait_la_course():
+		return en_tete and not poursuivant and objet_pret != ItemKind.RED_SHELL
+	if objet_pret == ItemKind.GREEN_SHELL and _cible_alignee_devant():
+		return false
+	return not poursuivant
+
+
+func _poursuivant_proche() -> bool:
+	if _connait_la_course():
+		return kart_derriere(ALERTE_POURSUIVANT) >= 0
+	return ecart_poursuivant < ALERTE_POURSUIVANT
+
+
+## Quelqu'un à viser devant, dans notre file. Faute d'en savoir plus (hors
+## course), on suppose que oui : la carapace part, comme avant.
+func _cible_alignee_devant() -> bool:
+	if not _connait_la_course():
+		return true
+	return kart_devant(PORTEE_TIR, LARGEUR_FILE * 1.2) >= 0
 
 
 ## La politique d'objets de la spec, volontairement simple : utiliser dès que
@@ -155,6 +421,13 @@ func veut_utiliser_objet() -> bool:
 		return false
 	if (objet_pret == ItemKind.BANANA or objet_pret == ItemKind.FAKE_BOX) and en_tete:
 		return ecart_poursuivant < ALERTE_POURSUIVANT
+	if objet_pret in [ItemKind.MUSHROOM, ItemKind.TRIPLE_MUSHROOM] and track != null:
+		# Le champignon attend la ligne droite (ou de quoi doubler) : en
+		# plein virage serré, il envoie au mur.
+		var droit := track.radius_at(distance_visee()) > RAYON_CHAMPIGNON
+		return droit or kart_devant(12.0, LARGEUR_FILE) >= 0 or _champignon_depuis > ATTENTE_CHAMPIGNON
+	if objet_pret == ItemKind.GREEN_SHELL:
+		return _cible_alignee_devant()
 	return true
 
 

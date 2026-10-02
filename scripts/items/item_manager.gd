@@ -91,6 +91,9 @@ var contre_la_montre: bool = false
 ## rien, et la carapace rouge vise le kart le plus proche devant soi.
 var bataille: bool = false
 
+## Jusqu'où une IA les mains vides cherche une boîte du regard (m).
+const PORTEE_BOITE_IA := 35.0
+
 var boites: Array[Boite] = []
 var bananes: Array[Banane] = []
 var carapaces: Array[Carapace] = []
@@ -111,6 +114,10 @@ var _visuels_tenus: Dictionary = {}
 
 class Boite:
 	var position: Vector3
+	## Où elle est le long de la piste et en travers : l'IA s'en sert pour
+	## viser une boîte quand elle n'a rien en poche.
+	var distance: float = 0.0
+	var lateral: float = 0.0
 	var attente: float = 0.0
 	var noeud: Node3D
 
@@ -170,7 +177,9 @@ func poser_rangee(distance: float) -> void:
 	for i in BOITES_PAR_RANGEE:
 		var t := float(i) / float(maxi(BOITES_PAR_RANGEE - 1, 1))
 		var boite := Boite.new()
-		boite.position = _au_sol(distance, lerpf(-etendue, etendue, t), HAUTEUR_BOITE)
+		boite.distance = distance
+		boite.lateral = lerpf(-etendue, etendue, t)
+		boite.position = _au_sol(distance, boite.lateral, HAUTEUR_BOITE)
 		boite.noeud = _visuel_boite()
 		boite.noeud.position = boite.position
 		add_child(boite.noeud)
@@ -615,6 +624,29 @@ func _nourrir_ia(positions: Array[Vector3]) -> void:
 		for autre in _session.entries:
 			if autre.position == entree.position + 1:
 				cerveau.ecart_poursuivant = entree.progress.total - autre.progress.total
+		cerveau.boite_laterale = boite_visee(entree.progress.distance, entree.lateral) \
+				if entree.inventaire.est_vide() else NAN
+
+
+## Le travers de la boîte disponible la plus facile à attraper devant : la
+## rangée la plus proche, et dans la rangée celle qui demande le moins de
+## détour. NAN s'il n'y en a pas à portée de vue.
+func boite_visee(distance: float, lateral: float = 0.0) -> float:
+	if _piste == null:
+		return NAN
+	var meilleure := NAN
+	var cout_min := INF
+	for boite in boites:
+		if not boite.disponible():
+			continue
+		var devant := wrapf(boite.distance - distance, 0.0, _piste.length)
+		if devant < 2.0 or devant > PORTEE_BOITE_IA:
+			continue
+		var cout := devant + absf(boite.lateral - lateral) * 0.5
+		if cout < cout_min:
+			cout_min = cout
+			meilleure = boite.lateral
+	return meilleure
 
 
 # --- Réseau ------------------------------------------------------------------

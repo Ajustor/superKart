@@ -67,6 +67,9 @@ var derniere_en_piste: float = 0.0
 ## Ligne de crue des tours comptés. Le numéro de tour de RaceProgress, lui,
 ## redescend quand le kart recule.
 var tours_comptes: int = 0
+## Écart à l'axe de la route, en mètres, positif à droite. Tenu par la
+## session à chaque image : l'IA s'en sert pour doubler et se défendre.
+var lateral: float = 0.0
 
 
 func _init(pilote: Kart, piste: TrackCurve, depart: float) -> void:

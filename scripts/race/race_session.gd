@@ -341,6 +341,7 @@ func _physics_process(delta: float) -> void:
 	for entree in entries:
 		avancer(entree, entree.kart.global_position, delta)
 	classer()
+	partager_la_course()
 
 
 func _relancer_les_cales(delta: float) -> void:
@@ -361,6 +362,7 @@ func _exit_tree() -> void:
 ## intestable.
 func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 	entree.progress.update(point)
+	entree.lateral = _track.track_curve.lateral_offset_at(point, entree.progress.distance)
 	_nourrir_ia(entree, point)
 
 	# La comptabilité s'arrête à l'arrivée ; le monde, lui, continue. Et elle
@@ -546,6 +548,25 @@ func classer() -> void:
 		ordre[i].position = i + 1
 
 
+## Ce que chaque IA sait des autres : où ils sont sur la route (distance le
+## long de l'axe, écart latéral) et à quelle vitesse. Un tableau partagé, dans
+## l'ordre de `entries` ; chaque IA y connaît sa propre place.
+func partager_la_course() -> void:
+	if _cerveaux.is_empty():
+		return
+	var etat := PackedVector3Array()
+	etat.resize(entries.size())
+	for i in entries.size():
+		var e := entries[i]
+		etat[i] = Vector3(e.progress.distance, e.lateral, e.kart.motor.speed)
+	for cerveau in _cerveaux:
+		cerveau.voisins = etat
+		for i in entries.size():
+			if entries[i].kart == cerveau.kart:
+				cerveau.mon_index = i
+				break
+
+
 ## Les concurrents dans l'ordre du classement.
 func classement() -> Array[RaceEntry]:
 	var ordre: Array[RaceEntry] = entries.duplicate()
@@ -562,6 +583,7 @@ func _nourrir_ia(entree: RaceEntry, point: Vector3) -> void:
 	for cerveau in _cerveaux:
 		if cerveau.kart == entree.kart:
 			cerveau.track = _track.track_curve
+			cerveau.zones_prudentes = _track.zones_prudentes()
 			cerveau.distance = entree.progress.distance
 			cerveau.position = point
 			return

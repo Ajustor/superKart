@@ -49,6 +49,9 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_fond()
 	_version()
+	# Pas de musique sur un serveur : il ne fait que traverser le menu.
+	if not ServeurDedie.actif:
+		add_child(MusiqueMenu.new())
 	_accueil = _ecran_accueil()
 	_bandeau_mise_a_jour(_accueil)
 	_selection = _ecran_selection()
