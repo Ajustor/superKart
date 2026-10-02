@@ -101,7 +101,9 @@ déplacer un point de contrôle emmène les murs et les zones avec lui.
   l'axe côté intérieur. L'éditeur affiche un avertissement sur le nœud dans
   ce cas.
 - L'IA suit sa ligne : elle prend les rampes et tremplins qui s'y trouvent,
-  mais ne cherche pas les raccourcis. Une rampe devant un trou doit donc
+  mais ne cherche pas les raccourcis. Elle s'en écarte pour doubler ou
+  flâner, sauf dans les 40 m qui précèdent une rampe ou un trou, sur le
+  verglas et dans le vent : là, elle reprend la ligne. Une rampe devant un trou doit donc
   couvrir la ligne de course — le plus simple est de lui donner toute la
   largeur de la route.
 - Un kart qui aborde une rampe trop lentement (après un choc, par exemple)

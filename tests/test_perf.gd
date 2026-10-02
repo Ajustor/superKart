@@ -131,6 +131,22 @@ func test_la_course_joue_la_musique_du_circuit() -> void:
 	assert_same(musique._lecteur.stream, Musique.deja_composee(Musique.Style.FORTERESSE))
 
 
+
+func test_le_menu_a_sa_musique() -> void:
+	var musique := MusiqueMenu.new()
+	add_child_autofree(musique)
+	await wait_until(func() -> bool: return musique.joue(), 10.0)
+	assert_true(musique.joue(), "l'air du menu part une fois composé")
+	assert_same(musique._lecteur.stream, Musique.deja_composee(Musique.Style.MENU))
+	assert_eq(musique._lecteur.bus, GameSettings.BUS_MUSIQUE, "réglable avec le volume de la musique")
+
+
+func test_aucun_circuit_ne_prend_l_air_du_menu() -> void:
+	for info in TrackCatalog.PISTES:
+		var piste: Track = info.scene.instantiate()
+		assert_ne(piste.musique, Musique.Style.MENU, info.id)
+		piste.free()
+
 func test_les_finitions_suivent_la_qualite() -> void:
 	var racine := Node.new()
 	var piste: Track = load("res://scenes/tracks/canyon_venteux.tscn").instantiate()

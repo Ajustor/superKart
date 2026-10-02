@@ -125,10 +125,19 @@ var _elements_a_jour := false
 ## En deçà de cette distance avant un trou, un kart remis en piste l'est de
 ## l'autre côté : il faut plus d'élan que ça pour sauter.
 const ELAN_AVANT_UN_TROU := 60.0
+## Une IA reprend sa ligne tant de mètres avant une rampe ou un trou, et ne
+## la quitte qu'autant après.
+const ELAN_PRUDENT := 40.0
+const RETOMBEE_PRUDENTE := 12.0
+
+var _zones_prudentes := PackedVector2Array()
+var _zones_a_jour := false
 
 
 func _ready() -> void:
-	child_order_changed.connect(func() -> void: _elements_a_jour = false)
+	child_order_changed.connect(func() -> void:
+		_elements_a_jour = false
+		_zones_a_jour = false)
 	# En jeu, un circuit sans courbe est une erreur de montage. Dans l'éditeur
 	# c'est l'état normal d'un nœud qu'on vient d'ajouter : on ne crie pas.
 	assert(curve != null or Engine.is_editor_hint(), "un Track doit avoir une courbe")
@@ -357,6 +366,23 @@ func trous() -> Array[Vector2]:
 		if element is TrackGap and not element.is_queued_for_deletion():
 			portions.append_array(element.portions(track_curve.length))
 	return portions
+
+
+## Les portions où une IA cesse de flâner, de doubler et de se tromper pour
+## reprendre sa ligne : l'élan d'une rampe et d'un trou jusqu'à la retombée,
+## le verglas et le vent, qui ne pardonnent pas un écart.
+## Chaque portion est (début, fin), en distance le long du tracé.
+func zones_prudentes() -> PackedVector2Array:
+	if not (_zones_a_jour and is_node_ready()):
+		_zones_a_jour = is_node_ready()
+		_zones_prudentes.clear()
+		for element in elements():
+			if (element is TrackGap or element is TrackRamp or element is TrackVerglas or element is TrackCourant) \
+					and not element.is_queued_for_deletion():
+				var debut: float = element.debut
+				var fin: float = debut + element.longueur
+				_zones_prudentes.append(Vector2(debut - ELAN_PRUDENT, fin + RETOMBEE_PRUDENTE))
+	return _zones_prudentes
 
 
 ## Le trou qui couvre cette distance, ou null.

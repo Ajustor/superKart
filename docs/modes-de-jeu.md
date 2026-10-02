@@ -138,10 +138,47 @@ Le bouton OBJET se tient (`KartCommand.item_held`, `KartInventory.tenu`) :
   toutes les 0,45 s). Chaque pilote a son ton ; les klaxons des autres
   s'entendent depuis leur kart.
 
-En tête, l'IA garde une banane ou une verte derrière elle et la lâche en
-arrière quand un poursuivant approche. En réseau, le client envoie l'état
+L'IA se sert du même maintien : une banane, une fausse boîte ou une verte
+reste derrière elle tant que personne ne la colle, et part en arrière quand un
+poursuivant approche ; une carapace part devant quand un kart est aligné dans
+sa file. En réseau, le client envoie l'état
 du bouton à l'hôte (`RaceSync._tenue`) avant l'appui, l'objet tenu voyage
 dans le classement, et l'hôte relaie les klaxons à tous les autres.
+
+## Pilotes d'IA (`AIInput`)
+
+L'IA ne recopie plus la trajectoire idéale : elle court comme un joueur.
+
+- **Sa ligne.** Chaque IA choisit sa ligne autour de la ligne idéale. Elle
+  flâne d'un ou deux mètres en ligne droite, et colle à la corde dans les
+  virages serrés. Elle n'en change qu'à 3 m/s : elle déboîte, elle ne zigzague
+  pas.
+- **La course des autres.** La session lui donne, à chaque image, la position
+  le long du tracé, l'écart latéral et la vitesse de chaque concurrent
+  (`RaceSession.partager_la_course`).
+  - Plus rapide qu'un kart dans sa file, elle le double par le côté où la
+    route laisse le plus de place.
+  - En ligne droite, une IA audacieuse ferme la porte à son poursuivant.
+  - Les mains vides, elle va chercher la boîte la plus facile à prendre
+    (`ItemManager.boite_visee`).
+- **Ses erreurs.** De temps en temps, elle commet une erreur : une
+  trajectoire trop large, un lever de pied, ou une glisse manquée. Chaque
+  erreur dure au plus 1,2 s, et elle est d'autant plus rare que l'IA est
+  régulière.
+- **Ses objets.**
+  - Le champignon attend une ligne droite ou un kart à doubler, sans attendre
+    plus de 4 s.
+  - La verte attend une cible.
+- **La prudence.** Avant une rampe ou un trou, sur le verglas et dans le vent
+  (`Track.zones_prudentes`), elle reprend sa ligne. Elle ne double plus, ne se
+  trompe pas et ne lâche aucun objet, pour ne laisser personne sans élan
+  devant le vide.
+
+Chaque IA de `race.tscn` a son caractère, réglé par `audace` (doubler,
+défendre) et `regularite` (fréquence des erreurs). Le banc d'essai
+(`tools/essai_circuit.gd`) a été lancé sur les 20 circuits : aucune remise en
+piste, et des temps à 1–3 % de l'ancienne IA, plus étalés d'un kart à
+l'autre.
 
 ## Pilotes (`Personnage`)
 
@@ -163,6 +200,14 @@ Derrière l'accueil, huit IA courent sur un circuit tiré au sort, sans
 décompte, sans son ni écran de course ; la caméra coupe d'un kart à l'autre
 toutes les 8 s, et le dégradé du menu ne fait plus que voiler l'image. Coupée
 en qualité basse, sans écran, et par l'option « Course en fond du menu ».
+
+## Musique du menu (`MusiqueMenu`)
+
+Un petit air à 104 bpm, en majeur, avec une batterie discrète et sans
+charleston (`Musique.Style.MENU`). Il est composé comme les musiques de
+circuit, dans un fil à part à la première ouverture, puis lancé en fondu et
+joué en boucle. Il suit le volume « Musique » et se tait sur le serveur
+dédié.
 
 ## Garage (`ModeleKart`, `GaragePanel`)
 
