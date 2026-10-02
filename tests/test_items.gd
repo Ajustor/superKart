@@ -470,3 +470,171 @@ func test_l_ia_sait_ce_qu_elle_tient() -> void:
 	_vider_roulette(session.entries[1])
 	objets.avancer(_positions_neutres(), 1.0 / 60.0)
 	assert_eq(ia.objet_pret, ItemKind.GREEN_SHELL)
+
+
+# --- Objet tenu derrière, lancer devant ou derrière, klaxon -------------------------
+
+## Le kart dans l'axe de la piste, à sa position neutre.
+func _aligne(p: Array[Vector3], i: int = 0) -> void:
+	karts[i].motor.velocity_dir = _piste().yaw_at(_piste().distance_of(p[i]))
+
+
+func _ecart(ou: Vector3, kart_en: Vector3) -> float:
+	return wrapf(_piste().distance_of(ou) - _piste().distance_of(kart_en), -50.0, 50.0)
+
+
+## Appuie, garde le bouton `duree` secondes, puis le lâche.
+func _tenir(p: Array[Vector3], duree: float, arriere: bool) -> void:
+	karts[0].demande_objet = true
+	karts[0].objet_tenu_presse = true
+	karts[0].vise_arriere = arriere
+	var t := 0.0
+	while t < duree:
+		objets.avancer(p, 1.0 / 60.0)
+		t += 1.0 / 60.0
+	karts[0].objet_tenu_presse = false
+	objets.avancer(p, 1.0 / 60.0)
+
+
+func test_tenir_le_bouton_garde_l_objet_derriere() -> void:
+	_monter(1)
+	var p := _positions_neutres()
+	_aligne(p)
+	session.entries[0].inventaire.recevoir(ItemKind.BANANA, 0.0)
+	karts[0].demande_objet = true
+	karts[0].objet_tenu_presse = true
+	objets.avancer(p, 1.0 / 60.0)
+	assert_true(session.entries[0].inventaire.tenu)
+	assert_true(objets.bananes.is_empty(), "rien n'est encore posé")
+	objets.avancer(p, 1.0)
+	assert_true(session.entries[0].inventaire.tenu, "toujours tenu tant que le bouton l'est")
+
+
+func test_une_banane_tenue_puis_lachee_part_devant() -> void:
+	_monter(1)
+	var p := _positions_neutres()
+	_aligne(p)
+	session.entries[0].inventaire.recevoir(ItemKind.BANANA, 0.0)
+	_tenir(p, 0.6, false)
+	assert_eq(objets.bananes.size(), 1)
+	assert_gt(_ecart(objets.bananes[0].position, p[0]), 10.0, "lancée loin devant")
+	assert_true(session.entries[0].inventaire.est_vide())
+
+
+func test_une_banane_tenue_lachee_en_freinant_tombe_derriere() -> void:
+	_monter(1)
+	var p := _positions_neutres()
+	_aligne(p)
+	session.entries[0].inventaire.recevoir(ItemKind.BANANA, 0.0)
+	_tenir(p, 0.6, true)
+	assert_lt(_ecart(objets.bananes[0].position, p[0]), -1.0)
+
+
+func test_un_appui_bref_garde_l_usage_habituel() -> void:
+	_monter(1)
+	var p := _positions_neutres()
+	_aligne(p)
+	session.entries[0].inventaire.recevoir(ItemKind.BANANA, 0.0)
+	_tenir(p, 0.1, false)
+	assert_lt(_ecart(objets.bananes[0].position, p[0]), -1.0, "tapé : derrière, comme toujours")
+
+
+func test_une_carapace_lachee_en_freinant_part_derriere() -> void:
+	_monter(1)
+	var p := _positions_neutres()
+	_aligne(p)
+	session.entries[0].inventaire.recevoir(ItemKind.GREEN_SHELL, 0.0)
+	_tenir(p, 0.6, true)
+	assert_eq(objets.carapaces.size(), 1)
+	assert_lt(_ecart(objets.carapaces[0].position, p[0]), 0.0)
+	assert_lt(objets.carapaces[0].direction.dot(_piste().forward_at(_piste().distance_of(p[0]))), 0.0,
+		"et file vers l'arrière")
+
+
+func test_la_rouge_lancee_derriere_ne_poursuit_personne() -> void:
+	_monter(2)
+	var p := _positions_neutres()
+	_aligne(p)
+	session.entries[0].inventaire.recevoir(ItemKind.RED_SHELL, 0.0)
+	_tenir(p, 0.6, true)
+	assert_null(objets.carapaces[0].cible)
+
+
+func test_l_objet_tenu_arrete_une_carapace() -> void:
+	_monter(1)
+	var p := _positions_neutres()
+	_aligne(p)
+	session.entries[0].inventaire.recevoir(ItemKind.BANANA, 0.0)
+	karts[0].demande_objet = true
+	karts[0].objet_tenu_presse = true
+	objets.avancer(p, 1.0 / 60.0)
+	var avant := _piste().forward_at(_piste().distance_of(p[0]))
+	var traine := p[0] - avant * ItemManager.DISTANCE_TRAINE
+	objets.lancer_carapace(traine - avant * 3.0, avant, null, null)
+	for i in 10:
+		objets.avancer(p, 1.0 / 60.0)
+	assert_true(objets.carapaces.is_empty(), "la carapace s'est brisée sur la banane")
+	assert_true(session.entries[0].inventaire.est_vide(), "et la banane avec")
+	assert_ne(karts[0].motor.state, KartMotor.State.STUNNED, "le kart n'a rien")
+
+
+func test_percuter_l_objet_tenu_d_un_autre_fait_un_tete_a_queue() -> void:
+	_monter(2)
+	var p := _positions_neutres()
+	_aligne(p)
+	session.entries[0].inventaire.recevoir(ItemKind.BANANA, 0.0)
+	karts[0].demande_objet = true
+	karts[0].objet_tenu_presse = true
+	objets.avancer(p, 1.0 / 60.0)
+	p[1] = p[0] - _piste().forward_at(_piste().distance_of(p[0])) * ItemManager.DISTANCE_TRAINE
+	objets.avancer(p, 1.0 / 60.0)
+	assert_eq(karts[1].motor.state, KartMotor.State.STUNNED)
+	assert_true(session.entries[0].inventaire.est_vide())
+
+
+func test_sonne_on_lache_ce_qu_on_traine() -> void:
+	_monter(1)
+	var p := _positions_neutres()
+	session.entries[0].inventaire.recevoir(ItemKind.GREEN_SHELL, 0.0)
+	karts[0].demande_objet = true
+	karts[0].objet_tenu_presse = true
+	objets.avancer(p, 1.0 / 60.0)
+	objets._toucher(session.entries[0])
+	assert_true(session.entries[0].inventaire.est_vide())
+
+
+func test_sans_objet_le_bouton_klaxonne() -> void:
+	_monter(1)
+	watch_signals(objets)
+	var p := _positions_neutres()
+	karts[0].demande_objet = true
+	objets.avancer(p, 1.0 / 60.0)
+	assert_signal_emit_count(objets, "klaxon", 1)
+	karts[0].demande_objet = true
+	objets.avancer(p, 1.0 / 60.0)
+	assert_signal_emit_count(objets, "klaxon", 1, "pas une sirène")
+	objets.avancer(p, ItemManager.REPOS_KLAXON)
+	karts[0].demande_objet = true
+	objets.avancer(p, 1.0 / 60.0)
+	assert_signal_emit_count(objets, "klaxon", 2)
+
+
+func test_l_ia_en_tete_traine_sa_banane_puis_la_lache_derriere() -> void:
+	var ia := AIInput.new()
+	a_liberer.append(ia)
+	ia.objet_pret = ItemKind.BANANA
+	ia.en_tete = true
+	ia.ecart_poursuivant = 40.0
+	ia._objet(1.0 / 60.0)
+	assert_true(ia.command.use_item and ia.command.item_held, "elle la garde derrière")
+	ia.command.clear()
+	ia.objet_tenu = true
+	ia.ecart_poursuivant = 5.0
+	ia._objet(0.5)
+	assert_false(ia.command.item_held, "un poursuivant approche : elle la lâche")
+	assert_true(ia.command.throw_back, "derrière elle")
+
+
+func test_un_klaxon_se_synthetise() -> void:
+	var son := Synth.klaxon()
+	assert_gt(son.data.size(), 1000)

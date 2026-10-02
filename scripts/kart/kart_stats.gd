@@ -31,9 +31,17 @@ extends Resource
 @export var drift_turn_rate: float = 2.3        ## rad/s, stick vers l'intérieur
 
 ## Part de drift_turn_rate au neutre et au contre-braquage maximal. À 22 m/s :
-## 9,6 m vers l'intérieur, 12,3 m au neutre, 27 m vers l'extérieur.
+## 9,6 m vers l'intérieur, 12,3 m au neutre, environ 190 m vers l'extérieur.
+##
+## Le contre-braquage ouvre la glisse presque en ligne droite. À 27 m (0,35),
+## les grandes courbes des circuits (50 à 90 m de rayon, souvent plus de cinq
+## secondes) ne se tenaient pas en glisse : le nez parti vers l'intérieur ne
+## revenait jamais, le kart finissait au mur avant le second palier, et le
+## grand turbo n'existait que dans les épingles. Mesuré (tools/essai_glisse.gd,
+## joueur au clavier) : palier 3 tenu de 12 à 90 m de rayon, à 1,5 m au plus du
+## milieu de la route.
 @export var drift_rapport_neutre: float = 0.78
-@export var drift_rapport_exterieur: float = 0.35
+@export var drift_rapport_exterieur: float = 0.05
 
 ## Vitesse à laquelle la glisse suit le stick, en plages par seconde : passer
 ## de l'extérieur à l'intérieur prend 0,4 s. Sans ça, un stick qui tremble
@@ -61,7 +69,9 @@ extends Resource
 ## vers l'intérieur la fait monter à plein régime (1), contre-braquer au
 ## ralenti. C'est le cœur du dérapage arcade : la glisse serrée est
 ## plus difficile à tenir, elle rapporte plus vite.
-@export var charge_au_contre_braquage: float = 0.55
+## Remontée de 0,55 à 0,7 avec la grande glisse au contre-braquage : tenir une
+## longue courbe large doit aussi mener au grand turbo, en un peu moins de 4 s.
+@export var charge_au_contre_braquage: float = 0.7
 
 @export_group("Dérapage — apparence")
 ## Ces trois-là ne touchent que l'angle affiché de la caisse, pas la

@@ -25,6 +25,8 @@ var _explosion: AudioStreamWAV
 var _etoile: AudioStreamWAV
 var _piece: AudioStreamWAV
 var _rapetisse: AudioStreamWAV
+var _klaxon: AudioStreamWAV
+var _lecteur_klaxon: AudioStreamPlayer
 ## Un second lecteur pour les objets : un bip de tour ne doit pas couper le
 ## bruit du choc qui tombe à la même image.
 var _lecteur_objets: AudioStreamPlayer
@@ -89,6 +91,7 @@ func _ready() -> void:
 		# Une explosion de carapace bleue s'entend de partout : elle change la
 		# course de tout le monde.
 		objets.explosion.connect(func(_ou: Vector3) -> void: _jouer(_explosion))
+		objets.klaxon.connect(_klaxonner)
 	# En dernier : la grille n'est peut-être pas encore posée, et attendre
 	# plus haut aurait retardé tout le reste.
 	if _session.entries.is_empty():
@@ -159,6 +162,35 @@ func _sur_objet_utilise(e: RaceEntry, objet: int) -> void:
 			_jouer_objet(e, _piece)
 		_:
 			_jouer_objet(e, _lancer)
+
+
+## Le klaxon du joueur s'entend franchement ; celui d'un autre kart, depuis
+## l'endroit où il est, et d'autant moins qu'il est loin.
+func _klaxonner(e: RaceEntry) -> void:
+	if _klaxon == null:
+		_klaxon = Synth.klaxon()
+	if not _session.entries.is_empty() and e == _session.entries[0]:
+		if _lecteur_klaxon == null:
+			_lecteur_klaxon = AudioStreamPlayer.new()
+			_lecteur_klaxon.bus = &"Effets"
+			add_child(_lecteur_klaxon)
+		_lecteur_klaxon.stream = _klaxon
+		_lecteur_klaxon.pitch_scale = e.kart.hauteur_klaxon
+		_lecteur_klaxon.play()
+		return
+	if not e.kart.is_inside_tree():
+		return
+	var lecteur := e.kart.get_node_or_null("Klaxon") as AudioStreamPlayer3D
+	if lecteur == null:
+		lecteur = AudioStreamPlayer3D.new()
+		lecteur.name = "Klaxon"
+		lecteur.bus = &"Effets"
+		lecteur.unit_size = 12.0
+		lecteur.max_distance = 90.0
+		e.kart.add_child(lecteur)
+	lecteur.stream = _klaxon
+	lecteur.pitch_scale = e.kart.hauteur_klaxon
+	lecteur.play()
 
 
 func _sur_depart_du_joueur(resultat: int) -> void:

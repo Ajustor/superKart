@@ -1,9 +1,11 @@
 class_name TouchesPanel
 extends Control
 
-## L'écran « Changer les touches » des options : une ligne par action, un
-## bouton pour le clavier, un pour la manette. On clique, on appuie sur la
-## nouvelle touche, c'est enregistré. Échap annule l'attente.
+## L'écran « Changer les touches » des options : une ligne par action, deux
+## boutons pour le clavier (les flèches et les lettres, rangées par position
+## physique : ZQSD sur un AZERTY, WASD sur un QWERTY), un pour la manette. On
+## clique, on appuie sur la nouvelle touche, c'est enregistré. Échap annule
+## l'attente.
 
 signal ferme
 
@@ -14,21 +16,33 @@ const SEUIL_AXE := 0.6
 var _boutons: Dictionary = {}
 var _action: StringName = &""
 var _famille := -1
+var _rang := 0
+## [famille, rang] de chaque colonne de boutons, de gauche à droite.
+const COLONNES := [[Touches.Famille.CLAVIER, 0], [Touches.Famille.CLAVIER, 1], [Touches.Famille.MANETTE, 0]]
 var _retour: Button
 
 
 func _ready() -> void:
 	theme = UITheme.theme()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var colonne := UITheme.panneau_centre(self, 860.0)
+	var colonne := UITheme.panneau_defilant(self, 1100.0)
 	colonne.add_child(UITheme.titre("TOUCHES", 36))
+	var disposition := Touches.disposition()
+	if disposition != "":
+		var l := Label.new()
+		l.text = "Clavier détecté : %s — les touches s'affichent telles qu'elles sont écrites dessus." % disposition
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.add_theme_color_override("font_color", UITheme.TEXTE_DOUX)
+		l.add_theme_font_size_override("font_size", 20)
+		colonne.add_child(l)
 
 	var grille := GridContainer.new()
-	grille.columns = 3
+	grille.columns = 1 + COLONNES.size()
 	grille.add_theme_constant_override("h_separation", 18)
 	grille.add_theme_constant_override("v_separation", 8)
 	colonne.add_child(grille)
-	for texte in ["", "Clavier", "Manette"]:
+	for texte in ["", "Clavier", "Clavier (2)", "Manette"]:
 		var l := Label.new()
 		l.text = texte
 		l.add_theme_color_override("font_color", UITheme.ACCENT)
@@ -38,14 +52,14 @@ func _ready() -> void:
 		l.text = AstucesPanel.ACTIONS.get(action, String(action))
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		grille.add_child(l)
-		var paire := []
-		for famille in [Touches.Famille.CLAVIER, Touches.Famille.MANETTE]:
+		var ligne := []
+		for c in COLONNES:
 			var b := Button.new()
 			b.custom_minimum_size = Vector2(230, 0)
-			b.pressed.connect(attendre.bind(action, famille))
+			b.pressed.connect(attendre.bind(action, c[0], c[1]))
 			grille.add_child(b)
-			paire.append(b)
-		_boutons[action] = paire
+			ligne.append(b)
+		_boutons[action] = ligne
 
 	var bas := HBoxContainer.new()
 	bas.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -67,11 +81,12 @@ func _ready() -> void:
 
 
 ## Le bouton de cette action et de cette famille attend la prochaine touche.
-func attendre(action: StringName, famille: int) -> void:
+func attendre(action: StringName, famille: int, rang: int = 0) -> void:
 	_annuler()
 	_action = action
 	_famille = famille
-	_bouton(action, famille).text = "Appuyez…" if famille == Touches.Famille.CLAVIER else "Bouton ou gâchette…"
+	_rang = rang
+	_bouton(action, famille, rang).text = "Appuyez…" if famille == Touches.Famille.CLAVIER else "Bouton ou gâchette…"
 
 
 func en_attente() -> bool:
@@ -95,9 +110,10 @@ func _input(event: InputEvent) -> void:
 		return
 	get_viewport().set_input_as_handled()
 	var action := _action
+	var rang := _rang
 	_action = &""
 	_famille = -1
-	GameSettings.changer_touche(action, capte)
+	GameSettings.changer_touche(action, capte, rang)
 	_relire()
 
 
@@ -138,13 +154,13 @@ func _annuler() -> void:
 
 func _relire() -> void:
 	for action in _boutons:
-		for famille in [Touches.Famille.CLAVIER, Touches.Famille.MANETTE]:
-			var e := Touches.premier(action, famille)
-			_bouton(action, famille).text = AstucesPanel.nom_de_l_evenement(e) if e != null else "—"
+		for c in COLONNES:
+			var e := Touches.nieme(action, c[0], c[1])
+			_bouton(action, c[0], c[1]).text = AstucesPanel.nom_de_l_evenement(e) if e != null else "—"
 
 
-func _bouton(action: StringName, famille: int) -> Button:
-	return _boutons[action][famille]
+func _bouton(action: StringName, famille: int, rang: int = 0) -> Button:
+	return _boutons[action][COLONNES.find([famille, rang])]
 
 
 func _fermer() -> void:

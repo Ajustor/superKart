@@ -63,7 +63,12 @@ extends KartInput
 ## 11, donc l'IA sur-tournait, contre-braquait à fond et cassait sa propre
 ## glisse en six images — jamais un seul mini-turbo encaissé. Un pilote
 ## contre-braque dans la glisse, pas assez fort pour la perdre.
-const CONTRE_BRAQUAGE_MAX := -0.7
+##
+## Ramené de -0,7 à -0,4 quand le contre-braquage a ouvert la glisse presque en
+## ligne droite (KartStats.drift_rapport_exterieur) : -0,4 donne aujourd'hui
+## la courbe que -0,7 donnait avant, et l'IA, réglée sur celle-là, ne se
+## mettait plus à zigzaguer dans ses glisses.
+const CONTRE_BRAQUAGE_MAX := -0.4
 
 ## Renseignés par la session avant chaque image. Les lire soi-même coûterait
 ## une projection de plus par kart, et global_position interdirait de tester
@@ -77,6 +82,9 @@ var position := Vector3.ZERO
 var objet_pret: int = ItemKind.NONE
 var en_tete: bool = false
 var ecart_poursuivant: float = INF
+## L'objet est tenu derrière le kart (voir ItemManager).
+var objet_tenu: bool = false
+var _tenu_depuis: float = 0.0
 
 ## Écart, en mètres, sous lequel une IA en tête lâche la banane qu'elle garde
 ## en protection : le poursuivant est assez près pour rouler dessus.
@@ -110,9 +118,33 @@ func _fill(delta: float) -> void:
 		_drift_decide = _veut_deraper()
 
 	command.throttle = 1.0
-	command.use_item = veut_utiliser_objet()
+	_objet(delta)
 	command.drift = _drift_decide
 	command.steer = _brider_pour_tenir_la_glisse(_steer_decide)
+
+
+## En tête, une banane ou une carapace verte reste derrière le kart, en
+## bouclier ; elle part vers l'arrière quand un poursuivant approche. Le reste
+## part dès que c'est prêt.
+func _objet(delta: float) -> void:
+	if objet_tenu:
+		_tenu_depuis += delta
+		# Tenu au moins le temps d'un vrai maintien : relâché trop tôt, le
+		# lâcher compterait pour un appui bref, et la verte partirait devant.
+		command.item_held = veut_garder_derriere() or _tenu_depuis < ItemManager.SEUIL_TAPE + 0.05
+		command.throw_back = true
+		return
+	_tenu_depuis = 0.0
+	if veut_garder_derriere():
+		command.use_item = true
+		command.item_held = true
+	elif veut_utiliser_objet():
+		command.use_item = true
+
+
+func veut_garder_derriere() -> bool:
+	return en_tete and ecart_poursuivant >= ALERTE_POURSUIVANT \
+		and objet_pret in [ItemKind.BANANA, ItemKind.FAKE_BOX, ItemKind.GREEN_SHELL]
 
 
 ## La politique d'objets de la spec, volontairement simple : utiliser dès que

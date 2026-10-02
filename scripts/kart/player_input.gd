@@ -74,4 +74,6 @@ func _fill(_delta: float) -> void:
 	# Pas de is_action_just_pressed : il reste vrai tout le reste de l'image,
 	# et deux pas de physique dans la même image lanceraient deux objets.
 	command.use_item = _appuis.has(&"use_item")
+	command.item_held = Input.is_action_pressed(&"use_item")
+	command.throw_back = command.brake > 0.5
 	_appuis.clear()

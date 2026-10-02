@@ -47,6 +47,13 @@ var simule: bool = true
 ## Vrai l'image où le pilote a demandé son objet. Posé ici, lu et remis à faux
 ## par ItemManager : le kart ne sait pas ce qu'il tient, il transmet la demande.
 var demande_objet: bool = false
+## Le bouton d'objet est tenu, et vers où l'objet partira au lâcher (voir
+## ItemManager). Écrits par la machine qui pilote ce kart ; en réseau,
+## l'hôte les reçoit du joueur (RaceSync).
+var objet_tenu_presse: bool = false
+var vise_arriere: bool = false
+## Le ton du klaxon : chaque pilote a le sien (voir Personnage).
+var hauteur_klaxon: float = 1.0
 
 ## Vrai tant que le kart touche le sol. La session s'en sert pour ne pas
 ## remettre en piste un kart qui survole le décor au milieu d'un saut.
@@ -152,6 +159,8 @@ func _physics_process(delta: float) -> void:
 	_figures(cmd, delta)
 	# Un kart sonné ne lance rien : il a les mains prises.
 	demande_objet = cmd.use_item and motor.state != KartMotor.State.STUNNED
+	objet_tenu_presse = cmd.item_held
+	vise_arriere = cmd.throw_back
 	motor.step(cmd, delta)
 
 	# Le saut d'entrée en dérapage, purement vertical.

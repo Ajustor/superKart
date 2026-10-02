@@ -108,3 +108,32 @@ func test_la_sensibilite_ne_braque_pas_plus_d_un_tour() -> void:
 	var doux := TouchControls.braquage(centre, pouce, rayon / GameSettings.SENSIBILITE_MIN)
 	var vif := TouchControls.braquage(centre, pouce, rayon / GameSettings.SENSIBILITE_MAX)
 	assert_gt(vif, doux, "plus sensible : le même geste braque plus")
+
+
+func test_les_lettres_s_ajoutent_aux_fleches() -> void:
+	# Rangées par position physique : WASD sur un QWERTY, ZQSD sur un AZERTY.
+	var attendues := {&"throttle": KEY_W, &"brake": KEY_S, &"steer_left": KEY_A, &"steer_right": KEY_D}
+	for action in attendues:
+		var lettre := Touches.nieme(action, Touches.Famille.CLAVIER, 1) as InputEventKey
+		assert_not_null(lettre, String(action))
+		assert_eq(lettre.physical_keycode, attendues[action], String(action))
+	assert_eq((Touches.nieme(&"throttle", Touches.Famille.CLAVIER, 0) as InputEventKey).physical_keycode, KEY_UP,
+		"les flèches restent en premier")
+
+
+func test_remplacer_le_second_emplacement_garde_le_premier() -> void:
+	Touches.remplacer(&"throttle", _touche(KEY_I), 1)
+	assert_eq((Touches.nieme(&"throttle", Touches.Famille.CLAVIER, 0) as InputEventKey).physical_keycode, KEY_UP)
+	assert_true(Touches.identiques(Touches.nieme(&"throttle", Touches.Famille.CLAVIER, 1), _touche(KEY_I)))
+
+
+func test_une_touche_n_occupe_pas_deux_emplacements() -> void:
+	# Mettre la flèche haut en second emplacement la retire du premier.
+	Touches.remplacer(&"throttle", _touche(KEY_UP), 1)
+	var touches := InputMap.action_get_events(&"throttle").filter(func(e): return e is InputEventKey)
+	assert_eq(touches.size(), 1)
+
+
+func test_le_nom_d_une_touche_suit_le_clavier() -> void:
+	# Sans écran, pas de disposition : le nom de la position physique.
+	assert_eq(AstucesPanel.nom_de_l_evenement(_touche(KEY_W)), "W")
