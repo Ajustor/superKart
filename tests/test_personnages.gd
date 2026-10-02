@@ -50,7 +50,7 @@ func test_le_pilote_voyage_dans_le_salon() -> void:
 	lobby.choisir_vehicule(1, ModeleKart.FUSEE, 3, Personnage.SORCIERE)
 	var relu := Lobby.new()
 	relu.depuis_liste(lobby.en_liste())
-	assert_eq(relu.vehicule(1), [ModeleKart.FUSEE, 3, Personnage.SORCIERE])
+	assert_eq(relu.vehicule(1).slice(0, 3), [ModeleKart.FUSEE, 3, Personnage.SORCIERE])
 	var plan := lobby.plan_de_course(RandomNumberGenerator.new())
 	var jo: Dictionary = plan.filter(func(p): return p.peer == 1)[0]
 	assert_eq(jo.personnage, Personnage.SORCIERE)

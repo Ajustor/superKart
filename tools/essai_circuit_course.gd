@@ -4,7 +4,12 @@ extends Node
 ## le tracé se laisse rouler : temps de chacun, remises en piste, images
 ## passées presque à l'arrêt.
 ##
-##   godot --headless --fixed-fps 60 --path . -s tools/essai_circuit.gd -- <id> [tours] [cc] [miroir] [bataille] [kart=N]
+##   godot --headless --fixed-fps 60 --path . -s tools/essai_circuit.gd -- <id> [tours] [cc] [miroir] [bataille] [seul]
+##       [kart=N] [roues=N] [aileron=N]
+##
+## « seul » : un contre-la-montre, le kart du joueur seul en piste, piloté
+## par une IA sans erreurs. Sans adversaires ni objets, deux combinaisons du
+## garage se comparent à pilote égal.
 ##
 ## (essai_circuit.gd ne fait que charger ce nœud à la première image : un
 ## script lancé par -s est compilé avant que les autoloads n'existent, et
@@ -31,6 +36,7 @@ var _temps := 0.0
 ## rafraîchissent qu'une fois par seconde.
 var _images: PackedFloat32Array = []
 var _derniere := 0
+var _seul := false
 
 
 func _ready() -> void:
@@ -53,17 +59,26 @@ func _ready() -> void:
 	# « bataille » : une bataille de ballons plutôt qu'une course.
 	if args.has("bataille"):
 		reglage.mode = RaceSetup.Mode.BATAILLE
+	if args.has("seul"):
+		reglage.mode = RaceSetup.Mode.CONTRE_LA_MONTRE
+		_seul = true
 	# « kart=N » n'importe où après : le modèle du kart du joueur (ModeleKart).
 	for a in args:
 		if a.begins_with("kart="):
 			reglage.modele = int(a.trim_prefix("kart="))
+		# « roues=N » et « aileron=N » : les deux autres pièces.
+		if a.begins_with("roues="):
+			reglage.roues = int(a.trim_prefix("roues="))
+		if a.begins_with("aileron="):
+			reglage.aileron = int(a.trim_prefix("aileron="))
 	var course := RaceLauncher.monter(reglage)
 	get_tree().root.add_child.call_deferred(course)
 	_session = course.get_node("Session")
 	# Des temps d'IA n'ont rien à faire dans les records du joueur.
 	_session.id_piste = ""
 	print("%s — %s, %d tours, %s%s, kart %s" % [piste.id, piste.nom, reglage.tours, Cylindree.nom(reglage.classe),
-		", miroir" if reglage.miroir else "", ModeleKart.nom(reglage.modele)])
+		", miroir" if reglage.miroir else "", "%s / %s / %s" % [ModeleKart.nom(reglage.modele),
+		ModeleKart.roues(reglage.roues).nom, ModeleKart.aileron(reglage.aileron).nom]])
 
 
 func _physics_process(delta: float) -> void:
@@ -106,6 +121,8 @@ func _brancher() -> void:
 	kart.changer_pilote(ia)
 	_session.brancher_ia(ia)
 	ia.track = _session.entries[0].progress.track
+	if _seul:
+		ia.regularite = 1.0
 
 
 func _bilan() -> void:

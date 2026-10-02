@@ -1,14 +1,21 @@
 class_name GaragePanel
 extends Control
 
-## Le garage : le kart du joueur, sa couleur et le pilote assis dedans. Le choix s'enregistre aussitôt,
-## comme les options, et part à l'hôte si l'on est dans un salon.
+## Le garage : le kart du joueur, monté en trois pièces (carrosserie, roues,
+## aileron), sa couleur et le pilote assis dedans. Les jauges suivent la
+## combinaison. Le choix s'enregistre aussitôt, comme les options, et part à
+## l'hôte si l'on est dans un salon.
 
 signal ferme
 
 const SCENE_KART := "res://scenes/kart/kart.tscn"
 
-var _boutons_modele: Array[Button] = []
+## Les trois pièces, dans l'ordre : leur nom affiché et leur bouton ▶.
+const PIECES := ["Carrosserie", "Roues", "Aileron"]
+var _noms_pieces: Array[Label] = []
+var _suivants: Array[Button] = []
+## La pièce changée en dernier : c'est elle que décrit la ligne du dessous.
+var _derniere_piece := 0
 var _boutons_couleur: Array[Button] = []
 var _description: Label
 var _jauges: Jauges
@@ -79,21 +86,8 @@ func _ready() -> void:
 	droite.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	droite.add_theme_constant_override("separation", 10)
 	milieu.add_child(droite)
-	var modeles := GridContainer.new()
-	modeles.columns = 3
-	modeles.add_theme_constant_override("h_separation", 8)
-	modeles.add_theme_constant_override("v_separation", 8)
-	droite.add_child(modeles)
-	var groupe := ButtonGroup.new()
-	for i in ModeleKart.nombre():
-		var b := Button.new()
-		b.text = ModeleKart.nom(i)
-		b.toggle_mode = true
-		b.button_group = groupe
-		b.custom_minimum_size = Vector2(150, 48)
-		b.pressed.connect(_choisir_modele.bind(i))
-		modeles.add_child(b)
-		_boutons_modele.append(b)
+	for p in PIECES.size():
+		droite.add_child(_selecteur(p))
 	_description = Label.new()
 	_description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_description.custom_minimum_size = Vector2(380, 52)
@@ -131,7 +125,7 @@ func _ready() -> void:
 	visibility_changed.connect(func() -> void:
 		if visible:
 			_relire()
-			_boutons_modele[GameSettings.course.modele].grab_focus())
+			_suivants[0].grab_focus())
 	_relire()
 
 
@@ -190,16 +184,47 @@ func _apercu() -> Control:
 	return cadre
 
 
+## Une ligne « Carrosserie  ◀ Fusée ▶ ».
+func _selecteur(piece: int) -> Control:
+	var ligne := HBoxContainer.new()
+	ligne.add_theme_constant_override("separation", 8)
+	var titre := Label.new()
+	titre.text = PIECES[piece]
+	titre.custom_minimum_size.x = 150
+	titre.add_theme_color_override("font_color", UITheme.TEXTE_DOUX)
+	ligne.add_child(titre)
+	var precedent := UITheme.bouton("◀", _changer_piece.bind(piece, -1))
+	precedent.custom_minimum_size = Vector2(60, 50)
+	ligne.add_child(precedent)
+	var nom_piece := Label.new()
+	nom_piece.custom_minimum_size.x = 200
+	nom_piece.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# Une largeur fixe : les flèches restent alignées d'une ligne à l'autre.
+	nom_piece.clip_text = true
+	nom_piece.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	nom_piece.add_theme_color_override("font_color", UITheme.ACCENT)
+	ligne.add_child(nom_piece)
+	_noms_pieces.append(nom_piece)
+	var suivant := UITheme.bouton("▶", _changer_piece.bind(piece, 1))
+	suivant.custom_minimum_size = Vector2(60, 50)
+	ligne.add_child(suivant)
+	_suivants.append(suivant)
+	return ligne
+
+
 func _relire() -> void:
 	var reglage := GameSettings.course
-	for i in _boutons_modele.size():
-		_boutons_modele[i].set_pressed_no_signal(i == reglage.modele)
 	for i in _boutons_couleur.size():
 		_boutons_couleur[i].set_pressed_no_signal(i == reglage.couleur)
-	_description.text = ModeleKart.modele(reglage.modele).description
-	_jauges.valeurs = ModeleKart.jauges(reglage.modele)
+	var pieces := [ModeleKart.modele(reglage.modele), ModeleKart.roues(reglage.roues),
+		ModeleKart.aileron(reglage.aileron)]
+	for p in pieces.size():
+		_noms_pieces[p].text = pieces[p].nom
+	_description.text = "%s : %s" % [pieces[_derniere_piece].nom, pieces[_derniere_piece].description]
+	_jauges.valeurs = ModeleKart.jauges(reglage.modele, reglage.roues, reglage.aileron)
 	_jauges.queue_redraw()
-	ModeleKart.habiller(_vitrine, reglage.modele, ModeleKart.couleur(reglage.couleur))
+	ModeleKart.habiller(_vitrine, reglage.modele, ModeleKart.couleur(reglage.couleur), reglage.roues,
+		reglage.aileron)
 	Personnage.habiller(_vitrine, reglage.personnage)
 	_nom_pilote.text = Personnage.nom(reglage.personnage)
 	_origine_pilote.text = "D'après : %s" % Personnage.origine(reglage.personnage)
@@ -210,8 +235,13 @@ func _changer_pilote(pas: int) -> void:
 	_enregistrer()
 
 
-func _choisir_modele(i: int) -> void:
-	GameSettings.course.modele = i
+func _changer_piece(piece: int, pas: int) -> void:
+	var reglage := GameSettings.course
+	match piece:
+		0: reglage.modele = posmod(reglage.modele + pas, ModeleKart.nombre())
+		1: reglage.roues = posmod(reglage.roues + pas, ModeleKart.nombre_roues())
+		2: reglage.aileron = posmod(reglage.aileron + pas, ModeleKart.nombre_ailerons())
+	_derniere_piece = piece
 	_enregistrer()
 
 

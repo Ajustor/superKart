@@ -124,8 +124,9 @@ static func monter(reglage: RaceSetup, rng: RandomNumberGenerator = null) -> Nod
 	return course
 
 
-## Le kart du joueur prend le modèle, la couleur et le pilote choisis au
-## garage ; l'IA, les autres couleurs de la palette et les autres pilotes.
+## Le kart du joueur prend les pièces, la couleur et le pilote choisis au
+## garage ; l'IA, ses propres karts, les autres couleurs de la palette et les
+## autres pilotes.
 static func _habiller(session: RaceSession, reglage: RaceSetup) -> void:
 	var libres := ModeleKart.couleurs_libres([reglage.couleur])
 	var pilotes := Personnage.libres([reglage.personnage])
@@ -134,12 +135,19 @@ static func _habiller(session: RaceSession, reglage: RaceSetup) -> void:
 		if kart == null:
 			continue
 		if k == 0:
-			kart.stats = ModeleKart.stats(kart.stats, reglage.modele)
-			ModeleKart.habiller(kart, reglage.modele, ModeleKart.couleur(reglage.couleur))
+			_monter(kart, reglage.modele, reglage.roues, reglage.aileron, reglage.couleur)
 			Personnage.habiller(kart, reglage.personnage)
 		else:
-			ModeleKart.habiller(kart, ModeleKart.STANDARD, ModeleKart.couleur(libres[(k - 1) % libres.size()]))
+			var ia := ModeleKart.kart_ia(k - 1)
+			_monter(kart, ia[0], ia[1], ia[2], libres[(k - 1) % libres.size()])
 			Personnage.habiller(kart, pilotes[(k - 1) % pilotes.size()])
+
+
+## Les caractéristiques et l'allure de ces pièces, avant l'entrée du kart dans
+## l'arbre : le moteur et la suspension se construisent dans _ready.
+static func _monter(kart: Kart, carrosserie: int, roues: int, aileron: int, couleur: int) -> void:
+	kart.stats = ModeleKart.stats(kart.stats, carrosserie, roues, aileron)
+	ModeleKart.habiller(kart, carrosserie, ModeleKart.couleur(couleur), roues, aileron)
 
 
 ## La bataille : pas de tours ni de record, la table d'objets de l'arène, et
@@ -270,12 +278,12 @@ static func monter_reseau(plan: Array, config: Dictionary, moi: int, hote: bool)
 	for place in plan:
 		var kart := course.get_node(noeuds[place.gid]) as Kart
 		if int(place.peer) != 0:
-			var modele := int(place.get("modele", ModeleKart.STANDARD))
-			kart.stats = ModeleKart.stats(kart.stats, modele)
-			ModeleKart.habiller(kart, modele, ModeleKart.couleur(int(place.get("couleur", 0))))
+			_monter(kart, int(place.get("modele", ModeleKart.STANDARD)), int(place.get("roues", 0)),
+				int(place.get("aileron", 0)), int(place.get("couleur", 0)))
 			Personnage.habiller(kart, int(place.get("personnage", 0)))
 		else:
-			ModeleKart.habiller(kart, ModeleKart.STANDARD, ModeleKart.couleur(teintes_ia[n_ia % teintes_ia.size()]))
+			var ia := ModeleKart.kart_ia(n_ia)
+			_monter(kart, ia[0], ia[1], ia[2], teintes_ia[n_ia % teintes_ia.size()])
 			Personnage.habiller(kart, pilotes_ia[n_ia % pilotes_ia.size()])
 			n_ia += 1
 
