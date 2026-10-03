@@ -25,8 +25,11 @@ const CONCURRENTS := 8
 
 var mode: Mode = Mode.COURSE
 var classe: int = Cylindree.Classe.CC150
-## Le kart du joueur (ModeleKart) et sa couleur, choisis au garage.
+## Le kart du joueur (ModeleKart), monté au garage : sa carrosserie, ses
+## roues, son aileron, et sa couleur.
 var modele: int = ModeleKart.STANDARD
+var roues: int = ModeleKart.ROUES_STANDARD
+var aileron: int = ModeleKart.BECQUET
 var couleur: int = 0
 ## Le pilote assis dedans (Personnage).
 var personnage: int = Personnage.CHEVALIER

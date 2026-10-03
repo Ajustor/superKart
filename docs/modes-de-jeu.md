@@ -169,6 +169,30 @@ L'IA ne recopie plus la trajectoire idéale : elle court comme un joueur.
   - Le champignon attend une ligne droite ou un kart à doubler, sans attendre
     plus de 4 s.
   - La verte attend une cible.
+- **Ses habitudes**, comme celles d'un joueur (`envie_de_glisser`,
+  `envie_de_figures`, `envie_de_plaques`, de 0 à 1). Elle les tire au sort une
+  fois par virage, par saut ou par plaque, si bien que deux tours ne se
+  ressemblent pas.
+  - **Les virages** : elle en passe certains en adhérence. Dans les autres,
+    elle lâche parfois son mini-turbo un palier plus tôt ou plus tard.
+  - **Les sauts** : elle ne fait pas une figure à chaque saut, et pas toujours
+    au même moment du vol.
+  - **Les plaques d'accélération** : elle fait parfois l'écart pour passer
+    dessus, et parfois les laisse filer.
+
+  - **Où elle glisse** : jusque dans les courbes moyennes (rayon de 30 m,
+    tenue jusqu'à 55 m), et plus seulement dans les épingles (22 m). Elle y
+    ouvre sa glisse en contre-braquant plus fort que dans une épingle. Elle
+    la lâche si elle s'écarte de plus de 3 m de sa ligne, et ne glisse jamais
+    en zone prudente : le bond d'entrée, pris au bord d'une rampe,
+    l'empêchait de décoller.
+
+  Mesuré sur les 20 circuits, 3 passages : 430 à 500 glisses par passage
+  au lieu de 35. Les temps sont un peu meilleurs, et il y a 4 remises en
+  piste en 60 courses.
+
+  Chaque IA de `race.tscn` a les siennes. À 1, la valeur par défaut, l'IA
+  fait tout, toujours : c'est le cas du kart du joueur confié à l'IA.
 - **La prudence.** Avant une rampe ou un trou, sur le verglas et dans le vent
   (`Track.zones_prudentes`), elle reprend sa ligne. Elle ne double plus, ne se
   trompe pas et ne lâche aucun objet, pour ne laisser personne sans élan
@@ -211,30 +235,134 @@ dédié.
 
 ## Garage (`ModeleKart`, `GaragePanel`)
 
-Cinq karts au choix, accessibles depuis l'accueil et depuis le salon
-multijoueur, et huit couleurs. Chaque modèle retouche les caractéristiques
-du kart d'origine (celui sur lequel les circuits sont validés) :
+On monte son kart en trois pièces, comme dans les jeux de kart : une
+carrosserie, des roues et un aileron, quinze de chaque. Les pièces vont des
+plus sages aux plus farfelues, avec quelques clins d'œil à la culture
+populaire :
+- une baignoire avec son canard, un caddie, une soucoupe volante ;
+- un carrosse-citrouille, un requin, une chronomobile qui file à 88 miles à
+  l'heure, une chauve-souris justicière ;
+- des roues en donut, en pizza ou en pierre ;
+- une cape de super-héros, des ballons à soulever une maison. On choisit aussi l'une des huit
+couleurs et le pilote. Le garage s'ouvre depuis l'accueil et depuis le salon
+multijoueur. Chaque pièce se choisit avec ◀ ▶ ; les jauges suivent la
+combinaison, et la description dit ce que fait la dernière pièce changée.
 
-| Modèle | Vitesse | Accélération | Virage | Glisse | Poids |
-| --- | --- | --- | --- | --- | --- |
-| Standard | 1 | 1 | 1 | 1 | 1 |
-| Fusée | 1,04 | 0,80 | 1 | 0,90 | 1,1 |
-| Plume | 0,97 | 1,30 | 1,08 | 1,05 | 0,8 |
-| Dériveur | 0,99 | 0,95 | 1 | 1,30 | 0,95 |
-| Costaud | 1,02 | 0,88 | 0,97 | 0,95 | 1,4 |
+Chaque pièce multiplie les caractéristiques du kart d'origine, celui sur
+lequel les circuits sont validés. Ses multiplicateurs se combinent avec ceux
+des deux autres pièces :
 
-La glisse divise les seuils des paliers de mini-turbo ; le poids pèse dans
-les chocs entre karts (le plus léger prend la plus grande part de
-l'échange) et réduit la perte de vitesse contre un mur. La caisse change
-aussi d'allure.
+| Carrosserie | Vitesse | Accél. | Virage | Glisse | Poids | Terrain |
+| --- | --- | --- | --- | --- | --- | --- |
+| Standard | 1 | 1 | 1 | 1 | 1 | 1 |
+| Fusée | 1,02 | 0,8 | 1 | 0,9 | 1,1 | 0,95 |
+| Plume | 0,985 | 1,3 | 1,08 | 1,05 | 0,8 | 1 |
+| Dériveur | 0,995 | 0,95 | 1 | 1,3 | 0,95 | 0,95 |
+| Costaud | 1,01 | 0,88 | 0,97 | 0,95 | 1,4 | 1,05 |
+| Buggy | 0,99 | 1,1 | 1 | 0,95 | 1,05 | 1,3 |
+| Baignoire | 0,985 | 1,15 | 1,04 | 1,1 | 0,95 | 0,9 |
+| Caddie | 0,99 | 1,2 | 1,05 | 0,95 | 0,75 | 0,85 |
+| Soucoupe | 1,005 | 0,9 | 1,02 | 1,1 | 0,9 | 1 |
+| Citrouille | 0,98 | 1,05 | 1 | 1,05 | 1,2 | 1,15 |
+| Requin | 1,015 | 0,9 | 1,03 | 0,95 | 1,1 | 0,9 |
+| Chronomobile | 1,02 | 0,85 | 0,98 | 1,05 | 1,05 | 0,9 |
+| Hot-dog | 0,995 | 1,05 | 1 | 1 | 1,15 | 1,05 |
+| Tracteur | 0,98 | 1 | 0,97 | 0,9 | 1,5 | 1,4 |
+| Chauve-souris | 1,015 | 0,95 | 1 | 1 | 1,2 | 1 |
 
-Le choix est enregistré (`[garage]` dans les réglages). En réseau, chaque
-joueur l'annonce à l'hôte, qui le range dans le salon et le met dans le plan
-de course : tout le monde voit chacun dans sa couleur, et le poids de chacun
-compte dans les chocs. L'IA prend les couleurs restantes.
+| Roues | Vitesse | Accél. | Virage | Glisse | Poids | Terrain |
+| --- | --- | --- | --- | --- | --- | --- |
+| Standard | 1 | 1 | 1 | 1 | 1 | 1 |
+| Slicks | 1,008 | 0,95 | 1,03 | 1 | 1 | 0,8 |
+| Monstre | 0,992 | 0,9 | 0,98 | 0,97 | 1,15 | 1,35 |
+| Roller | 0,992 | 1,2 | 1,02 | 1,08 | 0,9 | 0,85 |
+| Néon | 1 | 1,05 | 1 | 1,1 | 1 | 0,9 |
+| Donuts | 0,992 | 1,1 | 1 | 1,05 | 1 | 0,9 |
+| Pizzas | 1 | 1 | 0,99 | 1,08 | 1,05 | 0,95 |
+| Pierre | 0,992 | 0,85 | 1 | 0,95 | 1,25 | 1,3 |
+| Vinyles | 1,004 | 1 | 1,02 | 1 | 0,95 | 0,8 |
+| Bouées | 0,992 | 1,05 | 0,99 | 1,1 | 0,85 | 1 |
+| Cookies | 0,996 | 1,15 | 1 | 1 | 0,95 | 0,9 |
+| Engrenages | 1,004 | 0,95 | 1 | 1 | 1,1 | 1,15 |
+| Bling | 1,006 | 0,97 | 1,01 | 1 | 1,05 | 0,85 |
+| Fromages | 0,996 | 1 | 0,99 | 1 | 1,1 | 1,1 |
+| Western | 0,996 | 1,05 | 0,99 | 1,05 | 1 | 1,05 |
 
-Le harnais IA accepte `kart=N` pour valider un modèle :
-`tools/essai_circuit.gd -- <id> 1 200 kart=4`.
+| Aileron | Vitesse | Accél. | Virage | Glisse | Poids | Terrain |
+| --- | --- | --- | --- | --- | --- | --- |
+| Becquet | 1 | 1 | 1 | 1 | 1 | 1 |
+| Grand aileron | 1,003 | 0,95 | 1,03 | 1 | 1,03 | 1 |
+| Ailettes | 0,997 | 1,06 | 1,02 | 1 | 0,95 | 1 |
+| Voile | 0,997 | 1 | 1 | 1,08 | 1 | 1,05 |
+| Hélice | 1,003 | 0,97 | 1 | 1,05 | 1 | 1 |
+| Parasol | 0,997 | 1,02 | 1 | 1,03 | 1 | 1,05 |
+| Ailes d'ange | 0,997 | 1,05 | 1 | 1 | 0,92 | 1 |
+| Ailes de dragon | 1,003 | 0,97 | 1 | 1,05 | 1,05 | 1 |
+| Cape | 1,002 | 1 | 1,02 | 1 | 1 | 0,97 |
+| Drapeau pirate | 1 | 1,03 | 1 | 1,02 | 1 | 0,97 |
+| Ballons | 0,997 | 1,04 | 0,99 | 1 | 0,9 | 1 |
+| Parabole | 1 | 0,98 | 1,03 | 1 | 1,02 | 1 |
+| Réacteur | 1,003 | 1,04 | 0,995 | 0,97 | 1,05 | 1 |
+| Nageoire | 1 | 1 | 1,01 | 1,04 | 1 | 0,96 |
+| Feux d'artifice | 1,003 | 1,03 | 1 | 0,98 | 1 | 0,98 |
+
+Aucune pièce n'est meilleure en tout : chacune gagne quelque chose et en perd
+autre chose (le poids n'est compté ni comme l'un ni comme l'autre). Les
+tests le vérifient, et vérifient aussi deux garde-fous sur les
+3 375 combinaisons : les sauts et le rayon de braquage (voir plus bas).
+
+La vitesse de pointe ne varie que de quelques pour cent, parce que c'est elle
+qui décide d'un chrono. Mesuré en contre-la-montre, avec une IA sans erreurs
+sur six circuits et en changeant une pièce à la fois
+(`tools/essai_circuit.gd -- <id> 2 150 seul kart=N`) :
+- **Avant réglage** : Fusée 4 % plus rapide, Plume 3 % plus lent.
+- **Après** : Fusée 2 % plus rapide, Plume 1,5 % plus lent.
+
+L'accélération, la maniabilité et la glisse paient surtout en course : après
+un choc ou un objet, sous un mini-turbo, et pour un joueur qui enchaîne les
+glisses.
+
+Les caractéristiques agissent ainsi sur le kart :
+- **Glisse** : divise les seuils des paliers de mini-turbo et allonge les
+  mini-turbos (de sa racine carrée).
+- **Poids** : pèse dans les chocs entre karts, où le plus léger prend la plus
+  grande part de l'échange, et réduit la perte de vitesse contre un mur.
+- **Terrain** : multiplie la vitesse gardée hors piste (bornée à 0,9).
+
+Deux garde-fous gardent tous les circuits praticables, quelle que soit la
+combinaison :
+- **Les sauts** : comme pour les cylindrées, la gravité suit le carré du
+  facteur de vitesse, et l'impulsion des tremplins le facteur lui-même.
+  Chaque saut garde ainsi sa parabole, et un kart lent passe les trous.
+- **Les épingles** : le braquage ne suit pas la vitesse, si bien qu'une
+  combinaison rapide prend ses virages plus large. Le rayon de braquage
+  reste pourtant sous celui de l'épingle du circuit 1 (13,3 m).
+
+Chaque pièce a son allure : des formes simples en une seule maillage à
+couleurs de sommets, peintes de la couleur du kart et partagées entre les
+karts identiques.
+Les formes sont dans `AtelierPieces`.
+- **Carrosseries et ailerons** : ils se posent dans le repère de la caisse.
+- **Roues** : chaque train a son rayon, sa largeur et ses couleurs. Leurs
+  décors (vermicelles, pepperoni, sillons, pépites…) vont sur les deux faces,
+  puisqu'on voit l'une à gauche du kart et l'autre à droite. Une roue plus
+  grande se monte plus haut, et la suspension apprend son rayon.
+
+Les sept adversaires de l'IA courent dans des karts variés et fixes
+(`ModeleKart.KARTS_IA`) : chaque machine d'une partie en réseau les habille
+de la même façon. Leurs vitesses de pointe restent à 1 % de celle d'origine :
+le classement de l'IA reste une affaire de pilote. Un kart 4 % plus rapide
+gagnait 37 courses sur 40, même sur un pilote moyen.
+
+Le choix est enregistré (section `[garage]` des réglages : `modele`,
+`roues`, `aileron`, `couleur`, `personnage`). En réseau, chaque joueur
+l'annonce à l'hôte, qui le range dans le salon et le met dans le plan de
+course. Tout le monde voit chacun dans son kart, et le poids de chacun compte
+dans les chocs. L'IA prend les couleurs restantes. Le protocole passe en
+version 8.
+
+Le harnais IA accepte `kart=N`, `roues=N` et `aileron=N` pour valider une
+combinaison : `tools/essai_circuit.gd -- <id> 1 200 kart=4 roues=2 aileron=1`.
 
 ## Bataille (`Bataille`, arènes de `TrackCatalog.ARENES`)
 
@@ -284,3 +412,16 @@ au clavier sur des cercles de 12 à 90 m ; le palier 3 y tombe entre 3,2 et
 3,9 s, à 1,7 m au plus du milieu de la route, et `tests/test_glisse.gd` le
 garde ainsi. L'IA, réglée sur l'ancienne courbe, contre-braque moins fort
 (`AIInput.CONTRE_BRAQUAGE_MAX`, -0,4 au lieu de -0,7) pour garder ses temps.
+
+## Figures (`Kart._figures`)
+
+Un appui sur Glisse pendant un vrai saut (tremplin ou rampe) fait faire un
+tonneau au kart, et l'atterrissage donne un turbo.
+- **Le moment de l'appui** : la figure part 0,05 s après le décollage. Un
+  appui fait plus tôt, en même temps que le saut, n'est pas perdu : il
+  attend ce moment.
+- **Avant la correction** : le délai était de 0,12 s, et un appui fait
+  pendant ce temps était avalé. Il fallait appuyer une seconde fois, et la
+  figure venait trop tard.
+- **L'IA** décide à chaque saut si elle fait une figure, selon son
+  `envie_de_figures`, et appuie entre 0,06 et 0,3 s après le décollage.

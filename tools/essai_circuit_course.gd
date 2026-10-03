@@ -4,7 +4,12 @@ extends Node
 ## le tracé se laisse rouler : temps de chacun, remises en piste, images
 ## passées presque à l'arrêt.
 ##
-##   godot --headless --fixed-fps 60 --path . -s tools/essai_circuit.gd -- <id> [tours] [cc] [miroir] [bataille] [kart=N]
+##   godot --headless --fixed-fps 60 --path . -s tools/essai_circuit.gd -- <id> [tours] [cc] [miroir] [bataille] [seul]
+##       [kart=N] [roues=N] [aileron=N]
+##
+## « seul » : un contre-la-montre, le kart du joueur seul en piste, piloté
+## par une IA sans erreurs. Sans adversaires ni objets, deux combinaisons du
+## garage se comparent à pilote égal.
 ##
 ## (essai_circuit.gd ne fait que charger ce nœud à la première image : un
 ## script lancé par -s est compilé avant que les autoloads n'existent, et
@@ -31,6 +36,12 @@ var _temps := 0.0
 ## rafraîchissent qu'une fois par seconde.
 var _images: PackedFloat32Array = []
 var _derniere := 0
+var _seul := false
+## Par kart : glisses engagées, et passages sur une plaque d'accélération.
+var _glisses: Array[int] = []
+var _plaques: Array[int] = []
+var _etat_avant: Array[int] = []
+var _sur_plaque: Array[bool] = []
 
 
 func _ready() -> void:
@@ -53,17 +64,26 @@ func _ready() -> void:
 	# « bataille » : une bataille de ballons plutôt qu'une course.
 	if args.has("bataille"):
 		reglage.mode = RaceSetup.Mode.BATAILLE
+	if args.has("seul"):
+		reglage.mode = RaceSetup.Mode.CONTRE_LA_MONTRE
+		_seul = true
 	# « kart=N » n'importe où après : le modèle du kart du joueur (ModeleKart).
 	for a in args:
 		if a.begins_with("kart="):
 			reglage.modele = int(a.trim_prefix("kart="))
+		# « roues=N » et « aileron=N » : les deux autres pièces.
+		if a.begins_with("roues="):
+			reglage.roues = int(a.trim_prefix("roues="))
+		if a.begins_with("aileron="):
+			reglage.aileron = int(a.trim_prefix("aileron="))
 	var course := RaceLauncher.monter(reglage)
 	get_tree().root.add_child.call_deferred(course)
 	_session = course.get_node("Session")
 	# Des temps d'IA n'ont rien à faire dans les records du joueur.
 	_session.id_piste = ""
 	print("%s — %s, %d tours, %s%s, kart %s" % [piste.id, piste.nom, reglage.tours, Cylindree.nom(reglage.classe),
-		", miroir" if reglage.miroir else "", ModeleKart.nom(reglage.modele)])
+		", miroir" if reglage.miroir else "", "%s / %s / %s" % [ModeleKart.nom(reglage.modele),
+		ModeleKart.roues(reglage.roues).nom, ModeleKart.aileron(reglage.aileron).nom]])
 
 
 func _physics_process(delta: float) -> void:
@@ -84,6 +104,14 @@ func _physics_process(delta: float) -> void:
 				_remises[i] += 1
 				var ou := int(e.derniere_en_piste / 10.0) * 10
 				_ou[ou] = int(_ou.get(ou, 0)) + 1
+			var etat := e.kart.motor.state
+			if etat == KartMotor.State.DRIFT and _etat_avant[i] != KartMotor.State.DRIFT:
+				_glisses[i] += 1
+			_etat_avant[i] = etat
+			var plaque := _session.circuit().accelerateur_en(e.progress.distance, e.lateral) != null
+			if plaque and not _sur_plaque[i]:
+				_plaques[i] += 1
+			_sur_plaque[i] = plaque
 			if e.kart.motor.speed < 2.0 and e.kart.motor.state != KartMotor.State.STUNNED:
 				_arrets[i] += 1
 				var ici := int(e.progress.distance / 10.0) * 10
@@ -100,12 +128,18 @@ func _brancher() -> void:
 		_precedent.append(e.kart.global_position)
 		_remises.append(0)
 		_arrets.append(0)
+		_glisses.append(0)
+		_plaques.append(0)
+		_etat_avant.append(KartMotor.State.GRIP)
+		_sur_plaque.append(false)
 	var kart: Kart = _session.entries[0].kart
 	var ia := AIInput.new()
 	kart.add_child(ia)
 	kart.changer_pilote(ia)
 	_session.brancher_ia(ia)
 	ia.track = _session.entries[0].progress.track
+	if _seul:
+		ia.regularite = 1.0
 
 
 func _bilan() -> void:
@@ -116,8 +150,9 @@ func _bilan() -> void:
 		var e := _session.entries[i]
 		if e.finished:
 			arrives += 1
-		print("  %-10s %s  remises %2d  arrêts %4d" % [e.kart.name,
-			("%6.1f s" % e.temps_course) if e.finished else "  ---   ", _remises[i], _arrets[i]])
+		print("  %-10s %s  remises %2d  arrêts %4d  glisses %3d  figures %2d  plaques %2d" % [e.kart.name,
+			("%6.1f s" % e.temps_course) if e.finished else "  ---   ", _remises[i], _arrets[i], _glisses[i],
+			e.kart.figures, _plaques[i]])
 	var cles := _ou.keys()
 	cles.sort()
 	var lieux := PackedStringArray()

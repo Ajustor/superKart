@@ -19,7 +19,7 @@ const NOMS_IA: Array[String] = ["Turbo", "Zéphyr", "Piston", "Comète", "Bielle
 ## et le relire ne le garantit pas partout.
 var joueurs: Dictionary = {}
 var ordre: Array[int] = []
-## peer id -> [modele, couleur, personnage] : le kart et le pilote choisis au
+## peer id -> [modele, couleur, personnage, roues, aileron] : le kart et le pilote choisis au
 ## garage (ModeleKart, Personnage).
 var vehicules: Dictionary = {}
 
@@ -45,13 +45,15 @@ func retirer(peer: int) -> void:
 	vehicules.erase(peer)
 
 
-func choisir_vehicule(peer: int, modele: int, couleur: int, personnage: int = 0) -> void:
+func choisir_vehicule(peer: int, modele: int, couleur: int, personnage: int = 0,
+		roues: int = ModeleKart.ROUES_STANDARD, aileron: int = ModeleKart.BECQUET) -> void:
 	vehicules[peer] = [clampi(modele, 0, ModeleKart.nombre() - 1), posmod(couleur, ModeleKart.COULEURS.size()),
-		clampi(personnage, 0, Personnage.nombre() - 1)]
+		clampi(personnage, 0, Personnage.nombre() - 1), clampi(roues, 0, ModeleKart.nombre_roues() - 1),
+		clampi(aileron, 0, ModeleKart.nombre_ailerons() - 1)]
 
 
 func vehicule(peer: int) -> Array:
-	return vehicules.get(peer, [ModeleKart.STANDARD, 0, 0])
+	return vehicules.get(peer, [ModeleKart.STANDARD, 0, 0, ModeleKart.ROUES_STANDARD, ModeleKart.BECQUET])
 
 
 func est_plein() -> bool:
@@ -75,13 +77,13 @@ static func nettoyer(nom: String) -> String:
 	return propre if propre != "" else "Pilote"
 
 
-## Ce qu'on envoie aux clients : un tableau de [peer, nom, modele, couleur, personnage]
+## Ce qu'on envoie aux clients : un tableau de [peer, nom, modele, couleur, personnage, roues, aileron]
 ## dans l'ordre d'arrivée, que chacun relit avec `depuis_liste`.
 func en_liste() -> Array:
 	var liste := []
 	for peer in ordre:
 		var v := vehicule(peer)
-		liste.append([peer, joueurs[peer], v[0], v[1], v[2]])
+		liste.append([peer, joueurs[peer], v[0], v[1], v[2], v[3], v[4]])
 	return liste
 
 
@@ -93,7 +95,8 @@ func depuis_liste(liste: Array) -> void:
 		joueurs[int(ligne[0])] = str(ligne[1])
 		ordre.append(int(ligne[0]))
 		if ligne.size() >= 4:
-			choisir_vehicule(int(ligne[0]), int(ligne[2]), int(ligne[3]), int(ligne[4]) if ligne.size() >= 5 else 0)
+			choisir_vehicule(int(ligne[0]), int(ligne[2]), int(ligne[3]), int(ligne[4]) if ligne.size() >= 5 else 0,
+				int(ligne[5]) if ligne.size() >= 7 else 0, int(ligne[6]) if ligne.size() >= 7 else 0)
 
 
 ## La grille de la course : une entrée par place, dans l'ordre des places
@@ -118,7 +121,7 @@ func plan_de_course(rng: RandomNumberGenerator) -> Array:
 		var gid: int = places[k]
 		var v := vehicule(humains[k])
 		plan[gid] = {gid = gid, peer = humains[k], nom = joueurs[humains[k]], niveau_ia = 0,
-			modele = v[0], couleur = v[1], personnage = v[2]}
+			modele = v[0], couleur = v[1], personnage = v[2], roues = v[3], aileron = v[4]}
 	var niveau := 1
 	for gid in PLACES:
 		if plan[gid] == null:

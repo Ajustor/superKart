@@ -132,12 +132,15 @@ const RETOMBEE_PRUDENTE := 12.0
 
 var _zones_prudentes := PackedVector2Array()
 var _zones_a_jour := false
+var _plaques := PackedVector4Array()
+var _plaques_a_jour := false
 
 
 func _ready() -> void:
 	child_order_changed.connect(func() -> void:
 		_elements_a_jour = false
-		_zones_a_jour = false)
+		_zones_a_jour = false
+		_plaques_a_jour = false)
 	# En jeu, un circuit sans courbe est une erreur de montage. Dans l'éditeur
 	# c'est l'état normal d'un nœud qu'on vient d'ajouter : on ne crie pas.
 	assert(curve != null or Engine.is_editor_hint(), "un Track doit avoir une courbe")
@@ -383,6 +386,19 @@ func zones_prudentes() -> PackedVector2Array:
 				var fin: float = debut + element.longueur
 				_zones_prudentes.append(Vector2(debut - ELAN_PRUDENT, fin + RETOMBEE_PRUDENTE))
 	return _zones_prudentes
+
+
+## Les plaques d'accélération, pour l'IA : (début, longueur, décalage,
+## largeur).
+func plaques_d_acceleration() -> PackedVector4Array:
+	if not (_plaques_a_jour and is_node_ready()):
+		_plaques_a_jour = is_node_ready()
+		_plaques.clear()
+		for element in elements():
+			if element is TrackBoost and not element.is_queued_for_deletion():
+				var plaque := element as TrackBoost
+				_plaques.append(Vector4(plaque.debut, plaque.longueur, plaque.decalage, plaque.largeur))
+	return _plaques
 
 
 ## Le trou qui couvre cette distance, ou null.

@@ -52,9 +52,32 @@ func test_sans_figure_pas_de_turbo() -> void:
 	assert_eq(kart.motor.boost_timer, 0.0)
 
 
-func test_un_appui_trop_tot_ne_compte_pas() -> void:
-	_voler(Kart.FIGURE_APRES * 0.5, 0.0)
+func test_un_appui_au_decollage_n_est_pas_perdu() -> void:
+	# Le joueur appuie en même temps que le kart quitte la rampe, et relâche.
+	kart.en_saut = true
+	kart.au_sol = false
+	kart._figures(_commande(true), PAS)
 	assert_false(kart.figure_faite, "juste après le décollage, pas encore")
+	var t := PAS
+	while t < Kart.FIGURE_APRES + 2.0 * PAS:
+		kart._figures(_commande(false), PAS)
+		t += PAS
+	assert_true(kart.figure_faite, "l'appui attendait son moment : pas besoin d'un second")
+
+
+func test_la_figure_part_tot_dans_le_saut() -> void:
+	_voler(0.1, 0.0)
+	assert_true(kart.figure_faite, "un dixième de seconde après le décollage, c'est fait")
+
+
+func test_un_appui_attendu_ne_survit_pas_a_l_atterrissage() -> void:
+	kart.en_saut = true
+	kart.au_sol = false
+	kart._figures(_commande(true), PAS)
+	kart.au_sol = true
+	kart._atterrir()
+	_voler(0.3, -1.0)
+	assert_false(kart.figure_faite, "un appui d'un saut ne sert pas au suivant")
 
 
 func test_en_plein_vol_le_derapage_ne_relance_pas_le_kart() -> void:

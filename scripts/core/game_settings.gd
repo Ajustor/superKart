@@ -124,6 +124,9 @@ func charger() -> void:
 	course.classe = clampi(int(fichier.get_value("course", "cylindree", course.classe)),
 		Cylindree.Classe.CC50, Cylindree.Classe.CC200)
 	course.modele = clampi(int(fichier.get_value("garage", "modele", course.modele)), 0, ModeleKart.nombre() - 1)
+	course.roues = clampi(int(fichier.get_value("garage", "roues", course.roues)), 0, ModeleKart.nombre_roues() - 1)
+	course.aileron = clampi(int(fichier.get_value("garage", "aileron", course.aileron)), 0,
+		ModeleKart.nombre_ailerons() - 1)
 	course.couleur = posmod(int(fichier.get_value("garage", "couleur", course.couleur)), ModeleKart.COULEURS.size())
 	course.personnage = clampi(int(fichier.get_value("garage", "personnage", course.personnage)), 0, Personnage.nombre() - 1)
 	_trophees.clear()
@@ -170,6 +173,8 @@ func sauver() -> void:
 	fichier.set_value("reseau", "en_ligne", serveur_en_ligne)
 	fichier.set_value("course", "cylindree", course.classe)
 	fichier.set_value("garage", "modele", course.modele)
+	fichier.set_value("garage", "roues", course.roues)
+	fichier.set_value("garage", "aileron", course.aileron)
 	fichier.set_value("garage", "couleur", course.couleur)
 	fichier.set_value("garage", "personnage", course.personnage)
 	for cle in _records:

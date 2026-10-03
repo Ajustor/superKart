@@ -56,6 +56,8 @@ static func monter(rng: RandomNumberGenerator) -> Node:
 	reglage.couleur = rng.randi_range(0, ModeleKart.COULEURS.size() - 1)
 	reglage.personnage = rng.randi_range(0, Personnage.nombre() - 1)
 	reglage.modele = rng.randi_range(0, ModeleKart.nombre() - 1)
+	reglage.roues = rng.randi_range(0, ModeleKart.nombre_roues() - 1)
+	reglage.aileron = rng.randi_range(0, ModeleKart.nombre_ailerons() - 1)
 	var course := RaceLauncher.monter(reglage, rng)
 	var session := course.get_node("Session") as RaceSession
 	session.duree_decompte = 0.0

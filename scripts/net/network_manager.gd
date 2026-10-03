@@ -27,7 +27,7 @@ signal depart
 const PORT := 8910
 ## Monté à chaque changement du protocole : un client d'une autre version est
 ## refusé poliment plutôt que de désynchroniser la course en silence.
-const VERSION := 7
+const VERSION := 8
 
 ## Pas de coupe : une course seule.
 const SANS_COUPE := -1
@@ -128,7 +128,8 @@ func heberger(nom: String, port: int = PORT) -> Error:
 	_port = port
 	lobby = Lobby.new()
 	lobby.ajouter(1, nom)
-	lobby.choisir_vehicule(1, GameSettings.course.modele, GameSettings.course.couleur, GameSettings.course.personnage)
+	var garage := GameSettings.course
+	lobby.choisir_vehicule(1, garage.modele, garage.couleur, garage.personnage, garage.roues, garage.aileron)
 	en_course = false
 	_annoncer()
 	port_internet.ouvrir(port)
@@ -265,20 +266,20 @@ func annoncer_vehicule() -> void:
 		return
 	var reglage := GameSettings.course
 	if multiplayer.is_server():
-		lobby.choisir_vehicule(1, reglage.modele, reglage.couleur, reglage.personnage)
+		lobby.choisir_vehicule(1, reglage.modele, reglage.couleur, reglage.personnage, reglage.roues, reglage.aileron)
 		_diffuser_salon()
 	else:
-		_vehicule.rpc_id(1, reglage.modele, reglage.couleur, reglage.personnage)
+		_vehicule.rpc_id(1, reglage.modele, reglage.couleur, reglage.personnage, reglage.roues, reglage.aileron)
 
 
 @rpc("any_peer", "reliable")
-func _vehicule(modele: int, couleur: int, personnage: int = 0) -> void:
+func _vehicule(modele: int, couleur: int, personnage: int = 0, roues: int = 0, aileron: int = 0) -> void:
 	if not multiplayer.is_server():
 		return
 	var peer := multiplayer.get_remote_sender_id()
 	if not lobby.joueurs.has(peer):
 		return
-	lobby.choisir_vehicule(peer, modele, couleur, personnage)
+	lobby.choisir_vehicule(peer, modele, couleur, personnage, roues, aileron)
 	_diffuser_salon()
 
 

@@ -584,6 +584,7 @@ func _nourrir_ia(entree: RaceEntry, point: Vector3) -> void:
 		if cerveau.kart == entree.kart:
 			cerveau.track = _track.track_curve
 			cerveau.zones_prudentes = _track.zones_prudentes()
+			cerveau.plaques = _track.plaques_d_acceleration()
 			cerveau.distance = entree.progress.distance
 			cerveau.position = point
 			return
