@@ -31,6 +31,11 @@ extends TrackFeature
 ## Le ciel et la lumière de l'autre côté. Rien : on garde ceux du circuit.
 @export var ambiance: Environment
 
+## Ce qui n'existe que de ce côté-ci du portail, jusqu'au suivant : les
+## décors de cette époque (des nœuds frères, en général). Ils disparaissent
+## quand la caméra est dans un autre monde (Track.montrer_le_monde_de).
+@export var decors: Array[NodePath] = []
+
 ## Il s'ouvre quand le premier en est à cette distance, en mètres.
 const AVANCE := 90.0
 ## Il reste ouvert jusqu'à ce que le dernier l'ait dépassé de ça.
@@ -88,6 +93,16 @@ func effet_a(distance: float, tour: float) -> float:
 
 func ouverture() -> float:
 	return _ouverture
+
+
+## Les nœuds de `decors` qui existent bel et bien.
+func decors_du_monde() -> Array[Node3D]:
+	var liste: Array[Node3D] = []
+	for chemin in decors:
+		var noeud := get_node_or_null(chemin) as Node3D
+		if noeud != null:
+			liste.append(noeud)
+	return liste
 
 
 func _materiau(couloir: bool) -> ShaderMaterial:

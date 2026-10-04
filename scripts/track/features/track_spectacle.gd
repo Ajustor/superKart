@@ -265,10 +265,10 @@ func _eclair(racine: Node3D) -> void:
 		var bas := _centre.origin + Vector3(x2, y2, 0.0)
 		var milieu := _centre.origin + Vector3((x + x2) * 0.5, (y + y2) * 0.5, 0.0)
 		var longueur_trait := Vector2(x2 - x, y2 - y).length()
-		var trait := _cylindre(0.25, 0.25, longueur_trait, lumineux)
-		trait.transform = Transform3D(Basis(Vector3.BACK, atan2(x2 - x, y - y2)), milieu)
-		racine.add_child(trait)
-		_pieces.append(trait)
+		var zigzag := _cylindre(0.25, 0.25, longueur_trait, lumineux)
+		zigzag.transform = Transform3D(Basis(Vector3.BACK, atan2(x2 - x, y - y2)), milieu)
+		racine.add_child(zigzag)
+		_pieces.append(zigzag)
 		x = x2
 		y = y2
 		if bas.y <= hauteur:

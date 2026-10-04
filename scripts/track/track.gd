@@ -273,6 +273,13 @@ func portails() -> Array[TrackPortail]:
 ## en faisant le tour (avant le premier portail, c'est le dernier qui vaut).
 ## Null : ceux du circuit.
 func ambiance_en(distance: float) -> Environment:
+	var portail := portail_en(distance)
+	return portail.ambiance if portail != null else null
+
+
+## Le dernier portail franchi à cette distance, en faisant le tour : l'époque,
+## le monde où l'on est. Null s'il n'y a pas de portail.
+func portail_en(distance: float) -> TrackPortail:
 	var liste := portails()
 	if liste.is_empty():
 		return null
@@ -280,7 +287,19 @@ func ambiance_en(distance: float) -> Environment:
 	for portail in liste:
 		if portail.debut <= distance:
 			choisi = portail
-	return choisi.ambiance
+	return choisi
+
+
+## N'affiche que le décor du monde où l'on est (TrackPortail.decors) : de la
+## grand-place des années cinquante, on ne voit pas les tours du futur qui
+## pourtant se dressent de l'autre côté du circuit.
+func montrer_le_monde_de(ici: TrackPortail) -> void:
+	for portail in portails():
+		for noeud in portail.decors_du_monde():
+			noeud.visible = portail == ici
+
+
+var _monde: TrackPortail
 
 
 ## La caméra qui suit un kart, s'il y en a une, voit le monde de l'autre
@@ -299,7 +318,11 @@ func _process(_delta: float) -> void:
 	for portail in liste:
 		effet = maxf(effet, portail.effet_a(d, track_curve.length))
 	camera.vortex = effet
-	camera.environment = ambiance_en(d)
+	var ici := portail_en(d)
+	camera.environment = ici.ambiance
+	if ici != _monde:
+		_monde = ici
+		montrer_le_monde_de(ici)
 
 
 var _asphalte: StandardMaterial3D
