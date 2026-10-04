@@ -29,6 +29,11 @@ var _classe: OptionButton
 var _miroir: CheckButton
 var _coupes: GridContainer
 var _circuits: GridContainer
+## Les deux grilles défilent dans une hauteur fixe : avec vingt-quatre
+## circuits, la grille sortait de l'écran et poussait Démarrer avec elle.
+var _defilement_coupes: ScrollContainer
+var _defilement_circuits: ScrollContainer
+const HAUTEUR_DES_GRILLES := 250.0
 var _reglages: HBoxContainer
 var _description: Label
 var _record: Label
@@ -206,6 +211,7 @@ func _montrer(ecran: Control) -> void:
 		(_accueil.find_child("Jouer", true, false) as Button).grab_focus()
 	elif ecran == _selection:
 		_demarrer.grab_focus()
+		_montrer_le_choix()
 
 
 func _ouvrir_multi(en_ligne: bool) -> void:
@@ -274,7 +280,8 @@ func _ecran_selection() -> Control:
 	var ecran := Control.new()
 	ecran.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(ecran)
-	var colonne := UITheme.panneau_centre(ecran, 980.0)
+	# Défilant, si l'écran est trop bas pour tout tenir.
+	var colonne := UITheme.panneau_defilant(ecran, 980.0)
 	colonne.add_child(UITheme.titre("CHOIX DE LA COURSE", 34))
 	var reglage := GameSettings.course
 
@@ -334,7 +341,8 @@ func _ecran_selection() -> Control:
 			_rafraichir())
 		_coupes.add_child(b)
 		_boutons_coupe.append(b)
-	colonne.add_child(_coupes)
+	_defilement_coupes = _defilant(_coupes)
+	colonne.add_child(_defilement_coupes)
 
 	# Les circuits, pour une course seule ou le contre-la-montre.
 	_circuits = GridContainer.new()
@@ -355,7 +363,8 @@ func _ecran_selection() -> Control:
 		b.pressed.connect(_choisir_piste.bind(arene))
 		_circuits.add_child(b)
 		_boutons_arene.append(b)
-	colonne.add_child(_circuits)
+	_defilement_circuits = _defilant(_circuits)
+	colonne.add_child(_defilement_circuits)
 
 	_description = Label.new()
 	_description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -420,6 +429,32 @@ func _ecran_selection() -> Control:
 	return ecran
 
 
+## Une grille dans une fenêtre qui défile à la verticale, le doigt ou la
+## molette, et qui suit le focus à la manette.
+func _defilant(grille: Control) -> ScrollContainer:
+	var defilement := ScrollContainer.new()
+	defilement.custom_minimum_size.y = HAUTEUR_DES_GRILLES
+	defilement.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	defilement.follow_focus = true
+	# Un doigt qui glisse fait défiler ; un doigt qui tape choisit.
+	defilement.scroll_deadzone = 12
+	grille.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	defilement.add_child(grille)
+	return defilement
+
+
+## Fait défiler la grille jusqu'au bouton choisi, s'il est caché. Une image
+## plus tard : avant, la grille n'a pas encore sa taille.
+func _montrer_le_choix() -> void:
+	await get_tree().process_frame
+	for b in _boutons_piste + _boutons_arene:
+		if b.button_pressed and b.is_inside_tree() and _defilement_circuits.visible:
+			_defilement_circuits.ensure_control_visible(b)
+	for b in _boutons_coupe:
+		if b.button_pressed and b.is_inside_tree() and _defilement_coupes.visible:
+			_defilement_coupes.ensure_control_visible(b)
+
+
 func _bascule(texte: String, groupe: ButtonGroup, taille: Vector2, police: int) -> Button:
 	var b := Button.new()
 	b.text = texte
@@ -434,8 +469,8 @@ func _choisir_mode(mode: RaceSetup.Mode) -> void:
 	var reglage := GameSettings.course
 	reglage.mode = mode
 	_boutons_mode[mode].button_pressed = true
-	_coupes.visible = mode == RaceSetup.Mode.GRAND_PRIX
-	_circuits.visible = not _coupes.visible
+	_defilement_coupes.visible = mode == RaceSetup.Mode.GRAND_PRIX
+	_defilement_circuits.visible = not _defilement_coupes.visible
 	_classe.visible = mode != RaceSetup.Mode.CONTRE_LA_MONTRE
 	_tours.visible = mode == RaceSetup.Mode.COURSE
 	var bataille := mode == RaceSetup.Mode.BATAILLE

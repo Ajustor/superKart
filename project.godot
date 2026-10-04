@@ -30,6 +30,10 @@ PerfOverlay="*res://scripts/core/perf_overlay.gd"
 MiseAJour="*res://scripts/core/mise_a_jour.gd"
 ServeurDedie="*res://scripts/net/serveur_dedie.gd"
 
+[debug]
+
+file_logging/enable_file_logging.mobile=true
+
 [display]
 
 window/size/viewport_width=1280

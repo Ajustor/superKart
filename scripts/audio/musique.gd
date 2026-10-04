@@ -155,17 +155,25 @@ const STYLES := {
 }
 
 static var _cache: Dictionary = {}
+## Le cache se remplit depuis les fils qui composent, et se lit depuis le fil
+## principal : un Dictionary écrit par deux fils à la fois se corrompt, et le
+## jeu s'arrête net. Tout accès passe par ce verrou.
+static var _verrou := Mutex.new()
 
 
 ## La boucle d'un style, si elle est déjà composée ; null sinon.
 static func deja_composee(style: int) -> AudioStreamWAV:
-	return _cache.get(style)
+	_verrou.lock()
+	var flux: AudioStreamWAV = _cache.get(style)
+	_verrou.unlock()
+	return flux
 
 
 ## Compose la boucle et la garde. Peut tourner dans un autre fil.
 static func composer(style: int) -> AudioStreamWAV:
-	if _cache.has(style):
-		return _cache[style]
+	var deja := deja_composee(style)
+	if deja != null:
+		return deja
 	var s: Dictionary = STYLES[style]
 	var noire := 60.0 / float(s.tempo)
 	var croche := noire * 0.5
@@ -224,7 +232,13 @@ static func composer(style: int) -> AudioStreamWAV:
 				_bruit(piste, quand, 0.03, 0.05)
 
 	var flux := _en_wav(piste)
-	_cache[style] = flux
+	_verrou.lock()
+	# Composée entre-temps par un autre fil : on garde la première.
+	if _cache.has(style):
+		flux = _cache[style]
+	else:
+		_cache[style] = flux
+	_verrou.unlock()
 	return flux
 
 
