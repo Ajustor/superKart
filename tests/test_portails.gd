@@ -112,20 +112,49 @@ func test_chaque_monde_a_son_ciel() -> void:
 func test_on_ne_voit_que_le_decor_du_monde_ou_l_on_est() -> void:
 	var a := _portail(100.0)
 	var b := _portail(300.0)
-	var tours := Node3D.new()
+	var tours := MeshInstance3D.new()
 	tours.name = "Tours"
 	track.add_child(tours)
-	var saloons := Node3D.new()
+	var saloons := MeshInstance3D.new()
 	saloons.name = "Saloons"
 	track.add_child(saloons)
+	var route := MeshInstance3D.new()
+	track.add_child(route)
 	a.decors = [NodePath("../Tours")]
 	b.decors = [NodePath("../Saloons")]
-	track.montrer_le_monde_de(a)
-	assert_true(tours.visible)
-	assert_false(saloons.visible)
-	track.montrer_le_monde_de(b)
-	assert_false(tours.visible)
-	assert_true(saloons.visible)
+	var camera := Camera3D.new()
+	track.add_child(camera)
+	track.montrer_le_monde_de(a, camera)
+	assert_true(camera.cull_mask & tours.layers != 0, "les tours, dans leur monde")
+	assert_true(camera.cull_mask & saloons.layers == 0, "pas les saloons")
+	assert_true(camera.cull_mask & route.layers != 0, "la route est de tous les mondes")
+	track.montrer_le_monde_de(b, camera)
+	assert_true(camera.cull_mask & tours.layers == 0)
+	assert_true(camera.cull_mask & saloons.layers != 0)
+
+
+func test_chaque_monde_a_son_calque_et_les_fenetres_le_leur() -> void:
+	var a := _portail(100.0)
+	var b := _portail(300.0)
+	var c := _portail(400.0)
+	c.nouveau_monde = false
+	assert_ne(track.calque_du_monde(a), track.calque_du_monde(b))
+	assert_eq(track.calque_du_monde(c), 0, "une contrée n'est pas un monde")
+	for monde in [a, b]:
+		var masque := track.masque_pour(monde)
+		assert_true(masque & Track.CALQUE_COMMUN != 0)
+		assert_true(masque & Track.CALQUE_FENETRES != 0)
+
+
+func test_de_l_autre_cote_du_portail_on_voit_l_autre_monde() -> void:
+	var a := _portail(100.0)
+	var b := _portail(300.0)
+	b._plan_origine = track.track_curve.position_at(300.0)
+	b._plan_avant = track.track_curve.forward_at(300.0)
+	var devant := track.track_curve.position_at(280.0)
+	var derriere := track.track_curve.position_at(320.0)
+	assert_eq(b.autre_cote(devant, track)[0], b, "devant : le monde qu'il ouvre")
+	assert_eq(b.autre_cote(derriere, track)[0], a, "après l'avoir franchi : celui qu'on quitte")
 
 
 func test_un_decor_introuvable_est_ignore() -> void:

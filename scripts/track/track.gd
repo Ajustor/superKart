@@ -353,16 +353,68 @@ func monde_en(distance: float) -> TrackPortail:
 	return choisi
 
 
-## N'affiche que le décor du monde où l'on est (TrackPortail.decors) : de la
-## grand-place des années cinquante, on ne voit pas les tours du futur qui
-## pourtant se dressent de l'autre côté du circuit.
-func montrer_le_monde_de(ici: TrackPortail) -> void:
+## Chaque monde a son calque de rendu (VisualInstance3D.layers) : ses décors
+## (TrackPortail.decors) n'y sont dessinés que pour une caméra qui le regarde.
+## La caméra du joueur ne voit que le monde où elle est ; celle d'un portail,
+## que le monde de l'autre côté. Tout le reste — la route, les karts, ce
+## qu'aucun portail ne réclame — est commun à tous les mondes.
+const CALQUE_COMMUN := 1
+## Les surfaces des portails : la caméra du joueur les voit, celle d'un
+## portail jamais (elle filmerait sa propre image).
+const CALQUE_FENETRES := 1 << 19
+## Au-delà, les mondes partagent le dernier calque.
+const MONDES_MAX := 18
+
+
+## Les portails qui mènent à un autre monde, dans l'ordre du tracé.
+func mondes() -> Array[TrackPortail]:
+	var liste: Array[TrackPortail] = []
 	for portail in portails():
-		for noeud in portail.decors_du_monde():
-			noeud.visible = portail == ici
+		if portail.nouveau_monde:
+			liste.append(portail)
+	return liste
 
 
-var _monde: TrackPortail
+## Le calque de ce monde ; 0 sans monde.
+func calque_du_monde(monde: TrackPortail) -> int:
+	var i := mondes().find(monde)
+	if i < 0:
+		return 0
+	return 1 << (1 + mini(i, MONDES_MAX - 1))
+
+
+## Ce que voit une caméra plantée dans ce monde.
+func masque_pour(monde: TrackPortail) -> int:
+	return CALQUE_COMMUN | calque_du_monde(monde) | CALQUE_FENETRES
+
+
+## Range les décors de chaque monde sur son calque. À refaire quand un décor
+## se reconstruit : ses maillages tout neufs naissent sur le calque commun.
+func ranger_les_mondes() -> void:
+	_mondes_ranges = true
+	for monde in mondes():
+		var calque := calque_du_monde(monde)
+		for noeud in monde.decors_du_monde():
+			poser_calque(noeud, calque)
+
+
+static func poser_calque(noeud: Node, calque: int) -> void:
+	if noeud is VisualInstance3D:
+		(noeud as VisualInstance3D).layers = calque
+	for enfant in noeud.get_children():
+		poser_calque(enfant, calque)
+
+
+## Ne montre à cette caméra que le décor du monde `ici` : de la grand-place
+## des années cinquante, on ne voit pas les tours du futur qui pourtant se
+## dressent de l'autre côté du circuit.
+func montrer_le_monde_de(ici: TrackPortail, camera: Camera3D) -> void:
+	if not _mondes_ranges:
+		ranger_les_mondes()
+	camera.cull_mask = masque_pour(ici)
+
+
+var _mondes_ranges := false
 
 
 ## La caméra qui suit un kart, s'il y en a une, voit le monde de l'autre
@@ -381,11 +433,11 @@ func _process(_delta: float) -> void:
 	for portail in liste:
 		effet = maxf(effet, portail.effet_a(d, track_curve.length))
 	camera.vortex = effet
-	camera.environment = portail_en(d).ambiance
-	var monde := monde_en(d)
-	if monde != _monde:
-		_monde = monde
-		montrer_le_monde_de(monde)
+	# Le monde est celui de la caméra, pas du kart : tant qu'elle n'a pas
+	# franchi le portail, elle voit l'autre monde à travers, et le sien autour.
+	var ici := track_curve.distance_of(camera.global_position)
+	camera.environment = portail_en(ici).ambiance
+	montrer_le_monde_de(monde_en(ici), camera)
 
 
 var _asphalte: StandardMaterial3D
@@ -501,6 +553,7 @@ func anneau_en(distance: float, lateral: float, hauteur: float) -> TrackAnneau:
 ## Refait la route et tout ce qui est posé dessus. Les trous l'appellent quand
 ## on les règle : c'est la route elle-même qui change.
 func reconstruire() -> void:
+	_mondes_ranges = false
 	if is_node_ready():
 		_reconstruire()
 
