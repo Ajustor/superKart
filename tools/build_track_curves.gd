@@ -242,20 +242,34 @@ const CIRCUITS := {
 	# Une base sur la Lune : la gravité y faiblit par endroits, et l'on
 	# saute les cratères en visant des anneaux d'or.
 	"base_lunaire": [
-		Vector3(0, 0, 0),
-		Vector3(100, 0, 0),
-		Vector3(170, 2, -40),
-		Vector3(180, 4, -120),
-		Vector3(130, 6, -180),
-		Vector3(50, 4, -170),
-		Vector3(0, 2, -210),
-		Vector3(-40, 0, -270),
-		Vector3(-120, 0, -270),
-		Vector3(-175, 3, -200),
-		Vector3(-165, 6, -120),
-		Vector3(-120, 4, -60),
-		Vector3(-110, 1, -12),
-		Vector3(-55, 0, 0),
+		# Un croissant de lune : une ligne droite au bas, une épingle à
+		# chaque pointe, l'arc intérieur sous les dômes de la base et le
+		# grand arc extérieur, où l'on vole par-dessus les cratères.
+		Vector3(-60, 0, 150),
+		Vector3(20, 0, 152),
+		Vector3(80, 1, 158),
+		Vector3(125, 2, 140),
+		Vector3(132, 3, 108),
+		Vector3(105, 4, 92),
+		Vector3(42, 4, 88),
+		Vector3(22, 4, 63),
+		Vector3(9, 4, 32),
+		Vector3(5, 4, -0),
+		Vector3(9, 4, -32),
+		Vector3(22, 4, -62),
+		Vector3(42, 4, -88),
+		Vector3(105, 4, -92),
+		Vector3(132, 3, -108),
+		Vector3(125, 2, -140),
+		Vector3(80, 1, -170),
+		Vector3(30, 0, -188),
+		Vector3(-65, 0, -179),
+		Vector3(-134, 4, -134),
+		Vector3(-179, 5, -65),
+		Vector3(-189, 1, 17),
+		Vector3(-165, -1, 95),
+		Vector3(-127, 0, 141),
+		Vector3(-100, 0, 152),
 	],
 	# Un port de pirates : des quais où roulent les tonneaux, une crique au
 	# courant traître, une grotte marine, et un saut depuis le pont d'un
