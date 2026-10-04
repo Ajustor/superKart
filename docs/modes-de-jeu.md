@@ -109,9 +109,12 @@ tranche du peloton, une colonne par objet) :
 | Étoile | 7 s intouchable, plus rapide, l'herbe ne freine plus ; les karts percutés partent en tête-à-queue |
 | Pièces | +2 pièces (10 au plus) ; chacune donne +1 % de vitesse de pointe ; un choc ou une remise en piste en coûte 3 |
 
-En tête surtout des bananes, fausses boîtes et pièces ; en queue des
-carapaces rouges, triples champignons, étoiles, et les rares carapaces
-bleues et éclairs.
+Ce que donne une boîte dépend de la place :
+- **En tête** : surtout des bananes, des fausses boîtes et des pièces, et
+  jamais de champignon. Le premier n'a pas à creuser l'écart.
+- **En queue** : des champignons en nombre, à peu près un objet sur deux
+  pour le dernier (champignon ou triple champignon). S'y ajoutent des
+  carapaces rouges, des étoiles, et les rares carapaces bleues et éclairs.
 
 En réseau, l'hôte décide de tout, comme pour les autres objets ; les effets
 sur un kart (étoile, pièces, éclair) sont appliqués par la machine qui le
