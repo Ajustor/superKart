@@ -316,8 +316,8 @@ func portails() -> Array[TrackPortail]:
 	return liste
 
 
-## Le ciel et la lumière à cette distance : ceux du dernier portail franchi,
-## en faisant le tour (avant le premier portail, c'est le dernier qui vaut).
+## Le ciel et la lumière à cette distance : ceux du dernier portail franchi
+## (_dernier_franchi).
 ## Null : ceux du circuit.
 func ambiance_en(distance: float) -> Environment:
 	var portail := portail_en(distance)
@@ -327,10 +327,22 @@ func ambiance_en(distance: float) -> Environment:
 ## Le dernier portail franchi à cette distance, en faisant le tour : l'époque,
 ## le monde où l'on est. Null s'il n'y a pas de portail.
 func portail_en(distance: float) -> TrackPortail:
-	var liste := portails()
+	return _dernier_franchi(portails(), distance)
+
+
+## Le dernier de ces portails franchi à cette distance. Sur une boucle, avant
+## le premier, c'est le dernier : on vient d'en faire le tour. Sur une course
+## linéaire, on ne fait pas le tour : avant le premier — et sur la grille,
+## posée au bout du tracé juste avant la ligne —, on est dans le monde du
+## départ, pas dans celui de l'arrivée.
+func _dernier_franchi(liste: Array[TrackPortail], distance: float) -> TrackPortail:
 	if liste.is_empty():
 		return null
 	var choisi := liste[liste.size() - 1]
+	if lineaire():
+		choisi = liste[0]
+		if distance >= track_curve.length - LONGUEUR_DE_GRILLE:
+			return choisi
 	for portail in liste:
 		if portail.debut <= distance:
 			choisi = portail
@@ -344,13 +356,7 @@ func monde_en(distance: float) -> TrackPortail:
 	for portail in portails():
 		if portail.nouveau_monde:
 			mondes.append(portail)
-	if mondes.is_empty():
-		return null
-	var choisi := mondes[mondes.size() - 1]
-	for portail in mondes:
-		if portail.debut <= distance:
-			choisi = portail
-	return choisi
+	return _dernier_franchi(mondes, distance)
 
 
 ## Chaque monde a son calque de rendu (VisualInstance3D.layers) : ses décors
@@ -661,6 +667,32 @@ func sol_praticable(distance: float, lateral: float) -> bool:
 	if en_zone_hors_piste(distance, lateral):
 		return true
 	return absf(lateral) <= track_curve.half_width and trou_en(distance) == null
+
+
+## Au-delà du bitume, le sol (TrackSol, TrackTerrain) porte le kart sur
+## cette largeur de chaque côté : des bas-côtés où l'on roule, lentement,
+## comme dans l'herbe. Plus loin, on est sorti du circuit et remis en piste.
+const PORTEE_HORS_PISTE := 14.0
+
+
+## Un sol réel sous ce point : un sol ou un relief qui porte le kart.
+func sol_reel(point: Vector3) -> bool:
+	for element in elements():
+		if element is TrackSol and (element as TrackSol).porte(point):
+			return true
+		if element is TrackTerrain and (element as TrackTerrain).porte(point):
+			return true
+	return false
+
+
+## Le monde dont ce nœud est un décor (TrackPortail.decors), ou null s'il est
+## de tous les mondes.
+func monde_du_decor(noeud: Node) -> TrackPortail:
+	for monde in mondes():
+		for decor in monde.decors_du_monde():
+			if decor == noeud or decor.is_ancestor_of(noeud):
+				return monde
+	return null
 
 
 ## L'écart à l'axe de chaque mur présent à cette distance.

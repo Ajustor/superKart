@@ -47,6 +47,15 @@ const IA_REACTION_TURBO := 0.3
 ## kart était téléporté 88 % des images, immobilisé au premier creux.
 const FALL_DEPTH := 12.0
 const OFF_TRACK_RESPAWN_MARGIN := 3.0
+## Plus bas que la chaussée de tant, à côté d'elle : on n'est plus sur la
+## route, on est en dessous (HAUTEUR_SOUS_LA_ROUTE), puis on en est tombé.
+const HAUTEUR_SOUS_LA_ROUTE := 2.0
+const HAUTEUR_DE_CHUTE := 3.5
+## Dans l'herbe, on peut gagner un peu plus de tracé qu'on n'en roule — à
+## l'intérieur d'un virage, la corde est plus courte que l'axe —, pas
+## couper une épingle.
+const RACCOURCI_TOLERE := 1.6
+const RACCOURCI_MARGE := 15.0
 
 ## Distance de la ligne de départ le long de l'axe.
 const DEPART := 0.0
@@ -394,8 +403,17 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 	var d := entree.progress.distance
 	var lateral := _track.track_curve.lateral_offset_at(point, d)
 	var ecart := absf(lateral)
+	# Hauteur au-dessus de la chaussée, prolongée à plat au-delà du bord
+	# (comme le relief, TrackTerrain) : tombé d'un pont dans le pré d'en
+	# dessous, on n'est pas sur la route qui passe au-dessus. Le long de la
+	# normale, le bas-côté plat d'un virage relevé passait pour un fossé.
+	var droite := _track.track_curve.right_at(d)
+	var niveau := _track.track_curve.position_at(d).y \
+		+ droite.y * clampf(lateral, -_demi_largeur, _demi_largeur)
+	var hauteur := point.y - niveau
 	# Hors du bitume, ou sur une zone hors-piste posée sur la route.
-	var dehors := ecart > _demi_largeur or _track.en_zone_hors_piste(d, lateral)
+	var zone := _track.en_zone_hors_piste(d, lateral)
+	var dehors := ecart > _demi_largeur or zone or hauteur < -HAUTEUR_SOUS_LA_ROUTE
 	entree.kart.set_offroad(dehors)
 
 	var rampe := _track.rampe_en(d, lateral)
@@ -438,6 +456,20 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 		entree.kart.motor.accorder_turbo(anneau.duree_turbo, anneau.force_turbo)
 		anneau.briller()
 
+	# Dans l'herbe d'un vrai sol : on y roule, mais on n'y coupe pas. Le
+	# repère se pose à la première image dans l'herbe ; sur le bitume ou dans
+	# une zone hors-piste — un raccourci voulu —, il n'y en a pas.
+	var coupe := false
+	if not dehors or zone:
+		entree.roule_dehors = -1.0
+	elif entree.roule_dehors < 0.0:
+		entree.repere_dehors = d
+		entree.roule_dehors = 0.0
+	else:
+		entree.roule_dehors += entree.kart.velocity.length() * delta
+		var gagne := wrapf(d - entree.repere_dehors, -_track.track_curve.length * 0.5, _track.track_curve.length * 0.5)
+		coupe = gagne > entree.roule_dehors * RACCOURCI_TOLERE + RACCOURCI_MARGE
+
 	if not dehors and _track.trou_en(d) == null:
 		# On remet en piste là où le kart roulait encore, pas là où la courbe
 		# projette son point de sortie. Dans l'épingle la courbe se replie sur
@@ -453,10 +485,16 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 	# Trop loin du bitume, et sans rien sous les roues : ni zone hors-piste, ni
 	# saut en cours. Un kart qui survole un virage depuis un tremplin a le
 	# droit d'être loin de la route ; il n'a pas celui d'y atterrir à côté.
-	var perdu := ecart > _demi_largeur + OFF_TRACK_RESPAWN_MARGIN \
-		and not entree.en_vol and not _track.sol_praticable(d, lateral)
+	#
+	# Un vrai sol (TrackSol, TrackTerrain) porte le kart sur les bas-côtés,
+	# jusqu'à PORTEE_HORS_PISTE du bord. Au-delà, ou tombé plus bas que la
+	# route, il est sorti du circuit.
+	var dans_le_pre := ecart <= _demi_largeur + Track.PORTEE_HORS_PISTE and _track.sol_reel(point)
+	var en_contrebas := ecart > _demi_largeur and hauteur < -HAUTEUR_DE_CHUTE
+	var perdu := not entree.en_vol and (en_contrebas or (ecart > _demi_largeur + OFF_TRACK_RESPAWN_MARGIN \
+		and not _track.sol_praticable(d, lateral) and not dans_le_pre))
 	var noye := point.y < _track.altitude_du_liquide
-	if point.y < sol - FALL_DEPTH or perdu or noye:
+	if point.y < sol - FALL_DEPTH or perdu or noye or coupe:
 		var reprise := _track.point_de_reprise(entree.derniere_en_piste)
 		entree.derniere_en_piste = reprise
 		entree.kart.respawn_at(_track.spawn_at(reprise))
