@@ -48,6 +48,21 @@ extends TrackFeature
 		graine = valeur
 		_modifie()
 
+## Faux : le relief épouse tout le tracé. Vrai : seulement la portion
+## [debut, debut + longueur] — un pont qui file à quarante mètres de haut, ou
+## un autre monde derrière un portail, ne soulève pas de crête sous lui.
+@export var portion: bool = false:
+	set(valeur):
+		portion = valeur
+		_modifie()
+
+
+func _validate_property(property: Dictionary) -> void:
+	if property.name in ["decalage", "largeur"]:
+		property.usage = PROPERTY_USAGE_NO_EDITOR
+	elif property.name in ["debut", "longueur"] and not portion:
+		property.usage = PROPERTY_USAGE_NO_EDITOR
+
 ## Pas des échantillons de route, en mètres.
 const PAS := 3.0
 ## Case de la grille de recherche des échantillons, en mètres.
@@ -89,8 +104,15 @@ func _preparer(c: TrackCurve) -> void:
 	_grille.clear()
 	var circuit := piste()
 	var n := maxi(int(c.length / PAS), 8)
-	for i in n:
-		var d := c.length * float(i) / float(n)
+	for k in n:
+		var d := c.length * float(k) / float(n)
+		# Ce qui n'est pas de ce relief : hors de la portion, ou la boucle
+		# qu'on ne court pas après l'arrivée d'une course linéaire.
+		if portion and not couvre(d, c.length):
+			continue
+		if circuit != null and circuit.hors_course(d):
+			continue
+		var i := _echantillons.size()
 		_echantillons.append(c.position_at(d))
 		_droites.append(c.right_at(d))
 		# Le ravin déborde un peu du trou : ses bords ne tombent pas à pic

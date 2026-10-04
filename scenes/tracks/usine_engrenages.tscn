@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://scripts/track/features/track_obstacle.gd" id="s_obstacle"]
 [ext_resource type="Script" path="res://scripts/track/features/track_offroad.gd" id="s_offroad"]
 [ext_resource type="Script" path="res://scripts/track/features/track_tunnel.gd" id="s_tunnel"]
+[ext_resource type="Script" path="res://scripts/track/features/track_sol.gd" id="s_sol"]
 
 [sub_resource type="ShaderMaterial" id="Ciel"]
 shader = ExtResource("sh_ciel")
@@ -33,14 +34,6 @@ fog_enabled = true
 fog_light_color = Color(0.6, 0.48, 0.42, 1)
 fog_density = 0.004
 
-[sub_resource type="StandardMaterial3D" id="Mat_sol"]
-albedo_color = Color(0.33, 0.33, 0.35, 1)
-roughness = 1.0
-
-[sub_resource type="PlaneMesh" id="Sol"]
-material = SubResource("Mat_sol")
-size = Vector2(1400, 1400)
-
 [node name="Track" type="Node3D"]
 script = ExtResource("1_track")
 curve = ExtResource("2_curve")
@@ -63,9 +56,13 @@ light_color = Color(1, 0.82, 0.62, 1)
 light_energy = 0.85
 shadow_enabled = true
 
-[node name="Sol" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.3, -100)
-mesh = SubResource("Sol")
+[node name="Sol" type="Node3D" parent="."]
+script = ExtResource("s_sol")
+altitude = -0.3
+marge = 400
+couleur = Color(0.33, 0.33, 0.35, 1)
+rugosite = 1.0
+
 
 [node name="BasCoteDroite0" type="Node3D" parent="."]
 script = ExtResource("s_offroad")

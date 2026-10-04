@@ -12,8 +12,10 @@ var drift: bool = false
 var use_item: bool = false
 ## Le bouton d'objet est tenu enfoncé : l'objet reste derrière le kart.
 var item_held: bool = false
-## Au lâcher, l'objet part vers l'arrière (frein tenu, stick vers soi).
+## L'objet part vers l'arrière (frein tenu, stick vers soi).
 var throw_back: bool = false
+## L'objet part vers l'avant, même une banane (stick poussé vers le haut).
+var throw_forward: bool = false
 
 
 func clear() -> void:
@@ -24,3 +26,4 @@ func clear() -> void:
 	use_item = false
 	item_held = false
 	throw_back = false
+	throw_forward = false

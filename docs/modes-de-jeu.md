@@ -62,9 +62,10 @@ Si c'est le joueur, il passe en pilote automatique comme à une arrivée.
   - Coupe Vertige : Grand Huit, Pic des Lacets, Échelle Céleste (2 tours
     chacun) et Cœur de la Terre (3 tours) — des circuits très longs. Une manche se court au nombre de tours de la
     fiche du circuit (`TrackInfo.tours`) ;
-  - Coupe Odyssée : Faille Temporelle (3 tours), Lagon des Bulles, Carnaval
-    de la Lune, Terres Carrées (2 tours chacun) — des courses longues qui
-    passent d'un monde à l'autre par des portails.
+  - Coupe Odyssée : Faille Temporelle (3 tours), Lagon des Bulles et Terres
+    Carrées (2 tours), et Carnaval de la Lune, une course linéaire d'un seul
+    tenant, en trois sections, qui finit sur la lune — des courses longues
+    qui passent d'un monde à l'autre par des portails.
 - Chaque manche se court en trois tours (sauf les coupes Vertige et Odyssée,
   et les circuits redessinés en deux tours : Boulevard Électrique, Ruines
   d'Émeraude). Le barème de `RaceScoring`
@@ -131,16 +132,20 @@ sous étoile.
 
 Le bouton OBJET se tient (`KartCommand.item_held`, `KartInventory.tenu`) :
 
-- **Appui bref** : l'usage habituel, la banane tombe derrière, la carapace
-  part devant.
+- **Viser** (`ItemManager.sens_vise`) : stick ou croix vers soi, frein
+  tenu (flèche bas au clavier, bouton FREIN au doigt) ou joystick tactile
+  tiré vers le bas : derrière. Stick, croix ou joystick tactile poussés vers
+  le haut : devant (`PlayerInput.visee_verticale`, seuil 0,5). Ça vaut pour
+  tous les lancers, appui bref compris.
+- **Appui bref** sans viser : l'usage habituel, la banane tombe derrière, la
+  carapace part devant.
 - **Maintenu** avec une banane, une fausse boîte, une carapace verte ou
   rouge : l'objet traîne derrière le kart (`DISTANCE_TRAINE`). Il arrête les
   carapaces qui arrivent derrière (les deux disparaissent), et un kart qui le
   percute part en tête-à-queue ; dans les deux cas l'objet est perdu, comme
   quand son porteur est sonné.
 - **Au lâcher**, après un vrai maintien (`SEUIL_TAPE`) : devant, ou derrière
-  si l'on freine (frein tenu, flèche bas, stick vers soi, bouton FREIN au
-  doigt). Une banane lancée devant retombe une quinzaine de mètres plus loin ;
+  si l'on vise derrière. Une banane lancée devant retombe une quinzaine de mètres plus loin ;
   une carapace rouge lancée derrière ne poursuit personne.
 - **Sans objet**, le bouton klaxonne (`ItemManager.klaxon`, pas plus d'un coup
   toutes les 0,45 s). Chaque pilote a son ton ; les klaxons des autres

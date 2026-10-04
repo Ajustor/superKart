@@ -110,7 +110,8 @@ static func decouper(piste: Track) -> Array:
 		var d := c.length * float(i) / float(n)
 		var p := points[i]
 		var ici := Vector2(p.x, p.z)
-		if piste.trou_en(wrapf(d, 0.0, c.length)) != null:
+		var ou := wrapf(d, 0.0, c.length)
+		if piste.trou_en(ou) != null or piste.hors_course(ou):
 			if courant.size() > 1:
 				traits.append(courant)
 				ponts.append(pont_courant)

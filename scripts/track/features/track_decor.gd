@@ -111,6 +111,10 @@ func placements(c: TrackCurve) -> Array[Transform3D]:
 			# Sur le relief du circuit, s'il en a un : loin de la route, le sol
 			# n'est plus à la hauteur du bitume.
 			var sol := _terrain()
+			# Un relief limité à une portion ne porte que les décors de cette
+			# portion : sur la lune, l'arbre ne descend pas jusqu'à Termina.
+			if sol != null and sol.portion and not sol.couvre(wrapf(ici, 0.0, c.length), c.length):
+				sol = null
 			if sol != null and absf(lateral) > c.half_width:
 				ou.y = sol.hauteur_en(ou.x, ou.z) + envol
 				# Posé sur le relief, il peut tomber sur une route plus basse :
@@ -119,6 +123,8 @@ func placements(c: TrackCurve) -> Array[Transform3D]:
 				# percerait : on regarde jusqu'à douze mètres plus bas.
 				if eviter_la_route and _sur_la_route(c, ou - Vector3.UP * envol, 12.0):
 					continue
+			elif absf(lateral) > c.half_width and not flotte(objet):
+				ou = _pose_sur_le_sol_plat(c, ici, lateral, ou, envol)
 			var lacet := rng.randf_range(0.0, TAU) if objet != Objet.PHARE else 0.0
 			var base := Basis(Vector3.UP, lacet).scaled(Vector3.ONE * taille)
 			poses.append(Transform3D(base, ou))
@@ -133,6 +139,31 @@ func _sur_la_route(c: TrackCurve, ou: Vector3, dessous := 4.0) -> bool:
 	if ou.y - proche.y > 4.0 or proche.y - ou.y > dessous:
 		return false
 	return absf(c.lateral_offset_at(ou, d)) < c.half_width + 4.0
+
+
+## Sur un sol plat (TrackSol) un peu plus bas que la route : au-delà des
+## bas-côtés, l'objet descend jusqu'au sol au lieu de flotter à hauteur de
+## bitume — ou remonte, s'il s'enfonçait à l'intérieur d'un virage relevé.
+## Pas sur un bas-côté, qui est à hauteur de route ; pas là où le sol est
+## percé (une galerie passe dessous) ; pas sous un pont.
+func _pose_sur_le_sol_plat(c: TrackCurve, ici: float, lateral: float, ou: Vector3, envol: float) -> Vector3:
+	var circuit := piste()
+	if circuit == null:
+		return ou
+	var pied := ou.y - envol
+	var plus_haut := -INF
+	for element in circuit.elements():
+		if element is TrackOffroad and element.contient(ici, lateral, c.length):
+			return ou
+		if element is TrackSol:
+			var sol := element as TrackSol
+			var chute := pied - sol.altitude
+			if chute > -2.0 and chute <= TrackSol.POSE_MAX and sol.altitude > plus_haut \
+					and sol.a_du_sol(Vector2(ou.x, ou.z)):
+				plus_haut = sol.altitude
+	if plus_haut == -INF:
+		return ou
+	return Vector3(ou.x, plus_haut + envol, ou.z)
 
 
 func _terrain() -> TrackTerrain:

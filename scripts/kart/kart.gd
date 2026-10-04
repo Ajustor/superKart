@@ -52,6 +52,7 @@ var demande_objet: bool = false
 ## l'hôte les reçoit du joueur (RaceSync).
 var objet_tenu_presse: bool = false
 var vise_arriere: bool = false
+var vise_avant: bool = false
 ## Le ton du klaxon : chaque pilote a le sien (voir Personnage).
 var hauteur_klaxon: float = 1.0
 
@@ -163,6 +164,7 @@ func _physics_process(delta: float) -> void:
 	demande_objet = cmd.use_item and motor.state != KartMotor.State.STUNNED
 	objet_tenu_presse = cmd.item_held
 	vise_arriere = cmd.throw_back
+	vise_avant = cmd.throw_forward
 	motor.step(cmd, delta)
 
 	# Le saut d'entrée en dérapage, purement vertical.
@@ -348,6 +350,25 @@ func respawn_at(where: Transform3D) -> void:
 		# Une roue qui garde sa vitesse au moment de la téléportation fait
 		# tressauter la caisse à l'arrivée.
 		suspension.reset()
+
+
+## Transporte le kart ailleurs sans rien lui retirer : sa vitesse, son turbo,
+## ses pièces, son étoile. Pour un portail qu'on traverse, pas pour une sortie
+## de route (respawn_at, qui le pose à l'arrêt et lui coûte des pièces).
+func teleporter(where: Transform3D) -> void:
+	var vitesse := motor.speed
+	var turbo := motor.boost_timer
+	var force := motor.boost_multiplier
+	var pieces := motor.pieces
+	var etoile := motor.etoile
+	var retreci := motor.retreci
+	respawn_at(where)
+	motor.speed = vitesse
+	motor.boost_timer = turbo
+	motor.boost_multiplier = force
+	motor.pieces = pieces
+	motor.etoile = etoile
+	motor.retreci = retreci
 
 
 ## Confie le kart à une autre source de commande. La session s'en sert pour

@@ -149,7 +149,14 @@ func _apercu() -> Control:
 	var vue := SubViewport.new()
 	vue.own_world_3d = true
 	vue.transparent_bg = true
-	vue.msaa_3d = Viewport.MSAA_4X
+	# Pas d'anticrénelage multiéchantillon sur téléphone : dans une vue à fond
+	# transparent, avec le rendu de compatibilité, certains GPU mobiles s'y
+	# plantent — le jeu se fermait d'un coup au garage. Seul un ordinateur
+	# lisse les bords du kart.
+	if not OS.has_feature("mobile"):
+		vue.msaa_3d = Viewport.MSAA_4X
+	# Rien à dessiner tant que le garage est caché.
+	vue.render_target_update_mode = SubViewport.UPDATE_WHEN_PARENT_VISIBLE
 	cadre.add_child(vue)
 	var camera := Camera3D.new()
 	camera.position = Vector3(0, 1.25, 2.9)

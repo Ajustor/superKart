@@ -209,3 +209,40 @@ func test_le_gardien_arpente_la_route() -> void:
 	for i in 20:
 		var pose := g.pose_de_la_tete(float(i) * 0.37)
 		assert_lt(absf(pose.x), track.half_width, "il reste sur la route")
+
+
+# --- Les autres portails --------------------------------------------------------
+
+func test_un_portail_d_obsidienne_ou_a_plat_reste_ouvert() -> void:
+	for mode in [TrackPortail.Mode.CADRE, TrackPortail.Mode.SOL, TrackPortail.Mode.SEUIL]:
+		var p := _portail(300.0)
+		p.mode = mode
+		assert_true(p.ouvert(0.0, 0.0, 500.0), "mode %d : ouvert même loin de tout" % mode)
+		assert_true(p.ouvert(480.0, 480.0, 500.0), "mode %d : et après le passage de tous" % mode)
+
+
+func test_un_seuil_ne_deforme_pas_la_camera() -> void:
+	var p := _portail(100.0)
+	p.mode = TrackPortail.Mode.SEUIL
+	p._ouverture = 1.0
+	assert_eq(p.effet_a(100.0 + p.longueur * 0.5, track.track_curve.length), 0.0)
+
+
+func test_chaque_mode_de_portail_se_construit() -> void:
+	for mode in TrackPortail.Mode.values():
+		var p := _portail(100.0)
+		p.mode = mode
+		p.reconstruire()
+		assert_not_null(p.get_node_or_null(TrackFeature.NOM_GENERE), "mode %d" % mode)
+
+
+func test_une_contree_garde_les_decors_de_son_monde() -> void:
+	var termina := _portail(10.0)
+	var marais := _portail(200.0)
+	marais.mode = TrackPortail.Mode.SEUIL
+	marais.nouveau_monde = false
+	marais.ambiance = Environment.new()
+	var lune := _portail(400.0)
+	assert_eq(track.monde_en(250.0), termina, "dans le marais, on est toujours à Termina")
+	assert_eq(track.ambiance_en(250.0), marais.ambiance, "mais sous le ciel du marais")
+	assert_eq(track.monde_en(450.0), lune)

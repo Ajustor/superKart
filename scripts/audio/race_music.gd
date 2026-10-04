@@ -68,5 +68,5 @@ func _sur_tour(entree: RaceEntry) -> void:
 		var fondu := create_tween()
 		fondu.tween_property(_lecteur, "volume_db", -40.0, 1.5)
 		fondu.tween_callback(_lecteur.stop)
-	elif entree.tours_comptes == session.lap_count - 1:
+	elif entree.tours_comptes == session.etapes() - 1:
 		create_tween().tween_property(_lecteur, "pitch_scale", DERNIER_TOUR, 0.6)

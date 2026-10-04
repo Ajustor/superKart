@@ -68,7 +68,7 @@ var _horloge_course: float = 0.0
 var _champignons_predits: int = 0
 var _inventaire_fige_jusqua: float = 0.0
 ## Ce que l'hôte sait du bouton d'objet de ce joueur : tenu, et vers l'arrière.
-var _tenue_envoyee := [false, false]
+var _tenue_envoyee := [false, false, false]
 
 
 ## Appelé par RaceLauncher avant l'entrée dans l'arbre.
@@ -155,10 +155,10 @@ func _physics_process(delta: float) -> void:
 		# Le bouton tenu ou relâché part avant l'appui : l'hôte doit savoir,
 		# en recevant l'appui, si le joueur garde l'objet derrière lui.
 		if moi != null:
-			var tenue := [moi.kart.objet_tenu_presse, moi.kart.vise_arriere]
+			var tenue := [moi.kart.objet_tenu_presse, moi.kart.vise_arriere, moi.kart.vise_avant]
 			if tenue != _tenue_envoyee:
 				_tenue_envoyee = tenue
-				_tenue.rpc_id(1, _gid_de(moi), tenue[0], tenue[1])
+				_tenue.rpc_id(1, _gid_de(moi), tenue[0], tenue[1], tenue[2])
 		if moi != null and moi.kart.demande_objet:
 			moi.kart.demande_objet = false
 			# Sans objet : le klaxon, tout de suite ici ; l'hôte le fera
@@ -381,11 +381,12 @@ func _demande_objet(gid: int) -> void:
 
 
 @rpc("any_peer", "reliable")
-func _tenue(gid: int, presse: bool, arriere: bool) -> void:
+func _tenue(gid: int, presse: bool, arriere: bool, avant: bool) -> void:
 	if not is_inside_tree() or not _hote or proprietaires.get(gid, -1) != multiplayer.get_remote_sender_id():
 		return
 	entrees[gid].kart.objet_tenu_presse = presse
 	entrees[gid].kart.vise_arriere = arriere
+	entrees[gid].kart.vise_avant = avant
 
 
 ## Un klaxon s'entend de tous, sauf de celui qui l'a donné et l'a déjà

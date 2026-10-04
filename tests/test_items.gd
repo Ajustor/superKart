@@ -509,10 +509,11 @@ func _ecart(ou: Vector3, kart_en: Vector3) -> float:
 
 
 ## Appuie, garde le bouton `duree` secondes, puis le lâche.
-func _tenir(p: Array[Vector3], duree: float, arriere: bool) -> void:
+func _tenir(p: Array[Vector3], duree: float, arriere: bool, avant := false) -> void:
 	karts[0].demande_objet = true
 	karts[0].objet_tenu_presse = true
 	karts[0].vise_arriere = arriere
+	karts[0].vise_avant = avant
 	var t := 0.0
 	while t < duree:
 		objets.avancer(p, 1.0 / 60.0)
@@ -562,6 +563,53 @@ func test_un_appui_bref_garde_l_usage_habituel() -> void:
 	session.entries[0].inventaire.recevoir(ItemKind.BANANA, 0.0)
 	_tenir(p, 0.1, false)
 	assert_lt(_ecart(objets.bananes[0].position, p[0]), -1.0, "tapé : derrière, comme toujours")
+
+
+func test_un_appui_bref_stick_vers_soi_lance_la_carapace_derriere() -> void:
+	_monter(1)
+	var p := _positions_neutres()
+	_aligne(p)
+	session.entries[0].inventaire.recevoir(ItemKind.GREEN_SHELL, 0.0)
+	_tenir(p, 0.1, true)
+	assert_eq(objets.carapaces.size(), 1)
+	assert_lt(objets.carapaces[0].direction.dot(_piste().forward_at(_piste().distance_of(p[0]))), 0.0,
+		"tapé en visant derrière : derrière")
+
+
+func test_un_appui_bref_stick_pousse_lance_la_banane_devant() -> void:
+	_monter(1)
+	var p := _positions_neutres()
+	_aligne(p)
+	session.entries[0].inventaire.recevoir(ItemKind.BANANA, 0.0)
+	_tenir(p, 0.1, false, true)
+	assert_gt(_ecart(objets.bananes[0].position, p[0]), 10.0, "tapé en visant devant : devant")
+
+
+func test_un_objet_qu_on_ne_garde_pas_suit_aussi_le_stick() -> void:
+	_monter(1)
+	var p := _positions_neutres()
+	_aligne(p)
+	session.entries[0].inventaire.recevoir(ItemKind.GREEN_SHELL, 0.0)
+	# Bouton à peine effleuré : l'objet part à l'appui, sans être gardé.
+	karts[0].demande_objet = true
+	karts[0].objet_tenu_presse = false
+	karts[0].vise_arriere = true
+	objets.avancer(p, 1.0 / 60.0)
+	assert_eq(objets.carapaces.size(), 1)
+	assert_lt(objets.carapaces[0].direction.dot(_piste().forward_at(_piste().distance_of(p[0]))), 0.0)
+
+
+func test_viser_derriere_l_emporte_sur_viser_devant() -> void:
+	var k := Kart.new()
+	k.vise_arriere = true
+	k.vise_avant = true
+	assert_eq(ItemManager.sens_vise(k, true), ItemManager.Sens.ARRIERE)
+	k.vise_arriere = false
+	assert_eq(ItemManager.sens_vise(k, false), ItemManager.Sens.AVANT)
+	k.vise_avant = false
+	assert_eq(ItemManager.sens_vise(k, false), ItemManager.Sens.HABITUEL)
+	assert_eq(ItemManager.sens_vise(k, true), ItemManager.Sens.AVANT, "gardé puis lâché : devant")
+	k.free()
 
 
 func test_une_carapace_lachee_en_freinant_part_derriere() -> void:

@@ -9,6 +9,7 @@
 [ext_resource type="Script" path="res://scripts/track/features/track_ramp.gd" id="s_ramp"]
 [ext_resource type="Script" path="res://scripts/track/features/track_tunnel.gd" id="s_tunnel"]
 [ext_resource type="Script" path="res://scripts/track/features/track_verglas.gd" id="s_verglas"]
+[ext_resource type="Script" path="res://scripts/track/features/track_sol.gd" id="s_sol"]
 
 [sub_resource type="ShaderMaterial" id="Ciel"]
 shader = ExtResource("sh_ciel")
@@ -32,14 +33,6 @@ ambient_light_color = Color(0.7, 0.8, 0.95, 1)
 ambient_light_energy = 0.65
 glow_enabled = true
 glow_intensity = 0.5
-
-[sub_resource type="StandardMaterial3D" id="Mat_sol"]
-albedo_color = Color(0.92, 0.95, 1, 1)
-roughness = 1.0
-
-[sub_resource type="PlaneMesh" id="Sol"]
-material = SubResource("Mat_sol")
-size = Vector2(1400, 1400)
 
 [sub_resource type="StandardMaterial3D" id="Mat_plan0"]
 albedo_color = Color(0.05, 0.12, 0.25, 1)
@@ -70,9 +63,13 @@ light_color = Color(0.95, 0.97, 1, 1)
 light_energy = 0.9
 shadow_enabled = true
 
-[node name="Sol" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.4, -20)
-mesh = SubResource("Sol")
+[node name="Sol" type="Node3D" parent="."]
+script = ExtResource("s_sol")
+altitude = -0.4
+marge = 400
+couleur = Color(0.92, 0.95, 1, 1)
+rugosite = 1.0
+
 
 [node name="FondDuGlacier" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -45, 0)
@@ -330,10 +327,21 @@ graine = 3
 script = ExtResource("s_decor")
 objet = 6
 debut = 0
-longueur = 1099
+longueur = 125
 decalage = 45
 espacement = 25
 echelle = 1.5
 eviter_la_route = true
 graine = 9
+
+[node name="SapinsLoinSortie" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 6
+debut = 1030
+longueur = 69
+decalage = 45
+espacement = 25
+echelle = 1.5
+eviter_la_route = true
+graine = 10
 hauteur = -0.4

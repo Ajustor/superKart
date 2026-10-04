@@ -223,7 +223,8 @@ func _monter(info: TrackInfo) -> Track:
 func test_chaque_circuit_est_roulable() -> void:
 	for info in TrackCatalog.PISTES:
 		var piste := _monter(info)
-		var serres := piste.track_curve.tight_spots(piste.min_drivable_radius, piste.segment_length)
+		var serres := piste.track_curve.tight_spots(piste.min_drivable_radius, piste.segment_length) \
+			.filter(func(s: Array) -> bool: return not piste.hors_course(s[0]) and not _plonge(piste, s[0]))
 		assert_eq(serres.size(), 0, "%s : aucun virage plus serré que le braquage du kart" % info.id)
 
 
@@ -231,7 +232,7 @@ func test_chaque_trou_a_de_quoi_sauter() -> void:
 	for info in TrackCatalog.PISTES:
 		var piste := _monter(info)
 		for element in piste.elements():
-			if element is TrackGap:
+			if element is TrackGap and not element.chute_voulue:
 				assert_true(element.a_un_elan(piste), "%s : %s a une rampe juste avant" % [info.id, element.name])
 
 
@@ -261,6 +262,37 @@ func test_le_liquide_reste_sous_la_route() -> void:
 			"%s : la lave ou l'eau ne doit pas noyer la route" % info.id)
 
 
+## Un sol plat posé à la main traversait les galeries de la Grotte Glacée à
+## mi-hauteur : on roulait sous un second sol, sans collision. Aucun plan ne
+## doit passer au-dessus de la route à hauteur de kart, et un TrackSol doit
+## être percé partout où la route passe dessous.
+func test_aucun_sol_ne_passe_au_dessus_de_la_route() -> void:
+	for info in TrackCatalog.PISTES + TrackCatalog.ARENES:
+		var piste := _monter(info)
+		var c := piste.track_curve
+		var sols: Array[TrackSol] = []
+		for e in piste.elements():
+			if e is TrackSol:
+				sols.append(e)
+		var d := 0.0
+		while d < c.length:
+			var p := c.position_at(d)
+			if piste.trou_en(d) == null:
+				for n in piste.get_children():
+					if n is MeshInstance3D and n.mesh is PlaneMesh:
+						var loc: Vector3 = n.transform.affine_inverse() * p
+						var taille: Vector2 = n.mesh.size
+						var ecart: float = n.transform.origin.y - p.y
+						if absf(loc.x) < taille.x * 0.5 and absf(loc.z) < taille.y * 0.5:
+							assert_false(ecart > 0.05 and ecart < 9.0,
+								"%s : %s passe %.1f m au-dessus de la route à %.0f m" % [info.id, n.name, ecart, d])
+				for sol in sols:
+					if sol.altitude - p.y > 0.05 and sol.altitude - p.y < 9.0:
+						assert_false(sol.a_du_sol(Vector2(p.x, p.z)),
+							"%s : %s n'est pas percé au-dessus de la route à %.0f m" % [info.id, sol.name, d])
+			d += 8.0
+
+
 ## Le classement cherche le point du tracé le plus proche du kart. Deux
 ## portions éloignées le long du tracé mais proches dans l'espace — un pont
 ## trop bas, deux lignes droites côte à côte — le feraient sauter de l'une à
@@ -275,8 +307,19 @@ func test_deux_portions_du_trace_ne_se_confondent_pas() -> void:
 			var p := c.position_at(d)
 			var e := 0.0
 			while e < c.length:
-				if absf(wrapf(e - d, -c.length * 0.5, c.length * 0.5)) > 80.0:
+				# La boucle qu'on ne court pas, après l'arrivée d'une course
+				# linéaire, n'a pas de route : rien à confondre... sauf si elle
+				# frôle une portion courue, où un kart s'y projetterait.
+				var hors := piste.hors_course(d) and piste.hors_course(e)
+				if not hors and absf(wrapf(e - d, -c.length * 0.5, c.length * 0.5)) > 80.0:
 					pire = minf(pire, p.distance_to(c.position_at(e)))
 				e += 5.0
 			d += 5.0
 		assert_gt(pire, piste.half_width * 2.0, "%s : %.1f m entre deux portions" % [info.id, pire])
+
+
+## Dans un trou où l'on tombe exprès (un portail à plat), le tracé plonge à
+## pic : aucune route, rien à braquer.
+func _plonge(piste: Track, d: float) -> bool:
+	var trou := piste.trou_en(wrapf(d, 0.0, piste.track_curve.length))
+	return trou != null and trou.chute_voulue

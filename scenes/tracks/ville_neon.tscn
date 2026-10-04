@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://scripts/track/features/track_decor.gd" id="s_decor"]
 [ext_resource type="Script" path="res://scripts/track/features/track_gap.gd" id="s_gap"]
 [ext_resource type="Script" path="res://scripts/track/features/track_ramp.gd" id="s_ramp"]
+[ext_resource type="Script" path="res://scripts/track/features/track_sol.gd" id="s_sol"]
 
 [sub_resource type="ShaderMaterial" id="Ciel_shader"]
 shader = ExtResource("sh_ciel")
@@ -32,15 +33,6 @@ glow_intensity = 0.9
 glow_bloom = 0.15
 glow_hdr_threshold = 0.7
 
-[sub_resource type="StandardMaterial3D" id="Mat_sol"]
-albedo_color = Color(0.08, 0.08, 0.12, 1)
-roughness = 0.4
-metallic = 0.3
-
-[sub_resource type="PlaneMesh" id="Sol"]
-material = SubResource("Mat_sol")
-size = Vector2(1200, 1200)
-
 [node name="Track" type="Node3D"]
 script = ExtResource("1_track")
 curve = ExtResource("2_curve")
@@ -64,9 +56,13 @@ light_color = Color(0.6, 0.6, 1, 1)
 light_energy = 0.45
 shadow_enabled = true
 
-[node name="Bitume" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.0, -100)
-mesh = SubResource("Sol")
+[node name="Bitume" type="Node3D" parent="."]
+script = ExtResource("s_sol")
+altitude = -2.0
+marge = 400
+couleur = Color(0.08, 0.08, 0.12, 1)
+rugosite = 0.4
+
 
 [node name="RampeTravaux" type="Node3D" parent="."]
 script = ExtResource("s_ramp")

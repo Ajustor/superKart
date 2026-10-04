@@ -112,6 +112,18 @@ const ARC_EN_CIEL: PackedColorArray = [
 ## L'air qui accompagne la course (voir Musique).
 @export var musique: Musique.Style = Musique.Style.COLLINES
 
+## Zéro : une course en tours, la ligne de départ sert d'arrivée. Sinon, une
+## course linéaire, d'un seul tenant, qui finit à cette distance du départ :
+## on traverse le circuit d'un bout à l'autre sans repasser au même endroit.
+## Le tracé reste une boucle — la suite de l'arrivée ramène au départ — mais
+## on ne la court pas : elle n'est que le tour d'honneur de ceux qui ont fini.
+@export var arrivee: float = 0.0
+
+## Course linéaire : les distances du départ où commencent la deuxième
+## section, la troisième… Le compteur affiche « SECTION 2/3 » à la place du
+## numéro de tour.
+@export var sections: PackedFloat32Array = PackedFloat32Array()
+
 var track_curve: TrackCurve
 
 ## Secondes depuis le départ de la course : les obstacles mobiles s'y règlent.
@@ -255,8 +267,43 @@ func _physics_process(delta: float) -> void:
 
 ## Où en est la course, de 0 (départ) à 1 (le premier franchit l'arrivée).
 func avancement() -> float:
-	var total := track_curve.length * float(maxi(tours_course, 1)) if track_curve != null else 0.0
+	var total := longueur_de_course()
 	return clampf(tete_total / total, 0.0, 1.0) if total > 0.0 else 0.0
+
+
+## Une course d'un bout à l'autre, sans tours (`arrivee`).
+func lineaire() -> bool:
+	return arrivee > 0.0
+
+
+## Ce qu'il faut parcourir du départ à l'arrivée.
+func longueur_de_course() -> float:
+	if lineaire():
+		return arrivee
+	return track_curve.length * float(maxi(tours_course, 1)) if track_curve != null else 0.0
+
+
+## La section où l'on est, à `total` mètres du départ (1 pour la première).
+func section_en(total: float) -> int:
+	var n := 1
+	for debut_section in sections:
+		if total >= debut_section:
+			n += 1
+	return n
+
+
+func nombre_de_sections() -> int:
+	return sections.size() + 1
+
+
+## Au-delà de l'arrivée d'une course linéaire : la portion qu'on ne court pas.
+func hors_course(distance: float) -> bool:
+	return lineaire() and distance > arrivee and distance < track_curve.length - LONGUEUR_DE_GRILLE
+
+
+## La grille, juste avant la ligne de départ : elle reste sur la carte même
+## quand la boucle qui y ramène n'est pas courue.
+const LONGUEUR_DE_GRILLE := 60.0
 
 
 ## Les portails du circuit, dans l'ordre du tracé.
@@ -290,6 +337,22 @@ func portail_en(distance: float) -> TrackPortail:
 	return choisi
 
 
+## Le monde où l'on est à cette distance : le dernier portail franchi qui
+## mène à un autre monde (TrackPortail.nouveau_monde), en faisant le tour.
+func monde_en(distance: float) -> TrackPortail:
+	var mondes: Array[TrackPortail] = []
+	for portail in portails():
+		if portail.nouveau_monde:
+			mondes.append(portail)
+	if mondes.is_empty():
+		return null
+	var choisi := mondes[mondes.size() - 1]
+	for portail in mondes:
+		if portail.debut <= distance:
+			choisi = portail
+	return choisi
+
+
 ## N'affiche que le décor du monde où l'on est (TrackPortail.decors) : de la
 ## grand-place des années cinquante, on ne voit pas les tours du futur qui
 ## pourtant se dressent de l'autre côté du circuit.
@@ -318,11 +381,11 @@ func _process(_delta: float) -> void:
 	for portail in liste:
 		effet = maxf(effet, portail.effet_a(d, track_curve.length))
 	camera.vortex = effet
-	var ici := portail_en(d)
-	camera.environment = ici.ambiance
-	if ici != _monde:
-		_monde = ici
-		montrer_le_monde_de(ici)
+	camera.environment = portail_en(d).ambiance
+	var monde := monde_en(d)
+	if monde != _monde:
+		_monde = monde
+		montrer_le_monde_de(monde)
 
 
 var _asphalte: StandardMaterial3D

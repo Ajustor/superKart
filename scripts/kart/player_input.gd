@@ -75,5 +75,30 @@ func _fill(_delta: float) -> void:
 	# et deux pas de physique dans la même image lanceraient deux objets.
 	command.use_item = _appuis.has(&"use_item")
 	command.item_held = Input.is_action_pressed(&"use_item")
-	command.throw_back = command.brake > 0.5
+	# Viser se fait au stick, comme dans tous les jeux de kart : vers soi,
+	# derrière ; poussé vers le haut, devant. Le frein vise derrière aussi :
+	# au clavier, c'est la flèche du bas.
+	var vertical := visee_verticale()
+	command.throw_back = command.brake > 0.5 or vertical > SEUIL_VISEE
+	command.throw_forward = not command.throw_back and vertical < -SEUIL_VISEE
 	_appuis.clear()
+
+
+## Au-delà, le stick vise : sous ce seuil, on braque sans le vouloir.
+const SEUIL_VISEE := 0.5
+
+
+## Où vise le joueur, de -1 (devant) à 1 (derrière) : le stick gauche ou la
+## croix de chaque manette branchée, ou le joystick tactile. Le plus franc
+## l'emporte.
+static func visee_verticale() -> float:
+	var vertical := TouchControls.visee_verticale
+	for manette in Input.get_connected_joypads():
+		var axe := Input.get_joy_axis(manette, JOY_AXIS_LEFT_Y)
+		if absf(axe) > absf(vertical):
+			vertical = axe
+		if Input.is_joy_button_pressed(manette, JOY_BUTTON_DPAD_DOWN):
+			vertical = 1.0
+		elif Input.is_joy_button_pressed(manette, JOY_BUTTON_DPAD_UP):
+			vertical = -1.0
+	return vertical
