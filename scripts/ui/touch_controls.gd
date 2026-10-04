@@ -33,6 +33,9 @@ var _tenues: Dictionary = {}     ## action -> true, telles qu'envoyées à Input
 
 ## Vrai pendant le décompte : voir RaceSession.
 static var gaz_auto_retenus := false
+## Le pouce sur le joystick, de -1 (poussé vers le haut) à 1 (tiré vers le
+## bas) : il vise devant ou derrière au lancer d'un objet (PlayerInput).
+static var visee_verticale := 0.0
 var _gaz_auto_retenus_vus := false
 
 var _doigt_joystick := -1
@@ -233,9 +236,11 @@ func _appliquer() -> void:
 ## force de chaque côté, et le kart braque d'autant.
 func _diriger() -> void:
 	var voulu := 0.0
+	visee_verticale = 0.0
 	if _doigt_joystick >= 0:
 		# Plus sensible, moins de chemin à faire pour braquer à fond.
 		voulu = braquage(_centre_joystick, _pouce, rayon_joystick(size) / GameSettings.sensibilite_joystick)
+		visee_verticale = clampf((_pouce.y - _centre_joystick.y) / rayon_joystick(size), -1.0, 1.0)
 	if is_equal_approx(voulu, _direction):
 		return
 	_direction = voulu
@@ -252,6 +257,7 @@ func _tout_relacher() -> void:
 		Input.action_release(action)
 	_tenues.clear()
 	_doigt_joystick = -1
+	visee_verticale = 0.0
 	if _direction != 0.0:
 		_direction = 0.0
 		Input.action_release(&"steer_left")

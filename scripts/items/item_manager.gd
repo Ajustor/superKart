@@ -258,12 +258,12 @@ func _appui(entree: RaceEntry, point: Vector3) -> void:
 		return
 	var lance := inventaire.utiliser()
 	if lance != ItemKind.NONE:
-		_lancer(entree, point, lance)
+		_lancer(entree, point, lance, sens_vise(entree.kart, false))
 		objet_utilise.emit(entree, lance)
 
 
-## Le bouton est relâché : l'objet tenu part. Vers l'arrière si le joueur
-## freinait, vers l'avant sinon ; un appui bref garde le sens habituel.
+## Le bouton est relâché : l'objet tenu part, là où vise le joueur (voir
+## sens_vise).
 func _lacher(entree: RaceEntry, point: Vector3) -> void:
 	var inventaire := entree.inventaire
 	var bref := inventaire.tenu_depuis < SEUIL_TAPE
@@ -272,12 +272,23 @@ func _lacher(entree: RaceEntry, point: Vector3) -> void:
 	var lance := inventaire.utiliser()
 	if lance == ItemKind.NONE:
 		return
-	var sens := Sens.HABITUEL if bref else (Sens.ARRIERE if entree.kart.vise_arriere else Sens.AVANT)
-	_lancer(entree, point, lance, sens)
+	_lancer(entree, point, lance, sens_vise(entree.kart, not bref))
 	objet_utilise.emit(entree, lance)
 
 
 enum Sens { HABITUEL, AVANT, ARRIERE }
+
+
+## Où part l'objet : derrière si le joueur vise derrière (stick vers lui,
+## frein), devant s'il pousse le stick vers le haut — un appui bref compris.
+## Sans viser, le sens habituel de l'objet (la banane derrière, la carapace
+## devant) ; mais un objet gardé derrière soi, puis lâché, part devant.
+static func sens_vise(kart: Kart, garde: bool) -> int:
+	if kart.vise_arriere:
+		return Sens.ARRIERE
+	if kart.vise_avant or garde:
+		return Sens.AVANT
+	return Sens.HABITUEL
 
 
 static func sens_effectif(objet: int, sens: int) -> int:

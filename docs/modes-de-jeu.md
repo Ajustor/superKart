@@ -131,16 +131,20 @@ sous étoile.
 
 Le bouton OBJET se tient (`KartCommand.item_held`, `KartInventory.tenu`) :
 
-- **Appui bref** : l'usage habituel, la banane tombe derrière, la carapace
-  part devant.
+- **Viser** (`ItemManager.sens_vise`) : stick ou croix vers soi, frein
+  tenu (flèche bas au clavier, bouton FREIN au doigt) ou joystick tactile
+  tiré vers le bas : derrière. Stick, croix ou joystick tactile poussés vers
+  le haut : devant (`PlayerInput.visee_verticale`, seuil 0,5). Ça vaut pour
+  tous les lancers, appui bref compris.
+- **Appui bref** sans viser : l'usage habituel, la banane tombe derrière, la
+  carapace part devant.
 - **Maintenu** avec une banane, une fausse boîte, une carapace verte ou
   rouge : l'objet traîne derrière le kart (`DISTANCE_TRAINE`). Il arrête les
   carapaces qui arrivent derrière (les deux disparaissent), et un kart qui le
   percute part en tête-à-queue ; dans les deux cas l'objet est perdu, comme
   quand son porteur est sonné.
 - **Au lâcher**, après un vrai maintien (`SEUIL_TAPE`) : devant, ou derrière
-  si l'on freine (frein tenu, flèche bas, stick vers soi, bouton FREIN au
-  doigt). Une banane lancée devant retombe une quinzaine de mètres plus loin ;
+  si l'on vise derrière. Une banane lancée devant retombe une quinzaine de mètres plus loin ;
   une carapace rouge lancée derrière ne poursuit personne.
 - **Sans objet**, le bouton klaxonne (`ItemManager.klaxon`, pas plus d'un coup
   toutes les 0,45 s). Chaque pilote a son ton ; les klaxons des autres
