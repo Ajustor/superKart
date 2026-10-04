@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TrackInfo" format=3]
+
+[ext_resource type="Script" path="res://scripts/race/track_info.gd" id="1_info"]
+
+[resource]
+script = ExtResource("1_info")
+id = "recif_bulles"
+nom = "Lagon des Bulles"
+description = "Une ville au fond de la mer, ses maisons-fruits et ses têtes de pierre ; un récif de corail festonné comme la cloche d'une méduse, où l'on flotte au-dessus d'une faille ; puis les tentacules : une forêt d'algues, ses courants et ses bulles."
+chemin_scene = "res://scenes/tracks/recif_bulles.tscn"
+tours = 2

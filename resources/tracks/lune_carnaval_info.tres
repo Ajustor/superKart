@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TrackInfo" format=3]
+
+[ext_resource type="Script" path="res://scripts/race/track_info.gd" id="1_info"]
+
+[resource]
+script = ExtResource("1_info")
+id = "lune_carnaval"
+nom = "Carnaval de la Lune"
+description = "La veille du carnaval, sous une lune grimaçante qui descend un peu plus à chaque tour vers la tour de l'horloge. Autour de la ville, quatre contrées : le marais et sa boue, la montagne et son col verglacé, l'océan et son phare, le canyon hanté."
+chemin_scene = "res://scenes/tracks/lune_carnaval.tscn"
+tours = 2
