@@ -20,9 +20,8 @@ pose **sur le tracé**, comme enfant du nœud `Track`.
 | `TrackAnneau` | un anneau d'or flottant à `hauteur` m : le traverser donne un turbo | non |
 | `TrackObstacle` | un obstacle mobile : marteau qui balance (`PENDULE`), pilon qui s'abat (`PISTON`), bloc ou tonneau qui va et vient (`BLOC`, `TONNEAU`), gardien qui arpente la route (`GARDIEN`). Le kart pris part en tête-à-queue | non : une zone qui fait tourner le kart |
 | `TrackPortail` | un passage vers un autre monde : de l'autre côté, un autre ciel (`ambiance`) et d'autres décors (`decors`). `mode` : `VORTEX`, un tourbillon qui s'ouvre devant le premier et se ferme derrière le dernier ; `CADRE`, un voile dans un cadre de blocs d'obsidienne, toujours ouvert ; `SOL`, un puits d'étoiles à plat sur un trou à `chute_voulue` : on tombe dedans et l'on ressort au bas du plongeon, sans rien perdre (`Kart.teleporter`) ; `SEUIL`, rien à voir, on change seulement de contrée. `nouveau_monde` à faux : le ciel change, les décors restent. On voit à travers un `VORTEX` ou un `CADRE` : voir plus bas | non |
-| `TrackSol` | voir plus bas | non |
 | `TrackSpectacle` | une scène animée autour de la route : éclair, voitures volantes, train, méduses, bulles, lune, dragon | non |
-| `TrackSol` | un sol plat à `altitude` autour du circuit (prairie, banquise, dalle), percé là où la route passe dessous : une galerie qui plonge sous la surface ne le traverse pas. `portion` le limite aux abords d'une portion du tracé. Les décors posés à côté de la route s'y posent au lieu de flotter à hauteur de bitume | non : décoratif |
+| `TrackSol` | un sol plat à `altitude` autour du circuit (prairie, banquise, dalle), percé là où la route passe dessous : une galerie qui plonge sous la surface ne le traverse pas. `portion` le limite aux abords d'une portion du tracé. Percé aussi sous un trou de la route. Les décors posés à côté de la route s'y posent au lieu de flotter à hauteur de bitume | oui, sur `Track.PORTEE_HORS_PISTE` (14 m) de chaque côté de la route de son monde : voir « Sols réels » |
 | `TrackDecor` | une rangée de décor le long du tracé : palmiers, phare, piliers enflammés, étoiles, champignons géants, rochers. `espacement` 0 pose un objet seul | oui, sauf les étoiles : une forme simple au pied de chaque objet (tronc, pied de champignon, base d'immeuble) ; `solide` à faux pour qu'on la traverse. Un test vérifie qu'aucun décor solide ne mord sur la route |
 
 Les obstacles battent sur l'horloge du circuit (`Track.horloge`), remise à
@@ -279,9 +278,10 @@ ffmpeg -i tour.avi -vf scale=960:-2 -c:v libx264 -crf 27 -c:a aac tour.mp4
 
 - `TrackTerrain` (un par circuit) : le sol autour du tracé. Sous le bitume et
   au ras des bas-côtés près de la route, il monte en collines au loin
-  (`relief`) et se creuse en ravin sous les trous (`ravin`). Sans collision :
-  il ne change rien à la course. `tests/test_relief.gd` vérifie qu'il ne
-  perce jamais la route. Premier utilisateur : le Circuit des Collines.
+  (`relief`) et se creuse en ravin sous les trous (`ravin`). Il porte le
+  kart près de la route, comme `TrackSol` : voir « Sols réels ».
+  `tests/test_relief.gd` vérifie qu'il ne perce jamais la route. Premier
+  utilisateur : le Circuit des Collines.
 - `TrackBoost` : une plaque d'accélération (turbo `duree_turbo` à
   `force_turbo`), aux flèches qui défilent dans le sens de la course.
 - `TrackDecor` : nouveaux objets `ARBRE`, `BOTTE_DE_FOIN`, `MOULIN`,
@@ -289,3 +289,20 @@ ffmpeg -i tour.avi -vf scale=960:-2 -c:v libx264 -crf 27 -c:a aac tour.mp4
   `eviter_la_route` saute les objets qui tomberaient sur une autre partie du
   tracé ; s'il y a un `TrackTerrain`, les objets hors de la route se posent
   sur le relief.
+
+## Sols réels
+
+`TrackSol` et `TrackTerrain` portent le kart sur `Track.PORTEE_HORS_PISTE`
+(14 m) de chaque côté du bitume : on sort de la route, on roule dans l'herbe,
+lentement — c'est du hors-piste, comme une `TrackOffroad` —, et l'on revient.
+Seule cette bande a une collision (`SolPorteur`) ; au-delà, le sol n'est que
+décor. Un sol qui est le décor d'un monde (`TrackPortail.decors`) ne porte
+qu'au bord de la route de ce monde : invisible ailleurs, il n'y fait pas de
+plancher fantôme.
+
+La session remet le kart en piste s'il sort de la bande, s'il tombe à plus de
+3,5 m sous la route (d'un pont dans le pré d'en dessous), ou s'il gagne dans
+l'herbe bien plus de tracé qu'il n'en roule (`RACCOURCI_TOLERE`) : on peut
+prendre la corde d'un virage, pas couper une épingle à travers champs. Les
+raccourcis voulus restent des `TrackOffroad`. `tests/test_sols_reels.gd`.
+

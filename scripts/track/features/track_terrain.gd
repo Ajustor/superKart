@@ -7,8 +7,9 @@ extends TrackFeature
 ## s'éloignant et monte en collines ; sous un trou du circuit, il se creuse en
 ## ravin.
 ##
-## Purement décoratif : sans collision, il ne change rien à la course. Un kart
-## qui quitte la route est remis en piste bien avant d'atteindre le relief.
+## Un vrai sol près de la route : sur Track.PORTEE_HORS_PISTE de chaque côté,
+## il porte le kart, qui y roule comme dans l'herbe — hors piste. Plus loin,
+## les collines ne sont que décor : on serait déjà sorti du circuit.
 ##
 ## Les décors du même circuit s'y posent (TrackDecor.hauteur_du_sol) : un
 ## arbre à quarante mètres de la route est au pied de sa colline, pas en
@@ -76,6 +77,10 @@ const SOUS_LE_BORD := 0.14
 var _echantillons: Array[Vector3] = []
 var _droites: Array[Vector3] = []
 var _dans_un_trou: Array[bool] = []
+## L'échantillon est-il de la route du monde de ce relief ? Seule celle-là
+## en est bordée : dans un autre monde, il est invisible, il ne doit pas
+## porter.
+var _du_monde: Array[bool] = []
 var _grille: Dictionary = {}
 var _bruit: FastNoiseLite
 var _pour: TrackCurve
@@ -83,6 +88,25 @@ var _pour: TrackCurve
 
 func _init() -> void:
 	longueur = 1.0
+
+
+## Ce relief porte-t-il un kart en ce point ? Près de la route de son monde,
+## et le kart au-dessus, pas dessous.
+func porte(point: Vector3) -> bool:
+	var c := courbe()
+	if c == null:
+		return false
+	_preparer(c)
+	if _echantillons.is_empty():
+		return false
+	var trouve := _plus_proche(point.x, point.z)
+	if trouve.y > _portee(c) or not _du_monde[int(trouve.x)]:
+		return false
+	return point.y > _hauteur(c, point.x, point.z) - 2.0
+
+
+func _portee(c: TrackCurve) -> float:
+	return c.half_width + Track.PORTEE_HORS_PISTE + maille
 
 
 ## La hauteur du sol à ce point (x, z) du monde.
@@ -101,8 +125,10 @@ func _preparer(c: TrackCurve) -> void:
 	_echantillons.clear()
 	_droites.clear()
 	_dans_un_trou.clear()
+	_du_monde.clear()
 	_grille.clear()
 	var circuit := piste()
+	var monde: TrackPortail = circuit.monde_du_decor(self) if circuit != null else null
 	var n := maxi(int(c.length / PAS), 8)
 	for k in n:
 		var d := c.length * float(k) / float(n)
@@ -123,6 +149,7 @@ func _preparer(c: TrackCurve) -> void:
 				if circuit.trou_en(wrapf(d + marge_trou, 0.0, c.length)) != null:
 					trou = true
 		_dans_un_trou.append(trou)
+		_du_monde.append(monde == null or circuit.monde_en(d) == monde)
 		var cle := _case(_echantillons[i].x, _echantillons[i].z)
 		# Un PackedInt32Array se copie : on le relit, on l'allonge, on le
 		# range.
@@ -250,12 +277,17 @@ func _construire(c: TrackCurve, racine: Node3D) -> void:
 	teintes.frequency = 0.03
 	var outil := SurfaceTool.new()
 	outil.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var sommets := PackedVector3Array()
+	var bordant := PackedByteArray()
+	var portee := _portee(c)
 	for r in lignes:
 		for q in colonnes:
 			var x := mini.x + q * maille
 			var z := mini.y + r * maille
 			var h := _hauteur(c, x, z)
 			var proche := _plus_proche(x, z)
+			sommets.append(Vector3(x, h, z))
+			bordant.append(1 if proche.y <= portee and _du_monde[int(proche.x)] else 0)
 			var ref := _echantillons[int(proche.x)].y
 			# L'herbe varie un peu ; le fond du ravin est de terre et de roche,
 			# les sommets un peu plus secs.
@@ -266,6 +298,8 @@ func _construire(c: TrackCurve, racine: Node3D) -> void:
 			teinte = teinte.lerp(Color(0.55, 0.6, 0.3), altitude * 0.5)
 			outil.set_color(teinte)
 			outil.add_vertex(Vector3(x, h, z))
+	# Seules les mailles qui bordent la route portent le kart (TrackSol).
+	var porteur := PackedVector3Array()
 	for r in lignes - 1:
 		for q in colonnes - 1:
 			var a := r * colonnes + q
@@ -278,6 +312,8 @@ func _construire(c: TrackCurve, racine: Node3D) -> void:
 			outil.add_index(b)
 			outil.add_index(d)
 			outil.add_index(cc)
+			if bordant[a] or bordant[b] or bordant[cc] or bordant[d]:
+				porteur.append_array([sommets[a], sommets[b], sommets[cc], sommets[b], sommets[d], sommets[cc]])
 	outil.generate_normals()
 	var maillage := outil.commit()
 	var m := StandardMaterial3D.new()
@@ -290,3 +326,4 @@ func _construire(c: TrackCurve, racine: Node3D) -> void:
 	affichage.material_override = m
 	affichage.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	racine.add_child(affichage)
+	TrackSol.poser_un_sol_porteur(racine, porteur)

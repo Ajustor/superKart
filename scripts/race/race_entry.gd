@@ -64,6 +64,13 @@ var position: int = 0
 ## renverrait à la ligne de départ un kart parti du fond.
 var derniere_en_piste: float = 0.0
 
+## Dans l'herbe, hors des zones hors-piste du circuit : d'où l'on est parti
+## (distance le long de l'axe), et les mètres roulés depuis — négatif hors de
+## l'herbe. Celui qui gagne bien plus de tracé qu'il n'a roulé a coupé à
+## travers champs.
+var repere_dehors: float = 0.0
+var roule_dehors: float = -1.0
+
 ## Ligne de crue des tours comptés. Le numéro de tour de RaceProgress, lui,
 ## redescend quand le kart recule.
 var tours_comptes: int = 0
