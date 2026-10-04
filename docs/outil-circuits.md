@@ -21,6 +21,7 @@ pose **sur le tracé**, comme enfant du nœud `Track`.
 | `TrackObstacle` | un obstacle mobile : marteau qui balance (`PENDULE`), pilon qui s'abat (`PISTON`), bloc ou tonneau qui va et vient (`BLOC`, `TONNEAU`), gardien qui arpente la route (`GARDIEN`). Le kart pris part en tête-à-queue | non : une zone qui fait tourner le kart |
 | `TrackPortail` | un tourbillon en travers de la route vers un autre monde : il s'ouvre devant le premier, se ferme derrière le dernier ; de l'autre côté, un autre ciel (`ambiance`) et d'autres décors (`decors`) | non |
 | `TrackSpectacle` | une scène animée autour de la route : éclair, voitures volantes, train, méduses, bulles, lune, dragon | non |
+| `TrackSol` | un sol plat à `altitude` autour du circuit (prairie, banquise, dalle), percé là où la route passe dessous : une galerie qui plonge sous la surface ne le traverse pas. `portion` le limite aux abords d'une portion du tracé. Les décors posés à côté de la route s'y posent au lieu de flotter à hauteur de bitume | non : décoratif |
 | `TrackDecor` | une rangée de décor le long du tracé : palmiers, phare, piliers enflammés, étoiles, champignons géants, rochers. `espacement` 0 pose un objet seul | oui, sauf les étoiles : une forme simple au pied de chaque objet (tronc, pied de champignon, base d'immeuble) ; `solide` à faux pour qu'on la traverse. Un test vérifie qu'aucun décor solide ne mord sur la route |
 
 Les obstacles battent sur l'horloge du circuit (`Track.horloge`), remise à

@@ -10,8 +10,10 @@
 [ext_resource type="Script" path="res://scripts/track/features/track_gap.gd" id="s_gap"]
 [ext_resource type="Script" path="res://scripts/track/features/track_jump.gd" id="s_jump"]
 [ext_resource type="Script" path="res://scripts/track/features/track_obstacle.gd" id="s_obstacle"]
+[ext_resource type="Script" path="res://scripts/track/features/track_offroad.gd" id="s_offroad"]
 [ext_resource type="Script" path="res://scripts/track/features/track_portail.gd" id="s_portail"]
 [ext_resource type="Script" path="res://scripts/track/features/track_ramp.gd" id="s_ramp"]
+[ext_resource type="Script" path="res://scripts/track/features/track_sol.gd" id="s_sol"]
 [ext_resource type="Script" path="res://scripts/track/features/track_spectacle.gd" id="s_spectacle"]
 [ext_resource type="Script" path="res://scripts/track/features/track_tunnel.gd" id="s_tunnel"]
 [ext_resource type="Script" path="res://scripts/track/features/track_wall.gd" id="s_wall"]
@@ -38,28 +40,20 @@ ambient_light_color = Color(0.9, 0.95, 1, 1)
 ambient_light_energy = 0.7
 
 [sub_resource type="StandardMaterial3D" id="Mat_plan0"]
-albedo_color = Color(0.36, 0.62, 0.25, 1)
-roughness = 1.0
-
-[sub_resource type="PlaneMesh" id="Plan0"]
-material = SubResource("Mat_plan0")
-size = Vector2(380, 230)
-
-[sub_resource type="StandardMaterial3D" id="Mat_plan1"]
 albedo_color = Color(1, 0.42, 0.08, 1)
 roughness = 1.0
 shading_mode = 0
 
-[sub_resource type="PlaneMesh" id="Plan1"]
-material = SubResource("Mat_plan1")
+[sub_resource type="PlaneMesh" id="Plan0"]
+material = SubResource("Mat_plan0")
 size = Vector2(470, 220)
 
-[sub_resource type="StandardMaterial3D" id="Mat_plan2"]
+[sub_resource type="StandardMaterial3D" id="Mat_plan1"]
 albedo_color = Color(0.1, 0.12, 0.14, 1)
 roughness = 1.0
 
-[sub_resource type="PlaneMesh" id="Plan2"]
-material = SubResource("Mat_plan2")
+[sub_resource type="PlaneMesh" id="Plan1"]
+material = SubResource("Mat_plan1")
 size = Vector2(300, 110)
 
 [sub_resource type="ShaderMaterial" id="Ciel_dessous"]
@@ -163,17 +157,31 @@ light_color = Color(1, 0.97, 0.9, 1)
 light_energy = 1.1
 shadow_enabled = true
 
-[node name="Prairie" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 75, -0.35, 0)
-mesh = SubResource("Plan0")
-
 [node name="LacDeLave" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, -4.5, -235)
-mesh = SubResource("Plan1")
+mesh = SubResource("Plan0")
 
 [node name="Ardoise" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 125, -0.35, 170)
-mesh = SubResource("Plan2")
+mesh = SubResource("Plan1")
+
+[node name="Prairie" type="Node3D" parent="."]
+script = ExtResource("s_sol")
+portion = true
+debut = 0
+longueur = 345
+marge = 70
+altitude = -0.35
+couleur = Color(0.36, 0.62, 0.25, 1)
+
+[node name="PrairieDuRetour" type="Node3D" parent="."]
+script = ExtResource("s_sol")
+portion = true
+debut = 1770
+longueur = 491
+marge = 70
+altitude = -0.35
+couleur = Color(0.36, 0.62, 0.25, 1)
 
 [node name="ArbresCubes" type="Node3D" parent="."]
 script = ExtResource("s_decor")
@@ -257,6 +265,8 @@ debut = 400
 longueur = 450
 decalage = 22
 espacement = 45
+hauteur = -6
+echelle = 1.6
 graine = 5
 
 [node name="Roches" type="Node3D" parent="."]
@@ -267,6 +277,7 @@ longueur = 470
 decalage = 36
 espacement = 28
 echelle = 2.5
+hauteur = -6
 graine = 6
 
 [node name="RampeDeLaLave" type="Node3D" parent="."]
@@ -361,7 +372,25 @@ rayon = 8
 couleur_a = Color(0.05, 0.45, 0.55, 1)
 couleur_b = Color(0.2, 0.9, 0.95, 1)
 ambiance = SubResource("Env_abime")
-decors = Array[NodePath]([NodePath("../Sculk"), NodePath("../GrandSculk"), NodePath("../Ruines"), NodePath("../Ardoise")])
+decors = Array[NodePath]([NodePath("../Sculk"), NodePath("../Ardoise")])
+
+[node name="SolDeLaCiteDroite1400" type="Node3D" parent="."]
+script = ExtResource("s_offroad")
+debut = 1400
+longueur = 370
+decalage = 12.5
+largeur = 7
+sol = 2
+teinte = Color(0.07, 0.1, 0.12, 1)
+
+[node name="SolDeLaCiteGauche1400" type="Node3D" parent="."]
+script = ExtResource("s_offroad")
+debut = 1400
+longueur = 370
+decalage = -12.5
+largeur = 7
+sol = 2
+teinte = Color(0.07, 0.1, 0.12, 1)
 
 [node name="Sculk" type="Node3D" parent="."]
 script = ExtResource("s_decor")
@@ -372,30 +401,12 @@ decalage = 12.5
 espacement = 9
 graine = 8
 
-[node name="GrandSculk" type="Node3D" parent="."]
-script = ExtResource("s_decor")
-objet = 35
-debut = 1400
-longueur = 370
-decalage = 22
-espacement = 14
-echelle = 2.5
-graine = 9
-
-[node name="Ruines" type="Node3D" parent="."]
-script = ExtResource("s_decor")
-objet = 34
-debut = 1600
-longueur = 170
-decalage = 30
-espacement = 34
-echelle = 0.6
-graine = 10
-
 [node name="Grotte" type="Node3D" parent="."]
 script = ExtResource("s_tunnel")
-debut = 1620
-longueur = 150
+debut = 1400
+longueur = 370
+marge = 7
+hauteur = 9
 couleur_roche = Color(0.12, 0.13, 0.16, 1)
 couleur_lampes = Color(0.2, 0.9, 0.95, 1)
 espacement_lampes = 14
@@ -414,4 +425,4 @@ debut = 1785
 rayon = 8
 couleur_a = Color(0.55, 0.15, 1, 1)
 couleur_b = Color(0.4, 0.9, 0.5, 1)
-decors = Array[NodePath]([NodePath("../ArbresCubes"), NodePath("../Blocs"), NodePath("../ArbresCubesDuRetour"), NodePath("../BlocsDuRetour"), NodePath("../Prairie"), NodePath("../CadresDuDessous")])
+decors = Array[NodePath]([NodePath("../ArbresCubes"), NodePath("../Blocs"), NodePath("../ArbresCubesDuRetour"), NodePath("../BlocsDuRetour"), NodePath("../Prairie"), NodePath("../PrairieDuRetour"), NodePath("../CadresDuDessous")])

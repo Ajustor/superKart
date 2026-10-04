@@ -261,6 +261,37 @@ func test_le_liquide_reste_sous_la_route() -> void:
 			"%s : la lave ou l'eau ne doit pas noyer la route" % info.id)
 
 
+## Un sol plat posé à la main traversait les galeries de la Grotte Glacée à
+## mi-hauteur : on roulait sous un second sol, sans collision. Aucun plan ne
+## doit passer au-dessus de la route à hauteur de kart, et un TrackSol doit
+## être percé partout où la route passe dessous.
+func test_aucun_sol_ne_passe_au_dessus_de_la_route() -> void:
+	for info in TrackCatalog.PISTES + TrackCatalog.ARENES:
+		var piste := _monter(info)
+		var c := piste.track_curve
+		var sols: Array[TrackSol] = []
+		for e in piste.elements():
+			if e is TrackSol:
+				sols.append(e)
+		var d := 0.0
+		while d < c.length:
+			var p := c.position_at(d)
+			if piste.trou_en(d) == null:
+				for n in piste.get_children():
+					if n is MeshInstance3D and n.mesh is PlaneMesh:
+						var loc: Vector3 = n.transform.affine_inverse() * p
+						var taille: Vector2 = n.mesh.size
+						var ecart: float = n.transform.origin.y - p.y
+						if absf(loc.x) < taille.x * 0.5 and absf(loc.z) < taille.y * 0.5:
+							assert_false(ecart > 0.05 and ecart < 9.0,
+								"%s : %s passe %.1f m au-dessus de la route à %.0f m" % [info.id, n.name, ecart, d])
+				for sol in sols:
+					if sol.altitude - p.y > 0.05 and sol.altitude - p.y < 9.0:
+						assert_false(sol.a_du_sol(Vector2(p.x, p.z)),
+							"%s : %s n'est pas percé au-dessus de la route à %.0f m" % [info.id, sol.name, d])
+			d += 8.0
+
+
 ## Le classement cherche le point du tracé le plus proche du kart. Deux
 ## portions éloignées le long du tracé mais proches dans l'espace — un pont
 ## trop bas, deux lignes droites côte à côte — le feraient sauter de l'une à

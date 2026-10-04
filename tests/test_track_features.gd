@@ -502,3 +502,53 @@ func test_un_decollage_de_rampe_met_le_kart_en_vol() -> void:
 	session.avancer(session.entries[0], _point(60.0), 1.0 / 60.0)
 	assert_true(session.entries[0].en_vol)
 	assert_false(karts[0].vient_de_decoller, "l'indicateur est consommé")
+
+
+# --- Sol plat ------------------------------------------------------------------
+
+func test_le_sol_plat_est_perce_au_dessus_d_une_route_qui_passe_dessous() -> void:
+	var sol := TrackSol.new()
+	sol.altitude = 3.0
+	sol.marge = 40.0
+	_poser(sol)
+	var p := track.track_curve.position_at(10.0)
+	assert_false(sol.a_du_sol(Vector2(p.x, p.z)), "la route passe 3 m dessous : percé")
+	assert_true(sol.a_du_sol(Vector2(0.0, 0.0)), "au milieu de l'anneau : du sol")
+
+
+func test_le_sol_plat_n_est_pas_perce_sous_la_route() -> void:
+	var sol := TrackSol.new()
+	sol.altitude = -0.4
+	_poser(sol)
+	var p := track.track_curve.position_at(10.0)
+	assert_true(sol.a_du_sol(Vector2(p.x, p.z)))
+
+
+func test_un_sol_de_portion_ne_couvre_que_sa_portion() -> void:
+	var sol := TrackSol.new()
+	sol.altitude = -0.4
+	sol.portion = true
+	sol.debut = 0.0
+	sol.longueur = 40.0
+	sol.marge = 20.0
+	_poser(sol)
+	var pres := track.track_curve.position_at(20.0) + track.track_curve.right_at(20.0) * 12.0
+	var loin := track.track_curve.position_at(_longueur() * 0.5) + track.track_curve.right_at(_longueur() * 0.5) * 12.0
+	assert_true(sol.a_du_sol(Vector2(pres.x, pres.z)))
+	assert_false(sol.a_du_sol(Vector2(loin.x, loin.z)))
+
+
+func test_un_decor_a_cote_de_la_route_se_pose_sur_le_sol_plat() -> void:
+	var sol := TrackSol.new()
+	sol.altitude = -2.0
+	sol.marge = 60.0
+	_poser(sol)
+	var arbres := TrackDecor.new()
+	arbres.objet = TrackDecor.Objet.SAPIN
+	arbres.debut = 0.0
+	arbres.longueur = 60.0
+	arbres.decalage = 20.0
+	arbres.espacement = 20.0
+	_poser(arbres)
+	for pose in arbres.placements(track.track_curve):
+		assert_almost_eq(pose.origin.y, -2.0, 0.01, "posé sur le sol, pas à hauteur de route")
