@@ -342,6 +342,7 @@ func _physics_process(delta: float) -> void:
 		avancer(entree, entree.kart.global_position, delta)
 	classer()
 	partager_la_course()
+	_raconter_au_circuit()
 
 
 func _relancer_les_cales(delta: float) -> void:
@@ -565,6 +566,22 @@ func partager_la_course() -> void:
 			if entries[i].kart == cerveau.kart:
 				cerveau.mon_index = i
 				break
+
+
+## Le circuit sait où en sont le premier et le dernier encore en course :
+## ses portails s'ouvrent et se ferment d'après eux (TrackPortail).
+func _raconter_au_circuit() -> void:
+	if _track == null or entries.is_empty():
+		return
+	var tete := -INF
+	var queue := INF
+	for e in entries:
+		tete = maxf(tete, e.progress.total)
+		if not e.finished:
+			queue = minf(queue, e.progress.total)
+	_track.tete_total = tete
+	_track.queue_total = queue if queue < INF else tete
+	_track.tours_course = lap_count
 
 
 ## Les concurrents dans l'ordre du classement.

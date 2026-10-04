@@ -6,6 +6,6 @@
 script = ExtResource("1_info")
 id = "base_lunaire"
 nom = "Base Lunaire"
-description = "Sur la Lune, la gravité faiblit par endroits : on vole au-dessus des cratères en visant les anneaux d'or, et on file sous les dômes de la base."
+description = "Un croissant de lune : on vole au-dessus des cratères le long du grand arc, en visant les anneaux d'or, et l'on file sous les dômes de la base dans l'arc intérieur."
 chemin_scene = "res://scenes/tracks/base_lunaire.tscn"
 tours = 3

@@ -153,6 +153,31 @@ func test_le_premier_n_a_jamais_de_carapace_rouge() -> void:
 	assert_gt(bananes, 1000, "en tête, surtout des bananes")
 
 
+func test_le_premier_n_a_jamais_de_champignon() -> void:
+	var t := ItemTable.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	for i in 2000:
+		assert_does_not_have([ItemKind.MUSHROOM, ItemKind.TRIPLE_MUSHROOM], t.tirer(1, 8, rng),
+			"le premier n'a pas à creuser l'écart")
+
+
+func test_le_dernier_a_le_plus_de_champignons() -> void:
+	var t := ItemTable.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 6
+	var parts := []
+	for place in [1, 4, 8]:
+		var n := 0
+		for i in 3000:
+			if t.tirer(place, 8, rng) in [ItemKind.MUSHROOM, ItemKind.TRIPLE_MUSHROOM]:
+				n += 1
+		parts.append(n)
+	assert_eq(parts[0], 0)
+	assert_gt(parts[2], parts[1], "plus on est loin, plus on en a")
+	assert_gt(parts[2], 3000 * 0.5, "le dernier : un objet sur deux est un champignon")
+
+
 func test_le_dernier_n_a_jamais_de_banane() -> void:
 	var t := ItemTable.new()
 	var rng := RandomNumberGenerator.new()
@@ -161,8 +186,8 @@ func test_le_dernier_n_a_jamais_de_banane() -> void:
 	for i in 2000:
 		var o := t.tirer(8, 8, rng)
 		assert_ne(o, ItemKind.BANANA)
-		if o in [ItemKind.RED_SHELL, ItemKind.TRIPLE_MUSHROOM, ItemKind.STAR, ItemKind.LIGHTNING,
-				ItemKind.BLUE_SHELL]:
+		if o in [ItemKind.RED_SHELL, ItemKind.MUSHROOM, ItemKind.TRIPLE_MUSHROOM, ItemKind.STAR,
+				ItemKind.LIGHTNING, ItemKind.BLUE_SHELL]:
 			rattrapage += 1
 	assert_gt(rattrapage, 1600, "en queue, de quoi revenir")
 

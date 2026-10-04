@@ -65,20 +65,20 @@ mesh = SubResource("Sol")
 [node name="HerbeDroite" type="Node3D" parent="."]
 script = ExtResource("s_offroad")
 debut = 0.0
-longueur = 855.0
+longueur = 1015.0
 decalage = 12.5
 largeur = 7.0
 
 [node name="HerbeGauche" type="Node3D" parent="."]
 script = ExtResource("s_offroad")
 debut = 0.0
-longueur = 855.0
+longueur = 1015.0
 decalage = -12.5
 largeur = 7.0
 
 [node name="ChampignonRebond" type="Node3D" parent="."]
 script = ExtResource("s_jump")
-debut = 392.0
+debut = 98.0
 longueur = 4.0
 largeur = 10.0
 impulsion = 11.0
@@ -86,7 +86,15 @@ duree_turbo = 0.8
 
 [node name="ChampignonRebondBis" type="Node3D" parent="."]
 script = ExtResource("s_jump")
-debut = 650.0
+debut = 438.0
+longueur = 4.0
+largeur = 10.0
+impulsion = 9.0
+duree_turbo = 0.6
+
+[node name="ChampignonRebondTer" type="Node3D" parent="."]
+script = ExtResource("s_jump")
+debut = 778.0
 longueur = 4.0
 largeur = 10.0
 impulsion = 9.0
@@ -96,7 +104,7 @@ duree_turbo = 0.6
 script = ExtResource("s_decor")
 objet = 4
 debut = 10.0
-longueur = 840.0
+longueur = 1000.0
 decalage = 20.0
 espacement = 28.0
 echelle = 2.2
@@ -106,7 +114,7 @@ graine = 4
 script = ExtResource("s_decor")
 objet = 4
 debut = 0.0
-longueur = 850.0
+longueur = 1010.0
 decalage = 42.0
 espacement = 45.0
 echelle = 4.0
@@ -117,7 +125,7 @@ graine = 12
 script = ExtResource("s_decor")
 objet = 5
 debut = 30.0
-longueur = 800.0
+longueur = 960.0
 decalage = 30.0
 espacement = 60.0
 hauteur = -2.5

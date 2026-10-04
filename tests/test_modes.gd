@@ -102,6 +102,17 @@ func test_les_coupes_se_partagent_tous_les_circuits() -> void:
 	assert_eq(vus.size(), TrackCatalog.PISTES.size(), "chaque circuit a sa coupe")
 
 
+func test_la_coupe_odyssee_n_a_que_des_courses_longues() -> void:
+	var odyssee: Dictionary = TrackCatalog.COUPES[TrackCatalog.COUPES.size() - 1]
+	assert_eq(odyssee.nom, "Coupe Odyssée")
+	for id in odyssee.pistes:
+		var info := TrackCatalog.par_id(id)
+		var scene: Track = load(info.chemin_scene).instantiate()
+		var longueur: float = scene.curve.get_baked_length() * info.tours
+		assert_gt(longueur, 3200.0, "%s : une course longue" % id)
+		scene.free()
+
+
 func test_une_coupe_enchaine_ses_quatre_circuits() -> void:
 	var gp := GrandPrix.new(0)
 	var vus: Array[String] = []

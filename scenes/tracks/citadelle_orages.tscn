@@ -84,7 +84,7 @@ mesh = SubResource("Liquide")
 
 [node name="Rafale1" type="Node3D" parent="."]
 script = ExtResource("s_courant")
-debut = 120
+debut = 130
 longueur = 60
 largeur = 30
 poussee_laterale = 7
@@ -92,7 +92,7 @@ periode = 3
 
 [node name="Rafale2" type="Node3D" parent="."]
 script = ExtResource("s_courant")
-debut = 180
+debut = 190
 longueur = 60
 largeur = 30
 poussee_laterale = -7
@@ -101,7 +101,7 @@ phase = 0.5
 
 [node name="RempartLacet1" type="Node3D" parent="."]
 script = ExtResource("s_wall")
-debut = 236
+debut = 60
 longueur = 30
 cote = 2
 hauteur = 1.2
@@ -110,8 +110,8 @@ couleur_bis = Color(0.42, 0.42, 0.48, 1)
 
 [node name="RempartLacet2" type="Node3D" parent="."]
 script = ExtResource("s_wall")
-debut = 316
-longueur = 18
+debut = 340
+longueur = 30
 cote = 2
 hauteur = 1.2
 couleur = Color(0.5, 0.5, 0.56, 1)
@@ -119,7 +119,7 @@ couleur_bis = Color(0.42, 0.42, 0.48, 1)
 
 [node name="RampeDuVide" type="Node3D" parent="."]
 script = ExtResource("s_ramp")
-debut = 338
+debut = 410
 longueur = 12
 largeur = 18
 hauteur = 1.8
@@ -127,19 +127,19 @@ couleur = Color(0.95, 0.75, 0.2, 1)
 
 [node name="Vide" type="Node3D" parent="."]
 script = ExtResource("s_gap")
-debut = 350
+debut = 422
 longueur = 13
 
 [node name="AnneauDuVide" type="Node3D" parent="."]
 script = ExtResource("s_anneau")
-debut = 357
+debut = 429
 decalage = -4
 hauteur = 2.6
 rayon = 2.2
 
 [node name="RempartEpingle" type="Node3D" parent="."]
 script = ExtResource("s_wall")
-debut = 366
+debut = 890
 longueur = 46
 cote = 2
 hauteur = 1.2
@@ -148,26 +148,26 @@ couleur_bis = Color(0.42, 0.42, 0.48, 1)
 
 [node name="Envol" type="Node3D" parent="."]
 script = ExtResource("s_apesanteur")
-debut = 410
-longueur = 60
+debut = 684
+longueur = 55
 gravite = 0.45
 
 [node name="TremplinDeLEnvol" type="Node3D" parent="."]
 script = ExtResource("s_jump")
-debut = 416
+debut = 688
 longueur = 4
 largeur = 18
 impulsion = 10
 
 [node name="AnneauDeLEnvol" type="Node3D" parent="."]
 script = ExtResource("s_anneau")
-debut = 432
+debut = 704
 hauteur = 3.8
 rayon = 2.8
 
 [node name="PorteDeLaCitadelle" type="Node3D" parent="."]
 script = ExtResource("s_tunnel")
-debut = 540
+debut = 526
 longueur = 100
 montagne = 10
 couleur = Color(0.5, 0.5, 0.56, 1)
@@ -177,7 +177,7 @@ couleur_lampes = Color(0.75, 0.7, 1, 1)
 
 [node name="RempartLacet3" type="Node3D" parent="."]
 script = ExtResource("s_wall")
-debut = 674
+debut = 1170
 longueur = 22
 cote = 2
 hauteur = 1.2
@@ -186,8 +186,8 @@ couleur_bis = Color(0.42, 0.42, 0.48, 1)
 
 [node name="RempartsDuSerpent" type="Node3D" parent="."]
 script = ExtResource("s_wall")
-debut = 726
-longueur = 106
+debut = 620
+longueur = 40
 cote = 2
 hauteur = 1.2
 couleur = Color(0.5, 0.5, 0.56, 1)
@@ -195,7 +195,7 @@ couleur_bis = Color(0.42, 0.42, 0.48, 1)
 
 [node name="RampeDuDernierVide" type="Node3D" parent="."]
 script = ExtResource("s_ramp")
-debut = 836
+debut = 960
 longueur = 12
 largeur = 18
 hauteur = 1.8
@@ -203,13 +203,13 @@ couleur = Color(0.95, 0.75, 0.2, 1)
 
 [node name="DernierVide" type="Node3D" parent="."]
 script = ExtResource("s_gap")
-debut = 848
+debut = 972
 longueur = 12
 
 [node name="Foudre1" type="Node3D" parent="."]
 script = ExtResource("s_obstacle")
 type = 1
-debut = 884
+debut = 1080
 decalage = -4.5
 periode = 2.4
 hauteur = 6
@@ -218,7 +218,7 @@ couleur = Color(0.95, 0.85, 0.3, 1)
 [node name="Foudre2" type="Node3D" parent="."]
 script = ExtResource("s_obstacle")
 type = 1
-debut = 897
+debut = 1093
 decalage = 4.5
 periode = 2.4
 phase = 0.5
@@ -229,7 +229,7 @@ couleur = Color(0.95, 0.85, 0.3, 1)
 script = ExtResource("s_decor")
 objet = 22
 debut = 0
-longueur = 963
+longueur = 1376
 decalage = 30
 espacement = 28
 hauteur = -8
@@ -240,7 +240,7 @@ graine = 2
 script = ExtResource("s_decor")
 objet = 22
 debut = 10
-longueur = 953
+longueur = 1366
 decalage = 55
 espacement = 40
 hauteur = 15
@@ -251,7 +251,7 @@ graine = 6
 script = ExtResource("s_decor")
 objet = 1
 debut = 0
-longueur = 963
+longueur = 1376
 decalage = 40
 espacement = 120
 eviter_la_route = true
@@ -262,7 +262,7 @@ graine = 3
 [node name="Feux" type="Node3D" parent="."]
 script = ExtResource("s_decor")
 objet = 2
-debut = 540
+debut = 526
 longueur = 1
 decalage = 13
 espacement = 0

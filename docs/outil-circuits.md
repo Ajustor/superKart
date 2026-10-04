@@ -18,7 +18,9 @@ pose **sur le tracé**, comme enfant du nœud `Track`.
 | `TrackCourant` | une poussée : vent en rafales (`periode`, `phase`), courant d'eau ou tapis roulant (`style`), en travers (`poussee_laterale`) ou le long du tracé (`poussee_avant`, négative à contre-sens). Le vent pousse aussi en l'air | non, c'est une zone |
 | `TrackApesanteur` | la gravité faiblit (`gravite`) : chaque saut dure plus longtemps. Une arche violette à chaque bout | non, c'est une zone |
 | `TrackAnneau` | un anneau d'or flottant à `hauteur` m : le traverser donne un turbo | non |
-| `TrackObstacle` | un obstacle mobile : marteau qui balance (`PENDULE`), pilon qui s'abat (`PISTON`), bloc ou tonneau qui va et vient (`BLOC`, `TONNEAU`). Le kart pris part en tête-à-queue | non : une zone qui fait tourner le kart |
+| `TrackObstacle` | un obstacle mobile : marteau qui balance (`PENDULE`), pilon qui s'abat (`PISTON`), bloc ou tonneau qui va et vient (`BLOC`, `TONNEAU`), gardien qui arpente la route (`GARDIEN`). Le kart pris part en tête-à-queue | non : une zone qui fait tourner le kart |
+| `TrackPortail` | un tourbillon en travers de la route vers un autre monde : il s'ouvre devant le premier, se ferme derrière le dernier ; de l'autre côté, un autre ciel (`ambiance`) et d'autres décors (`decors`) | non |
+| `TrackSpectacle` | une scène animée autour de la route : éclair, voitures volantes, train, méduses, bulles, lune, dragon | non |
 | `TrackDecor` | une rangée de décor le long du tracé : palmiers, phare, piliers enflammés, étoiles, champignons géants, rochers. `espacement` 0 pose un objet seul | oui, sauf les étoiles : une forme simple au pied de chaque objet (tronc, pied de champignon, base d'immeuble) ; `solide` à faux pour qu'on la traverse. Un test vérifie qu'aucun décor solide ne mord sur la route |
 
 Les obstacles battent sur l'horloge du circuit (`Track.horloge`), remise à
@@ -151,10 +153,10 @@ déplacer un point de contrôle emmène les murs et les zones avec lui.
 | Plage aux Palmiers | 1 032 m | bordures, bas-côtés de sable, dune à tremplin (262 m), lacet autour du phare, bras de mer à sauter (766 à 790 m), raccourci de sable à l'intérieur du virage 380 à 475 m |
 | Bastion de Magma | 773 m | remparts presque partout, montée vers une chicane à 10 m de haut (340 à 470 m), douve de lave à sauter (542 à 566 m), piliers enflammés |
 | Prisme de Minuit | 1 099 m | route arc-en-ciel dans la nuit, en huit : le pont (560 à 650 m) passe 20 m au-dessus de la ligne droite de départ ; saut dans le vide (866 à 892 m), garde-fous seulement dans les virages serrés |
-| Clairière Enchantée | 855 m | bosses douces, bas-côtés d'herbe, champignons géants, deux champignons rebondissants (392 et 650 m) ; prairie à 2,5 m sous la route |
+| Clairière Enchantée | 1 015 m | un trèfle à trois feuilles, bosses douces, bas-côtés d'herbe, champignons géants, trois champignons rebondissants (98, 438, 778 m) ; prairie à 2,5 m sous la route |
 | Mine Scintillante | 724 m | descente de 14 m entre des étais (90 à 280 m), fond de galerie aux cristaux, remontée étayée (420 à 620 m), gouffre à sauter (636 à 661 m) juste avant la ligne |
-| Boulevard Électrique | 746 m | la nuit, rues à angle droit entre les tours, bordures fluo, lampadaires, avenue en travaux à sauter (550 à 576 m) |
-| Station des Neiges | 869 m | départ à 30 m, descente à bosses (292, 398 m), vallée, remontée par le col (bosse à 640 m) ; larges bas-côtés de neige, sapins |
+| Boulevard Électrique | 1 482 m (2 tours) | la nuit, un vrai quartier : rues à angle droit autour des pâtés de maisons (coins de 44 m), bordures fluo, lampadaires, avenue en travaux à sauter (812 à 826 m) |
+| Station des Neiges | 1 225 m | un slalom de ski : quatre traversées de la pente et leurs épingles, bosses (262, 575, 795 m), puis la remontée par le télésiège ; larges bas-côtés de neige, sapins |
 
 Coupes Aventure et Tempête :
 
@@ -163,11 +165,11 @@ Coupes Aventure et Tempête :
 | Canyon Venteux | 939 m | tunnel dans une mesa (300 à 400 m), rafales alternées qui poussent à droite puis à gauche (560 à 680 m), ravin à sauter (874 à 886 m) avec un anneau d'or décentré |
 | Grotte Glacée | 1 099 m | en huit, presque tout sous le glacier : galeries et trois salles à stalagmites et cristaux, plaques de verglas, la galerie passe 22 m sous la ligne de départ (608 m), crevasse à sauter (892 à 905 m) |
 | Usine à Engrenages | 934 m | tapis roulants (dans le sens, en travers, et à contre-sens sur une voie de la ligne d'arrivée), passage sous la presse (150 à 230 m), pilons (538, 550, 623 m) |
-| Ruines d'Émeraude | 1 014 m | gorge à sauter dès le départ (74 à 86 m), galeries du temple (270 à 350 m), couloir de trois marteaux (430 à 462 m), gué dans le courant (494 à 516 m) |
-| Base Lunaire | 1 054 m | deux zones d'apesanteur : cratères de 22 m à sauter dans des anneaux (392 et 482 m), tremplin et anneaux en l'air (700 à 732 m) ; dôme (560 à 660 m) |
+| Ruines d'Émeraude | 1 668 m (2 tours) | les méandres d'une rivière : gorge à sauter dès le départ (62 à 74 m), galeries du temple, couloir de trois marteaux (vers 1 000 m), gué dans le courant (vers 1 100 m) |
+| Base Lunaire | 1 314 m | un croissant : deux zones d'apesanteur, cratères de 22 m à sauter dans des anneaux sur l'arc extérieur (912 et 1 002 m), tremplin et anneaux en l'air (vers 710 m) ; dôme (370 à 470 m) |
 | Port des Pirates | 889 m | sur les quais au-dessus de la mer : grotte marine (330 à 420 m), saut depuis le pont du galion (560 à 572 m), tonneaux qui roulent (614, 624 m), courant de la crique (640 à 700 m) |
 | Château des Brumes | 901 m | la nuit, en huit : la crypte passe 22 m sous la cour du départ, entre trois lames (398 à 458 m) ; fosse à sauter (177 à 189 m), cercueils qui glissent (826, 840 m) ; lac de brume sous le circuit |
-| Citadelle des Orages | 963 m | au-dessus d'une mer de nuages : rafales alternées, vide à sauter (350 et 848 m), tremplin en apesanteur dans un anneau (416 m), porte de la citadelle (540 à 640 m), pilons de foudre sur la ligne droite finale |
+| Citadelle des Orages | 1 376 m | une forteresse en étoile à cinq bastions au-dessus d'une mer de nuages : rafales alternées, vides à sauter (422 et 972 m), porte de la citadelle (526 m), tremplin en apesanteur (684 m) |
 
 Coupe Vertige :
 
@@ -177,6 +179,34 @@ Coupe Vertige :
 | Pic des Lacets | 1 470 m | tunnel en spirale dans la montagne (100 à 600 m), 32 m entre deux tours ; sommet verglacé et venteux ; trois lacets en épingle de 25 m ; ravin à sauter (952 à 966 m) ; le tunnel de retour passe sous les lacets (1 265 à 1 345 m) |
 | Cœur de la Terre | 1 236 m | un puits en hélice (100 à 565 m) plonge à 85 m sous la surface, chaque tour 34 m sous le précédent ; galerie au-dessus du magma, faille à sauter (612 à 626 m), concasseurs ; second puits pour remonter (715 à 1 185 m), parois qui changent de roche avec la profondeur |
 | Échelle Céleste | 1 703 m | une hélice autour d'une tour (100 à 765 m) monte à 105 m, chaque tour 30 m au-dessus du précédent ; pont en apesanteur dans les nuages (trou de 20 m, tremplin et anneaux, rafale) ; large hélice de descente autour d'une seconde tour (1 000 à 1 605 m) |
+
+Coupe Odyssée — des courses longues, à travers plusieurs mondes :
+
+| Circuit | Longueur | Ce qui le distingue |
+|---|---|---|
+| Faille Temporelle | 2 073 m (3 tours) | trois époques : la grand-place des années cinquante et sa tour de l'horloge frappée par la foudre, une ville du futur (voie aérienne, voitures volantes, tremplin en apesanteur dans deux anneaux), le Far West (train à vapeur, saloons, ravin à sauter 1 312 à 1 326 m). Trois portails (466, 1 116, 1 650 m) |
+| Lagon des Bulles | 1 656 m (2 tours) | au fond de la mer, une méduse géante : la cloche festonnée du récif (méduses, tremplin en apesanteur, faille à sauter 812 à 826 m), puis les tentacules ondulants dans la forêt d'algues, son courant et ses bulles ; la ville des maisons-ananas au départ |
+| Carnaval de la Lune | 1 785 m (2 tours) | un trèfle à quatre feuilles autour de la tour de l'horloge, sous une lune qui descend vers elle de tour en tour : le marais, la montagne et son col verglacé (17 m, garde-fous dans les épingles), l'océan (vagues, phare, baie à sauter 1 248 à 1 262 m), le canyon hanté |
+| Terres Carrées | 2 261 m (2 tours) | un monde de cubes en quatre portails : la prairie ; le monde du dessous et ses ponts sur un lac de lave (trou à sauter 667 à 681 m) ; l'île du bout du monde, à 28 m au-dessus du vide, et son dragon ; la cité engloutie, sa grotte et son gardien (1 690 m) |
+
+Les portails (`TrackPortail`) relient les mondes d'un circuit. Chacun
+s'ouvre quand le premier en approche à 90 m, et se referme quand le dernier
+l'a passé (`Track.tete_total`, `queue_total`, que `RaceSession` tient à
+jour) : en réseau, tout le monde le voit ouvert au même moment. Son couloir
+s'évase au double de l'entrée, et la caméra qui le traverse change de
+perspective (`ChaseCamera.vortex` : elle se rapproche du kart pendant que son
+champ s'ouvre) — le couloir semble bien plus long qu'il ne l'est. De l'autre
+côté, le ciel est celui de `ambiance`, et seuls les nœuds de `decors` de ce
+portail se voient, jusqu'au portail suivant (`Track.montrer_le_monde_de`) :
+de la grand-place, on ne voit pas les tours du futur.
+
+Les spectacles (`TrackSpectacle`) s'animent autour de la route sans qu'on y
+touche : éclair, voitures volantes, train, méduses, bulles, lune qui descend
+au fil de la course (`Track.avancement`), dragon. Le gardien est un
+`TrackObstacle` de type `GARDIEN` qui arpente la route d'un bord à l'autre.
+
+Les scènes de la coupe sont générées depuis une description des éléments par
+circuit ; les courbes sont dans `tools/build_track_curves.gd`.
 
 Une hélice se dessine point par point, tous les 45° : `tools/build_track_curves.gd`
 en contient deux. Ne pas lui appliquer l'élargissement de

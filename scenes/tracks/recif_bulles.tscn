@@ -1,0 +1,228 @@
+[gd_scene format=3]
+
+[ext_resource type="Shader" path="res://shaders/ciel.gdshader" id="sh_ciel"]
+[ext_resource type="Script" path="res://scripts/track/track.gd" id="1_track"]
+[ext_resource type="Curve3D" path="res://resources/tracks/recif_bulles_curve.tres" id="2_curve"]
+[ext_resource type="Script" path="res://scripts/track/features/track_anneau.gd" id="s_anneau"]
+[ext_resource type="Script" path="res://scripts/track/features/track_apesanteur.gd" id="s_apesanteur"]
+[ext_resource type="Script" path="res://scripts/track/features/track_boost.gd" id="s_boost"]
+[ext_resource type="Script" path="res://scripts/track/features/track_courant.gd" id="s_courant"]
+[ext_resource type="Script" path="res://scripts/track/features/track_decor.gd" id="s_decor"]
+[ext_resource type="Script" path="res://scripts/track/features/track_gap.gd" id="s_gap"]
+[ext_resource type="Script" path="res://scripts/track/features/track_jump.gd" id="s_jump"]
+[ext_resource type="Script" path="res://scripts/track/features/track_ramp.gd" id="s_ramp"]
+[ext_resource type="Script" path="res://scripts/track/features/track_spectacle.gd" id="s_spectacle"]
+[ext_resource type="Script" path="res://scripts/track/features/track_terrain.gd" id="s_terrain"]
+
+[sub_resource type="ShaderMaterial" id="Ciel"]
+shader = ExtResource("sh_ciel")
+shader_parameter/haut = Color(0.03, 0.18, 0.38, 1)
+shader_parameter/horizon = Color(0.15, 0.55, 0.7, 1)
+shader_parameter/sol_horizon = Color(0.2, 0.45, 0.5, 1)
+shader_parameter/sol_bas = Color(0.1, 0.25, 0.3, 1)
+shader_parameter/nuages = 0
+shader_parameter/couleur_nuages = Color(1, 1, 1, 1)
+shader_parameter/etoiles = 0
+shader_parameter/soleil = 0.4
+
+[sub_resource type="Sky" id="Sky"]
+sky_material = SubResource("Ciel")
+
+[sub_resource type="Environment" id="Env"]
+background_mode = 2
+sky = SubResource("Sky")
+ambient_light_source = 2
+ambient_light_color = Color(0.55, 0.85, 1, 1)
+ambient_light_energy = 0.75
+fog_enabled = true
+fog_light_color = Color(0.18, 0.5, 0.65, 1)
+fog_density = 0.006
+glow_enabled = true
+glow_intensity = 0.5
+
+[node name="Track" type="Node3D"]
+script = ExtResource("1_track")
+curve = ExtResource("2_curve")
+rangees_objets = PackedFloat32Array(0.07, 0.33, 0.62)
+road_color = Color(0.78, 0.72, 0.55, 1)
+bordures = true
+couleur_bordure = Color(1, 0.55, 0.65, 1)
+couleur_bordure_bis = Color(1, 0.9, 0.4, 1)
+musique = 22
+
+[node name="CurveEditor" type="Path3D" parent="."]
+curve = ExtResource("2_curve")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.766, -0.492, 0.414, 0, 0.643, 0.766, -0.643, -0.587, 0.492, 0, 60, 0)
+light_color = Color(0.75, 0.95, 1, 1)
+light_energy = 0.9
+shadow_enabled = true
+
+[node name="Terrain" type="Node3D" parent="."]
+script = ExtResource("s_terrain")
+couleur = Color(0.86, 0.78, 0.55, 1)
+relief = 12
+ravin = 14
+graine = 31
+
+[node name="Ananas" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 27
+debut = 10
+longueur = 200
+decalage = 26
+espacement = 45
+symetrique = false
+graine = 1
+
+[node name="TetesDePierre" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 28
+debut = 30
+longueur = 180
+decalage = -24
+espacement = 50
+symetrique = false
+graine = 2
+
+[node name="AnanasDuRetour" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 27
+debut = 1590
+longueur = 40
+decalage = -30
+espacement = 0
+symetrique = false
+echelle = 1.4
+
+[node name="PlaqueDeLaVille" type="Node3D" parent="."]
+script = ExtResource("s_boost")
+debut = 120
+decalage = -3
+
+[node name="Coraux" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 29
+debut = 220
+longueur = 680
+decalage = 14
+espacement = 11
+graine = 3
+
+[node name="GrandsCoraux" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 29
+debut = 230
+longueur = 660
+decalage = 34
+espacement = 26
+echelle = 3.2
+graine = 4
+
+[node name="BancDeMeduses" type="Node3D" parent="."]
+script = ExtResource("s_spectacle")
+type = 3
+debut = 420
+longueur = 300
+nombre = 16
+hauteur = 7
+decalage = 4
+couleur = Color(1, 0.55, 0.9, 1)
+
+[node name="EauProfonde" type="Node3D" parent="."]
+script = ExtResource("s_apesanteur")
+debut = 635
+longueur = 80
+gravite = 0.45
+couleur = Color(0.3, 0.75, 1, 1)
+
+[node name="TremplinDuRecif" type="Node3D" parent="."]
+script = ExtResource("s_jump")
+debut = 645
+longueur = 4
+largeur = 18
+impulsion = 9
+
+[node name="Anneau1" type="Node3D" parent="."]
+script = ExtResource("s_anneau")
+debut = 662
+hauteur = 3.6
+rayon = 2.4
+couleur = Color(1, 0.6, 0.8, 1)
+
+[node name="Anneau2" type="Node3D" parent="."]
+script = ExtResource("s_anneau")
+debut = 680
+decalage = -2.5
+hauteur = 3.6
+rayon = 2.4
+couleur = Color(1, 0.9, 0.3, 1)
+
+[node name="RampeDeLaFaille" type="Node3D" parent="."]
+script = ExtResource("s_ramp")
+debut = 800
+longueur = 12
+largeur = 18
+hauteur = 1.8
+couleur = Color(1, 0.5, 0.6, 1)
+
+[node name="Faille" type="Node3D" parent="."]
+script = ExtResource("s_gap")
+debut = 812
+longueur = 14
+
+[node name="Algues" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 30
+debut = 910
+longueur = 690
+decalage = 13
+espacement = 9
+graine = 5
+
+[node name="GrandesAlgues" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 30
+debut = 915
+longueur = 680
+decalage = 26
+espacement = 14
+echelle = 2.4
+eviter_la_route = true
+graine = 6
+
+[node name="CourantDesAlgues" type="Node3D" parent="."]
+script = ExtResource("s_courant")
+style = 1
+debut = 940
+longueur = 100
+largeur = 18
+poussee_laterale = 5
+periode = 7
+
+[node name="PlaqueDesAlgues" type="Node3D" parent="."]
+script = ExtResource("s_boost")
+debut = 1060
+decalage = 3
+
+[node name="Bulles" type="Node3D" parent="."]
+script = ExtResource("s_spectacle")
+type = 4
+debut = 1100
+longueur = 480
+
+[node name="BullesDuRecif" type="Node3D" parent="."]
+script = ExtResource("s_spectacle")
+type = 4
+debut = 250
+longueur = 300
+decalage = 8
+
+[node name="PlaqueDesTentacules" type="Node3D" parent="."]
+script = ExtResource("s_boost")
+debut = 1385
+decalage = -2.5

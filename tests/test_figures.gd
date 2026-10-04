@@ -116,3 +116,15 @@ func test_les_roues_font_le_tonneau_avec_la_caisse() -> void:
 	assert_almost_eq(roues.transform * caisse.position, caisse.position, Vector3.ONE * 0.001)
 	visuels._update_lean(kart.motor, KartVisuals.DUREE_FIGURE)
 	assert_eq(roues.transform, Transform3D.IDENTITY, "à plat une fois la figure finie")
+
+
+## Sur un tremplin, l'image qui suit l'impulsion, le kart touche encore le sol :
+## le saut s'annulait aussitôt, et aucune figure n'était possible.
+func test_un_tremplin_ne_retombe_pas_avant_d_avoir_decolle() -> void:
+	kart.au_sol = true
+	assert_true(kart.sauter(9.0))
+	kart._figures(_commande(false), PAS)
+	kart.au_sol = true
+	assert_false(kart.a_atterri(), "il monte encore : il n'a pas atterri")
+	kart._vertical = -1.0
+	assert_true(kart.a_atterri(), "redescendu et au sol : là, oui")

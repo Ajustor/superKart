@@ -68,7 +68,7 @@ mesh = SubResource("Sol")
 [node name="NeigeDroite" type="Node3D" parent="."]
 script = ExtResource("s_offroad")
 debut = 0.0
-longueur = 869.0
+longueur = 1225.0
 decalage = 15.5
 largeur = 13.0
 sol = 3
@@ -76,14 +76,14 @@ sol = 3
 [node name="NeigeGauche" type="Node3D" parent="."]
 script = ExtResource("s_offroad")
 debut = 0.0
-longueur = 869.0
+longueur = 1225.0
 decalage = -15.5
 largeur = 13.0
 sol = 3
 
 [node name="BosseHaut" type="Node3D" parent="."]
 script = ExtResource("s_jump")
-debut = 292.0
+debut = 262.0
 longueur = 4.0
 largeur = 12.0
 impulsion = 9.0
@@ -91,7 +91,7 @@ duree_turbo = 0.7
 
 [node name="BosseMilieu" type="Node3D" parent="."]
 script = ExtResource("s_jump")
-debut = 398.0
+debut = 575.0
 longueur = 4.0
 largeur = 12.0
 impulsion = 10.0
@@ -99,7 +99,7 @@ duree_turbo = 0.8
 
 [node name="BosseCol" type="Node3D" parent="."]
 script = ExtResource("s_jump")
-debut = 640.0
+debut = 795.0
 longueur = 4.0
 largeur = 12.0
 impulsion = 8.0
@@ -109,7 +109,7 @@ duree_turbo = 0.6
 script = ExtResource("s_decor")
 objet = 6
 debut = 10.0
-longueur = 850.0
+longueur = 1200.0
 decalage = 20.0
 espacement = 18.0
 graine = 2
@@ -117,9 +117,9 @@ graine = 2
 [node name="SapinsVallee" type="Node3D" parent="."]
 script = ExtResource("s_decor")
 objet = 6
-debut = 430.0
-longueur = 150.0
-decalage = 34.0
+debut = 880.0
+longueur = 260.0
+decalage = -34.0
 espacement = 20.0
 echelle = 1.6
 hauteur = -2.0

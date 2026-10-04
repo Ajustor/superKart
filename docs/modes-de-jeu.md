@@ -54,15 +54,20 @@ Si c'est le joueur, il passe en pilote automatique comme à une arrivée.
 
 ## Grand Prix (`GrandPrix`)
 
-- Cinq coupes, définies dans `TrackCatalog.COUPES` :
+- Six coupes, définies dans `TrackCatalog.COUPES` :
   - Coupe Grand Air : Collines, Jardin, Plage, Mine ;
   - Coupe Bolide : Forteresse, Ville, Neiges, Ruban ;
   - Coupe Aventure : Canyon, Grotte, Usine, Temple ;
   - Coupe Tempête : Lune, Port, Château, Citadelle ;
   - Coupe Vertige : Grand Huit, Pic des Lacets, Échelle Céleste (2 tours
     chacun) et Cœur de la Terre (3 tours) — des circuits très longs. Une manche se court au nombre de tours de la
-    fiche du circuit (`TrackInfo.tours`).
-- Chaque manche se court en trois tours (sauf la coupe Vertige). Le barème de `RaceScoring`
+    fiche du circuit (`TrackInfo.tours`) ;
+  - Coupe Odyssée : Faille Temporelle (3 tours), Lagon des Bulles, Carnaval
+    de la Lune, Terres Carrées (2 tours chacun) — des courses longues qui
+    passent d'un monde à l'autre par des portails.
+- Chaque manche se court en trois tours (sauf les coupes Vertige et Odyssée,
+  et les circuits redessinés en deux tours : Boulevard Électrique, Ruines
+  d'Émeraude). Le barème de `RaceScoring`
   s'additionne d'une course à l'autre.
 - Ceux qui n'ont pas franchi la ligne quand le joueur passe à la suite
   prennent la place qu'ils occupaient.
@@ -109,9 +114,12 @@ tranche du peloton, une colonne par objet) :
 | Étoile | 7 s intouchable, plus rapide, l'herbe ne freine plus ; les karts percutés partent en tête-à-queue |
 | Pièces | +2 pièces (10 au plus) ; chacune donne +1 % de vitesse de pointe ; un choc ou une remise en piste en coûte 3 |
 
-En tête surtout des bananes, fausses boîtes et pièces ; en queue des
-carapaces rouges, triples champignons, étoiles, et les rares carapaces
-bleues et éclairs.
+Ce que donne une boîte dépend de la place :
+- **En tête** : surtout des bananes, des fausses boîtes et des pièces, et
+  jamais de champignon. Le premier n'a pas à creuser l'écart.
+- **En queue** : des champignons en nombre, à peu près un objet sur deux
+  pour le dernier (champignon ou triple champignon). S'y ajoutent des
+  carapaces rouges, des étoiles, et les rares carapaces bleues et éclairs.
 
 En réseau, l'hôte décide de tout, comme pour les autres objets ; les effets
 sur un kart (étoile, pièces, éclair) sont appliqués par la machine qui le

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TrackInfo" format=3]
+
+[ext_resource type="Script" path="res://scripts/race/track_info.gd" id="1_info"]
+
+[resource]
+script = ExtResource("1_info")
+id = "terres_cubiques"
+nom = "Terres Carrées"
+description = "Un monde fait de cubes. On quitte la prairie par un portail d'obsidienne vers le monde du dessous et ses ponts sur la lave, on file par un autre vers une île qui flotte au bout du monde, où tourne un dragon, puis on plonge vers une cité engloutie dans le noir — et son gardien aveugle qui arpente la route."
+chemin_scene = "res://scenes/tracks/terres_cubiques.tscn"
+tours = 2

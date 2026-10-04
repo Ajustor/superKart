@@ -70,7 +70,7 @@ mesh = SubResource("Sol")
 
 [node name="RampeTravaux" type="Node3D" parent="."]
 script = ExtResource("s_ramp")
-debut = 550.0
+debut = 800.0
 longueur = 12.0
 largeur = 18.0
 hauteur = 1.8
@@ -78,14 +78,14 @@ couleur = Color(1, 0.6, 0.1, 1)
 
 [node name="Travaux" type="Node3D" parent="."]
 script = ExtResource("s_gap")
-debut = 562.0
+debut = 812.0
 longueur = 14.0
 
 [node name="Lampadaires" type="Node3D" parent="."]
 script = ExtResource("s_decor")
 objet = 7
 debut = 0.0
-longueur = 740.0
+longueur = 1482.0
 decalage = 12.0
 espacement = 25.0
 graine = 1
@@ -94,7 +94,7 @@ graine = 1
 script = ExtResource("s_decor")
 objet = 9
 debut = 0.0
-longueur = 740.0
+longueur = 1482.0
 decalage = 26.0
 espacement = 22.0
 graine = 3
@@ -103,7 +103,7 @@ graine = 3
 script = ExtResource("s_decor")
 objet = 9
 debut = 10.0
-longueur = 730.0
+longueur = 1472.0
 decalage = 48.0
 espacement = 30.0
 echelle = 1.6
