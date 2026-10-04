@@ -14,7 +14,8 @@ extends RefCounted
 ## dans un fil à part, et chaque boucle n'est composée qu'une fois par
 ## partie (cache).
 
-enum Style { COLLINES, PLAGE, FORTERESSE, CIEL, JARDIN, MINE, VILLE, NEIGE, CANYON, USINE, ESPACE, HANTE, GLACE, JUNGLE, PIRATE, ORAGE, ABYSSES, ASCENSION, MANEGE, MONTAGNE, MENU }
+enum Style { COLLINES, PLAGE, FORTERESSE, CIEL, JARDIN, MINE, VILLE, NEIGE, CANYON, USINE, ESPACE, HANTE, GLACE, JUNGLE, PIRATE, ORAGE, ABYSSES, ASCENSION, MANEGE, MONTAGNE, MENU,
+	TEMPS, RECIF, LUNE, CUBES }
 
 const FREQUENCE := 16000
 const MESURES := 8
@@ -125,6 +126,31 @@ const STYLES := {
 		tempo = 104.0, tonique = 62, gamme = [0, 2, 4, 5, 7, 9, 11],
 		grille = [0, 5, 3, 4], basse = [1, 0, 0, 1, 0, 0, 1, 0], arpege = 12, graine = 64,
 		batterie = 0.45, charleston = false,
+	},
+	# Le voyage dans le temps : du rock des années cinquante, majeur, rapide,
+	# une basse qui marche sur les douze mesures du blues (I, IV, V).
+	Style.TEMPS: {
+		tempo = 166.0, tonique = 57, gamme = [0, 2, 4, 5, 7, 9, 10],
+		grille = [0, 3, 4, 0], basse = [1, 1, 1, 1, 1, 1, 1, 1], arpege = 12, graine = 85,
+	},
+	# Sous la mer : une ritournelle hawaïenne, pentatonique majeure, qui
+	# se balance comme une vague.
+	Style.RECIF: {
+		tempo = 112.0, tonique = 64, gamme = [0, 2, 4, 7, 9],
+		grille = [0, 3, 4, 3], basse = [1, 0, 0, 1, 0, 1, 0, 0], arpege = 24, graine = 58,
+	},
+	# La lune qui tombe : mineur harmonique, lent et inquiet, sans charleston.
+	Style.LUNE: {
+		tempo = 96.0, tonique = 50, gamme = [0, 2, 3, 5, 7, 8, 11],
+		grille = [0, 5, 1, 4], basse = [1, 0, 0, 0, 1, 0, 0, 0], arpege = 12, graine = 3,
+		batterie = 0.6, charleston = false,
+	},
+	# Le monde en cubes : un piano calme et rêveur, lydien, qui laisse de la
+	# place au silence.
+	Style.CUBES: {
+		tempo = 100.0, tonique = 60, gamme = [0, 2, 4, 6, 7, 9, 11],
+		grille = [0, 4, 5, 3], basse = [1, 0, 0, 0, 0, 0, 1, 0], arpege = 24, graine = 16,
+		batterie = 0.5,
 	},
 }
 

@@ -30,6 +30,10 @@ var _vitesse_avant: float = 0.0
 var _en_l_air: bool = false
 ## Amplitude de la secousse, en mètres ; retombe d'elle-même.
 var secousse: float = 0.0
+## De 0 à 1 : la traversée d'un portail (TrackPortail). Le champ s'ouvre
+## pendant que la caméra se rapproche du kart, l'effet « vertigo » du
+## cinéma : le kart garde sa taille à l'image, le décor s'étire à l'infini.
+var vortex: float = 0.0
 
 ## Faux jusqu'à la première image : la caméra se pose alors directement derrière
 ## le kart. Sans ça elle partait de l'origine du monde et traversait le décor
@@ -62,6 +66,11 @@ func _ready() -> void:
 
 ## Passe derrière un autre kart, d'un coup (la course du menu, voir
 ## CourseDeFond).
+## Le kart suivi.
+func cible() -> Kart:
+	return _kart
+
+
 func suivre(kart: Kart) -> void:
 	_kart = kart
 	_placee = false
@@ -76,7 +85,8 @@ func _physics_process(delta: float) -> void:
 		return
 	var forward := Vector3(sin(motor.velocity_dir), 0.0, -cos(motor.velocity_dir))
 
-	var desired := _kart.global_position - forward * distance + Vector3.UP * height
+	var recul := 1.0 - 0.6 * vortex
+	var desired := _kart.global_position - forward * distance * recul + Vector3.UP * height * recul
 	# Un suivi à ressort : la caméra se laisse distancer à l'accélération.
 	if _placee:
 		global_position = global_position.lerp(desired, 1.0 - exp(-follow_stiffness * delta))
@@ -94,7 +104,7 @@ func _physics_process(delta: float) -> void:
 	var ratio := clampf(motor.speed / ceiling, 0.0, 1.0)
 	var turbo := 1.0 if motor.boost_timer > 0.0 else 0.0
 	_fov_turbo = lerpf(_fov_turbo, turbo, 1.0 - exp(-8.0 * delta))
-	fov = lerpf(fov_min, fov_max, ratio) + fov_turbo * _fov_turbo
+	fov = lerpf(fov_min, fov_max, ratio) + fov_turbo * _fov_turbo + 55.0 * vortex
 
 	_secouer(motor, delta)
 

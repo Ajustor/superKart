@@ -119,6 +119,14 @@ var track_curve: TrackCurve
 ## fois : les marteaux battent partout au même rythme.
 var horloge: float = 0.0
 
+## La course vue du circuit, tenue à jour par la session : la distance
+## parcourue depuis le départ par le premier et par le dernier encore en
+## course, et le nombre de tours. Les portails s'ouvrent et se ferment
+## d'après elles ; la lune d'un spectacle descend avec l'avancement.
+var tete_total: float = 0.0
+var queue_total: float = 0.0
+var tours_course: int = 3
+
 var _elements: Array[TrackFeature] = []
 var _elements_a_jour := false
 
@@ -243,6 +251,55 @@ func _reconstruire() -> void:
 func _physics_process(delta: float) -> void:
 	if not Engine.is_editor_hint():
 		horloge += delta
+
+
+## Où en est la course, de 0 (départ) à 1 (le premier franchit l'arrivée).
+func avancement() -> float:
+	var total := track_curve.length * float(maxi(tours_course, 1)) if track_curve != null else 0.0
+	return clampf(tete_total / total, 0.0, 1.0) if total > 0.0 else 0.0
+
+
+## Les portails du circuit, dans l'ordre du tracé.
+func portails() -> Array[TrackPortail]:
+	var liste: Array[TrackPortail] = []
+	for element in elements():
+		if element is TrackPortail:
+			liste.append(element)
+	liste.sort_custom(func(a: TrackPortail, b: TrackPortail) -> bool: return a.debut < b.debut)
+	return liste
+
+
+## Le ciel et la lumière à cette distance : ceux du dernier portail franchi,
+## en faisant le tour (avant le premier portail, c'est le dernier qui vaut).
+## Null : ceux du circuit.
+func ambiance_en(distance: float) -> Environment:
+	var liste := portails()
+	if liste.is_empty():
+		return null
+	var choisi := liste[liste.size() - 1]
+	for portail in liste:
+		if portail.debut <= distance:
+			choisi = portail
+	return choisi.ambiance
+
+
+## La caméra qui suit un kart, s'il y en a une, voit le monde de l'autre
+## côté du portail, et le couloir déformer sa perspective (ChaseCamera.vortex).
+func _process(_delta: float) -> void:
+	if Engine.is_editor_hint() or track_curve == null:
+		return
+	var liste := portails()
+	if liste.is_empty():
+		return
+	var camera := get_viewport().get_camera_3d() as ChaseCamera
+	if camera == null or camera.cible() == null:
+		return
+	var d := track_curve.distance_of(camera.cible().global_position)
+	var effet := 0.0
+	for portail in liste:
+		effet = maxf(effet, portail.effet_a(d, track_curve.length))
+	camera.vortex = effet
+	camera.environment = ambiance_en(d)
 
 
 var _asphalte: StandardMaterial3D

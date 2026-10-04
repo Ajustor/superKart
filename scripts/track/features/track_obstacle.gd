@@ -22,6 +22,9 @@ enum Type {
 	BLOC,
 	## Un tonneau qui roule d'un bord à l'autre.
 	TONNEAU,
+	## Le gardien d'une cité engloutie : une grande créature aveugle qui
+	## arpente la route d'un bord à l'autre, lentement, le torse qui palpite.
+	GARDIEN,
 }
 
 @export var type: Type = Type.PENDULE:
@@ -58,6 +61,7 @@ const TETE := {
 	Type.PISTON: Vector3(5.0, 1.6, 4.0),
 	Type.BLOC: Vector3(3.0, 2.2, 2.2),
 	Type.TONNEAU: Vector3(2.2, 2.2, 2.2),
+	Type.GARDIEN: Vector3(3.0, 5.2, 1.8),
 }
 ## Le pilon, relevé puis au sol, prend son élan sur ces fractions du cycle.
 const PISTON_CHUTE := 0.55
@@ -112,6 +116,12 @@ func pose_de_la_tete(horloge: float) -> Vector3:
 			elif t >= PISTON_REMONTE:
 				y = lerpf(bas, haut, (t - PISTON_REMONTE) / (1.0 - PISTON_REMONTE))
 			return Vector3(decalage, y, 0.0)
+		Type.GARDIEN:
+			# Il marche : un pas qui balance, et il s'arrête un instant à chaque
+			# bord avant de repartir.
+			var x := amplitude * sin(t * TAU) * sens
+			var pas := 0.15 * absf(sin(t * TAU * 6.0))
+			return Vector3(decalage + x, demi + 0.05 + pas, 0.08 * sin(t * TAU * 6.0))
 		_:
 			var x := amplitude * sin(t * TAU) * sens
 			# Un tonneau roule : il tourne d'autant qu'il avance.
@@ -146,7 +156,9 @@ func _construire(c: TrackCurve, racine: Node3D) -> void:
 	sombre.roughness = 0.7
 
 	_tete = MeshInstance3D.new()
-	if type == Type.TONNEAU:
+	if type == Type.GARDIEN:
+		_habiller_le_gardien(taille)
+	elif type == Type.TONNEAU:
 		var futs := CylinderMesh.new()
 		futs.top_radius = taille.y * 0.5
 		futs.bottom_radius = taille.y * 0.5
@@ -184,6 +196,8 @@ func _construire(c: TrackCurve, racine: Node3D) -> void:
 			fut.transform = Transform3D(repere, TrackFeature.point(c, d, decalage, hauteur + taille.y * 0.5 + 1.0))
 			racine.add_child(fut)
 			_portique(c, d, demi, hauteur + taille.y * 0.5 + 2.0, sombre, racine)
+		Type.GARDIEN:
+			pass
 		_:
 			# Des glissières sur les deux rives, d'où part le bloc.
 			for cote in [-1.0, 1.0]:
@@ -207,6 +221,62 @@ func _construire(c: TrackCurve, racine: Node3D) -> void:
 		_zone.add_child(forme)
 		racine.add_child(_zone)
 	_placer(0.0)
+
+
+## Le gardien : un corps sombre, une tête sans yeux couronnée de deux cornes,
+## et au milieu du torse une lueur qui bat comme un cœur.
+func _habiller_le_gardien(taille: Vector3) -> void:
+	var corps := BoxMesh.new()
+	corps.size = Vector3(taille.x, taille.y * 0.62, taille.z)
+	_tete.mesh = corps
+	var peau := StandardMaterial3D.new()
+	peau.albedo_color = Color(0.05, 0.17, 0.2)
+	peau.roughness = 0.9
+	_tete.material_override = peau
+	var lueur := StandardMaterial3D.new()
+	lueur.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	lueur.albedo_color = Color(0.3, 0.95, 1.0)
+	var tete := MeshInstance3D.new()
+	var boite := BoxMesh.new()
+	boite.size = Vector3(taille.x * 0.8, taille.y * 0.3, taille.z * 0.9)
+	tete.mesh = boite
+	tete.material_override = peau
+	tete.position = Vector3(0, taille.y * 0.46, 0)
+	_tete.add_child(tete)
+	for cote in [-1.0, 1.0]:
+		var corne := MeshInstance3D.new()
+		var cone := CylinderMesh.new()
+		cone.bottom_radius = 0.35
+		cone.top_radius = 0.05
+		cone.height = 1.8
+		corne.mesh = cone
+		corne.material_override = lueur
+		corne.position = Vector3(cote * taille.x * 0.42, taille.y * 0.7, 0)
+		corne.rotation_degrees = Vector3(0, 0, -cote * 25.0)
+		_tete.add_child(corne)
+		var bras := MeshInstance3D.new()
+		var b := BoxMesh.new()
+		b.size = Vector3(0.6, taille.y * 0.55, 0.6)
+		bras.mesh = b
+		bras.material_override = peau
+		bras.position = Vector3(cote * (taille.x * 0.5 + 0.35), -taille.y * 0.05, 0)
+		_tete.add_child(bras)
+		var jambe := MeshInstance3D.new()
+		var j := BoxMesh.new()
+		j.size = Vector3(0.8, taille.y * 0.3, 0.8)
+		jambe.mesh = j
+		jambe.material_override = peau
+		jambe.position = Vector3(cote * taille.x * 0.25, -taille.y * 0.42, 0)
+		_tete.add_child(jambe)
+	var coeur := MeshInstance3D.new()
+	coeur.name = "Coeur"
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.5
+	sphere.height = 1.0
+	coeur.mesh = sphere
+	coeur.material_override = lueur
+	coeur.position = Vector3(0, taille.y * 0.1, -taille.z * 0.5)
+	_tete.add_child(coeur)
 
 
 ## Deux piliers et une traverse au-dessus de la route.
@@ -257,6 +327,10 @@ func _placer(horloge: float) -> void:
 		roulis = roulis * Basis(Vector3.RIGHT, PI * 0.5)
 	var pose_tete := Transform3D(repere * roulis, centre)
 	_tete.global_transform = pose_tete
+	if type == Type.GARDIEN:
+		var coeur := _tete.get_node_or_null("Coeur") as Node3D
+		if coeur != null:
+			coeur.scale = Vector3.ONE * (1.0 + 0.35 * maxf(sin(horloge * 5.0), 0.0))
 	if _zone != null:
 		_zone.global_transform = pose_tete
 	if _bras != null:

@@ -20,7 +20,8 @@ extends TrackFeature
 
 enum Objet { PALMIER, PHARE, PILIER_DE_FEU, ETOILE, CHAMPIGNON, ROCHER, SAPIN, LAMPADAIRE, CRISTAL, IMMEUBLE,
 	ARBRE, BOTTE_DE_FOIN, MOULIN, BUISSON, CACTUS, STALAGMITE, TOTEM, TONNEAU, CITROUILLE, ENGRENAGE,
-	ANTENNE, FANTOME, NUAGE, PYLONE }
+	ANTENNE, FANTOME, NUAGE, PYLONE, TOUR_HORLOGE, MAISON, SALOON, ANANAS, TETE_DE_PIERRE, CORAIL,
+	ALGUE, MASQUE, ARBRE_CUBE, BLOC, PILIER_OBSIDIENNE, SCULK, CADRE_OBSIDIENNE, LANTERNE }
 
 ## Ce qui flotte : on passe dessous ou au travers, sans collision, et sa
 ## hauteur varie d'un objet à l'autre.
@@ -244,6 +245,34 @@ static func forme_de(quoi: Objet) -> Dictionary:
 			return {type = "cylindre", rayon = 0.6, hauteur = 4.0, centre = Vector3(0.0, 2.0, 0.0)}
 		Objet.ANTENNE:
 			return {type = "cylindre", rayon = 0.9, hauteur = 3.0, centre = Vector3(0.0, 1.5, 0.0)}
+		Objet.TOUR_HORLOGE:
+			return {type = "boite", taille = Vector3(10.0, 12.0, 10.0), centre = Vector3(0.0, 6.0, 0.0)}
+		Objet.MAISON:
+			return {type = "boite", taille = Vector3(8.0, 4.0, 7.0), centre = Vector3(0.0, 2.0, 0.0)}
+		Objet.SALOON:
+			return {type = "boite", taille = Vector3(9.0, 5.0, 6.0), centre = Vector3(0.0, 2.5, 0.0)}
+		Objet.ANANAS:
+			return {type = "cylindre", rayon = 3.0, hauteur = 5.0, centre = Vector3(0.0, 2.5, 0.0)}
+		Objet.TETE_DE_PIERRE:
+			return {type = "boite", taille = Vector3(3.2, 6.0, 3.2), centre = Vector3(0.0, 3.0, 0.0)}
+		Objet.CORAIL:
+			return {type = "cylindre", rayon = 0.8, hauteur = 2.0, centre = Vector3(0.0, 1.0, 0.0)}
+		Objet.ALGUE:
+			return {type = "cylindre", rayon = 0.3, hauteur = 3.0, centre = Vector3(0.0, 1.5, 0.0)}
+		Objet.MASQUE:
+			return {type = "cylindre", rayon = 0.4, hauteur = 6.0, centre = Vector3(0.0, 3.0, 0.0)}
+		Objet.ARBRE_CUBE:
+			return {type = "boite", taille = Vector3(1.0, 4.0, 1.0), centre = Vector3(0.0, 2.0, 0.0)}
+		Objet.BLOC:
+			return {type = "boite", taille = Vector3(2.0, 2.0, 2.0), centre = Vector3(0.0, 1.0, 0.0)}
+		Objet.PILIER_OBSIDIENNE:
+			return {type = "boite", taille = Vector3(4.0, 30.0, 4.0), centre = Vector3(0.0, 15.0, 0.0)}
+		Objet.SCULK:
+			return {type = "boite", taille = Vector3(1.6, 1.2, 1.6), centre = Vector3(0.0, 0.6, 0.0)}
+		Objet.CADRE_OBSIDIENNE:
+			return {type = "boite", taille = Vector3(5.0, 6.0, 1.2), centre = Vector3(0.0, 3.0, 0.0)}
+		Objet.LANTERNE:
+			return {type = "cylindre", rayon = 0.2, hauteur = 4.0, centre = Vector3(0.0, 2.0, 0.0)}
 		Objet.PYLONE:
 			# Il pend sous la route : personne ne l'atteint, mais il se touche.
 			return {type = "cylindre", rayon = 0.6, hauteur = 60.0, centre = Vector3(0.0, -30.3, 0.0)}
@@ -311,6 +340,34 @@ static func maillage_de(quoi: Objet) -> ArrayMesh:
 			_nuage(mat)
 		Objet.PYLONE:
 			_pylone(mat)
+		Objet.TOUR_HORLOGE:
+			_tour_horloge(mat, brille)
+		Objet.MAISON:
+			_maison(mat, brille)
+		Objet.SALOON:
+			_saloon(mat, brille)
+		Objet.ANANAS:
+			_ananas(mat, brille)
+		Objet.TETE_DE_PIERRE:
+			_tete_de_pierre(mat)
+		Objet.CORAIL:
+			_corail(mat)
+		Objet.ALGUE:
+			_algue(mat)
+		Objet.MASQUE:
+			_masque(mat, brille)
+		Objet.ARBRE_CUBE:
+			_arbre_cube(mat)
+		Objet.BLOC:
+			_bloc(mat)
+		Objet.PILIER_OBSIDIENNE:
+			_pilier_obsidienne(mat, brille)
+		Objet.SCULK:
+			_sculk(mat, brille)
+		Objet.CADRE_OBSIDIENNE:
+			_cadre_obsidienne(mat, brille)
+		Objet.LANTERNE:
+			_lanterne(mat, brille)
 	var maillage := ArrayMesh.new()
 	if not mat.vide():
 		mat.dans(maillage, _materiau(false))
@@ -590,6 +647,158 @@ static func _pylone(m: _Assemblage) -> void:
 		m.cylindre(haut + Vector3.DOWN * 5.0, haut, 0.6, 0.6,
 			Color(0.85, 0.15, 0.15) if i % 2 == 0 else Color(0.95, 0.95, 0.95), 8)
 	m.pave(Vector3(0, -0.25, 0), Vector3(1.6, 0.3, 1.6), Color(0.3, 0.3, 0.33))
+
+
+## La tour de l'horloge du palais de justice : un bâtiment à colonnes, une
+## tour carrée, quatre cadrans qui luisent et un toit en pointe.
+static func _tour_horloge(m: _Assemblage, b: _Assemblage) -> void:
+	var pierre := Color(0.85, 0.8, 0.7)
+	m.pave(Vector3(0, 5.0, 0), Vector3(10.0, 10.0, 10.0), pierre)
+	m.pave(Vector3(0, 10.4, 0), Vector3(10.8, 0.8, 10.8), Color(0.7, 0.66, 0.58))
+	for x in [-3.6, -1.2, 1.2, 3.6]:
+		m.cylindre(Vector3(x, 0, -5.4), Vector3(x, 9.0, -5.4), 0.45, 0.4, Color(0.95, 0.93, 0.88), 8)
+	m.pave(Vector3(0, 16.0, 0), Vector3(5.0, 10.0, 5.0), pierre)
+	for face in 4:
+		var dir := Vector3.FORWARD.rotated(Vector3.UP, face * PI * 0.5)
+		b.cylindre(Vector3(0, 17.5, 0) + dir * 2.5, Vector3(0, 17.5, 0) + dir * 2.65, 1.8, 1.8, Color(1.0, 0.97, 0.85), 16)
+		m.cylindre(Vector3(0, 17.5, 0) + dir * 2.66, Vector3(0, 18.9, 0) + dir * 2.66, 0.12, 0.08, Color(0.1, 0.1, 0.1), 4)
+		m.cylindre(Vector3(0, 17.5, 0) + dir * 2.66, Vector3(0, 17.5, 0) + dir * 2.66 + dir.cross(Vector3.UP) * 1.0, 0.1, 0.06, Color(0.1, 0.1, 0.1), 4)
+	m.cone(Vector3(0, 21.0, 0), 3.6, 4.5, Color(0.35, 0.45, 0.4), 4)
+
+
+## Une maison des années cinquante : murs pastel, toit en pointe, fenêtres
+## allumées.
+static func _maison(m: _Assemblage, b: _Assemblage) -> void:
+	m.pave(Vector3(0, 2.0, 0), Vector3(8.0, 4.0, 7.0), Color(0.95, 0.85, 0.75))
+	m.cone(Vector3(0, 4.0, 0), 6.2, 3.0, Color(0.55, 0.25, 0.2), 4)
+	m.pave(Vector3(0, 1.2, -3.52), Vector3(1.2, 2.4, 0.05), Color(0.4, 0.25, 0.15))
+	for x in [-2.6, 2.6]:
+		b.pave(Vector3(x, 2.4, -3.52), Vector3(1.4, 1.1, 0.05), Color(1.0, 0.85, 0.5))
+
+
+## Un saloon du Far West : façade de planches surmontée d'un fronton,
+## auvent sur poteaux et lanterne.
+static func _saloon(m: _Assemblage, b: _Assemblage) -> void:
+	var bois := Color(0.55, 0.35, 0.18)
+	m.pave(Vector3(0, 2.5, 0), Vector3(9.0, 5.0, 6.0), bois)
+	m.pave(Vector3(0, 6.0, -2.9), Vector3(9.0, 2.2, 0.3), bois.darkened(0.15))
+	m.pave(Vector3(0, 3.4, -4.2), Vector3(9.0, 0.25, 2.5), bois.darkened(0.3))
+	for x in [-4.2, -1.4, 1.4, 4.2]:
+		m.cylindre(Vector3(x, 0, -5.3), Vector3(x, 3.3, -5.3), 0.15, 0.15, bois.darkened(0.2), 6)
+	m.pave(Vector3(0, 6.0, -3.1), Vector3(5.0, 1.0, 0.1), Color(0.9, 0.85, 0.6))
+	b.boule(Vector3(2.5, 2.8, -3.2), 0.3, Color(1.0, 0.75, 0.3))
+
+
+## Une maison-ananas sous la mer : un fruit géant creusé d'une porte et de
+## hublots, ses feuilles pour toit.
+static func _ananas(m: _Assemblage, b: _Assemblage) -> void:
+	m.cylindre(Vector3.ZERO, Vector3(0, 5.0, 0), 3.0, 2.4, Color(0.95, 0.65, 0.15), 12)
+	m.dome(Vector3(0, 5.0, 0), 2.4, 1.2, Color(0.95, 0.65, 0.15))
+	for k in 12:
+		var a := TAU * float(k) / 12.0
+		for j in 3:
+			m.boule(Vector3(cos(a) * (2.95 - j * 0.2), 1.0 + j * 1.6, sin(a) * (2.95 - j * 0.2)), 0.25, Color(0.7, 0.45, 0.1))
+	for k in 7:
+		var a := TAU * float(k) / 7.0
+		var dehors := Vector3(cos(a), 0, sin(a))
+		m.feuille(Vector3(0, 5.8, 0), Vector3(0, 7.5, 0) + dehors * 1.2, Vector3(0, 8.3, 0) + dehors * 2.6,
+			dehors.cross(Vector3.UP) * 0.5, Color(0.2, 0.6, 0.2))
+	m.pave(Vector3(0, 1.0, -2.95), Vector3(1.2, 2.0, 0.2), Color(0.35, 0.3, 0.45))
+	for x in [-1.4, 1.4]:
+		b.cylindre(Vector3(x, 3.3, -2.6), Vector3(x, 3.3, -2.95), 0.5, 0.5, Color(0.6, 0.85, 1.0), 10)
+
+
+## Une maison taillée dans une tête de pierre : front lourd, long nez.
+static func _tete_de_pierre(m: _Assemblage) -> void:
+	var pierre := Color(0.45, 0.55, 0.65)
+	m.pave(Vector3(0, 3.0, 0), Vector3(3.2, 6.0, 3.2), pierre)
+	m.pave(Vector3(0, 4.4, -1.75), Vector3(2.8, 0.6, 0.4), pierre.darkened(0.2))
+	m.pave(Vector3(0, 3.2, -2.0), Vector3(0.8, 2.2, 0.9), pierre.lightened(0.05))
+	m.pave(Vector3(0, 1.3, -1.65), Vector3(1.6, 0.4, 0.2), pierre.darkened(0.35))
+
+
+## Une touffe de corail : des branches qui montent en s'écartant.
+static func _corail(m: _Assemblage) -> void:
+	var teintes := [Color(1.0, 0.45, 0.55), Color(1.0, 0.6, 0.3), Color(0.85, 0.35, 0.9)]
+	for k in 6:
+		var a := TAU * float(k) / 6.0
+		var bout := Vector3(cos(a) * 1.4, 2.0 + 0.6 * (k % 3), sin(a) * 1.4)
+		m.cylindre(Vector3.ZERO, bout, 0.3, 0.12, teintes[k % 3], 6)
+		m.boule(bout, 0.25, teintes[k % 3])
+
+
+## Une algue qui ondule : des tronçons décalés, de plus en plus fins.
+static func _algue(m: _Assemblage) -> void:
+	var bas := Vector3.ZERO
+	for k in 6:
+		var haut := Vector3(0.35 * sin(float(k) * 1.3), bas.y + 1.1, 0.25 * cos(float(k) * 1.1))
+		m.cylindre(bas, haut, 0.28 - k * 0.035, 0.24 - k * 0.035, Color(0.2, 0.55 + 0.05 * k, 0.3), 6)
+		bas = haut
+
+
+## Un masque géant au bout d'une perche : un cœur violet hérissé de pointes,
+## deux yeux qui luisent.
+static func _masque(m: _Assemblage, b: _Assemblage) -> void:
+	m.cylindre(Vector3.ZERO, Vector3(0, 6.0, 0), 0.2, 0.15, Color(0.35, 0.25, 0.15), 6)
+	var violet := Color(0.45, 0.15, 0.55)
+	m.boule(Vector3(-0.8, 7.0, 0), 1.2, violet)
+	m.boule(Vector3(0.8, 7.0, 0), 1.2, violet)
+	m.cone(Vector3(0, 6.6, 0), 1.4, -2.2, violet, 8)
+	for k in 8:
+		var a := PI * float(k) / 7.0
+		var pied := Vector3(cos(a) * 1.8, 7.0 + sin(a) * 1.4, 0)
+		m.cylindre(pied, pied + Vector3(cos(a), sin(a), 0) * 1.4, 0.25, 0.02, Color(0.95, 0.8, 0.3), 5)
+	for x in [-0.7, 0.7]:
+		b.boule(Vector3(x, 7.2, -1.05), 0.32, Color(1.0, 0.85, 0.2))
+
+
+## Un arbre en cubes : un tronc carré, un feuillage en deux pavés.
+static func _arbre_cube(m: _Assemblage) -> void:
+	m.pave(Vector3(0, 2.5, 0), Vector3(1.0, 5.0, 1.0), Color(0.45, 0.32, 0.18))
+	m.pave(Vector3(0, 5.5, 0), Vector3(5.0, 2.0, 5.0), Color(0.25, 0.55, 0.2))
+	m.pave(Vector3(0, 7.0, 0), Vector3(3.0, 1.0, 3.0), Color(0.28, 0.6, 0.22))
+
+
+## Un bloc de terre coiffé d'herbe.
+static func _bloc(m: _Assemblage) -> void:
+	m.pave(Vector3(0, 0.8, 0), Vector3(2.0, 1.6, 2.0), Color(0.5, 0.35, 0.2))
+	m.pave(Vector3(0, 1.8, 0), Vector3(2.02, 0.4, 2.02), Color(0.35, 0.65, 0.25))
+
+
+## Un pilier d'obsidienne de la dimension du néant, un cristal en flammes à
+## son sommet.
+static func _pilier_obsidienne(m: _Assemblage, b: _Assemblage) -> void:
+	m.pave(Vector3(0, 15.0, 0), Vector3(4.0, 30.0, 4.0), Color(0.1, 0.06, 0.16))
+	b.boule(Vector3(0, 31.5, 0), 1.2, Color(1.0, 0.55, 0.9))
+	b.cylindre(Vector3(0, 30.0, 0), Vector3(0, 33.0, 0), 0.08, 0.08, Color(1.0, 0.8, 1.0), 4)
+
+
+## Un amas de sculk : une plaque sombre, une bouche qui hurle cerclée d'os,
+## des points qui luisent.
+static func _sculk(m: _Assemblage, b: _Assemblage) -> void:
+	m.pave(Vector3(0, 0.1, 0), Vector3(3.2, 0.2, 3.2), Color(0.05, 0.1, 0.16))
+	m.pave(Vector3(0, 0.6, 0), Vector3(1.6, 1.0, 1.6), Color(0.08, 0.14, 0.2))
+	m.pave(Vector3(0, 1.15, 0), Vector3(1.7, 0.15, 1.7), Color(0.85, 0.85, 0.75))
+	for k in 6:
+		var a := float(k) * 1.9
+		b.boule(Vector3(cos(a) * 1.3, 0.25, sin(a) * 1.3), 0.12, Color(0.3, 0.95, 1.0))
+
+
+## Le cadre d'un portail vers le monde d'en bas : de l'obsidienne autour
+## d'un voile violet.
+static func _cadre_obsidienne(m: _Assemblage, b: _Assemblage) -> void:
+	var obsidienne := Color(0.1, 0.06, 0.16)
+	m.pave(Vector3(-2.0, 3.0, 0), Vector3(1.0, 6.0, 1.0), obsidienne)
+	m.pave(Vector3(2.0, 3.0, 0), Vector3(1.0, 6.0, 1.0), obsidienne)
+	m.pave(Vector3(0, 0.5, 0), Vector3(5.0, 1.0, 1.0), obsidienne)
+	m.pave(Vector3(0, 5.5, 0), Vector3(5.0, 1.0, 1.0), obsidienne)
+	b.pave(Vector3(0, 3.0, 0), Vector3(3.0, 4.0, 0.2), Color(0.65, 0.25, 1.0))
+
+
+## Une lanterne de fête au bout d'une perche.
+static func _lanterne(m: _Assemblage, b: _Assemblage) -> void:
+	m.cylindre(Vector3.ZERO, Vector3(0, 4.0, 0), 0.12, 0.1, Color(0.3, 0.2, 0.1), 6)
+	b.boule(Vector3(0, 4.3, 0), 0.5, Color(1.0, 0.55, 0.25))
 
 
 static func _rocher(m: _Assemblage) -> void:
