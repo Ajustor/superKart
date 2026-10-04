@@ -10,7 +10,7 @@ pose **sur le tracé**, comme enfant du nœud `Track`.
 |---|---|---|
 | `TrackWall` | un muret rouge et blanc qui suit le tracé : au bord gauche, au bord droit, aux deux, ou à un endroit libre | oui : le kart s'y arrête de face, glisse le long de biais ; les carapaces rebondissent |
 | `TrackRamp` | une vraie rampe en relief : le kart la monte et décolle au sommet avec l'élan qu'elle lui donne | oui |
-| `TrackGap` | un trou : la route n'est pas construite sur cette portion, on la franchit en sautant | — |
+| `TrackGap` | un trou : la route n'est pas construite sur cette portion, on la franchit en sautant. `chute_voulue` : un trou où l'on tombe exprès (portail à plat, boucle après l'arrivée d'une course linéaire), sans rampe ni bandes | — |
 | `TrackJump` | une zone de saut peinte : le kart qui passe dessus décolle d'une impulsion fixe, avec un turbo en option | non, c'est une zone |
 | `TrackOffroad` | une zone d'herbe, de sable ou de boue : on y roule, mais au ralenti | oui : elle crée du sol, même à côté de la route |
 | `TrackTunnel` | un passage sous terre : deux parois (des `TrackWall`), une voûte, un massif par-dessus (`montagne`), des lampes au plafond et deux portails. `marge`, `hauteur` et `fleche` élargissent la galerie en salle | les parois seulement |
@@ -19,7 +19,8 @@ pose **sur le tracé**, comme enfant du nœud `Track`.
 | `TrackApesanteur` | la gravité faiblit (`gravite`) : chaque saut dure plus longtemps. Une arche violette à chaque bout | non, c'est une zone |
 | `TrackAnneau` | un anneau d'or flottant à `hauteur` m : le traverser donne un turbo | non |
 | `TrackObstacle` | un obstacle mobile : marteau qui balance (`PENDULE`), pilon qui s'abat (`PISTON`), bloc ou tonneau qui va et vient (`BLOC`, `TONNEAU`), gardien qui arpente la route (`GARDIEN`). Le kart pris part en tête-à-queue | non : une zone qui fait tourner le kart |
-| `TrackPortail` | un tourbillon en travers de la route vers un autre monde : il s'ouvre devant le premier, se ferme derrière le dernier ; de l'autre côté, un autre ciel (`ambiance`) et d'autres décors (`decors`) | non |
+| `TrackPortail` | un passage vers un autre monde : de l'autre côté, un autre ciel (`ambiance`) et d'autres décors (`decors`). `mode` : `VORTEX`, un tourbillon qui s'ouvre devant le premier et se ferme derrière le dernier ; `CADRE`, un voile dans un cadre de blocs d'obsidienne, toujours ouvert ; `SOL`, un puits d'étoiles à plat sur un trou à `chute_voulue` : on tombe dedans et l'on ressort au bas du plongeon, sans rien perdre (`Kart.teleporter`) ; `SEUIL`, rien à voir, on change seulement de contrée. `nouveau_monde` à faux : le ciel change, les décors restent | non |
+| `TrackSol` | voir plus bas | non |
 | `TrackSpectacle` | une scène animée autour de la route : éclair, voitures volantes, train, méduses, bulles, lune, dragon | non |
 | `TrackSol` | un sol plat à `altitude` autour du circuit (prairie, banquise, dalle), percé là où la route passe dessous : une galerie qui plonge sous la surface ne le traverse pas. `portion` le limite aux abords d'une portion du tracé. Les décors posés à côté de la route s'y posent au lieu de flotter à hauteur de bitume | non : décoratif |
 | `TrackDecor` | une rangée de décor le long du tracé : palmiers, phare, piliers enflammés, étoiles, champignons géants, rochers. `espacement` 0 pose un objet seul | oui, sauf les étoiles : une forme simple au pied de chaque objet (tronc, pied de champignon, base d'immeuble) ; `solide` à faux pour qu'on la traverse. Un test vérifie qu'aucun décor solide ne mord sur la route |
@@ -187,8 +188,8 @@ Coupe Odyssée — des courses longues, à travers plusieurs mondes :
 |---|---|---|
 | Faille Temporelle | 2 073 m (3 tours) | trois époques : la grand-place des années cinquante et sa tour de l'horloge frappée par la foudre, une ville du futur (voie aérienne, voitures volantes, tremplin en apesanteur dans deux anneaux), le Far West (train à vapeur, saloons, ravin à sauter 1 312 à 1 326 m). Trois portails (466, 1 116, 1 650 m) |
 | Lagon des Bulles | 1 656 m (2 tours) | au fond de la mer, une méduse géante : la cloche festonnée du récif (méduses, tremplin en apesanteur, faille à sauter 812 à 826 m), puis les tentacules ondulants dans la forêt d'algues, son courant et ses bulles ; la ville des maisons-ananas au départ |
-| Carnaval de la Lune | 1 785 m (2 tours) | un trèfle à quatre feuilles autour de la tour de l'horloge, sous une lune qui descend vers elle de tour en tour : le marais, la montagne et son col verglacé (17 m, garde-fous dans les épingles), l'océan (vagues, phare, baie à sauter 1 248 à 1 262 m), le canyon hanté |
-| Terres Carrées | 2 261 m (2 tours) | un monde de cubes en quatre portails : la prairie ; le monde du dessous et ses ponts sur un lac de lave (trou à sauter 667 à 681 m) ; l'île du bout du monde, à 28 m au-dessus du vide, et son dragon ; la cité engloutie, sa grotte et son gardien (1 690 m) |
+| Carnaval de la Lune | 4 300 m, d'un seul tenant | une course linéaire, sans tours, en trois sections : le bourg de l'horloge et ses remparts, la plaine, la montagne enneigée et son col verglacé, la baie et son temple, le marais, le canyon et la spirale autour de la tour de pierre, un pont jusqu'au sommet de l'horloge — puis la bouche de la lune, et l'arrivée sur la lune, au pied du grand arbre. La lune descend vers la tour au fil de la course |
+| Terres Carrées | 2 424 m (2 tours) | la prairie ; un portail d'obsidienne toujours ouvert vers le monde du dessous et ses ponts sur la lave (trou à sauter 667 à 681 m) ; un puits d'étoiles à même le sol où l'on tombe (904 m), vers l'île du bout du monde au-dessus du vide et son dragon ; un second puits (1 356 m) vers la cité engloutie et son gardien (1 450 m), et la longue remontée dans la grotte jusqu'à la prairie |
 
 Les portails (`TrackPortail`) relient les mondes d'un circuit. Chacun
 s'ouvre quand le premier en approche à 90 m, et se referme quand le dernier
@@ -200,6 +201,15 @@ champ s'ouvre) — le couloir semble bien plus long qu'il ne l'est. De l'autre
 côté, le ciel est celui de `ambiance`, et seuls les nœuds de `decors` de ce
 portail se voient, jusqu'au portail suivant (`Track.montrer_le_monde_de`) :
 de la grand-place, on ne voit pas les tours du futur.
+
+Une course peut être linéaire, comme certaines de Mario Kart 8 : `Track.arrivee`
+est la distance du départ où elle finit, `Track.sections` découpe le parcours
+(le compteur affiche « SECTION 2/3 »). Le tracé reste une boucle, mais la
+suite de l'arrivée n'est pas courue (`Track.hors_course`) : un trou à
+`chute_voulue` la remplace jusqu'à la grille, sans route, hors de la carte et
+du relief. Un `TrackTerrain` ou un `TrackSol` à `portion` n'épouse qu'une
+partie du tracé : un pont à 50 m de haut ne soulève pas de crête sous lui,
+et la prairie de la lune ne recouvre pas Termina.
 
 Les spectacles (`TrackSpectacle`) s'animent autour de la route sans qu'on y
 touche : éclair, voitures volantes, train, méduses, bulles, lune qui descend

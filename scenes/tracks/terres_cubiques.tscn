@@ -4,7 +4,6 @@
 [ext_resource type="Script" path="res://scripts/track/track.gd" id="1_track"]
 [ext_resource type="Curve3D" path="res://resources/tracks/terres_cubiques_curve.tres" id="2_curve"]
 [ext_resource type="Script" path="res://scripts/track/features/track_anneau.gd" id="s_anneau"]
-[ext_resource type="Script" path="res://scripts/track/features/track_apesanteur.gd" id="s_apesanteur"]
 [ext_resource type="Script" path="res://scripts/track/features/track_boost.gd" id="s_boost"]
 [ext_resource type="Script" path="res://scripts/track/features/track_decor.gd" id="s_decor"]
 [ext_resource type="Script" path="res://scripts/track/features/track_gap.gd" id="s_gap"]
@@ -47,14 +46,6 @@ shading_mode = 0
 [sub_resource type="PlaneMesh" id="Plan0"]
 material = SubResource("Mat_plan0")
 size = Vector2(470, 220)
-
-[sub_resource type="StandardMaterial3D" id="Mat_plan1"]
-albedo_color = Color(0.1, 0.12, 0.14, 1)
-roughness = 1.0
-
-[sub_resource type="PlaneMesh" id="Plan1"]
-material = SubResource("Mat_plan1")
-size = Vector2(300, 110)
 
 [sub_resource type="ShaderMaterial" id="Ciel_dessous"]
 shader = ExtResource("sh_ciel")
@@ -101,10 +92,10 @@ background_mode = 2
 sky = SubResource("Sky_bout")
 ambient_light_source = 2
 ambient_light_color = Color(0.75, 0.6, 1, 1)
-ambient_light_energy = 0.7
+ambient_light_energy = 0.6
 fog_enabled = true
-fog_light_color = Color(0.08, 0.03, 0.12, 1)
-fog_density = 0.006
+fog_light_color = Color(0.05, 0.02, 0.08, 1)
+fog_density = 0.018
 glow_enabled = true
 glow_intensity = 0.7
 
@@ -137,12 +128,11 @@ glow_intensity = 0.9
 [node name="Track" type="Node3D"]
 script = ExtResource("1_track")
 curve = ExtResource("2_curve")
-rangees_objets = PackedFloat32Array(0.08, 0.34, 0.83)
+rangees_objets = PackedFloat32Array(0.08, 0.34, 0.5, 0.72, 0.9)
 road_color = Color(0.5, 0.5, 0.5, 1)
 bordures = true
 couleur_bordure = Color(0.45, 0.32, 0.2, 1)
 couleur_bordure_bis = Color(0.36, 0.62, 0.25, 1)
-altitude_du_liquide = -4
 musique = 24
 
 [node name="CurveEditor" type="Path3D" parent="."]
@@ -161,10 +151,6 @@ shadow_enabled = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, -4.5, -235)
 mesh = SubResource("Plan0")
 
-[node name="Ardoise" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 125, -0.35, 170)
-mesh = SubResource("Plan1")
-
 [node name="Prairie" type="Node3D" parent="."]
 script = ExtResource("s_sol")
 portion = true
@@ -177,8 +163,8 @@ couleur = Color(0.36, 0.62, 0.25, 1)
 [node name="PrairieDuRetour" type="Node3D" parent="."]
 script = ExtResource("s_sol")
 portion = true
-debut = 1770
-longueur = 491
+debut = 2040
+longueur = 384.3
 marge = 70
 altitude = -0.35
 couleur = Color(0.36, 0.62, 0.25, 1)
@@ -205,8 +191,8 @@ graine = 2
 [node name="ArbresCubesDuRetour" type="Node3D" parent="."]
 script = ExtResource("s_decor")
 objet = 32
-debut = 1810
-longueur = 330
+debut = 2080
+longueur = 210
 decalage = 18
 espacement = 16
 echelle = 1.4
@@ -215,8 +201,8 @@ graine = 3
 [node name="BlocsDuRetour" type="Node3D" parent="."]
 script = ExtResource("s_decor")
 objet = 33
-debut = 1810
-longueur = 330
+debut = 2080
+longueur = 210
 decalage = 14.5
 espacement = 13
 graine = 4
@@ -228,33 +214,24 @@ decalage = -3
 
 [node name="PlaqueDuRetour" type="Node3D" parent="."]
 script = ExtResource("s_boost")
-debut = 1980
+debut = 2150
 decalage = 3
 
 [node name="BarriereDuVirage" type="Node3D" parent="."]
 script = ExtResource("s_wall")
 cote = 2
-debut = 2145
+debut = 2300
 longueur = 95
 hauteur = 1
 couleur = Color(0.45, 0.32, 0.2, 1)
 couleur_bis = Color(0.36, 0.62, 0.25, 1)
 
-[node name="CadresDuDessous" type="Node3D" parent="."]
-script = ExtResource("s_decor")
-objet = 36
-debut = 318
-longueur = 1
-decalage = 17
-espacement = 0
-echelle = 1.6
-
 [node name="PortailDuDessous" type="Node3D" parent="."]
 script = ExtResource("s_portail")
+mode = 1
 debut = 330
-rayon = 8
-couleur_a = Color(0.55, 0.15, 1, 1)
-couleur_b = Color(0.85, 0.4, 1, 1)
+couleur_a = Color(0.3, 0.02, 0.6, 1)
+couleur_b = Color(0.65, 0.15, 0.95, 1)
 ambiance = SubResource("Env_dessous")
 decors = Array[NodePath]([NodePath("../PiliersDeFeu"), NodePath("../Roches"), NodePath("../LacDeLave")])
 
@@ -298,131 +275,134 @@ script = ExtResource("s_boost")
 debut = 520
 decalage = 0
 
-[node name="CadresDuBout" type="Node3D" parent="."]
-script = ExtResource("s_decor")
-objet = 36
-debut = 868
-longueur = 1
-decalage = 17
-espacement = 0
-echelle = 1.6
-
 [node name="PortailDuBout" type="Node3D" parent="."]
 script = ExtResource("s_portail")
-debut = 880
-rayon = 8
-couleur_a = Color(0.1, 0.5, 0.45, 1)
-couleur_b = Color(0.85, 0.95, 0.7, 1)
+mode = 2
+debut = 904
+longueur = 21
 ambiance = SubResource("Env_bout")
-decors = Array[NodePath]([NodePath("../PiliersDObsidienne"), NodePath("../Dragon")])
+decors = Array[NodePath]([NodePath("../IleDuBout"), NodePath("../PiliersDObsidienne"), NodePath("../Dragon")])
+
+[node name="PlongeonDuBout" type="Node3D" parent="."]
+script = ExtResource("s_gap")
+debut = 904
+longueur = 52
+chute_voulue = true
+
+[node name="IleDuBout" type="Node3D" parent="."]
+script = ExtResource("s_sol")
+portion = true
+debut = 950
+longueur = 405
+marge = 30
+altitude = -24.4
+maille = 4
+couleur = Color(0.72, 0.7, 0.45, 1)
 
 [node name="PiliersDObsidienne" type="Node3D" parent="."]
 script = ExtResource("s_decor")
 objet = 34
-debut = 930
-longueur = 390
-decalage = 34
-espacement = 40
-hauteur = -20
+debut = 960
+longueur = 380
+decalage = 22
+espacement = 45
 graine = 7
 
 [node name="Dragon" type="Node3D" parent="."]
 script = ExtResource("s_spectacle")
 type = 6
-debut = 1160
-decalage = 90
-hauteur = 30
+debut = 1150
+decalage = -60
+hauteur = 25
 rayon = 70
 periode = 18
 couleur = Color(0.12, 0.08, 0.15, 1)
 
-[node name="BoutDuMonde" type="Node3D" parent="."]
-script = ExtResource("s_apesanteur")
-debut = 1240
-longueur = 80
-gravite = 0.45
-couleur = Color(0.75, 0.55, 1, 1)
+[node name="PlaqueDuBout" type="Node3D" parent="."]
+script = ExtResource("s_boost")
+debut = 1050
+decalage = 0
 
 [node name="TremplinDuBout" type="Node3D" parent="."]
 script = ExtResource("s_jump")
-debut = 1250
+debut = 1200
 longueur = 4
 largeur = 18
 impulsion = 9
 
 [node name="Anneau1" type="Node3D" parent="."]
 script = ExtResource("s_anneau")
-debut = 1267
+debut = 1216
 hauteur = 3.6
 rayon = 2.4
 couleur = Color(0.8, 0.5, 1, 1)
 
-[node name="Anneau2" type="Node3D" parent="."]
-script = ExtResource("s_anneau")
-debut = 1285
-decalage = 2.5
-hauteur = 3.6
-rayon = 2.4
-couleur = Color(0.9, 0.95, 0.6, 1)
-
 [node name="PortailDeLAbime" type="Node3D" parent="."]
 script = ExtResource("s_portail")
-debut = 1345
-rayon = 8
-couleur_a = Color(0.05, 0.45, 0.55, 1)
-couleur_b = Color(0.2, 0.9, 0.95, 1)
+mode = 2
+debut = 1356
+longueur = 20
 ambiance = SubResource("Env_abime")
-decors = Array[NodePath]([NodePath("../Sculk"), NodePath("../Ardoise")])
+decors = Array[NodePath]([NodePath("../Sculk"), NodePath("../Grotte"), NodePath("../SolDeLaCiteDroite1404"), NodePath("../SolDeLaCiteGauche1404")])
 
-[node name="SolDeLaCiteDroite1400" type="Node3D" parent="."]
+[node name="PlongeonDeLAbime" type="Node3D" parent="."]
+script = ExtResource("s_gap")
+debut = 1356
+longueur = 48
+chute_voulue = true
+
+[node name="SolDeLaCiteDroite1404" type="Node3D" parent="."]
 script = ExtResource("s_offroad")
-debut = 1400
-longueur = 370
+debut = 1404
+longueur = 641
 decalage = 12.5
 largeur = 7
 sol = 2
 teinte = Color(0.07, 0.1, 0.12, 1)
 
-[node name="SolDeLaCiteGauche1400" type="Node3D" parent="."]
+[node name="SolDeLaCiteGauche1404" type="Node3D" parent="."]
 script = ExtResource("s_offroad")
-debut = 1400
-longueur = 370
+debut = 1404
+longueur = 641
 decalage = -12.5
 largeur = 7
 sol = 2
 teinte = Color(0.07, 0.1, 0.12, 1)
 
-[node name="Sculk" type="Node3D" parent="."]
-script = ExtResource("s_decor")
-objet = 35
-debut = 1400
-longueur = 370
-decalage = 12.5
-espacement = 9
-graine = 8
-
 [node name="Grotte" type="Node3D" parent="."]
 script = ExtResource("s_tunnel")
-debut = 1400
-longueur = 370
+debut = 1404
+longueur = 641
 marge = 7
 hauteur = 9
 couleur_roche = Color(0.12, 0.13, 0.16, 1)
 couleur_lampes = Color(0.2, 0.9, 0.95, 1)
 espacement_lampes = 14
 
+[node name="Sculk" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 35
+debut = 1410
+longueur = 620
+decalage = 12.5
+espacement = 9
+graine = 8
+
 [node name="Gardien" type="Node3D" parent="."]
 script = ExtResource("s_obstacle")
 type = 4
-debut = 1690
+debut = 1450
 periode = 9
 amplitude = 5.5
 couleur = Color(0.1, 0.18, 0.22, 1)
 
-[node name="PortailDuRetour" type="Node3D" parent="."]
+[node name="PlaqueDeLaCite" type="Node3D" parent="."]
+script = ExtResource("s_boost")
+debut = 1700
+decalage = -3
+
+[node name="Surface" type="Node3D" parent="."]
 script = ExtResource("s_portail")
-debut = 1785
-rayon = 8
-couleur_a = Color(0.55, 0.15, 1, 1)
-couleur_b = Color(0.4, 0.9, 0.5, 1)
-decors = Array[NodePath]([NodePath("../ArbresCubes"), NodePath("../Blocs"), NodePath("../ArbresCubesDuRetour"), NodePath("../BlocsDuRetour"), NodePath("../Prairie"), NodePath("../PrairieDuRetour"), NodePath("../CadresDuDessous")])
+mode = 3
+debut = 2045
+decors = Array[NodePath]([NodePath("../ArbresCubes"), NodePath("../Blocs"), NodePath("../ArbresCubesDuRetour"), NodePath("../BlocsDuRetour"), NodePath("../Prairie"), NodePath("../PrairieDuRetour")])

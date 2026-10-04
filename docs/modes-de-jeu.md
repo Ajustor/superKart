@@ -62,9 +62,10 @@ Si c'est le joueur, il passe en pilote automatique comme à une arrivée.
   - Coupe Vertige : Grand Huit, Pic des Lacets, Échelle Céleste (2 tours
     chacun) et Cœur de la Terre (3 tours) — des circuits très longs. Une manche se court au nombre de tours de la
     fiche du circuit (`TrackInfo.tours`) ;
-  - Coupe Odyssée : Faille Temporelle (3 tours), Lagon des Bulles, Carnaval
-    de la Lune, Terres Carrées (2 tours chacun) — des courses longues qui
-    passent d'un monde à l'autre par des portails.
+  - Coupe Odyssée : Faille Temporelle (3 tours), Lagon des Bulles et Terres
+    Carrées (2 tours), et Carnaval de la Lune, une course linéaire d'un seul
+    tenant, en trois sections, qui finit sur la lune — des courses longues
+    qui passent d'un monde à l'autre par des portails.
 - Chaque manche se court en trois tours (sauf les coupes Vertige et Odyssée,
   et les circuits redessinés en deux tours : Boulevard Électrique, Ruines
   d'Émeraude). Le barème de `RaceScoring`
