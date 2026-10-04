@@ -74,20 +74,33 @@ const CIRCUITS := {
 	# Un jardin de champignons géants : des bosses qui roulent, un S entre
 	# les chapeaux, et un champignon rebondissant au milieu du parcours.
 	"jardin_champignon": [
-		Vector3(0, 0, 0),
-		Vector3(90, 0, 0),
-		Vector3(140, 2, -30),
-		Vector3(150, 5, -90),
-		Vector3(110, 7, -130),
-		Vector3(60, 4, -110),
-		Vector3(15, 2, -140),
-		Vector3(-20, 0, -195),
-		Vector3(-80, 0, -205),
-		Vector3(-125, 3, -155),
-		Vector3(-105, 5, -100),
-		Vector3(-140, 3, -45),
-		Vector3(-105, 0, -5),
-		Vector3(-55, 0, 0),
+		# Un trèfle à trois feuilles vu du ciel : trois grands lobes qui
+		# ondulent entre les chapeaux, et trois resserrements au cœur du
+		# jardin, où les champignons font rebondir.
+		Vector3(104, 6, -60),
+		Vector3(59, 3, -59),
+		Vector3(34, 0, -59),
+		Vector3(22, 0, -80),
+		Vector3(0, 3, -120),
+		Vector3(-41, 6, -151),
+		Vector3(-86, 6, -149),
+		Vector3(-111, 3, -111),
+		Vector3(-104, 0, -60),
+		Vector3(-80, 0, -22),
+		Vector3(-68, 3, -0),
+		Vector3(-80, 6, 22),
+		Vector3(-104, 6, 60),
+		Vector3(-111, 3, 111),
+		Vector3(-86, 0, 149),
+		Vector3(-41, 0, 151),
+		Vector3(-0, 3, 120),
+		Vector3(22, 6, 80),
+		Vector3(34, 6, 59),
+		Vector3(59, 3, 59),
+		Vector3(104, 0, 60),
+		Vector3(151, 0, 41),
+		Vector3(172, 3, 0),
+		Vector3(151, 6, -41),
 	],
 	# Une mine : on descend dans les galeries entre des parois, on longe les
 	# cristaux au fond, on saute un gouffre et on remonte au jour.
