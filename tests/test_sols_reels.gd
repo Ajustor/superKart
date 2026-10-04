@@ -77,9 +77,9 @@ func _rouler(distance: float, lateral: float) -> void:
 
 func test_le_sol_porte_sur_les_bas_cotes() -> void:
 	var sol := _sol()
-	assert_true(sol.porte(_point(100.0, 14.0)), "à cinq mètres du bord")
-	assert_false(sol.porte(_point(100.0, 9.0 + Track.PORTEE_HORS_PISTE + 20.0)), "au loin, c'est du décor")
-	assert_false(sol.porte(_point(100.0, 14.0) - Vector3.UP * 5.0), "dessous, il ne porte pas")
+	assert_true(sol.porte(_point(100.0, 14.0), 100.0), "à cinq mètres du bord")
+	assert_false(sol.porte(_point(100.0, 9.0 + Track.PORTEE_HORS_PISTE + 20.0), 100.0), "au loin, c'est du décor")
+	assert_false(sol.porte(_point(100.0, 14.0) - Vector3.UP * 5.0, 100.0), "dessous, il ne porte pas")
 
 
 func test_seules_les_cases_du_bord_ont_une_collision() -> void:
@@ -103,8 +103,8 @@ func test_un_trou_de_la_route_perce_le_sol() -> void:
 	trou.longueur = 20.0
 	_poser(trou)
 	var sol := _sol()
-	assert_false(sol.porte(_point(110.0, 0.0)), "on tombe dans le trou, pas sur le sol")
-	assert_true(sol.porte(_point(200.0, 14.0)))
+	assert_false(sol.porte(_point(110.0, 0.0), 110.0), "on tombe dans le trou, pas sur le sol")
+	assert_true(sol.porte(_point(200.0, 14.0), 200.0))
 
 
 func test_un_sol_ne_porte_que_dans_son_monde() -> void:
@@ -116,16 +116,53 @@ func test_un_sol_ne_porte_que_dans_son_monde() -> void:
 	b.debut = 250.0
 	_poser(b)
 	var sol := _sol()
-	assert_true(sol.porte(_point(100.0, 14.0)), "au bord de la route de son monde")
-	assert_false(sol.porte(_point(380.0, 14.0)), "invisible dans l'autre monde : il n'y porte pas")
+	assert_true(sol.porte(_point(100.0, 14.0), 100.0), "au bord de la route de son monde")
+	assert_false(sol.porte(_point(380.0, 14.0), 380.0), "invisible dans l'autre monde : il n'y porte pas")
+
+
+func test_au_portail_chaque_sol_ne_porte_que_de_son_cote() -> void:
+	# Deux mondes, deux sols plats à des hauteurs différentes : celui d'après
+	# le portail, plus haut, ne doit pas faire plafond juste avant.
+	var a := TrackPortail.new()
+	a.debut = 10.0
+	a.decors = [NodePath("../Avant")]
+	_poser(a)
+	var b := TrackPortail.new()
+	b.debut = 250.0
+	b.decors = [NodePath("../Apres")]
+	_poser(b)
+	var avant := TrackSol.new()
+	avant.marge = 60.0
+	avant.altitude = -0.9
+	_poser(avant, "Avant")
+	var apres := TrackSol.new()
+	apres.marge = 60.0
+	_poser(apres, "Apres")
+	var juste_avant := _point(240.0, 14.0) - Vector3.UP * 0.5
+	assert_false(apres.porte(juste_avant, 240.0), "le sol d'après ne porte pas avant le portail")
+	assert_true(avant.porte(juste_avant, 240.0))
+	assert_true(apres.porte(_point(262.0, 14.0), 262.0))
+
+
+func test_le_sol_s_abaisse_sous_le_bord_bas_d_un_virage_releve() -> void:
+	var c := track.track_curve.curve
+	for i in c.point_count:
+		c.set_point_tilt(i, deg_to_rad(10.0))
+	track.track_curve = TrackCurve.new(c, 9.0)
+	var sol := _sol()
+	var cc := track.track_curve
+	for lateral: float in [-12.0, -8.0, -4.0, 4.0, 8.0, 12.0]:
+		var ici := cc.position_at(100.0) + cc.right_at(100.0) * lateral
+		var route := cc.position_at(100.0).y + cc.right_at(100.0).y * clampf(lateral, -9.0, 9.0)
+		assert_lt(sol.hauteur_en(ici.x, ici.z), route, "à %.0f m de l'axe, le sol reste sous la route" % lateral)
 
 
 func test_le_relief_porte_sur_les_bas_cotes() -> void:
 	var relief := TrackTerrain.new()
 	relief.marge = 80.0
 	_poser(relief, "Relief")
-	assert_true(relief.porte(_point(100.0, 14.0)))
-	assert_false(relief.porte(_point(100.0, 9.0 + Track.PORTEE_HORS_PISTE + 20.0)))
+	assert_true(relief.porte(_point(100.0, 14.0), 100.0))
+	assert_false(relief.porte(_point(100.0, 9.0 + Track.PORTEE_HORS_PISTE + 20.0), 100.0))
 	assert_not_null(relief.find_child("SolPorteur", true, false))
 
 
@@ -207,7 +244,7 @@ func test_un_sol_loin_sous_la_route_ne_la_borde_pas() -> void:
 	sol.marge = 60.0
 	sol.altitude = -3.0
 	_poser(sol, "Sol")
-	assert_false(sol.porte(_point(100.0, 14.0) - Vector3.UP * 3.0),
+	assert_false(sol.porte(_point(100.0, 14.0) - Vector3.UP * 3.0, 100.0),
 		"une route sur un talus : on ne remonterait pas, pas de bas-côté")
 
 

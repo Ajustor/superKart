@@ -45,6 +45,21 @@ enum Mode { VORTEX, CADRE, SOL, SEUIL }
 @export var couleur_a: Color = Color(0.3, 0.65, 1.0)
 @export var couleur_b: Color = Color(1.0, 0.45, 1.0)
 
+## Le puits d'un portail à plat (SOL) : son fond, la lueur qui y tourne, et
+## les pierres de son cadre. Par défaut, celui du bout du monde.
+@export var fond_du_puits: Color = Color(0.02, 0.05, 0.06):
+	set(valeur):
+		fond_du_puits = valeur
+		_modifie()
+@export var lueur_du_puits: Color = Color(0.25, 0.85, 0.75):
+	set(valeur):
+		lueur_du_puits = valeur
+		_modifie()
+@export var pierre_du_puits: Color = Color(0.78, 0.8, 0.62):
+	set(valeur):
+		pierre_du_puits = valeur
+		_modifie()
+
 ## Le ciel et la lumière de l'autre côté. Rien : on garde ceux du circuit.
 @export var ambiance: Environment
 
@@ -373,16 +388,18 @@ func _construire_le_puits(c: TrackCurve, racine: Node3D) -> void:
 	puits.mesh = plan
 	var m := ShaderMaterial.new()
 	m.shader = SHADER_SOL
+	m.set_shader_parameter("fond", fond_du_puits)
+	m.set_shader_parameter("lueur", lueur_du_puits)
 	puits.material_override = m
 	puits.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	puits.position = Vector3(0.0, 0.02, -longueur * 0.5)
 	repere.add_child(puits)
 	var pierre := StandardMaterial3D.new()
-	pierre.albedo_color = Color(0.78, 0.8, 0.62)
+	pierre.albedo_color = pierre_du_puits
 	var oeil := StandardMaterial3D.new()
-	oeil.albedo_color = Color(0.2, 0.7, 0.45)
+	oeil.albedo_color = lueur_du_puits.darkened(0.15)
 	oeil.emission_enabled = true
-	oeil.emission = Color(0.15, 0.6, 0.35)
+	oeil.emission = lueur_du_puits.darkened(0.3)
 	# Une rangée de pierres le long de chaque rive, et au fond : le kart
 	# entre par le côté ouvert.
 	var z := 0.0

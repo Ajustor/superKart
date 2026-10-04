@@ -190,6 +190,26 @@ Coupe Odyssée — des courses longues, à travers plusieurs mondes :
 | Carnaval de la Lune | 4 300 m, d'un seul tenant | une course linéaire, sans tours, en trois sections : le bourg de l'horloge et ses remparts, la plaine, la montagne enneigée et son col verglacé, la baie et son temple, le marais, le canyon et la spirale autour de la tour de pierre, un pont jusqu'au sommet de l'horloge — puis la bouche de la lune, et l'arrivée sur la lune, au pied du grand arbre. La lune descend vers la tour au fil de la course |
 | Terres Carrées | 2 424 m (2 tours) | la prairie ; un portail d'obsidienne toujours ouvert vers le monde du dessous et ses ponts sur la lave (trou à sauter 667 à 681 m) ; un puits d'étoiles à même le sol où l'on tombe (904 m), vers l'île du bout du monde au-dessus du vide et son dragon ; un second puits (1 356 m) vers la cité engloutie et son gardien (1 450 m), et la longue remontée dans la grotte jusqu'à la prairie |
 
+Coupe Prisme — tout ce que savent faire les portails et les sols :
+
+| Circuit | Longueur | Ce qui le distingue |
+|---|---|---|
+| Jardin des Saisons | 1 694 m (3 tours) | quatre saisons, quatre mondes : la prairie fleurie du printemps, la plage d'été (dune à sauter dans un anneau), la colline d'automne et sa bourrasque, la descente enneigée de l'hiver (ruisseau gelé à sauter 1 202 à 1 216 m, lac verglacé). Deux tourbillons (295, 1 110 m) et deux cadres (615, 1 555 m) : à travers chacun, la saison suivante. Un relief par saison (`TrackTerrain` à `portion`), où l'on roule |
+| Laboratoire des Portails | 1 176 m (3 tours) | le hall blanc du départ, son tapis roulant ; un cadre bleu (312 m) vers l'étage des épreuves : un conduit qui monte de 20 m, un tapis de travers, une plaque qui projette dans deux anneaux, une presse (935 m) ; un portail orange à même le plancher (1 010 m) : on tombe dans le hall, sur la ligne d'arrivée |
+| Escalier sans Fin | 1 855 m (2 tours) | un jardin à la française ; un tourbillon (180 m) vers un rêve : deux tours de spirale autour d'une tour, 21 m l'un au-dessus de l'autre, entre des escaliers qui flottent ; un tremplin en apesanteur au sommet ; puis un puits (1 379 m) où l'on tombe de 42 m, au pied de la tour, dans le jardin. On ne redescend jamais, et l'on recommence |
+| Route des Étoiles | 2 790 m, d'un seul tenant | une course linéaire, en trois sections : la base de lancement et sa fusée, un tourbillon (705 m) vers le canyon de la planète rouge (tempête de poussière, crevasse 1 080 à 1 094 m), un cadre (1 462 m) vers la lune de glace (banquise, tremplin en apesanteur), un puits dans la banquise (2 011 m) vers les nuages d'une géante gazeuse, un tourbillon (2 215 m) vers la station, où l'on arrive |
+
+Le puits d'un portail à plat prend ses couleurs dans `fond_du_puits`,
+`lueur_du_puits` et `pierre_du_puits` (par défaut, celles du bout du monde).
+Un circuit peut avoir un relief par portion (un par saison) : chaque décor se
+pose sur celui de sa portion. Un sol plat (`TrackSol`) s'abaisse sous une
+route au ras de lui (`hauteur_en`) : le bord bas d'un virage relevé ne passe
+plus dessous. Aux portails, deux sols se chevauchent : chacun ne porte que du
+côté de son monde. Nouveaux décors : `ARBRE_AUTOMNE`, `BONHOMME_DE_NEIGE`,
+`PARASOL`, `FLEUR`, `PANNEAU_LABO` (qui longe la route), `TOURELLE`,
+`CUBE_LESTE`, `ESCALIER_FLOTTANT` (il flotte), `FUSEE`, `PARABOLE`,
+`ROCHER_ROUGE`. Musiques : `SAISONS`, `LABO`, `ESCHER`, `ETOILES`.
+
 Les portails (`TrackPortail`) relient les mondes d'un circuit. Chacun
 s'ouvre quand le premier en approche à 90 m, et se referme quand le dernier
 l'a passé (`Track.tete_total`, `queue_total`, que `RaceSession` tient à

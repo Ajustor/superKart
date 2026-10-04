@@ -675,12 +675,13 @@ func sol_praticable(distance: float, lateral: float) -> bool:
 const PORTEE_HORS_PISTE := 14.0
 
 
-## Un sol réel sous ce point : un sol ou un relief qui porte le kart.
-func sol_reel(point: Vector3) -> bool:
+## Un sol réel sous ce point, à cette distance le long du tracé : un sol ou
+## un relief qui porte le kart.
+func sol_reel(point: Vector3, distance: float) -> bool:
 	for element in elements():
-		if element is TrackSol and (element as TrackSol).porte(point):
+		if element is TrackSol and (element as TrackSol).porte(point, distance):
 			return true
-		if element is TrackTerrain and (element as TrackTerrain).porte(point):
+		if element is TrackTerrain and (element as TrackTerrain).porte(point, distance):
 			return true
 	return false
 

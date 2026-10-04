@@ -103,7 +103,7 @@ func test_les_coupes_se_partagent_tous_les_circuits() -> void:
 
 
 func test_la_coupe_odyssee_n_a_que_des_courses_longues() -> void:
-	var odyssee: Dictionary = TrackCatalog.COUPES[TrackCatalog.COUPES.size() - 1]
+	var odyssee: Dictionary = TrackCatalog.COUPES[5]
 	assert_eq(odyssee.nom, "Coupe Odyssée")
 	for id in odyssee.pistes:
 		var info := TrackCatalog.par_id(id)
@@ -111,6 +111,24 @@ func test_la_coupe_odyssee_n_a_que_des_courses_longues() -> void:
 		var longueur: float = scene.curve.get_baked_length() * info.tours
 		assert_gt(longueur, 3200.0, "%s : une course longue" % id)
 		scene.free()
+
+
+func test_la_coupe_prisme_passe_par_des_portails() -> void:
+	var prisme: Dictionary = TrackCatalog.COUPES[6]
+	assert_eq(prisme.nom, "Coupe Prisme")
+	var en_ligne := 0
+	for id in prisme.pistes:
+		var info := TrackCatalog.par_id(id)
+		var scene: Track = load(info.chemin_scene).instantiate()
+		var modes := {}
+		for enfant in scene.get_children():
+			if enfant is TrackPortail:
+				modes[enfant.mode] = true
+		assert_gt(modes.size(), 0, "%s : des portails" % id)
+		if scene.lineaire():
+			en_ligne += 1
+		scene.free()
+	assert_eq(en_ligne, 1, "une course en ligne pour finir")
 
 
 func test_une_coupe_enchaine_ses_quatre_circuits() -> void:

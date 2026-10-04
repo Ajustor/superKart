@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TrackInfo" format=3]
+
+[ext_resource type="Script" path="res://scripts/race/track_info.gd" id="1_info"]
+
+[resource]
+script = ExtResource("1_info")
+id = "saisons"
+nom = "Jardin des Saisons"
+description = "Un jardin où chaque portail change la saison : la prairie fleurie du printemps, une plage d'été et ses parasols, une colline rousse d'automne, puis la longue descente enneigée de l'hiver et son lac gelé. À travers chaque portail, la saison suivante attend déjà."
+chemin_scene = "res://scenes/tracks/saisons.tscn"
+tours = 3

@@ -29,6 +29,10 @@ const PISTES: Array[TrackInfo] = [
 	preload("res://resources/tracks/recif_bulles_info.tres"),
 	preload("res://resources/tracks/lune_carnaval_info.tres"),
 	preload("res://resources/tracks/terres_cubiques_info.tres"),
+	preload("res://resources/tracks/saisons_info.tres"),
+	preload("res://resources/tracks/labo_info.tres"),
+	preload("res://resources/tracks/escalier_info.tres"),
+	preload("res://resources/tracks/etoiles_info.tres"),
 ]
 
 ## Les arènes du mode bataille : des anneaux larges et fermés, où l'on ne
@@ -71,6 +75,11 @@ const COUPES := [
 		nom = "Coupe Odyssée",
 		couleur = Color(0.85, 0.35, 0.95),
 		pistes = ["saut_temporel", "recif_bulles", "lune_carnaval", "terres_cubiques"],
+	},
+	{
+		nom = "Coupe Prisme",
+		couleur = Color(0.25, 0.9, 0.7),
+		pistes = ["saisons", "labo", "escalier", "etoiles"],
 	},
 ]
 

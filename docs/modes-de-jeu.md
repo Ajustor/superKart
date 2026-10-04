@@ -54,7 +54,7 @@ Si c'est le joueur, il passe en pilote automatique comme à une arrivée.
 
 ## Grand Prix (`GrandPrix`)
 
-- Six coupes, définies dans `TrackCatalog.COUPES` :
+- Sept coupes, définies dans `TrackCatalog.COUPES` :
   - Coupe Grand Air : Collines, Jardin, Plage, Mine ;
   - Coupe Bolide : Forteresse, Ville, Neiges, Ruban ;
   - Coupe Aventure : Canyon, Grotte, Usine, Temple ;
@@ -65,8 +65,12 @@ Si c'est le joueur, il passe en pilote automatique comme à une arrivée.
   - Coupe Odyssée : Faille Temporelle (3 tours), Lagon des Bulles et Terres
     Carrées (2 tours), et Carnaval de la Lune, une course linéaire d'un seul
     tenant, en trois sections, qui finit sur la lune — des courses longues
-    qui passent d'un monde à l'autre par des portails.
-- Chaque manche se court en trois tours (sauf les coupes Vertige et Odyssée,
+    qui passent d'un monde à l'autre par des portails ;
+  - Coupe Prisme : Jardin des Saisons, Laboratoire des Portails (3 tours),
+    Escalier sans Fin (2 tours), et Route des Étoiles, une course linéaire en
+    trois sections — des portails qu'on voit à travers, des puits où l'on
+    tombe, des bas-côtés où l'on roule.
+- Chaque manche se court en trois tours (sauf les coupes Vertige, Odyssée et Prisme,
   et les circuits redessinés en deux tours : Boulevard Électrique, Ruines
   d'Émeraude). Le barème de `RaceScoring`
   s'additionne d'une course à l'autre.

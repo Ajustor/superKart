@@ -489,10 +489,14 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 	# Un vrai sol (TrackSol, TrackTerrain) porte le kart sur les bas-côtés,
 	# jusqu'à PORTEE_HORS_PISTE du bord. Au-delà, ou tombé plus bas que la
 	# route, il est sorti du circuit.
-	var dans_le_pre := ecart <= _demi_largeur + Track.PORTEE_HORS_PISTE and _track.sol_reel(point)
-	var en_contrebas := ecart > _demi_largeur and hauteur < -HAUTEUR_DE_CHUTE
-	var perdu := not entree.en_vol and (en_contrebas or (ecart > _demi_largeur + OFF_TRACK_RESPAWN_MARGIN \
-		and not _track.sol_praticable(d, lateral) and not dans_le_pre))
+	# Le sol n'est interrogé que hors du bitume : sur la route, il ne sert à
+	# rien, et c'est chaque image pour chaque kart.
+	var perdu := false
+	if not entree.en_vol:
+		if ecart > _demi_largeur and hauteur < -HAUTEUR_DE_CHUTE:
+			perdu = true
+		elif ecart > _demi_largeur + OFF_TRACK_RESPAWN_MARGIN and not _track.sol_praticable(d, lateral):
+			perdu = ecart > _demi_largeur + Track.PORTEE_HORS_PISTE or not _track.sol_reel(point, d)
 	var noye := point.y < _track.altitude_du_liquide
 	if point.y < sol - FALL_DEPTH or perdu or noye or coupe:
 		var reprise := _track.point_de_reprise(entree.derniere_en_piste)

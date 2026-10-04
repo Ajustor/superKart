@@ -1,0 +1,504 @@
+[gd_scene format=3]
+
+[ext_resource type="Shader" path="res://shaders/ciel.gdshader" id="sh_ciel"]
+[ext_resource type="Script" path="res://scripts/track/track.gd" id="1_track"]
+[ext_resource type="Curve3D" path="res://resources/tracks/etoiles_curve.tres" id="2_curve"]
+[ext_resource type="Script" path="res://scripts/track/features/track_anneau.gd" id="s_anneau"]
+[ext_resource type="Script" path="res://scripts/track/features/track_apesanteur.gd" id="s_apesanteur"]
+[ext_resource type="Script" path="res://scripts/track/features/track_boost.gd" id="s_boost"]
+[ext_resource type="Script" path="res://scripts/track/features/track_courant.gd" id="s_courant"]
+[ext_resource type="Script" path="res://scripts/track/features/track_decor.gd" id="s_decor"]
+[ext_resource type="Script" path="res://scripts/track/features/track_gap.gd" id="s_gap"]
+[ext_resource type="Script" path="res://scripts/track/features/track_jump.gd" id="s_jump"]
+[ext_resource type="Script" path="res://scripts/track/features/track_portail.gd" id="s_portail"]
+[ext_resource type="Script" path="res://scripts/track/features/track_ramp.gd" id="s_ramp"]
+[ext_resource type="Script" path="res://scripts/track/features/track_sol.gd" id="s_sol"]
+[ext_resource type="Script" path="res://scripts/track/features/track_spectacle.gd" id="s_spectacle"]
+[ext_resource type="Script" path="res://scripts/track/features/track_terrain.gd" id="s_terrain"]
+[ext_resource type="Script" path="res://scripts/track/features/track_verglas.gd" id="s_verglas"]
+[ext_resource type="Script" path="res://scripts/track/features/track_wall.gd" id="s_wall"]
+
+[sub_resource type="ShaderMaterial" id="Ciel"]
+shader = ExtResource("sh_ciel")
+shader_parameter/haut = Color(0.3, 0.55, 0.95, 1)
+shader_parameter/horizon = Color(0.85, 0.9, 0.95, 1)
+shader_parameter/sol_horizon = Color(0.45, 0.6, 0.4, 1)
+shader_parameter/sol_bas = Color(0.3, 0.4, 0.25, 1)
+shader_parameter/nuages = 0.35
+shader_parameter/couleur_nuages = Color(1, 1, 1, 1)
+shader_parameter/etoiles = 0
+shader_parameter/soleil = 1
+
+[sub_resource type="Sky" id="Sky"]
+sky_material = SubResource("Ciel")
+
+[sub_resource type="Environment" id="Env"]
+background_mode = 2
+sky = SubResource("Sky")
+ambient_light_source = 2
+ambient_light_color = Color(0.92, 0.95, 1, 1)
+ambient_light_energy = 0.7
+glow_enabled = true
+glow_intensity = 0.3
+
+[sub_resource type="ShaderMaterial" id="Ciel_mars"]
+shader = ExtResource("sh_ciel")
+shader_parameter/haut = Color(0.55, 0.32, 0.25, 1)
+shader_parameter/horizon = Color(0.95, 0.65, 0.42, 1)
+shader_parameter/sol_horizon = Color(0.75, 0.4, 0.22, 1)
+shader_parameter/sol_bas = Color(0.45, 0.2, 0.1, 1)
+shader_parameter/nuages = 0.15
+shader_parameter/couleur_nuages = Color(1, 0.75, 0.55, 1)
+shader_parameter/etoiles = 0
+shader_parameter/soleil = 0.8
+
+[sub_resource type="Sky" id="Sky_mars"]
+sky_material = SubResource("Ciel_mars")
+
+[sub_resource type="Environment" id="Env_mars"]
+background_mode = 2
+sky = SubResource("Sky_mars")
+ambient_light_source = 2
+ambient_light_color = Color(1, 0.75, 0.6, 1)
+ambient_light_energy = 0.75
+fog_enabled = true
+fog_light_color = Color(0.85, 0.5, 0.3, 1)
+fog_density = 0.003
+glow_enabled = true
+glow_intensity = 0.3
+
+[sub_resource type="ShaderMaterial" id="Ciel_glace"]
+shader = ExtResource("sh_ciel")
+shader_parameter/haut = Color(0.01, 0.02, 0.06, 1)
+shader_parameter/horizon = Color(0.2, 0.3, 0.5, 1)
+shader_parameter/sol_horizon = Color(0.5, 0.6, 0.75, 1)
+shader_parameter/sol_bas = Color(0.3, 0.35, 0.45, 1)
+shader_parameter/nuages = 0
+shader_parameter/couleur_nuages = Color(1, 1, 1, 1)
+shader_parameter/etoiles = 0.8
+shader_parameter/soleil = 0.3
+
+[sub_resource type="Sky" id="Sky_glace"]
+sky_material = SubResource("Ciel_glace")
+
+[sub_resource type="Environment" id="Env_glace"]
+background_mode = 2
+sky = SubResource("Sky_glace")
+ambient_light_source = 2
+ambient_light_color = Color(0.7, 0.85, 1, 1)
+ambient_light_energy = 0.8
+glow_enabled = true
+glow_intensity = 0.6
+
+[sub_resource type="ShaderMaterial" id="Ciel_nuages"]
+shader = ExtResource("sh_ciel")
+shader_parameter/haut = Color(0.6, 0.45, 0.3, 1)
+shader_parameter/horizon = Color(1, 0.85, 0.6, 1)
+shader_parameter/sol_horizon = Color(0.9, 0.7, 0.45, 1)
+shader_parameter/sol_bas = Color(0.6, 0.4, 0.25, 1)
+shader_parameter/nuages = 0.9
+shader_parameter/couleur_nuages = Color(1, 0.9, 0.75, 1)
+shader_parameter/etoiles = 0
+shader_parameter/soleil = 0.6
+
+[sub_resource type="Sky" id="Sky_nuages"]
+sky_material = SubResource("Ciel_nuages")
+
+[sub_resource type="Environment" id="Env_nuages"]
+background_mode = 2
+sky = SubResource("Sky_nuages")
+ambient_light_source = 2
+ambient_light_color = Color(1, 0.88, 0.7, 1)
+ambient_light_energy = 0.8
+fog_enabled = true
+fog_light_color = Color(0.95, 0.8, 0.6, 1)
+fog_density = 0.006
+glow_enabled = true
+glow_intensity = 0.5
+
+[sub_resource type="ShaderMaterial" id="Ciel_station"]
+shader = ExtResource("sh_ciel")
+shader_parameter/haut = Color(0, 0, 0.02, 1)
+shader_parameter/horizon = Color(0.05, 0.05, 0.15, 1)
+shader_parameter/sol_horizon = Color(0.03, 0.03, 0.08, 1)
+shader_parameter/sol_bas = Color(0, 0, 0, 1)
+shader_parameter/nuages = 0
+shader_parameter/couleur_nuages = Color(1, 1, 1, 1)
+shader_parameter/etoiles = 1
+shader_parameter/soleil = 0
+
+[sub_resource type="Sky" id="Sky_station"]
+sky_material = SubResource("Ciel_station")
+
+[sub_resource type="Environment" id="Env_station"]
+background_mode = 2
+sky = SubResource("Sky_station")
+ambient_light_source = 2
+ambient_light_color = Color(0.8, 0.85, 1, 1)
+ambient_light_energy = 0.75
+glow_enabled = true
+glow_intensity = 0.9
+
+[node name="Track" type="Node3D"]
+script = ExtResource("1_track")
+curve = ExtResource("2_curve")
+rangees_objets = PackedFloat32Array(0.05, 0.2, 0.36, 0.5, 0.64)
+road_color = Color(0.35, 0.36, 0.42, 1)
+bordures = true
+couleur_bordure = Color(0.3, 0.75, 1, 1)
+couleur_bordure_bis = Color(0.95, 0.95, 1, 1)
+musique = 28
+arrivee = 2790
+sections = PackedFloat32Array(1000, 2000)
+
+[node name="CurveEditor" type="Path3D" parent="."]
+curve = ExtResource("2_curve")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.766, -0.492, 0.414, 0, 0.643, 0.766, -0.643, -0.587, 0.492, 0, 60, 0)
+light_color = Color(1, 0.97, 0.92, 1)
+light_energy = 1.05
+shadow_enabled = true
+
+[node name="Terre" type="Node3D" parent="."]
+script = ExtResource("s_portail")
+mode = 3
+debut = 1
+decors = Array[NodePath]([NodePath("../Base"), NodePath("../Fusee"), NodePath("../Paraboles"), NodePath("../Antennes"), NodePath("../Lampadaires")])
+
+[node name="Base" type="Node3D" parent="."]
+script = ExtResource("s_terrain")
+portion = true
+debut = 3675.4
+longueur = 765
+marge = 120
+couleur = Color(0.4, 0.62, 0.32, 1)
+relief = 6
+graine = 61
+
+[node name="Fusee" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 46
+debut = 320
+longueur = 1
+decalage = -50
+espacement = 0
+symetrique = false
+echelle = 1.6
+
+[node name="Paraboles" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 47
+debut = 40
+longueur = 600
+decalage = 22
+espacement = 55
+eviter_la_route = true
+graine = 1
+
+[node name="Antennes" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 20
+debut = 60
+longueur = 600
+decalage = 14
+espacement = 70
+graine = 2
+
+[node name="Lampadaires" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 7
+debut = 0
+longueur = 300
+decalage = 13
+espacement = 30
+graine = 3
+
+[node name="PlaqueDeLaBase" type="Node3D" parent="."]
+script = ExtResource("s_boost")
+debut = 120
+decalage = 3
+
+[node name="PorteDeMars" type="Node3D" parent="."]
+script = ExtResource("s_portail")
+debut = 705
+rayon = 8
+couleur_a = Color(1, 0.45, 0.2, 1)
+couleur_b = Color(1, 0.8, 0.4, 1)
+ambiance = SubResource("Env_mars")
+decors = Array[NodePath]([NodePath("../Desert"), NodePath("../RochersRouges"), NodePath("../GrandsRochers")])
+
+[node name="Desert" type="Node3D" parent="."]
+script = ExtResource("s_terrain")
+portion = true
+debut = 705
+longueur = 755
+marge = 120
+couleur = Color(0.75, 0.38, 0.2, 1)
+relief = 16
+ravin = 16
+graine = 62
+
+[node name="RochersRouges" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 48
+debut = 720
+longueur = 720
+decalage = 18
+espacement = 22
+eviter_la_route = true
+graine = 4
+
+[node name="GrandsRochers" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 48
+debut = 730
+longueur = 700
+decalage = 42
+espacement = 40
+echelle = 3.5
+eviter_la_route = true
+graine = 5
+
+[node name="TempeteDePoussiere" type="Node3D" parent="."]
+script = ExtResource("s_courant")
+style = 0
+debut = 880
+longueur = 80
+largeur = 18
+poussee_laterale = 5
+periode = 6
+
+[node name="RampeDeLaCrevasse" type="Node3D" parent="."]
+script = ExtResource("s_ramp")
+debut = 1068
+longueur = 12
+largeur = 18
+hauteur = 1.8
+couleur = Color(0.8, 0.4, 0.2, 1)
+
+[node name="Crevasse" type="Node3D" parent="."]
+script = ExtResource("s_gap")
+debut = 1080
+longueur = 14
+
+[node name="PlaqueDeMars" type="Node3D" parent="."]
+script = ExtResource("s_boost")
+debut = 1300
+decalage = -3
+
+[node name="PorteDeGlace" type="Node3D" parent="."]
+script = ExtResource("s_portail")
+mode = 1
+debut = 1462
+couleur_a = Color(0.5, 0.85, 1, 1)
+couleur_b = Color(0.85, 0.95, 1, 1)
+ambiance = SubResource("Env_glace")
+decors = Array[NodePath]([NodePath("../Banquise"), NodePath("../Cristaux"), NodePath("../CristauxAuLoin")])
+
+[node name="Banquise" type="Node3D" parent="."]
+script = ExtResource("s_sol")
+portion = true
+debut = 1600
+longueur = 411
+marge = 50
+altitude = 9.6
+couleur = Color(0.82, 0.88, 0.96, 1)
+
+[node name="Cristaux" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 8
+debut = 1480
+longueur = 520
+decalage = 17
+espacement = 20
+eviter_la_route = true
+graine = 6
+
+[node name="CristauxAuLoin" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 8
+debut = 1490
+longueur = 500
+decalage = 38
+espacement = 35
+echelle = 3
+eviter_la_route = true
+graine = 7
+
+[node name="Banc" type="Node3D" parent="."]
+script = ExtResource("s_verglas")
+debut = 1655
+longueur = 60
+largeur = 18
+
+[node name="FaibleGravite" type="Node3D" parent="."]
+script = ExtResource("s_apesanteur")
+debut = 1880
+longueur = 90
+gravite = 0.4
+couleur = Color(0.5, 0.85, 1, 1)
+
+[node name="TremplinDeGlace" type="Node3D" parent="."]
+script = ExtResource("s_jump")
+debut = 1890
+longueur = 4
+largeur = 18
+impulsion = 9
+
+[node name="AnneauDeGlace1" type="Node3D" parent="."]
+script = ExtResource("s_anneau")
+debut = 1906
+hauteur = 3.6
+rayon = 2.4
+couleur = Color(0.5, 0.9, 1, 1)
+
+[node name="AnneauDeGlace2" type="Node3D" parent="."]
+script = ExtResource("s_anneau")
+debut = 1924
+hauteur = 3.6
+rayon = 2.4
+couleur = Color(1, 1, 1, 1)
+
+[node name="PuitsDesNuages" type="Node3D" parent="."]
+script = ExtResource("s_portail")
+mode = 2
+debut = 2011
+longueur = 20
+fond_du_puits = Color(0.35, 0.2, 0.08, 1)
+lueur_du_puits = Color(1, 0.8, 0.45, 1)
+pierre_du_puits = Color(0.85, 0.9, 0.98, 1)
+ambiance = SubResource("Env_nuages")
+decors = Array[NodePath]([NodePath("../NuagesDessous"), NodePath("../NuagesDessus")])
+
+[node name="ChuteDansLesNuages" type="Node3D" parent="."]
+script = ExtResource("s_gap")
+debut = 2011
+longueur = 49
+chute_voulue = true
+
+[node name="NuagesDessous" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 22
+debut = 2060
+longueur = 160
+decalage = 22
+espacement = 16
+hauteur = -6
+echelle = 2
+graine = 8
+
+[node name="NuagesDessus" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 22
+debut = 2070
+longueur = 150
+decalage = 30
+espacement = 25
+hauteur = 14
+echelle = 3
+graine = 9
+
+[node name="GardeFouDesNuages" type="Node3D" parent="."]
+script = ExtResource("s_wall")
+cote = 2
+debut = 2062
+longueur = 150
+hauteur = 1
+couleur = Color(1, 0.85, 0.6, 1)
+couleur_bis = Color(0.95, 0.95, 0.95, 1)
+
+[node name="VentsDeLaGeante" type="Node3D" parent="."]
+script = ExtResource("s_courant")
+style = 0
+debut = 2120
+longueur = 70
+largeur = 18
+poussee_laterale = -4
+periode = 5
+
+[node name="PorteDeLaStation" type="Node3D" parent="."]
+script = ExtResource("s_portail")
+debut = 2215
+rayon = 8
+couleur_a = Color(0.3, 0.75, 1, 1)
+couleur_b = Color(0.85, 0.5, 1, 1)
+ambiance = SubResource("Env_station")
+decors = Array[NodePath]([NodePath("../Pont"), NodePath("../PanneauxDeLaStation"), NodePath("../ParabolesDeLaStation"), NodePath("../EtoilesDeLaStation"), NodePath("../Navettes")])
+
+[node name="Pont" type="Node3D" parent="."]
+script = ExtResource("s_sol")
+portion = true
+debut = 2215
+longueur = 655
+marge = 28
+altitude = -14.4
+maille = 4
+couleur = Color(0.5, 0.53, 0.58, 1)
+
+[node name="PanneauxDeLaStation" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 42
+debut = 2230
+longueur = 560
+decalage = 22
+espacement = 18
+eviter_la_route = true
+graine = 10
+
+[node name="ParabolesDeLaStation" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 47
+debut = 2250
+longueur = 520
+decalage = 14
+espacement = 60
+graine = 11
+
+[node name="EtoilesDeLaStation" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 3
+debut = 2230
+longueur = 560
+decalage = 40
+espacement = 30
+hauteur = 18
+echelle = 2
+graine = 12
+
+[node name="Navettes" type="Node3D" parent="."]
+script = ExtResource("s_spectacle")
+type = 1
+debut = 2500
+nombre = 5
+hauteur = 30
+rayon = 80
+periode = 18
+couleur = Color(0.85, 0.88, 0.95, 1)
+
+[node name="PlaqueDeLaStation1" type="Node3D" parent="."]
+script = ExtResource("s_boost")
+debut = 2300
+decalage = 3
+
+[node name="PlaqueDeLaStation2" type="Node3D" parent="."]
+script = ExtResource("s_boost")
+debut = 2600
+decalage = -3
+
+[node name="AnneauFinal" type="Node3D" parent="."]
+script = ExtResource("s_anneau")
+debut = 2740
+hauteur = 3.6
+rayon = 2.6
+couleur = Color(1, 0.85, 0.3, 1)
+duree_turbo = 1.2
+
+[node name="RetourALaBase" type="Node3D" parent="."]
+script = ExtResource("s_gap")
+debut = 2940
+longueur = 735.4
+chute_voulue = true

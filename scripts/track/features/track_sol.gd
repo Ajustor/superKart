@@ -80,6 +80,12 @@ func _validate_property(property: Dictionary) -> void:
 ## Les cases où il y a du sol, et le coin de la première. Celles qui
 ## portent le kart valent vrai, les autres faux.
 var _cases := {}
+## La route au ras du sol, échantillon par échantillon (et son côté droit) :
+## le sol s'abaisse sous elle (hauteur_en).
+var _routes := PackedVector3Array()
+var _droites := PackedVector3Array()
+var _routes_par_case := {}
+var _hauteurs := {}
 var _origine := Vector2.ZERO
 var _cases_pour: TrackCurve
 
@@ -112,6 +118,10 @@ func _calculer(c: TrackCurve) -> void:
 		return
 	_cases_pour = c
 	_cases.clear()
+	_routes.clear()
+	_droites.clear()
+	_routes_par_case.clear()
+	_hauteurs.clear()
 	var dessous := {}
 	var portion_couverte := {}
 	var bordee := {}
@@ -130,6 +140,10 @@ func _calculer(c: TrackCurve) -> void:
 			_ranger(dessous, ici)
 		elif circuit != null and circuit.trou_en(d) != null and p.y - altitude < PROFONDEUR_PERCEE:
 			_ranger(dessous, ici)
+		elif p.y < altitude + PROFONDEUR_ENFONCEE:
+			_routes.append(p)
+			_droites.append(c.right_at(d))
+			_ranger_route(_routes.size() - 1)
 		if portion and not couvre(d, c.length):
 			continue
 		_ranger(portion_couverte, ici)
@@ -155,7 +169,53 @@ func _calculer(c: TrackCurve) -> void:
 				continue
 			if not dessous.is_empty() and proche(dessous, centre, rayon):
 				continue
-			_cases[Vector2i(ix, iz)] = proche(bordee, centre, portee)
+			_cases[Vector2i(ix, iz)] = proche(bordee, centre, portee) \
+				and _borde(c, Vector3(centre.x, altitude, centre.y), monde)
+
+
+## Une route qui passe moins haut que ça au-dessus du sol l'abaisse sous
+## elle. Au-delà, c'est un pont : le sol reste à plat dessous.
+const PROFONDEUR_ENFONCEE := 3.0
+## Sous le bitume et ses bas-côtés, comme le relief (TrackTerrain).
+const SOUS_LE_BORD := 0.14
+
+
+func _ranger_route(i: int) -> void:
+	var p := _routes[i]
+	var cle := Vector2i(floori(p.x / CASE), floori(p.z / CASE))
+	var liste: PackedInt32Array = _routes_par_case.get(cle, PackedInt32Array())
+	liste.append(i)
+	_routes_par_case[cle] = liste
+
+
+## La hauteur du sol en ce point (x, z) : `altitude`, sauf près d'une route
+## au ras du sol, où il descend sous la chaussée prolongée à plat — sur le
+## bord bas d'un virage relevé, la route passe plus bas que son axe, et un
+## sol resté à plat lui ferait un plafond.
+func hauteur_en(x: float, z: float) -> float:
+	var c := courbe()
+	if c == null:
+		return altitude
+	_calculer(c)
+	var cle_h := Vector2(snappedf(x, 0.01), snappedf(z, 0.01))
+	if _hauteurs.has(cle_h):
+		return _hauteurs[cle_h]
+	var h := altitude
+	var demi := c.half_width
+	var portee := demi + maille * 1.5
+	var ici := Vector2i(floori(x / CASE), floori(z / CASE))
+	for dx in range(-1, 2):
+		for dz in range(-1, 2):
+			for i in (_routes_par_case.get(ici + Vector2i(dx, dz), PackedInt32Array()) as PackedInt32Array):
+				var e := _routes[i]
+				if Vector2(e.x - x, e.z - z).length() > portee:
+					continue
+				var droite := _droites[i]
+				var plat := Vector3(droite.x, 0.0, droite.z).normalized()
+				var lateral := (Vector3(x, e.y, z) - e).dot(plat)
+				h = minf(h, e.y + droite.y * clampf(lateral, -demi, demi) - SOUS_LE_BORD)
+	_hauteurs[cle_h] = h
+	return h
 
 
 ## Y a-t-il du sol en ce point (x, z) ? Ni hors de l'étendue, ni dans un trou.
@@ -168,15 +228,35 @@ func a_du_sol(ici: Vector2) -> bool:
 	return _cases.has(case)
 
 
-## Ce sol porte-t-il un kart en ce point ? Il faut une case qui borde la
-## route, et le kart au-dessus, pas dessous.
-func porte(point: Vector3) -> bool:
+## Ce sol porte-t-il un kart en ce point, à cette distance le long du
+## tracé ? Il faut une case qui borde la route, et le kart au-dessus, pas
+## dessous.
+func porte(point: Vector3, distance: float) -> bool:
 	var c := courbe()
-	if c == null or point.y < altitude - 2.0:
+	if c == null:
 		return false
 	_calculer(c)
+	if point.y < hauteur_en(point.x, point.z) - 2.0:
+		return false
 	var case := Vector2i(floori((point.x - _origine.x) / maille), floori((point.z - _origine.y) / maille))
-	return _cases.get(case, false)
+	return _cases.get(case, false) and _de_ce_cote(distance, piste().monde_du_decor(self) if piste() else null)
+
+
+## Le tracé le plus proche de ce point est-il celui que ce sol borde : dans
+## sa portion, dans son monde ? Aux portails, deux sols se chevauchent ;
+## chacun ne porte que de son côté.
+func _borde(c: TrackCurve, point: Vector3, monde: TrackPortail) -> bool:
+	return _de_ce_cote(c.distance_of(point), monde)
+
+
+func _de_ce_cote(distance: float, monde: TrackPortail) -> bool:
+	var circuit := piste()
+	var c := courbe()
+	if circuit == null or c == null:
+		return true
+	if circuit.hors_course(distance) or (portion and not couvre(distance, c.length)):
+		return false
+	return monde == null or circuit.monde_en(distance) == monde
 
 
 func _modifie() -> void:
@@ -189,7 +269,6 @@ func _construire(c: TrackCurve, racine: Node3D) -> void:
 	_calculer(c)
 	var outil := SurfaceTool.new()
 	outil.begin(Mesh.PRIMITIVE_TRIANGLES)
-	outil.set_normal(Vector3.UP)
 	# La collision ne garde que les cases qui portent : un trimesh de tout
 	# le sol, jusqu'à l'horizon, ferait tester des dizaines de milliers de
 	# triangles où aucun kart ne va.
@@ -197,11 +276,12 @@ func _construire(c: TrackCurve, racine: Node3D) -> void:
 	for case: Vector2i in _cases:
 		var x := _origine.x + float(case.x) * maille
 		var z := _origine.y + float(case.y) * maille
-		var a := Vector3(x, altitude, z)
-		var b := Vector3(x + maille, altitude, z)
-		var d := Vector3(x, altitude, z + maille)
-		var e := Vector3(x + maille, altitude, z + maille)
+		var a := Vector3(x, hauteur_en(x, z), z)
+		var b := Vector3(x + maille, hauteur_en(x + maille, z), z)
+		var d := Vector3(x, hauteur_en(x, z + maille), z + maille)
+		var e := Vector3(x + maille, hauteur_en(x + maille, z + maille), z + maille)
 		for sommet in [a, b, e, a, e, d]:
+			outil.set_normal(Vector3.UP)
 			outil.set_uv(Vector2(sommet.x, sommet.z) / 8.0)
 			outil.add_vertex(sommet)
 		if _cases[case]:
