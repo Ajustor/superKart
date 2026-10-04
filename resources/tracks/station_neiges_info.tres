@@ -6,6 +6,6 @@
 script = ExtResource("1_info")
 id = "station_neiges"
 nom = "Station des Neiges"
-description = "Départ au sommet : une longue descente à bosses entre les sapins jusqu'au fond de la vallée, puis la remontée par le col."
+description = "Une vraie piste de ski : quatre traversées de la pente en slalom, des épingles et des bosses entre les sapins, puis la longue remontée du télésiège par la vallée."
 chemin_scene = "res://scenes/tracks/station_neiges.tscn"
 tours = 3

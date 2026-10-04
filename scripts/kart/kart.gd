@@ -173,7 +173,10 @@ func _physics_process(delta: float) -> void:
 
 	var etait_au_sol := au_sol
 	au_sol = is_on_floor()
-	if en_saut and au_sol and _en_l_air > 0.0:
+	# Un kart qui monte encore n'a pas atterri : l'image qui suit l'impulsion
+	# d'un tremplin, il touche toujours le sol, et le saut s'annulait aussitôt
+	# — aucune figure n'était possible sur un tremplin.
+	if a_atterri():
 		_atterrir()
 	# Le sol vient de se dérober sous un kart qui montait une rampe : il garde
 	# sa vitesse verticale au lieu de la perdre d'un coup. Sans ça, une rampe
@@ -269,6 +272,12 @@ func _figures(cmd: KartCommand, delta: float) -> void:
 	# Pas de bond de dérapage en plein vol : il relançait le kart vers le
 	# haut, un double saut qui allongeait n'importe quel tremplin.
 	cmd.drift = false
+
+
+## Retombé d'un vrai saut : au sol, après un temps en l'air, et plus en
+## train de monter.
+func a_atterri() -> bool:
+	return en_saut and au_sol and _en_l_air > 0.0 and _vertical <= 0.0
 
 
 func _atterrir() -> void:

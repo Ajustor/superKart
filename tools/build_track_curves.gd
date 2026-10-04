@@ -125,20 +125,31 @@ const CIRCUITS := {
 	# Une station de ski : départ au sommet, une longue descente à bosses
 	# jusqu'au fond de la vallée, et la remontée par le col.
 	"station_neiges": [
-		Vector3(0, 30, 0),
-		Vector3(80, 30, 0),
-		Vector3(130, 27, -30),
-		Vector3(140, 21, -90),
-		Vector3(100, 15, -130),
-		Vector3(40, 11, -120),
-		Vector3(-10, 7, -150),
-		Vector3(-40, 3, -200),
-		Vector3(-100, 0, -210),
-		Vector3(-150, 4, -170),
-		Vector3(-160, 11, -100),
-		Vector3(-150, 19, -40),
-		Vector3(-110, 27, -5),
-		Vector3(-60, 30, 0),
+		# Une vraie piste de ski : quatre traversées de la pente en
+		# descendant, reliées par des épingles, puis la longue remontée
+		# du télésiège par la vallée.
+		Vector3(0, 32, 0),
+		Vector3(95, 32, 0),
+		Vector3(145, 30, 15),
+		Vector3(160, 28, 45),
+		Vector3(130, 26, 72),
+		Vector3(65, 25, 78),
+		Vector3(10, 23, 70),
+		Vector3(-35, 21, 85),
+		Vector3(-45, 19, 120),
+		Vector3(-15, 17, 145),
+		Vector3(45, 16, 138),
+		Vector3(105, 14, 148),
+		Vector3(150, 13, 175),
+		Vector3(140, 12, 210),
+		Vector3(95, 10, 225),
+		Vector3(30, 9, 222),
+		Vector3(-40, 9, 225),
+		Vector3(-95, 10, 200),
+		Vector3(-115, 15, 140),
+		Vector3(-115, 22, 70),
+		Vector3(-105, 28, 30),
+		Vector3(-75, 32, 5),
 	],
 	# Un canyon de grès : une ligne droite balayée par les rafales, un
 	# tunnel creusé dans une mesa, et un ravin à sauter dans un anneau d'or.
