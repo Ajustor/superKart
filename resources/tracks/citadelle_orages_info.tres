@@ -6,6 +6,6 @@
 script = ExtResource("1_info")
 id = "citadelle_orages"
 nom = "Citadelle des Orages"
-description = "Une citadelle au-dessus des nuages, sous l'orage : des rafales qui soufflent tour à tour, des trous dans le vide, la porte de la citadelle et des pilons de foudre."
+description = "Une forteresse en étoile au-dessus des nuages, sous l'orage : cinq bastions en épingle, des rafales qui soufflent tour à tour, deux sauts dans le vide, la porte de la citadelle et des pilons de foudre."
 chemin_scene = "res://scenes/tracks/citadelle_orages.tscn"
 tours = 3
