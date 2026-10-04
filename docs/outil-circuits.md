@@ -19,7 +19,7 @@ pose **sur le tracé**, comme enfant du nœud `Track`.
 | `TrackApesanteur` | la gravité faiblit (`gravite`) : chaque saut dure plus longtemps. Une arche violette à chaque bout | non, c'est une zone |
 | `TrackAnneau` | un anneau d'or flottant à `hauteur` m : le traverser donne un turbo | non |
 | `TrackObstacle` | un obstacle mobile : marteau qui balance (`PENDULE`), pilon qui s'abat (`PISTON`), bloc ou tonneau qui va et vient (`BLOC`, `TONNEAU`), gardien qui arpente la route (`GARDIEN`). Le kart pris part en tête-à-queue | non : une zone qui fait tourner le kart |
-| `TrackPortail` | un passage vers un autre monde : de l'autre côté, un autre ciel (`ambiance`) et d'autres décors (`decors`). `mode` : `VORTEX`, un tourbillon qui s'ouvre devant le premier et se ferme derrière le dernier ; `CADRE`, un voile dans un cadre de blocs d'obsidienne, toujours ouvert ; `SOL`, un puits d'étoiles à plat sur un trou à `chute_voulue` : on tombe dedans et l'on ressort au bas du plongeon, sans rien perdre (`Kart.teleporter`) ; `SEUIL`, rien à voir, on change seulement de contrée. `nouveau_monde` à faux : le ciel change, les décors restent | non |
+| `TrackPortail` | un passage vers un autre monde : de l'autre côté, un autre ciel (`ambiance`) et d'autres décors (`decors`). `mode` : `VORTEX`, un tourbillon qui s'ouvre devant le premier et se ferme derrière le dernier ; `CADRE`, un voile dans un cadre de blocs d'obsidienne, toujours ouvert ; `SOL`, un puits d'étoiles à plat sur un trou à `chute_voulue` : on tombe dedans et l'on ressort au bas du plongeon, sans rien perdre (`Kart.teleporter`) ; `SEUIL`, rien à voir, on change seulement de contrée. `nouveau_monde` à faux : le ciel change, les décors restent. On voit à travers un `VORTEX` ou un `CADRE` : voir plus bas | non |
 | `TrackSol` | voir plus bas | non |
 | `TrackSpectacle` | une scène animée autour de la route : éclair, voitures volantes, train, méduses, bulles, lune, dragon | non |
 | `TrackSol` | un sol plat à `altitude` autour du circuit (prairie, banquise, dalle), percé là où la route passe dessous : une galerie qui plonge sous la surface ne le traverse pas. `portion` le limite aux abords d'une portion du tracé. Les décors posés à côté de la route s'y posent au lieu de flotter à hauteur de bitume | non : décoratif |
@@ -210,6 +210,19 @@ suite de l'arrivée n'est pas courue (`Track.hors_course`) : un trou à
 du relief. Un `TrackTerrain` ou un `TrackSol` à `portion` n'épouse qu'une
 partie du tracé : un pont à 50 m de haut ne soulève pas de crête sous lui,
 et la prairie de la lune ne recouvre pas Termina.
+
+On voit l'autre monde à travers un portail, comme dans le mod Immersive
+Portals : de face, à travers le cadre, la route continue dans l'autre monde
+(son ciel, ses décors) ; de biais ou autour du cadre, on voit le monde où
+l'on est ; on ne bascule qu'en franchissant la surface. Chaque monde range
+ses décors sur un calque de rendu (`Track.calque_du_monde`) : la caméra du
+joueur ne dessine que celui du monde où elle se trouve, et chaque portail
+proche a une seconde caméra (`SubViewport`), placée exactement comme celle
+du joueur, qui ne dessine que le monde de l'autre côté. Son image est collée
+sur la surface du portail à l'endroit où elle tombe à l'écran
+(`shaders/fenetre_portail.gdshader`). Pas en qualité basse : une seconde
+image de toute la scène, à mi-résolution en qualité moyenne, aux trois
+quarts en haute, et seulement à moins de 260 m du portail.
 
 Les spectacles (`TrackSpectacle`) s'animent autour de la route sans qu'on y
 touche : éclair, voitures volantes, train, méduses, bulles, lune qui descend

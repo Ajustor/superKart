@@ -54,8 +54,9 @@ enum Mode { VORTEX, CADRE, SOL, SEUIL }
 @export var nouveau_monde: bool = true
 
 ## Ce qui n'existe que de ce côté-ci du portail, jusqu'au suivant : les
-## décors de cette époque (des nœuds frères, en général). Ils disparaissent
-## quand la caméra est dans un autre monde (Track.montrer_le_monde_de).
+## décors de cette époque (des nœuds frères, en général). Seule une caméra
+## dans ce monde les voit (Track.montrer_le_monde_de) — ou, à travers le
+## portail, la caméra qui filme l'autre côté.
 @export var decors: Array[NodePath] = []
 
 ## Il s'ouvre quand le premier en est à cette distance, en mètres.
@@ -68,11 +69,25 @@ const PAS_DES_ANNEAUX := 6.0
 const EVASEMENT := 2.0
 
 var _ouverture: float = 0.0
+
+# La fenêtre sur l'autre monde : une seconde caméra, placée comme celle du
+# joueur, qui ne voit que l'autre côté, et la surface du portail qui montre
+# son image (shaders/fenetre_portail.gdshader).
+var _fenetre: ShaderMaterial
+var _vue: SubViewport
+var _oeil: Camera3D
+var _plan_origine := Vector3.ZERO
+var _plan_avant := Vector3.FORWARD
 var _materiaux: Array[ShaderMaterial] = []
 var _anneaux: Array[Node3D] = []
 var _lumiere: OmniLight3D
 
 const SHADER := preload("res://shaders/vortex.gdshader")
+const SHADER_FENETRE := preload("res://shaders/fenetre_portail.gdshader")
+
+## On voit à travers un portail (VORTEX ou CADRE) jusqu'à cette distance ;
+## au-delà, son voile est opaque et sa caméra se repose.
+const PORTEE_FENETRE := 260.0
 const SHADER_SOL := preload("res://shaders/portail_end.gdshader")
 
 ## Le cadre d'obsidienne : sa marge de chaque côté de la route, sa hauteur.
@@ -138,6 +153,89 @@ func decors_du_monde() -> Array[Node3D]:
 	return liste
 
 
+## Fait de `surface` une fenêtre sur l'autre monde. En jeu seulement : dans
+## l'éditeur, le portail garde son tourbillon.
+func _ouvrir_une_fenetre(c: TrackCurve, racine: Node3D, surface: MeshInstance3D, rond: bool) -> void:
+	_fenetre = null
+	_vue = null
+	_oeil = null
+	if Engine.is_editor_hint() or not fenetre_possible():
+		return
+	_fenetre = ShaderMaterial.new()
+	_fenetre.shader = SHADER_FENETRE
+	_fenetre.set_shader_parameter("couleur_a", couleur_a)
+	_fenetre.set_shader_parameter("couleur_b", couleur_b)
+	_fenetre.set_shader_parameter("disque", rond)
+	_fenetre.set_shader_parameter("actif", 0.0)
+	_materiaux.append(_fenetre)
+	surface.material_override = _fenetre
+	surface.layers = Track.CALQUE_FENETRES
+	_vue = SubViewport.new()
+	_vue.name = "VueSurLAutreMonde"
+	# Le même monde que la course : la seconde caméra filme la même scène,
+	# seulement d'autres calques.
+	_vue.own_world_3d = false
+	_vue.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	racine.add_child(_vue)
+	_oeil = Camera3D.new()
+	_vue.add_child(_oeil)
+	_plan_origine = c.position_at(debut)
+	_plan_avant = c.forward_at(debut)
+
+
+## La qualité graphique permet-elle de voir à travers les portails ? Une
+## seconde image de toute la scène, c'est trop pour un petit téléphone.
+static func fenetre_possible() -> bool:
+	if DisplayServer.get_name() == "headless":
+		return false
+	return QualiteGraphique.effectif(GameSettings.qualite) != QualiteGraphique.Niveau.BASSE
+
+
+## La fraction de l'écran de la seconde image : moitié de la résolution en
+## qualité moyenne, trois quarts en haute.
+static func echelle_de_la_fenetre() -> float:
+	return 0.75 if QualiteGraphique.effectif(GameSettings.qualite) == QualiteGraphique.Niveau.HAUTE else 0.5
+
+
+## Ce que filme la seconde caméra : le monde de l'autre côté du portail par
+## rapport à `camera`, et son ciel. Devant le portail, celui qu'il ouvre ;
+## derrière (on l'a traversé et l'on regarde en arrière), celui qu'on quitte.
+func autre_cote(camera_position: Vector3, p: Track) -> Array:
+	var devant := (camera_position - _plan_origine).dot(_plan_avant) < 0.0
+	if devant:
+		return [self, ambiance]
+	return [p.monde_en(debut - 1.0), p.portail_en(debut - 1.0).ambiance]
+
+
+func _mettre_a_jour_la_fenetre() -> void:
+	if _vue == null:
+		return
+	var p := piste()
+	var camera := get_viewport().get_camera_3d()
+	var vers := _plan_origine - camera.global_position if camera != null else Vector3.ZERO
+	var utile := p != null and camera != null and camera != _oeil and _ouverture > 0.01 \
+		and vers.length() < PORTEE_FENETRE and vers.dot(-camera.global_basis.z) > -20.0
+	if not utile:
+		_vue.render_target_update_mode = SubViewport.UPDATE_DISABLED
+		_fenetre.set_shader_parameter("actif", 0.0)
+		return
+	var cote := autre_cote(camera.global_position, p)
+	_oeil.cull_mask = p.masque_pour(cote[0]) & ~Track.CALQUE_FENETRES
+	_oeil.environment = cote[1]
+	_oeil.global_transform = camera.global_transform
+	_oeil.fov = camera.fov
+	_oeil.near = camera.near
+	_oeil.far = camera.far
+	_oeil.current = true
+	var taille := Vector2i(get_viewport().get_visible_rect().size * echelle_de_la_fenetre())
+	if _vue.size != taille:
+		_vue.size = taille
+	if _fenetre.get_shader_parameter("vue") == null:
+		_fenetre.set_shader_parameter("vue", _vue.get_texture())
+	_vue.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_fenetre.set_shader_parameter("actif", 1.0)
+
+
 func _materiau(couloir: bool) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = SHADER
@@ -184,6 +282,7 @@ func _construire(c: TrackCurve, racine: Node3D) -> void:
 	disque.mesh = plan
 	disque.material_override = _materiau(false)
 	entree.add_child(disque)
+	_ouvrir_une_fenetre(c, racine, disque, true)
 	_anneaux.append(entree)
 	# Le couloir : des anneaux de tourbillon qui s'évasent puis se resserrent.
 	var n := maxi(int(longueur / PAS_DES_ANNEAUX), 2)
@@ -246,6 +345,7 @@ func _construire_le_cadre(c: TrackCurve, racine: Node3D) -> void:
 	voile.position = Vector3(0.0, CADRE_HAUTEUR * 0.5, 0.0)
 	voile.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	repere.add_child(voile)
+	_ouvrir_une_fenetre(c, racine, voile, false)
 	if not Engine.is_editor_hint():
 		_lumiere = OmniLight3D.new()
 		_lumiere.light_color = couleur_b
@@ -327,6 +427,8 @@ func _pierre_du_cadre(repere: Node3D, ou: Vector3, pierre: Material, oeil: Mater
 
 
 func _process(delta: float) -> void:
+	if not Engine.is_editor_hint():
+		_mettre_a_jour_la_fenetre()
 	if mode != Mode.VORTEX:
 		return
 	if Engine.is_editor_hint():
