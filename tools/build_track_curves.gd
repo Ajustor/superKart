@@ -222,22 +222,33 @@ const CIRCUITS := {
 	# Une jungle : un gué dans le courant de la rivière, un temple qu'on
 	# traverse par ses galeries, et un couloir de marteaux qui balancent.
 	"temple_jungle": [
+		# Un fleuve qui serpente dans la jungle : la gorge à sauter au
+		# départ, trois grands méandres où se cache le temple, un demi-tour
+		# au bout du fleuve et le retour par la piste de la jungle.
 		Vector3(0, 0, 0),
 		Vector3(90, 0, 0),
-		Vector3(150, 3, -25),
-		Vector3(175, 6, -85),
-		Vector3(150, 8, -145),
-		Vector3(90, 8, -160),
-		Vector3(40, 5, -130),
-		Vector3(-10, 3, -160),
-		Vector3(-30, 2, -220),
-		Vector3(-90, 0, -240),
-		Vector3(-150, 0, -200),
-		Vector3(-160, 2, -130),
-		Vector3(-125, 4, -80),
-		Vector3(-145, 2, -30),
-		Vector3(-105, 0, -5),
-		Vector3(-55, 0, 0),
+		Vector3(162, 1, -42),
+		Vector3(194, 1, -54),
+		Vector3(226, 0, -30),
+		Vector3(258, -1, 15),
+		Vector3(290, -1, 50),
+		Vector3(322, -0, 50),
+		Vector3(354, 1, 15),
+		Vector3(386, 1, -30),
+		Vector3(418, 1, -54),
+		Vector3(450, -1, -42),
+		Vector3(495, 1, 30),
+		Vector3(540, 2, -20),
+		Vector3(545, 3, -110),
+		Vector3(500, 4, -180),
+		Vector3(400, 5, -200),
+		Vector3(300, 6, -195),
+		Vector3(200, 5, -205),
+		Vector3(100, 3, -195),
+		Vector3(10, 2, -180),
+		Vector3(-60, 1, -140),
+		Vector3(-80, 0, -75),
+		Vector3(-55, 0, -20),
 	],
 	# Une base sur la Lune : la gravité y faiblit par endroits, et l'on
 	# saute les cratères en visant des anneaux d'or.

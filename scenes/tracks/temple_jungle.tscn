@@ -67,7 +67,7 @@ graine = 6
 [node name="BasCoteDroite0" type="Node3D" parent="."]
 script = ExtResource("s_offroad")
 debut = 0
-longueur = 60
+longueur = 48
 decalage = 15.5
 largeur = 13
 sol = 0
@@ -75,30 +75,30 @@ sol = 0
 [node name="BasCoteGauche0" type="Node3D" parent="."]
 script = ExtResource("s_offroad")
 debut = 0
-longueur = 60
+longueur = 48
 decalage = -15.5
 largeur = 13
 sol = 0
 
 [node name="BasCoteDroite88" type="Node3D" parent="."]
 script = ExtResource("s_offroad")
-debut = 88
-longueur = 926
+debut = 76
+longueur = 1592
 decalage = 15.5
 largeur = 13
 sol = 0
 
 [node name="BasCoteGauche88" type="Node3D" parent="."]
 script = ExtResource("s_offroad")
-debut = 88
-longueur = 926
+debut = 76
+longueur = 1592
 decalage = -15.5
 largeur = 13
 sol = 0
 
 [node name="RampeGorge" type="Node3D" parent="."]
 script = ExtResource("s_ramp")
-debut = 62
+debut = 50
 longueur = 12
 largeur = 18
 hauteur = 1.8
@@ -106,20 +106,20 @@ couleur = Color(0.55, 0.42, 0.25, 1)
 
 [node name="Gorge" type="Node3D" parent="."]
 script = ExtResource("s_gap")
-debut = 74
+debut = 62
 longueur = 12
 
 [node name="TotemsDuTemple" type="Node3D" parent="."]
 script = ExtResource("s_decor")
 objet = 16
-debut = 262
+debut = 292
 longueur = 1
 decalage = 13
 espacement = 0
 
 [node name="Temple" type="Node3D" parent="."]
 script = ExtResource("s_tunnel")
-debut = 270
+debut = 300
 longueur = 80
 montagne = 12
 couleur = Color(0.52, 0.5, 0.4, 1)
@@ -130,7 +130,7 @@ espacement_lampes = 8
 
 [node name="CouloirDesMarteaux" type="Node3D" parent="."]
 script = ExtResource("s_wall")
-debut = 425
+debut = 1000
 longueur = 47
 cote = 2
 hauteur = 2
@@ -140,7 +140,7 @@ couleur_bis = Color(0.45, 0.43, 0.33, 1)
 [node name="Marteau1" type="Node3D" parent="."]
 script = ExtResource("s_obstacle")
 type = 0
-debut = 430
+debut = 1005
 periode = 3
 amplitude = 55
 couleur = Color(0.45, 0.4, 0.35, 1)
@@ -148,7 +148,7 @@ couleur = Color(0.45, 0.4, 0.35, 1)
 [node name="Marteau2" type="Node3D" parent="."]
 script = ExtResource("s_obstacle")
 type = 0
-debut = 446
+debut = 1021
 periode = 3
 phase = 0.33
 amplitude = 55
@@ -157,7 +157,7 @@ couleur = Color(0.45, 0.4, 0.35, 1)
 [node name="Marteau3" type="Node3D" parent="."]
 script = ExtResource("s_obstacle")
 type = 0
-debut = 462
+debut = 1037
 periode = 3
 phase = 0.66
 amplitude = 55
@@ -166,21 +166,21 @@ couleur = Color(0.45, 0.4, 0.35, 1)
 [node name="Gue" type="Node3D" parent="."]
 script = ExtResource("s_courant")
 style = 1
-debut = 494
+debut = 1100
 longueur = 22
 largeur = 60
 poussee_laterale = 6
 
 [node name="PlaqueDuGue" type="Node3D" parent="."]
 script = ExtResource("s_boost")
-debut = 520
+debut = 1126
 decalage = -3
 
 [node name="Arbres" type="Node3D" parent="."]
 script = ExtResource("s_decor")
 objet = 10
 debut = 0
-longueur = 1014
+longueur = 1668
 decalage = 26
 espacement = 18
 eviter_la_route = true
@@ -190,7 +190,7 @@ graine = 2
 script = ExtResource("s_decor")
 objet = 10
 debut = 5
-longueur = 1009
+longueur = 1663
 decalage = 42
 espacement = 15
 echelle = 1.5
@@ -201,7 +201,7 @@ graine = 7
 script = ExtResource("s_decor")
 objet = 0
 debut = 30
-longueur = 984
+longueur = 1638
 decalage = 20
 espacement = 40
 eviter_la_route = true
@@ -211,7 +211,7 @@ graine = 3
 script = ExtResource("s_decor")
 objet = 13
 debut = 0
-longueur = 1014
+longueur = 1668
 decalage = 22.5
 espacement = 9
 eviter_la_route = true
