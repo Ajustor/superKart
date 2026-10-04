@@ -375,7 +375,9 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 		# Se déclencher sur sa montée enregistrait un tour à chaque
 		# franchissement, donc reculer sur la ligne d'arrivée fabriquait un
 		# meilleur temps de deux images. On compte sur une ligne de crue.
-		if not sans_tours and entree.progress.lap > entree.tours_comptes:
+		if not sans_tours and lineaire():
+			_avancer_en_ligne(entree, point)
+		elif not sans_tours and entree.progress.lap > entree.tours_comptes:
 			entree.tours_comptes = entree.progress.lap
 			entree.timer.complete_lap()
 			if entree.tours_comptes >= lap_count and arbitre:
@@ -403,6 +405,20 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 		entree.en_vol = true
 	elif entree.en_vol and entree.kart.au_sol:
 		entree.en_vol = false
+	# Tombé dans un portail posé à plat : une chute voulue, un vol comme un
+	# autre — il ne sera remis en piste que s'il atterrit à côté.
+	var chute := _track.trou_en(d)
+	if chute != null and chute.chute_voulue and not entree.kart.au_sol:
+		entree.en_vol = true
+		# Comme dans un portail du jeu de cubes : on tombe dedans, et l'on
+		# ressort de l'autre côté, au bas du plongeon, sans rien perdre.
+		var bord := _track.track_curve.position_at(chute.debut).y
+		if point.y < bord - PROFONDEUR_DU_PORTAIL:
+			var sortie := wrapf(chute.fin() + 6.0, 0.0, _track.track_curve.length)
+			entree.kart.teleporter(_track.spawn_at(sortie))
+			entree.derniere_en_piste = sortie
+			entree.en_vol = false
+			return
 	var tremplin := _track.tremplin_en(d, lateral)
 	if tremplin != null and entree.kart.sauter(tremplin.impulsion):
 		entree.en_vol = true
@@ -444,6 +460,53 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 		var reprise := _track.point_de_reprise(entree.derniere_en_piste)
 		entree.derniere_en_piste = reprise
 		entree.kart.respawn_at(_track.spawn_at(reprise))
+
+
+## Une course linéaire : chaque section franchie se compte comme un tour (le
+## compteur et la musique s'en servent), et l'arrivée est au bout du tracé,
+## pas sur la ligne de départ. tours_comptes ne fait que monter : reculer
+## dans la section précédente ne la fait pas recompter.
+func _avancer_en_ligne(entree: RaceEntry, point: Vector3) -> void:
+	if entree.tours_comptes >= etapes():
+		return
+	if entree.progress.total >= _track.arrivee:
+		entree.tours_comptes = etapes()
+		entree.timer.complete_lap()
+		if arbitre:
+			_franchir_l_arrivee(entree, point)
+		tour_boucle.emit(entree)
+		return
+	var franchies := _track.section_en(entree.progress.total) - 1
+	if franchies > entree.tours_comptes:
+		entree.tours_comptes = franchies
+		tour_boucle.emit(entree)
+
+
+## Une course d'un bout à l'autre du circuit (Track.arrivee), sans tours.
+func lineaire() -> bool:
+	return _track != null and _track.lineaire()
+
+
+## Les étapes de la course : ses tours, ou ses sections.
+func etapes() -> int:
+	return _track.nombre_de_sections() if lineaire() else lap_count
+
+
+## L'étape où en est ce concurrent, de 1 à etapes().
+func etape(entree: RaceEntry) -> int:
+	if lineaire():
+		return mini(_track.section_en(entree.progress.total), etapes())
+	return mini(entree.progress.lap + 1, lap_count)
+
+
+## « TOUR 2/3 », ou « SECTION 2/3 » en course linéaire.
+func texte_etape(entree: RaceEntry) -> String:
+	return "%s %d/%d" % ["SECTION" if lineaire() else "TOUR", etape(entree), etapes()]
+
+
+## La profondeur, sous le bord d'un trou où l'on tombe exprès, où le kart
+## passe de l'autre côté du portail.
+const PROFONDEUR_DU_PORTAIL := 3.0
 
 
 ## En réseau, sur un client : l'hôte annonce une arrivée, on la recopie.

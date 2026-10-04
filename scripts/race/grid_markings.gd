@@ -31,8 +31,16 @@ func _ready() -> void:
 	var piste := session.entries[0].progress.track
 	var blanc := _materiau(Color(0.95, 0.95, 0.95))
 
-	_ligne_de_depart(piste)
-	_portique(piste)
+	var circuit := session.circuit()
+	if circuit != null and circuit.lineaire():
+		# D'un bout à l'autre : le départ ici, l'arrivée au bout du tracé.
+		_ligne_de_depart(piste, RaceSession.DEPART)
+		_portique(piste, RaceSession.DEPART, "DÉPART")
+		_ligne_de_depart(piste, circuit.arrivee)
+		_portique(piste, circuit.arrivee, "ARRIVÉE")
+	else:
+		_ligne_de_depart(piste, RaceSession.DEPART)
+		_portique(piste, RaceSession.DEPART, "DÉPART · ARRIVÉE")
 	for i in session.entries.size():
 		_case(session.transformee_de_case(i), i + 1, blanc)
 
@@ -46,7 +54,7 @@ func _materiau(couleur: Color) -> StandardMaterial3D:
 
 ## Le damier : une texture de deux pixels de haut répétée sur toute la
 ## largeur. Le filtre au plus proche garde des cases nettes à toute distance.
-func _ligne_de_depart(piste: TrackCurve) -> void:
+func _ligne_de_depart(piste: TrackCurve, d: float) -> void:
 	var largeur := piste.half_width * 2.0
 	var image := Image.create(2, 2, false, Image.FORMAT_RGB8)
 	image.set_pixel(0, 0, Color.WHITE)
@@ -62,11 +70,10 @@ func _ligne_de_depart(piste: TrackCurve) -> void:
 	var plan := PlaneMesh.new()
 	plan.size = Vector2(largeur, PROFONDEUR_LIGNE)
 	var ligne := MeshInstance3D.new()
-	ligne.name = "LigneDeDepart"
+	ligne.name = "LigneDeDepart" if d == RaceSession.DEPART else "LigneDArrivee"
 	ligne.mesh = plan
 	ligne.material_override = materiau
 	ligne.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var d := RaceSession.DEPART
 	ligne.transform = Transform3D(piste.basis_at(d),
 		piste.position_at(d) + piste.up_at(d) * EPAISSEUR_PEINTURE)
 	add_child(ligne)
@@ -74,8 +81,7 @@ func _ligne_de_depart(piste: TrackCurve) -> void:
 
 ## Deux poteaux et une banderole au-dessus de la ligne : on voit l'arrivée
 ## venir de loin, ce que la peinture seule ne permet pas dans une descente.
-func _portique(piste: TrackCurve) -> void:
-	var d := RaceSession.DEPART
+func _portique(piste: TrackCurve, d: float, inscription: String) -> void:
 	var repere := Transform3D(piste.basis_at(d), piste.position_at(d))
 	var ecart := piste.half_width + 0.8
 	var poteau := _materiau(Color(0.85, 0.15, 0.15))
@@ -88,7 +94,7 @@ func _portique(piste: TrackCurve) -> void:
 		Vector3(ecart * 2.0 + 0.5, 1.1, 0.35), banderole)
 
 	var texte := Label3D.new()
-	texte.text = "DÉPART · ARRIVÉE"
+	texte.text = inscription
 	texte.font_size = 96
 	texte.pixel_size = 0.01
 	texte.outline_size = 0

@@ -113,6 +113,9 @@ func _calculer(c: TrackCurve) -> void:
 		var d := c.length * float(i) / float(n)
 		var p := c.position_at(d)
 		var ici := Vector2(p.x, p.z)
+		var circuit := piste()
+		if circuit != null and circuit.hors_course(d):
+			continue
 		if p.y < altitude - 0.05 and p.y > altitude - PROFONDEUR_PERCEE:
 			_ranger(dessous, ici)
 		if portion and not couvre(d, c.length):

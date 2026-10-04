@@ -19,6 +19,23 @@ extends TrackFeature
 ##
 ## Il s'ouvre et se ferme d'après la course (Track.tete_total et
 ## queue_total) : en réseau, chaque machine voit le même portail ouvert.
+##
+## Ça, c'est le tourbillon (`VORTEX`). Trois autres formes :
+## - `CADRE` : un voile violet qui ondule dans un grand cadre de blocs
+##   d'obsidienne, en travers de la route, toujours ouvert ;
+## - `SOL` : un puits d'étoiles posé à plat sur la route, dans un cadre de
+##   pierres, toujours ouvert. La route s'arrête au bord (un TrackGap à
+##   `chute_voulue`) et le tracé plonge : on tombe dedans, et on arrive en
+##   dessous, dans l'autre monde ;
+## - `SEUIL` : rien à voir. On change de contrée — le ciel, les décors —
+##   sans passer de porte.
+
+enum Mode { VORTEX, CADRE, SOL, SEUIL }
+
+@export var mode: Mode = Mode.VORTEX:
+	set(valeur):
+		mode = valeur
+		_modifie()
 
 @export_range(3.0, 20.0, 0.5) var rayon: float = 8.0:
 	set(valeur):
@@ -30,6 +47,11 @@ extends TrackFeature
 
 ## Le ciel et la lumière de l'autre côté. Rien : on garde ceux du circuit.
 @export var ambiance: Environment
+
+## Faux : on change de contrée, pas de monde. Le ciel change (`ambiance`),
+## mais les décors restent ceux du monde où l'on est : du marais, on voit
+## toujours la tour de l'horloge au loin.
+@export var nouveau_monde: bool = true
 
 ## Ce qui n'existe que de ce côté-ci du portail, jusqu'au suivant : les
 ## décors de cette époque (des nœuds frères, en général). Ils disparaissent
@@ -51,6 +73,12 @@ var _anneaux: Array[Node3D] = []
 var _lumiere: OmniLight3D
 
 const SHADER := preload("res://shaders/vortex.gdshader")
+const SHADER_SOL := preload("res://shaders/portail_end.gdshader")
+
+## Le cadre d'obsidienne : sa marge de chaque côté de la route, sa hauteur.
+const CADRE_MARGE := 1.5
+const CADRE_HAUTEUR := 11.0
+const BLOC := 1.5
 
 
 func _init() -> void:
@@ -68,6 +96,9 @@ func _validate_property(property: Dictionary) -> void:
 ## Il s'ouvre quand le premier arrive à AVANCE mètres, et reste ouvert tant
 ## que le dernier ne l'a pas dépassé — au même tour.
 func ouvert(tete: float, queue: float, tour: float) -> bool:
+	if mode != Mode.VORTEX:
+		# Les portails taillés dans la pierre ne se referment jamais.
+		return true
 	if tour <= 0.0:
 		return false
 	var passage := floorf((tete - debut + AVANCE) / tour) * tour + debut
@@ -84,6 +115,8 @@ func rayon_du_couloir(t: float) -> float:
 ## La force de l'effet sur la caméra d'un kart à cette distance le long du
 ## tracé : 0 loin du portail, 1 en plein couloir.
 func effet_a(distance: float, tour: float) -> float:
+	if mode == Mode.SEUIL:
+		return 0.0
 	var etendue := longueur + 30.0
 	var t := wrapf(distance - debut + 15.0, 0.0, tour)
 	if t > etendue:
@@ -119,6 +152,16 @@ func _materiau(couloir: bool) -> ShaderMaterial:
 func _construire(c: TrackCurve, racine: Node3D) -> void:
 	_materiaux.clear()
 	_anneaux.clear()
+	_lumiere = null
+	match mode:
+		Mode.SEUIL:
+			return
+		Mode.CADRE:
+			_construire_le_cadre(c, racine)
+			return
+		Mode.SOL:
+			_construire_le_puits(c, racine)
+			return
 	var lumineux := StandardMaterial3D.new()
 	lumineux.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	lumineux.albedo_color = couleur_a.lerp(Color.WHITE, 0.4)
@@ -173,7 +216,119 @@ func _construire(c: TrackCurve, racine: Node3D) -> void:
 	_appliquer()
 
 
+## Le portail du monde d'en dessous : un cadre de blocs d'obsidienne autour
+## de toute la largeur de la route, et le voile qui ondule dedans.
+func _construire_le_cadre(c: TrackCurve, racine: Node3D) -> void:
+	var repere := Node3D.new()
+	repere.transform = Transform3D(c.basis_at(debut), c.position_at(debut))
+	racine.add_child(repere)
+	var obsidienne := StandardMaterial3D.new()
+	obsidienne.albedo_color = Color(0.09, 0.05, 0.14)
+	obsidienne.roughness = 0.35
+	var largeur := c.half_width + CADRE_MARGE
+	var x := -largeur - BLOC * 0.5
+	# Deux montants et un linteau, bloc par bloc.
+	while x <= largeur + BLOC * 0.5 + 0.01:
+		_bloc(repere, Vector3(x, CADRE_HAUTEUR + BLOC * 0.5, 0.0), obsidienne)
+		x += BLOC
+	var y := BLOC * 0.5
+	while y < CADRE_HAUTEUR:
+		for cote in [-1.0, 1.0]:
+			_bloc(repere, Vector3(cote * (largeur + BLOC * 0.5), y, 0.0), obsidienne)
+		y += BLOC
+	var voile := MeshInstance3D.new()
+	var plan := QuadMesh.new()
+	plan.size = Vector2(largeur * 2.0, CADRE_HAUTEUR)
+	voile.mesh = plan
+	var m := _materiau(false)
+	m.set_shader_parameter("plat", true)
+	voile.material_override = m
+	voile.position = Vector3(0.0, CADRE_HAUTEUR * 0.5, 0.0)
+	voile.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	repere.add_child(voile)
+	if not Engine.is_editor_hint():
+		_lumiere = OmniLight3D.new()
+		_lumiere.light_color = couleur_b
+		_lumiere.omni_range = largeur * 2.5
+		_lumiere.position = Vector3(0.0, CADRE_HAUTEUR * 0.5, 1.0)
+		repere.add_child(_lumiere)
+	_ouverture = 1.0
+	_appliquer()
+
+
+## Le portail du bout du monde : un puits d'étoiles à plat, au ras de la
+## route, sur toute la longueur du trou, et son cadre de pierres claires
+## serties d'un œil vert.
+func _construire_le_puits(c: TrackCurve, racine: Node3D) -> void:
+	# À plat, au niveau de la rive d'entrée : le tracé plonge dessous.
+	var avant := c.tangent_at(debut)
+	var droite := Vector3(-avant.z, 0.0, avant.x)
+	var repere := Node3D.new()
+	repere.transform = Transform3D(Basis(droite, Vector3.UP, -avant), c.position_at(debut))
+	racine.add_child(repere)
+	var largeur := c.half_width * 2.0
+	var puits := MeshInstance3D.new()
+	var plan := PlaneMesh.new()
+	plan.size = Vector2(largeur, longueur)
+	puits.mesh = plan
+	var m := ShaderMaterial.new()
+	m.shader = SHADER_SOL
+	puits.material_override = m
+	puits.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	puits.position = Vector3(0.0, 0.02, -longueur * 0.5)
+	repere.add_child(puits)
+	var pierre := StandardMaterial3D.new()
+	pierre.albedo_color = Color(0.78, 0.8, 0.62)
+	var oeil := StandardMaterial3D.new()
+	oeil.albedo_color = Color(0.2, 0.7, 0.45)
+	oeil.emission_enabled = true
+	oeil.emission = Color(0.15, 0.6, 0.35)
+	# Une rangée de pierres le long de chaque rive, et au fond : le kart
+	# entre par le côté ouvert.
+	var z := 0.0
+	while z <= longueur:
+		for cote in [-1.0, 1.0]:
+			_pierre_du_cadre(repere, Vector3(cote * (c.half_width + BLOC * 0.5), 0.0, -z), pierre, oeil)
+		z += BLOC
+	var x := -c.half_width - BLOC * 0.5
+	while x <= c.half_width + BLOC * 0.5 + 0.01:
+		_pierre_du_cadre(repere, Vector3(x, 0.0, -longueur - BLOC * 0.5), pierre, oeil)
+		x += BLOC
+	if not Engine.is_editor_hint():
+		_lumiere = OmniLight3D.new()
+		_lumiere.light_color = Color(0.3, 0.9, 0.75)
+		_lumiere.omni_range = largeur * 1.5
+		_lumiere.light_energy = 2.0
+		_lumiere.position = Vector3(0.0, 2.0, -longueur * 0.5)
+		repere.add_child(_lumiere)
+	_ouverture = 1.0
+
+
+func _bloc(parent: Node3D, ou: Vector3, materiau: Material) -> void:
+	var bloc := MeshInstance3D.new()
+	var boite := BoxMesh.new()
+	boite.size = Vector3.ONE * BLOC
+	bloc.mesh = boite
+	bloc.material_override = materiau
+	bloc.position = ou
+	parent.add_child(bloc)
+
+
+func _pierre_du_cadre(repere: Node3D, ou: Vector3, pierre: Material, oeil: Material) -> void:
+	_bloc(repere, ou + Vector3(0.0, -BLOC * 0.25, 0.0), pierre)
+	var pupille := MeshInstance3D.new()
+	var boule := SphereMesh.new()
+	boule.radius = 0.35
+	boule.height = 0.5
+	pupille.mesh = boule
+	pupille.material_override = oeil
+	pupille.position = ou + Vector3(0.0, BLOC * 0.5 + 0.05, 0.0)
+	repere.add_child(pupille)
+
+
 func _process(delta: float) -> void:
+	if mode != Mode.VORTEX:
+		return
 	if Engine.is_editor_hint():
 		_ouverture = 1.0
 		_appliquer()

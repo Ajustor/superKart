@@ -258,7 +258,7 @@ func _remplir() -> void:
 		if entree.finished:
 			_cellule(_temps(entree), couleur)
 		else:
-			_cellule("tour %d/%d…" % [mini(entree.tours_comptes + 1, _session.lap_count), _session.lap_count], couleur)
+			_cellule("%s…" % _session.texte_etape(entree).to_lower(), couleur)
 		_cellule(RaceTimer.format(entree.timer.best) if entree.timer.has_best else "—", couleur)
 		# Des points provisoires pour ceux qui courent encore : leur place
 		# peut encore changer, la couleur éteinte le dit.

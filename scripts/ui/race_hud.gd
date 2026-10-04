@@ -114,8 +114,10 @@ func _sur_tour(entree: RaceEntry) -> void:
 		return
 	if entree.finished:
 		_annoncer("ARRIVÉE !\n%s" % RaceScoring.ordinal(entree.place_finale), 3.0)
-	elif entree.tours_comptes == _session.lap_count - 1:
-		_annoncer("DERNIER TOUR !")
+	elif entree.tours_comptes == _session.etapes() - 1:
+		_annoncer("DERNIÈRE SECTION !" if _session.lineaire() else "DERNIER TOUR !")
+	elif _session.lineaire():
+		_annoncer("SECTION %d" % (entree.tours_comptes + 1))
 
 
 ## Une place gagnée : ▲ vert ; perdue : ▼ rouge, le temps d'y jeter un œil.
@@ -144,7 +146,6 @@ func _process(delta: float) -> void:
 	if _session.entries.is_empty():
 		return
 	var moi := _session.entries[0]
-	var tour := mini(moi.progress.lap + 1, _session.lap_count)
 	var lignes := PackedStringArray()
 	if _bataille != null:
 		_label.text = "\n".join(lignes_de_bataille(_bataille, moi, _session.entries.size()))
@@ -156,7 +157,7 @@ func _process(delta: float) -> void:
 	# Seul en piste (contre-la-montre), la place ne dit rien.
 	if _session.entries.size() > 1:
 		lignes.append("%s / %d" % [RaceScoring.ordinal(maxi(moi.position, 1)), _session.entries.size()])
-	lignes.append("TOUR %d/%d" % [tour, _session.lap_count])
+	lignes.append(_session.texte_etape(moi))
 	lignes.append(RaceTimer.format(moi.timer.current))
 	if moi.timer.has_best:
 		lignes.append("MEILLEUR %s" % RaceTimer.format(moi.timer.best))

@@ -352,6 +352,25 @@ func respawn_at(where: Transform3D) -> void:
 		suspension.reset()
 
 
+## Transporte le kart ailleurs sans rien lui retirer : sa vitesse, son turbo,
+## ses pièces, son étoile. Pour un portail qu'on traverse, pas pour une sortie
+## de route (respawn_at, qui le pose à l'arrêt et lui coûte des pièces).
+func teleporter(where: Transform3D) -> void:
+	var vitesse := motor.speed
+	var turbo := motor.boost_timer
+	var force := motor.boost_multiplier
+	var pieces := motor.pieces
+	var etoile := motor.etoile
+	var retreci := motor.retreci
+	respawn_at(where)
+	motor.speed = vitesse
+	motor.boost_timer = turbo
+	motor.boost_multiplier = force
+	motor.pieces = pieces
+	motor.etoile = etoile
+	motor.retreci = retreci
+
+
 ## Confie le kart à une autre source de commande. La session s'en sert pour
 ## passer le joueur en pilote automatique une fois la ligne franchie.
 func changer_pilote(source: KartInput) -> void:

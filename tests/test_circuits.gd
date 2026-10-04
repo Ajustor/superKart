@@ -223,7 +223,8 @@ func _monter(info: TrackInfo) -> Track:
 func test_chaque_circuit_est_roulable() -> void:
 	for info in TrackCatalog.PISTES:
 		var piste := _monter(info)
-		var serres := piste.track_curve.tight_spots(piste.min_drivable_radius, piste.segment_length)
+		var serres := piste.track_curve.tight_spots(piste.min_drivable_radius, piste.segment_length) \
+			.filter(func(s: Array) -> bool: return not piste.hors_course(s[0]) and not _plonge(piste, s[0]))
 		assert_eq(serres.size(), 0, "%s : aucun virage plus serré que le braquage du kart" % info.id)
 
 
@@ -231,7 +232,7 @@ func test_chaque_trou_a_de_quoi_sauter() -> void:
 	for info in TrackCatalog.PISTES:
 		var piste := _monter(info)
 		for element in piste.elements():
-			if element is TrackGap:
+			if element is TrackGap and not element.chute_voulue:
 				assert_true(element.a_un_elan(piste), "%s : %s a une rampe juste avant" % [info.id, element.name])
 
 
@@ -306,8 +307,19 @@ func test_deux_portions_du_trace_ne_se_confondent_pas() -> void:
 			var p := c.position_at(d)
 			var e := 0.0
 			while e < c.length:
-				if absf(wrapf(e - d, -c.length * 0.5, c.length * 0.5)) > 80.0:
+				# La boucle qu'on ne court pas, après l'arrivée d'une course
+				# linéaire, n'a pas de route : rien à confondre... sauf si elle
+				# frôle une portion courue, où un kart s'y projetterait.
+				var hors := piste.hors_course(d) and piste.hors_course(e)
+				if not hors and absf(wrapf(e - d, -c.length * 0.5, c.length * 0.5)) > 80.0:
 					pire = minf(pire, p.distance_to(c.position_at(e)))
 				e += 5.0
 			d += 5.0
 		assert_gt(pire, piste.half_width * 2.0, "%s : %.1f m entre deux portions" % [info.id, pire])
+
+
+## Dans un trou où l'on tombe exprès (un portail à plat), le tracé plonge à
+## pic : aucune route, rien à braquer.
+func _plonge(piste: Track, d: float) -> bool:
+	var trou := piste.trou_en(wrapf(d, 0.0, piste.track_curve.length))
+	return trou != null and trou.chute_voulue

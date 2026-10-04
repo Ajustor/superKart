@@ -111,6 +111,10 @@ func placements(c: TrackCurve) -> Array[Transform3D]:
 			# Sur le relief du circuit, s'il en a un : loin de la route, le sol
 			# n'est plus à la hauteur du bitume.
 			var sol := _terrain()
+			# Un relief limité à une portion ne porte que les décors de cette
+			# portion : sur la lune, l'arbre ne descend pas jusqu'à Termina.
+			if sol != null and sol.portion and not sol.couvre(wrapf(ici, 0.0, c.length), c.length):
+				sol = null
 			if sol != null and absf(lateral) > c.half_width:
 				ou.y = sol.hauteur_en(ou.x, ou.z) + envol
 				# Posé sur le relief, il peut tomber sur une route plus basse :

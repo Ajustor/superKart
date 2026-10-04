@@ -12,11 +12,18 @@ uniform vec4 couleur_b : source_color = vec4(1.0, 0.4, 1.0, 1.0);
 uniform float ouverture : hint_range(0.0, 1.0) = 1.0;
 uniform float vitesse = 1.0;
 uniform bool couloir = false;
+// Un voile plat qui ondule, sans spirale : le portail encadré d'obsidienne.
+uniform bool plat = false;
 
 void fragment() {
 	float bras;
 	float voile;
-	if (couloir) {
+	if (plat) {
+		// Des volutes qui montent et se tordent, d'un bord à l'autre.
+		float tord = sin(UV.y * 9.0 + TIME * 1.7) * 0.6 + sin(UV.x * 13.0 - TIME * 1.1) * 0.4;
+		bras = sin(UV.x * 18.0 + tord * 3.0 + TIME * 2.5 * vitesse) * sin(UV.y * 11.0 - TIME * 1.3);
+		voile = 1.0;
+	} else if (couloir) {
 		// UV.x fait le tour de l'anneau, UV.y sa section.
 		bras = sin(UV.x * 6.2832 * 3.0 + TIME * 5.0 * vitesse);
 		voile = 0.55;

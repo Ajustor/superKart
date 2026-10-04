@@ -422,10 +422,11 @@ func test_chaque_circuit_reste_roulable_en_miroir() -> void:
 		var piste: Track = info.scene.instantiate()
 		Miroir.appliquer(piste)
 		add_child_autofree(piste)
-		assert_eq(piste.track_curve.tight_spots(piste.min_drivable_radius, piste.segment_length).size(), 0,
-			"%s en miroir" % info.id)
+		var serres := piste.track_curve.tight_spots(piste.min_drivable_radius, piste.segment_length) \
+			.filter(func(s: Array) -> bool: return not piste.hors_course(s[0]) and not _plonge(piste, s[0]))
+		assert_eq(serres.size(), 0, "%s en miroir" % info.id)
 		for element in piste.elements():
-			if element is TrackGap:
+			if element is TrackGap and not element.chute_voulue:
 				assert_true(element.a_un_elan(piste), "%s en miroir : rampe avant le trou" % info.id)
 
 
@@ -433,3 +434,10 @@ func test_la_coupe_garde_son_miroir_en_reseau() -> void:
 	var gp := GrandPrix.new(0)
 	gp.miroir = true
 	assert_true(GrandPrix.depuis(gp.en_dictionnaire()).miroir)
+
+
+## Dans un trou où l'on tombe exprès (un portail à plat), le tracé plonge à
+## pic : aucune route, rien à braquer.
+func _plonge(piste: Track, d: float) -> bool:
+	var trou := piste.trou_en(wrapf(d, 0.0, piste.track_curve.length))
+	return trou != null and trou.chute_voulue

@@ -15,6 +15,14 @@ extends TrackFeature
 ## Largeur des bandes jaunes et noires peintes sur chaque rive.
 const BANDE_BORD := 1.5
 
+## Un trou où l'on tombe exprès, sans sauter : le portail du bout du monde,
+## où le circuit plonge vers le monde d'en dessous, ou la boucle qu'on ne
+## court pas après l'arrivée d'une course linéaire. Ni rampe ni bandes.
+@export var chute_voulue: bool = false:
+	set(valeur):
+		chute_voulue = valeur
+		_modifie()
+
 
 func _init() -> void:
 	longueur = 25.0
@@ -79,7 +87,7 @@ func _exit_tree() -> void:
 func _get_configuration_warnings() -> PackedStringArray:
 	var avertissements := super()
 	var p := piste()
-	if p != null and p.track_curve != null and not a_un_elan(p):
+	if p != null and p.track_curve != null and not chute_voulue and not a_un_elan(p):
 		avertissements.append("Ni rampe ni tremplin dans les %d m avant ce trou : " % int(DISTANCE_D_ELAN) \
 			+ "personne ne pourra le sauter. Pose un TrackRamp ou un TrackJump juste avant.")
 	return avertissements
@@ -104,6 +112,8 @@ func a_un_elan(p: Track) -> bool:
 ## Des bandes jaunes et noires sur chaque rive : un bord de vide doit se voir
 ## de loin, surtout au sommet d'une rampe.
 func _construire(c: TrackCurve, racine: Node3D) -> void:
+	if chute_voulue:
+		return
 	var demi := c.half_width
 	var materiau := _materiau_bord()
 	for d in [debut - BANDE_BORD, fin()]:
