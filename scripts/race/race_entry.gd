@@ -75,6 +75,10 @@ var roule_dehors: float = -1.0
 ## kart (voir Aspiration).
 var aspiration: float = 0.0
 
+## Le calque de rendu du monde où roule le kart (Track.calque_a), 0 sans
+## monde.
+var calque: int = 0
+
 ## Ligne de crue des tours comptés. Le numéro de tour de RaceProgress, lui,
 ## redescend quand le kart recule.
 var tours_comptes: int = 0

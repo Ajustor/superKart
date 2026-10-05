@@ -182,6 +182,9 @@ func poser_rangee(distance: float) -> void:
 		boite.position = _au_sol(distance, boite.lateral, HAUTEUR_BOITE)
 		boite.noeud = _visuel_boite()
 		boite.noeud.position = boite.position
+		# Derrière un portail, la boîte n'est que de son monde (Track.calque_a).
+		if _circuit != null and _circuit.calque_a(distance) != 0:
+			Track.poser_calque(boite.noeud, _circuit.calque_a(distance))
 		add_child(boite.noeud)
 		boites.append(boite)
 

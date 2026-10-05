@@ -735,6 +735,13 @@ func _raconter_au_circuit() -> void:
 	_track.tete_total = tete
 	_track.queue_total = queue if queue < INF else tete
 	_track.tours_course = lap_count
+	# Chaque kart n'est dessiné que dans le monde où il roule : de ce côté-ci
+	# d'un portail, ceux qui l'ont passé ne se voient qu'à travers lui.
+	for e in entries:
+		var calque := _track.calque_a(e.progress.distance)
+		if calque != 0 and calque != e.calque:
+			e.calque = calque
+			Track.poser_calque(e.kart, calque)
 
 
 ## Les concurrents dans l'ordre du classement.

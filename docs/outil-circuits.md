@@ -356,3 +356,19 @@ Les circuits prennent l'allure des kits de Kenney (CC0, `assets/kenney/`) :
   tribune d'un côté, stands de l'autre, tours à bannières sur la ligne,
   drapeaux à damier, tentes et panneaux. Le circuit de la plage n'a ni tribune
   ni stands : ils tomberaient dans la mer.
+
+## La route s'arrête au portail
+
+Derrière un portail qui mène à un autre monde, la route n'existe que pour ce
+monde : `Track.portions_visibles` découpe ce qui se voit de la route
+(chaussée, dessous, marquage, rives, bordures) en une portion par monde,
+chacune sur le calque de son monde. Vue d'ici, la route s'arrête net au
+portail ; la suite n'apparaît que dans le portail, filmée par sa caméra, et
+se révèle quand on le traverse. La collision, elle, reste d'un seul tenant.
+
+Il en va de même de ce qui est posé dessus : les éléments du tracé (murs,
+tremplins, plaques… sauf ceux que réclame déjà un monde, voir
+`TrackPortail.decors`) et les boîtes à objets prennent le calque du monde où
+ils sont (`Track.calque_a`), et chaque kart celui du monde où il roule,
+tenu à jour par la session à chaque image. Celui qui vient de passer le
+portail ne se voit plus qu'à travers lui.

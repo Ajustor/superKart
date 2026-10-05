@@ -192,6 +192,33 @@ func test_de_l_autre_cote_du_portail_on_voit_l_autre_monde() -> void:
 	assert_eq(b.autre_cote(derriere, track)[0], a, "après l'avoir franchi : celui qu'on quitte")
 
 
+func test_la_route_d_au_dela_du_portail_n_est_que_de_son_monde() -> void:
+	var a := _portail(100.0)
+	var b := _portail(300.0)
+	var portions := track.portions_visibles()
+	assert_eq(portions.size(), 2, "une portion de route par monde")
+	var par_calque := {}
+	for portion in portions:
+		par_calque[portion.calque] = portion
+	assert_true(par_calque.has(track.calque_du_monde(a)) and par_calque.has(track.calque_du_monde(b)))
+	var de_a: Array = TrackBuilder.troncons(track.track_curve.length, par_calque[track.calque_du_monde(a)].trous)
+	assert_eq(de_a.size(), 1, "le monde A n'a que sa route : du portail A au portail B")
+	assert_almost_eq(de_a[0].x, 100.0, 1.01)
+	assert_almost_eq(de_a[0].y, 300.0, 1.01)
+	var de_b: Array = TrackBuilder.troncons(track.track_curve.length, par_calque[track.calque_du_monde(b)].trous)
+	assert_eq(de_b.size(), 2, "le monde B fait le tour, par la ligne de départ")
+	assert_eq(track.calque_a(200.0), track.calque_du_monde(a))
+	assert_eq(track.calque_a(350.0), track.calque_du_monde(b))
+	assert_eq(track.calque_a(50.0), track.calque_du_monde(b), "avant le premier portail, on vient du dernier")
+
+
+func test_sans_portail_la_route_est_d_un_seul_tenant() -> void:
+	var portions := track.portions_visibles()
+	assert_eq(portions.size(), 1)
+	assert_eq(portions[0].calque, Track.CALQUE_COMMUN)
+	assert_eq(track.calque_a(100.0), 0)
+
+
 func test_un_decor_introuvable_est_ignore() -> void:
 	var a := _portail(100.0)
 	a.decors = [NodePath("../Personne")]
