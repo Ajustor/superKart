@@ -9,3 +9,4 @@ nom = "Faille Temporelle"
 description = "Trois époques en un tour : la grand-place d'une petite ville des années cinquante, où la foudre guette la tour de l'horloge ; une ville du futur, sa voie aérienne et ses voitures volantes ; le Far West et son train à vapeur. Entre elles, des failles dans le temps s'ouvrent devant le premier et se referment derrière le dernier."
 chemin_scene = "res://scenes/tracks/saut_temporel.tscn"
 tours = 3
+portails = true

@@ -8,6 +8,8 @@ extends Control
 signal ferme
 ## La course du menu est à allumer ou éteindre (option, ou qualité changée).
 signal fond_change
+## Le joueur veut lire le journal de la partie précédente (JournalPanel).
+signal journal
 
 var _general: HSlider
 var _effets: HSlider
@@ -21,6 +23,7 @@ var _course_de_fond: CheckButton
 var _fps: CheckButton
 var _mises_a_jour: CheckButton
 var _qualite: OptionButton
+var _taille: OptionButton
 var _joystick: CheckButton
 var _sensibilite: HSlider
 var _principal: Control
@@ -55,6 +58,9 @@ func _ready() -> void:
 	_qualite = _liste(gauche, "Qualité graphique", {
 		"Automatique": QualiteGraphique.Niveau.AUTO, "Haute": QualiteGraphique.Niveau.HAUTE,
 		"Moyenne": QualiteGraphique.Niveau.MOYENNE, "Basse": QualiteGraphique.Niveau.BASSE})
+	_taille = _liste(gauche, "Taille de l'interface", {
+		"Automatique": GameSettings.TailleInterface.AUTO, "Petite": GameSettings.TailleInterface.PETITE,
+		"Normale": GameSettings.TailleInterface.NORMALE, "Grande": GameSettings.TailleInterface.GRANDE})
 	_mini_carte = _interrupteur(gauche, "Mini-carte")
 	_course_de_fond = _interrupteur(gauche, "Course en fond du menu")
 	_fps = _interrupteur(gauche, "Compteur de FPS")
@@ -73,6 +79,9 @@ func _ready() -> void:
 	droite.add_child(changer)
 	droite.add_child(_intertitre("Jeu"))
 	_mises_a_jour = _interrupteur(droite, "Chercher les mises à jour")
+	var lire := UITheme.bouton("Journal de la partie précédente…", func() -> void: journal.emit())
+	lire.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	droite.add_child(lire)
 
 	_touches = TouchesPanel.new()
 	_touches.visible = false
@@ -117,6 +126,9 @@ func _ready() -> void:
 	_joystick.toggled.connect(func(v: bool) -> void:
 		GameSettings.joystick = v
 		GameSettings.valider())
+	_taille.item_selected.connect(func(i: int) -> void:
+		GameSettings.taille_interface = _taille.get_item_id(i)
+		GameSettings.valider())
 	_qualite.item_selected.connect(func(i: int) -> void:
 		GameSettings.qualite = _qualite.get_item_id(i)
 		GameSettings.valider()
@@ -159,6 +171,7 @@ func _relire() -> void:
 	_joystick.set_pressed_no_signal(GameSettings.joystick)
 	_sensibilite.set_value_no_signal(GameSettings.sensibilite_joystick)
 	_qualite.select(_qualite.get_item_index(GameSettings.qualite))
+	_taille.select(_taille.get_item_index(GameSettings.taille_interface))
 
 
 func _unhandled_input(event: InputEvent) -> void:

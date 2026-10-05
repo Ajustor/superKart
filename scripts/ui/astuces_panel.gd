@@ -6,6 +6,8 @@ extends Control
 ## dans les options s'y voit aussitôt).
 
 signal ferme
+## Le joueur veut l'aide des commandes, en grand (AideCommandes).
+signal commandes
 
 const ACTIONS := {
 	&"throttle": "Accélérer",
@@ -59,9 +61,12 @@ func _ready() -> void:
 	_commandes.add_theme_constant_override("h_separation", 24)
 	contenu.add_child(_commandes)
 
-	var retour := UITheme.bouton("Retour", func() -> void: ferme.emit())
-	retour.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	colonne.add_child(retour)
+	var bas := HBoxContainer.new()
+	bas.alignment = BoxContainer.ALIGNMENT_CENTER
+	bas.add_theme_constant_override("separation", 16)
+	colonne.add_child(bas)
+	bas.add_child(UITheme.bouton("Commandes", func() -> void: commandes.emit()))
+	bas.add_child(UITheme.bouton("Retour", func() -> void: ferme.emit()))
 	visibility_changed.connect(_remplir_commandes)
 	_remplir_commandes()
 

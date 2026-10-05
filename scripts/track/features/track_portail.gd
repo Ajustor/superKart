@@ -94,6 +94,9 @@ var _materiaux: Array[ShaderMaterial] = []
 var _anneaux: Array[Node3D] = []
 var _gerbes: Array[CPUParticles3D] = []
 var _lumiere: OmniLight3D
+## Pendant le tour de chauffe (TourDeChauffe) : grand ouvert, la fenêtre
+## rendue une fois, et rien ne bouge.
+var _en_chauffe := false
 
 const SHADER := preload("res://shaders/vortex.gdshader")
 const SHADER_FENETRE := preload("res://shaders/fenetre_portail.gdshader")
@@ -492,7 +495,51 @@ func _pierre_du_cadre(repere: Node3D, ou: Vector3, pierre: Material, oeil: Mater
 	repere.add_child(pupille)
 
 
+## Le tour de chauffe, derrière l'écran de chargement : le portail se montre
+## grand ouvert, et sa fenêtre filme une fois l'autre monde sous son ciel,
+## depuis `camera`. En GL Compatibility, un matériau, un ciel, un brouillard
+## ne se compilent que la première fois qu'on les dessine : sans ça, chaque
+## portail figeait l'image en s'ouvrant, en pleine course, sur un petit
+## téléphone. La fenêtre prend aussi d'avance sa taille définitive.
+func chauffer(camera: Camera3D) -> void:
+	_en_chauffe = true
+	_ouverture = 1.0
+	_appliquer()
+	for gerbe in _gerbes:
+		gerbe.emitting = true
+	var p := piste()
+	if _vue == null or p == null or camera == null:
+		return
+	_vue.size = Vector2i(get_viewport().get_visible_rect().size * echelle_de_la_fenetre())
+	_vue.msaa_3d = get_viewport().msaa_3d
+	_vue.screen_space_aa = get_viewport().screen_space_aa
+	_oeil.global_transform = camera.global_transform
+	_oeil.fov = camera.fov
+	_oeil.far = camera.far
+	_oeil.cull_mask = p.masque_pour(self) & ~Track.CALQUE_FENETRES
+	_oeil.environment = ambiance
+	_oeil.current = true
+	_fenetre.set_shader_parameter("vue", _vue.get_texture())
+	_fenetre.set_shader_parameter("actif", 1.0)
+	_vue.render_target_update_mode = SubViewport.UPDATE_ONCE
+
+
+## Fin du tour de chauffe : le portail reprend son cours, fermé s'il l'était.
+func fin_de_chauffe() -> void:
+	if not _en_chauffe:
+		return
+	_en_chauffe = false
+	if mode == Mode.VORTEX:
+		_ouverture = 0.0
+		_appliquer()
+	if _vue != null:
+		_vue.render_target_update_mode = SubViewport.UPDATE_DISABLED
+		_fenetre.set_shader_parameter("actif", 0.0)
+
+
 func _process(delta: float) -> void:
+	if _en_chauffe:
+		return
 	if not Engine.is_editor_hint():
 		_mettre_a_jour_la_fenetre()
 	if mode != Mode.VORTEX:

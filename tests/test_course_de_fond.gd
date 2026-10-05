@@ -41,3 +41,16 @@ func test_pas_sans_ecran_ni_en_qualite_basse() -> void:
 	GameSettings.qualite = QualiteGraphique.Niveau.BASSE
 	assert_false(CourseDeFond.possible())
 	GameSettings.qualite = avant
+
+
+func test_la_course_de_fond_evite_les_circuits_a_portails() -> void:
+	var possibles := CourseDeFond.pistes_possibles()
+	assert_gt(possibles.size(), 5, "il reste de quoi varier")
+	for info in TrackCatalog.PISTES:
+		# La fiche dit vrai : la scène a des portails si et seulement si elle
+		# le déclare.
+		var piste: Track = info.scene.instantiate()
+		var a_des_portails := not piste.portails().is_empty()
+		piste.free()
+		assert_eq(info.portails, a_des_portails, "%s : la fiche dit si le circuit a des portails" % info.id)
+		assert_eq(possibles.has(info), not a_des_portails, "%s : en fond du menu seulement sans portail" % info.id)

@@ -9,3 +9,4 @@ nom = "Escalier sans Fin"
 description = "Un jardin à la française, un portail, et l'on entre dans un rêve : une route qui monte en spirale autour d'une tour, deux tours complets dans le ciel, entre des escaliers qui flottent. Au sommet, un puits : on tombe, et l'on se retrouve au pied de la tour, dans le jardin. On n'est jamais redescendu, et pourtant on recommence."
 chemin_scene = "res://scenes/tracks/escalier.tscn"
 tours = 2
+portails = true

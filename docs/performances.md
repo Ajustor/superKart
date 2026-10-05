@@ -22,6 +22,11 @@ Pour savoir d'où vient un ralentissement :
 
 ## Qualité graphique
 
+**Options → Affichage → Taille de l'interface** : en automatique, normale
+sur un téléphone ou un écran tactile, plus petite ailleurs (× 0,75) — sur un
+écran de PC, l'interface dessinée pour le doigt était énorme. Petite, normale
+ou grande au choix.
+
 **Options → Affichage → Qualité graphique** :
 
 | Réglage | Résolution 3D | Ombres portées | Lueur, brouillard | Grain du bitume, contraste et saturation | Vignette et traits de vitesse |
@@ -82,7 +87,23 @@ seul.
   dessin : sans ce tour, la première carapace ou la première vue sur la lave
   figeaient l'image en pleine course. Mesuré en rendu logiciel sur la
   Forteresse : 2 saccades de 150-165 ms à la première carapace sans le tour,
-  aucune avec.
+  aucune avec. Les portails y passent aussi, grands ouverts
+  (`TrackPortail.chauffer`) : leur anneau, leur fenêtre — qui prend là sa
+  taille définitive — et le ciel de chaque autre monde, une image par ciel.
+  Sans ça, chaque portail figeait l'image en s'ouvrant sur un petit téléphone.
+
+## Journal et plantages
+
+Le jeu écrit son journal (`user://logs`, sur Android
+`Android/data/com.ajustor.superkart/files/logs`). `Journal` (autoload) y
+ajoute des repères : chaque écran, chaque course, et la mémoire toutes les
+30 s. Une marque posée au lancement et retirée à la sortie propre (ou quand
+le système met le jeu en pause) révèle un arrêt brutal : l'accueil le dit au
+lancement suivant, et **Options → Journal de la partie précédente** en montre
+la fin, avec un bouton **Copier** pour l'envoyer.
+
+Mesuré sur 14 circuits enchaînés puis le premier à nouveau : 110 à 120 Mo de
+mémoire, autant d'objets à 1 % près — pas de fuite d'une course à l'autre.
 - Les maillages des objets sont faits une fois (`ItemManager._forme`) ; le
   tableau des résultats se réécrit en place au lieu d'être refait deux fois
   par seconde ; le son moteur, calculé échantillon par échantillon, tourne à

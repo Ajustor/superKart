@@ -15,6 +15,11 @@ const IMAGES := 3
 var _camera: Camera3D
 var _avant: Camera3D
 var _images := 0
+## Les portails, montrés grands ouverts le temps du tour, et les ciels de
+## leurs mondes, un par image : chacun se compile ici plutôt qu'à
+## l'ouverture du portail, en pleine course.
+var _portails: Array[TrackPortail] = []
+var _ciels: Array[Environment] = []
 
 
 ## Monte le tour dans la course (déjà dans l'arbre). Rend faux s'il n'y a
@@ -58,6 +63,13 @@ func _installer(course: Node, c: TrackCurve) -> void:
 	for visuel in course.find_children("*", "KartVisuals", true, false):
 		echantillons.append_array((visuel as KartVisuals).echantillons())
 		break
+	var piste := course.get_node_or_null("Track") as Track
+	if piste != null:
+		_portails = piste.portails()
+		for portail in _portails:
+			portail.chauffer(_camera)
+			if portail.ambiance != null and not _ciels.has(portail.ambiance):
+				_ciels.append(portail.ambiance)
 	var devant := -_camera.global_basis.z
 	var droite := _camera.global_basis.x
 	for i in echantillons.size():
@@ -70,8 +82,10 @@ func _installer(course: Node, c: TrackCurve) -> void:
 
 
 func _process(_delta: float) -> void:
+	# Une image par ciel des autres mondes, puis celui du circuit.
+	_camera.environment = _ciels[_images] if _images < _ciels.size() else null
 	_images += 1
-	if _images >= IMAGES:
+	if _images >= IMAGES + _ciels.size():
 		finir()
 
 
@@ -82,6 +96,9 @@ func fini() -> bool:
 func finir() -> void:
 	if is_queued_for_deletion():
 		return
+	for portail in _portails:
+		if is_instance_valid(portail):
+			portail.fin_de_chauffe()
 	if _avant != null and is_instance_valid(_avant):
 		_avant.make_current()
 	queue_free()
