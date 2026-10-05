@@ -85,7 +85,7 @@ func _physics_process(delta: float) -> void:
 		return
 	var forward := Vector3(sin(motor.velocity_dir), 0.0, -cos(motor.velocity_dir))
 
-	var recul := 1.0 - 0.6 * vortex
+	var recul := 1.0 - 0.45 * vortex
 	var desired := _kart.global_position - forward * distance * recul + Vector3.UP * height * recul
 	# Un suivi à ressort : la caméra se laisse distancer à l'accélération.
 	if _placee:
@@ -104,7 +104,7 @@ func _physics_process(delta: float) -> void:
 	var ratio := clampf(motor.speed / ceiling, 0.0, 1.0)
 	var turbo := 1.0 if motor.boost_timer > 0.0 else 0.0
 	_fov_turbo = lerpf(_fov_turbo, turbo, 1.0 - exp(-8.0 * delta))
-	fov = lerpf(fov_min, fov_max, ratio) + fov_turbo * _fov_turbo + 55.0 * vortex
+	fov = lerpf(fov_min, fov_max, ratio) + fov_turbo * _fov_turbo + 35.0 * vortex
 
 	_secouer(motor, delta)
 

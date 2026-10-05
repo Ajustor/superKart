@@ -15,7 +15,7 @@ extends RefCounted
 ## partie (cache).
 
 enum Style { COLLINES, PLAGE, FORTERESSE, CIEL, JARDIN, MINE, VILLE, NEIGE, CANYON, USINE, ESPACE, HANTE, GLACE, JUNGLE, PIRATE, ORAGE, ABYSSES, ASCENSION, MANEGE, MONTAGNE, MENU,
-	TEMPS, RECIF, LUNE, CUBES }
+	TEMPS, RECIF, LUNE, CUBES, SAISONS, LABO, ESCHER, ETOILES }
 
 const FREQUENCE := 16000
 const MESURES := 8
@@ -151,6 +151,30 @@ const STYLES := {
 		tempo = 100.0, tonique = 60, gamme = [0, 2, 4, 6, 7, 9, 11],
 		grille = [0, 4, 5, 3], basse = [1, 0, 0, 0, 0, 0, 1, 0], arpege = 24, graine = 16,
 		batterie = 0.5,
+	},
+	# Les saisons : une valse des quatre temps de l'année, majeure, qui change
+	# d'accord à chaque mesure comme le jardin de couleur à chaque portail.
+	Style.SAISONS: {
+		tempo = 138.0, tonique = 62, gamme = [0, 2, 4, 5, 7, 9, 11],
+		grille = [0, 3, 5, 4], basse = [1, 0, 1, 0, 0, 1, 1, 0], arpege = 24, graine = 44,
+	},
+	# Le labo : froid, mécanique, dorien, une basse en ostinato de machine.
+	Style.LABO: {
+		tempo = 124.0, tonique = 57, gamme = [0, 2, 3, 5, 7, 9, 10],
+		grille = [0, 0, 3, 4], basse = [1, 1, 0, 1, 1, 0, 1, 1], arpege = 12, graine = 91,
+		batterie = 0.7,
+	},
+	# L'escalier sans fin : par tons entiers, une marche qui monte sans jamais
+	# arriver.
+	Style.ESCHER: {
+		tempo = 112.0, tonique = 60, gamme = [0, 2, 4, 6, 8, 10],
+		grille = [0, 1, 2, 3], basse = [1, 0, 0, 1, 0, 0, 1, 0], arpege = 24, graine = 27,
+		batterie = 0.55, charleston = false,
+	},
+	# La route des étoiles : épique, éolien, rapide, un arpège très haut.
+	Style.ETOILES: {
+		tempo = 150.0, tonique = 55, gamme = [0, 2, 3, 5, 7, 8, 10],
+		grille = [0, 5, 6, 4], basse = [1, 0, 1, 1, 0, 1, 0, 1], arpege = 24, graine = 63,
 	},
 }
 

@@ -21,11 +21,17 @@ extends TrackFeature
 enum Objet { PALMIER, PHARE, PILIER_DE_FEU, ETOILE, CHAMPIGNON, ROCHER, SAPIN, LAMPADAIRE, CRISTAL, IMMEUBLE,
 	ARBRE, BOTTE_DE_FOIN, MOULIN, BUISSON, CACTUS, STALAGMITE, TOTEM, TONNEAU, CITROUILLE, ENGRENAGE,
 	ANTENNE, FANTOME, NUAGE, PYLONE, TOUR_HORLOGE, MAISON, SALOON, ANANAS, TETE_DE_PIERRE, CORAIL,
-	ALGUE, MASQUE, ARBRE_CUBE, BLOC, PILIER_OBSIDIENNE, SCULK, CADRE_OBSIDIENNE, LANTERNE }
+	ALGUE, MASQUE, ARBRE_CUBE, BLOC, PILIER_OBSIDIENNE, SCULK, CADRE_OBSIDIENNE, LANTERNE,
+	ARBRE_AUTOMNE, BONHOMME_DE_NEIGE, PARASOL, FLEUR, PANNEAU_LABO, TOURELLE, CUBE_LESTE, ESCALIER_FLOTTANT,
+	FUSEE, PARABOLE, ROCHER_ROUGE }
 
 ## Ce qui flotte : on passe dessous ou au travers, sans collision, et sa
 ## hauteur varie d'un objet à l'autre.
-const FLOTTANTS := [Objet.ETOILE, Objet.FANTOME, Objet.NUAGE]
+const FLOTTANTS := [Objet.ETOILE, Objet.FANTOME, Objet.NUAGE, Objet.ESCALIER_FLOTTANT]
+
+
+## Ce qui longe la route au lieu d'être tourné au hasard.
+const ALIGNES := [Objet.PANNEAU_LABO]
 
 
 static func flotte(quoi: Objet) -> bool:
@@ -110,11 +116,9 @@ func placements(c: TrackCurve) -> Array[Transform3D]:
 				continue
 			# Sur le relief du circuit, s'il en a un : loin de la route, le sol
 			# n'est plus à la hauteur du bitume.
-			var sol := _terrain()
 			# Un relief limité à une portion ne porte que les décors de cette
 			# portion : sur la lune, l'arbre ne descend pas jusqu'à Termina.
-			if sol != null and sol.portion and not sol.couvre(wrapf(ici, 0.0, c.length), c.length):
-				sol = null
+			var sol := _terrain_en(wrapf(ici, 0.0, c.length), c.length)
 			if sol != null and absf(lateral) > c.half_width:
 				ou.y = sol.hauteur_en(ou.x, ou.z) + envol
 				# Posé sur le relief, il peut tomber sur une route plus basse :
@@ -126,6 +130,10 @@ func placements(c: TrackCurve) -> Array[Transform3D]:
 			elif absf(lateral) > c.half_width and not flotte(objet):
 				ou = _pose_sur_le_sol_plat(c, ici, lateral, ou, envol)
 			var lacet := rng.randf_range(0.0, TAU) if objet != Objet.PHARE else 0.0
+			# Un pan de mur longe la route, il ne se pose pas en vrac.
+			if objet in ALIGNES:
+				var avant := c.forward_at(wrapf(ici, 0.0, c.length))
+				lacet = atan2(-avant.z, avant.x)
 			var base := Basis(Vector3.UP, lacet).scaled(Vector3.ONE * taille)
 			poses.append(Transform3D(base, ou))
 	return poses
@@ -166,12 +174,14 @@ func _pose_sur_le_sol_plat(c: TrackCurve, ici: float, lateral: float, ou: Vector
 	return Vector3(ou.x, plus_haut + envol, ou.z)
 
 
-func _terrain() -> TrackTerrain:
+## Le relief sous cette distance : un circuit peut en avoir un par portion,
+## un par saison.
+func _terrain_en(distance: float, tour: float) -> TrackTerrain:
 	var circuit := piste()
 	if circuit == null:
 		return null
 	for element in circuit.elements():
-		if element is TrackTerrain:
+		if element is TrackTerrain and (not element.portion or element.couvre(distance, tour)):
 			return element
 	return null
 
@@ -304,6 +314,26 @@ static func forme_de(quoi: Objet) -> Dictionary:
 			return {type = "boite", taille = Vector3(5.0, 6.0, 1.2), centre = Vector3(0.0, 3.0, 0.0)}
 		Objet.LANTERNE:
 			return {type = "cylindre", rayon = 0.2, hauteur = 4.0, centre = Vector3(0.0, 2.0, 0.0)}
+		Objet.ARBRE_AUTOMNE:
+			return {type = "cylindre", rayon = 0.45, hauteur = 3.0, centre = Vector3(0.0, 1.5, 0.0)}
+		Objet.BONHOMME_DE_NEIGE:
+			return {type = "cylindre", rayon = 1.1, hauteur = 2.4, centre = Vector3(0.0, 1.2, 0.0)}
+		Objet.PARASOL:
+			return {type = "cylindre", rayon = 0.12, hauteur = 3.0, centre = Vector3(0.0, 1.5, 0.0)}
+		Objet.FLEUR:
+			return {type = "cylindre", rayon = 0.25, hauteur = 3.0, centre = Vector3(0.0, 1.5, 0.0)}
+		Objet.PANNEAU_LABO:
+			return {type = "boite", taille = Vector3(6.0, 5.0, 0.6), centre = Vector3(0.0, 2.5, 0.0)}
+		Objet.TOURELLE:
+			return {type = "cylindre", rayon = 0.6, hauteur = 2.0, centre = Vector3(0.0, 1.0, 0.0)}
+		Objet.CUBE_LESTE:
+			return {type = "boite", taille = Vector3(1.6, 1.6, 1.6), centre = Vector3(0.0, 0.8, 0.0)}
+		Objet.FUSEE:
+			return {type = "cylindre", rayon = 2.2, hauteur = 22.0, centre = Vector3(0.0, 11.0, 0.0)}
+		Objet.PARABOLE:
+			return {type = "cylindre", rayon = 0.5, hauteur = 4.0, centre = Vector3(0.0, 2.0, 0.0)}
+		Objet.ROCHER_ROUGE:
+			return {type = "cylindre", rayon = 1.6, hauteur = 2.2, centre = Vector3(0.0, 0.6, 0.0)}
 		Objet.PYLONE:
 			# Il pend sous la route : personne ne l'atteint, mais il se touche.
 			return {type = "cylindre", rayon = 0.6, hauteur = 60.0, centre = Vector3(0.0, -30.3, 0.0)}
@@ -399,6 +429,28 @@ static func maillage_de(quoi: Objet) -> ArrayMesh:
 			_cadre_obsidienne(mat, brille)
 		Objet.LANTERNE:
 			_lanterne(mat, brille)
+		Objet.ARBRE_AUTOMNE:
+			_arbre_automne(mat)
+		Objet.BONHOMME_DE_NEIGE:
+			_bonhomme(mat)
+		Objet.PARASOL:
+			_parasol(mat)
+		Objet.FLEUR:
+			_fleur(mat, brille)
+		Objet.PANNEAU_LABO:
+			_panneau_labo(mat, brille)
+		Objet.TOURELLE:
+			_tourelle(mat, brille)
+		Objet.CUBE_LESTE:
+			_cube_leste(mat, brille)
+		Objet.ESCALIER_FLOTTANT:
+			_escalier_flottant(mat)
+		Objet.FUSEE:
+			_fusee(mat, brille)
+		Objet.PARABOLE:
+			_parabole(mat, brille)
+		Objet.ROCHER_ROUGE:
+			_rocher_rouge(mat)
 	var maillage := ArrayMesh.new()
 	if not mat.vide():
 		mat.dans(maillage, _materiau(false))
@@ -830,6 +882,124 @@ static func _cadre_obsidienne(m: _Assemblage, b: _Assemblage) -> void:
 static func _lanterne(m: _Assemblage, b: _Assemblage) -> void:
 	m.cylindre(Vector3.ZERO, Vector3(0, 4.0, 0), 0.12, 0.1, Color(0.3, 0.2, 0.1), 6)
 	b.boule(Vector3(0, 4.3, 0), 0.5, Color(1.0, 0.55, 0.25))
+
+
+## Un feuillu d'automne : le houppier roux, quelques feuilles déjà tombées.
+static func _arbre_automne(m: _Assemblage) -> void:
+	m.cylindre(Vector3.ZERO, Vector3.UP * 2.6, 0.35, 0.25, Color(0.4, 0.26, 0.15))
+	var roux := Color(0.9, 0.42, 0.12)
+	m.boule(Vector3(0, 3.6, 0), 1.9, roux)
+	m.boule(Vector3(1.1, 3.1, 0.4), 1.3, Color(0.95, 0.65, 0.15))
+	m.boule(Vector3(-1.0, 3.2, -0.5), 1.35, roux.darkened(0.15))
+	m.boule(Vector3(0.2, 4.6, -0.3), 1.2, Color(0.8, 0.25, 0.1))
+	for k in 5:
+		var a := float(k) * 1.3
+		m.pave(Vector3(cos(a) * 1.8, 0.03, sin(a) * 1.6), Vector3(0.5, 0.05, 0.35), Color(0.9, 0.5, 0.15))
+
+
+## Trois boules de neige, un nez carotte, un chapeau.
+static func _bonhomme(m: _Assemblage) -> void:
+	var neige := Color(0.95, 0.97, 1.0)
+	m.boule(Vector3(0, 0.75, 0), 0.95, neige)
+	m.boule(Vector3(0, 1.9, 0), 0.65, neige)
+	m.boule(Vector3(0, 2.75, 0), 0.45, neige)
+	m.cone(Vector3(0, 2.78, 0.4), 0.09, 0.45, Color(1.0, 0.5, 0.1), 6)
+	m.cylindre(Vector3(0, 3.1, 0), Vector3(0, 3.5, 0), 0.32, 0.3, Color(0.1, 0.1, 0.12), 10)
+	m.cylindre(Vector3(0, 3.1, 0), Vector3(0, 3.14, 0), 0.5, 0.5, Color(0.1, 0.1, 0.12), 12)
+	m.cylindre(Vector3(0, 2.32, 0), Vector3(0, 2.45, 0), 0.52, 0.5, Color(0.85, 0.15, 0.15), 10)
+
+
+## Un parasol rayé planté dans le sable.
+static func _parasol(m: _Assemblage) -> void:
+	m.cylindre(Vector3.ZERO, Vector3.UP * 2.9, 0.06, 0.06, Color(0.9, 0.9, 0.88), 6)
+	for k in 8:
+		var a := TAU * float(k) / 8.0
+		var b := TAU * float(k + 1) / 8.0
+		var couleur := Color(0.95, 0.25, 0.3) if k % 2 == 0 else Color(0.98, 0.96, 0.9)
+		m.triangle(Vector3(0, 3.2, 0), Vector3(cos(a) * 1.7, 2.6, sin(a) * 1.7),
+			Vector3(cos(b) * 1.7, 2.6, sin(b) * 1.7), couleur)
+
+
+## Une fleur géante du printemps : une tige, des pétales, un cœur qui luit.
+static func _fleur(m: _Assemblage, b: _Assemblage) -> void:
+	m.cylindre(Vector3.ZERO, Vector3.UP * 2.6, 0.15, 0.1, Color(0.3, 0.65, 0.25), 6)
+	m.feuille(Vector3(0, 0.8, 0), Vector3(0.5, 1.1, 0), Vector3(0.9, 1.5, 0), Vector3(0, 0, 0.25), Color(0.35, 0.7, 0.3))
+	var petale := Color(1.0, 0.55, 0.75)
+	for k in 6:
+		var a := TAU * float(k) / 6.0
+		m.boule(Vector3(cos(a) * 0.55, 2.85, sin(a) * 0.55), 0.38, petale)
+	b.boule(Vector3(0, 2.9, 0), 0.32, Color(1.0, 0.9, 0.3))
+
+
+## Un pan de mur du laboratoire : des dalles blanches, un liseré qui luit.
+static func _panneau_labo(m: _Assemblage, b: _Assemblage) -> void:
+	for i in 3:
+		for j in 2:
+			m.pave(Vector3(-2.0 + 2.0 * i, 1.25 + 2.5 * j, 0), Vector3(1.94, 2.44, 0.5),
+				Color(0.93, 0.94, 0.95) if (i + j) % 2 == 0 else Color(0.86, 0.87, 0.89))
+	m.pave(Vector3(0, 5.1, 0), Vector3(6.1, 0.2, 0.6), Color(0.35, 0.37, 0.4))
+	b.pave(Vector3(0, 0.2, 0.28), Vector3(6.0, 0.12, 0.05), Color(0.3, 0.75, 1.0))
+
+
+## Une tourelle de garde : une capsule blanche sur trois pieds, un œil rouge.
+static func _tourelle(m: _Assemblage, b: _Assemblage) -> void:
+	for k in 3:
+		var a := TAU * float(k) / 3.0
+		m.cylindre(Vector3(cos(a) * 0.7, 0, sin(a) * 0.7), Vector3(0, 0.9, 0), 0.06, 0.06, Color(0.3, 0.3, 0.32), 5)
+	m.cylindre(Vector3(0, 0.9, 0), Vector3(0, 1.8, 0), 0.45, 0.45, Color(0.95, 0.95, 0.96), 12)
+	m.dome(Vector3(0, 1.8, 0), 0.45, 0.4, Color(0.95, 0.95, 0.96))
+	m.boule(Vector3(0, 0.9, 0), 0.45, Color(0.95, 0.95, 0.96))
+	b.boule(Vector3(0, 1.5, 0.42), 0.1, Color(1.0, 0.1, 0.1))
+
+
+## Un cube lesté du labo : gris, coins renforcés, un rond lumineux sur chaque
+## face.
+static func _cube_leste(m: _Assemblage, b: _Assemblage) -> void:
+	m.pave(Vector3(0, 0.8, 0), Vector3(1.5, 1.5, 1.5), Color(0.6, 0.62, 0.65))
+	for x in [-0.7, 0.7]:
+		for z in [-0.7, 0.7]:
+			m.pave(Vector3(x, 0.8, z), Vector3(0.25, 1.6, 0.25), Color(0.4, 0.42, 0.45))
+	for face in [Vector3(0.77, 0.8, 0), Vector3(-0.77, 0.8, 0), Vector3(0, 0.8, 0.77), Vector3(0, 0.8, -0.77)]:
+		var mince := Vector3(0.04 if face.x != 0.0 else 0.6, 0.6, 0.04 if face.z != 0.0 else 0.6)
+		b.pave(face, mince, Color(0.4, 0.8, 1.0))
+
+
+## Un bout d'escalier qui flotte dans le rêve, sans début ni fin.
+static func _escalier_flottant(m: _Assemblage) -> void:
+	var pierre := Color(0.86, 0.8, 0.92)
+	for k in 6:
+		m.pave(Vector3(0, 0.4 * k, -0.8 * k), Vector3(3.0, 0.4, 0.8), pierre.darkened(0.04 * k))
+	m.pave(Vector3(1.6, 1.2, -2.0), Vector3(0.2, 2.8, 5.0), Color(0.7, 0.62, 0.8))
+
+
+## Une fusée sur son pas de tir : un fuseau blanc, une coiffe rouge, quatre
+## ailerons, et la tour de lancement à côté.
+static func _fusee(m: _Assemblage, b: _Assemblage) -> void:
+	var blanc := Color(0.95, 0.95, 0.97)
+	m.cylindre(Vector3(0, 2.0, 0), Vector3(0, 16.0, 0), 1.5, 1.5, blanc, 14)
+	m.cone(Vector3(0, 16.0, 0), 1.5, 5.0, Color(0.85, 0.15, 0.15), 14)
+	for k in 4:
+		var a := TAU * float(k) / 4.0
+		m.pave(Vector3(cos(a) * 1.8, 3.0, sin(a) * 1.8), Vector3(0.2 + absf(cos(a)) * 1.2, 4.0, 0.2 + absf(sin(a)) * 1.2),
+			Color(0.85, 0.15, 0.15))
+	m.cylindre(Vector3(0, 0, 0), Vector3(0, 2.0, 0), 1.2, 1.5, Color(0.3, 0.3, 0.33), 14)
+	b.boule(Vector3(0, 11.0, 1.48), 0.45, Color(0.4, 0.8, 1.0))
+	m.pave(Vector3(4.0, 10.0, 0), Vector3(1.2, 20.0, 1.2), Color(0.55, 0.55, 0.6))
+	m.pave(Vector3(2.8, 12.0, 0), Vector3(2.4, 0.4, 0.4), Color(0.55, 0.55, 0.6))
+
+
+## Une antenne parabolique tournée vers le ciel.
+static func _parabole(m: _Assemblage, b: _Assemblage) -> void:
+	m.cylindre(Vector3.ZERO, Vector3.UP * 3.0, 0.3, 0.2, Color(0.6, 0.6, 0.63), 8)
+	m.cylindre(Vector3(0, 3.0, 0), Vector3(0, 3.8, 0.9), 2.4, 0.3, Color(0.93, 0.93, 0.95), 16)
+	b.boule(Vector3(0, 4.3, 0.6), 0.15, Color(1.0, 0.3, 0.2))
+
+
+## Un rocher de la planète rouge.
+static func _rocher_rouge(m: _Assemblage) -> void:
+	m.boule(Vector3(0, 0.6, 0), 1.5, Color(0.72, 0.32, 0.18))
+	m.boule(Vector3(1.1, 0.4, 0.5), 0.9, Color(0.62, 0.27, 0.15))
+	m.boule(Vector3(-0.7, 0.3, -0.8), 0.8, Color(0.8, 0.4, 0.22))
 
 
 static func _rocher(m: _Assemblage) -> void:

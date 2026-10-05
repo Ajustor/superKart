@@ -90,19 +90,33 @@ func _init() -> void:
 	longueur = 1.0
 
 
-## Ce relief porte-t-il un kart en ce point ? Près de la route de son monde,
-## et le kart au-dessus, pas dessous.
-func porte(point: Vector3) -> bool:
+## Ce relief porte-t-il un kart en ce point, à cette distance le long du
+## tracé ? Près de la route de son monde, et le kart au-dessus, pas dessous.
+func porte(point: Vector3, distance: float) -> bool:
 	var c := courbe()
 	if c == null:
 		return false
 	_preparer(c)
-	if _echantillons.is_empty():
+	if _echantillons.is_empty() or not _de_ce_cote(distance):
 		return false
 	var trouve := _plus_proche(point.x, point.z)
 	if trouve.y > _portee(c) or not _du_monde[int(trouve.x)]:
 		return false
 	return point.y > _hauteur(c, point.x, point.z) - 2.0
+
+
+## Le tracé à cette distance est-il celui que ce relief borde : dans sa
+## portion, dans son monde ? Aux portails, deux reliefs se chevauchent ;
+## chacun ne porte que de son côté.
+func _de_ce_cote(distance: float) -> bool:
+	var circuit := piste()
+	var c := courbe()
+	if circuit == null or c == null:
+		return true
+	if circuit.hors_course(distance) or (portion and not couvre(distance, c.length)):
+		return false
+	var monde := circuit.monde_du_decor(self)
+	return monde == null or circuit.monde_en(distance) == monde
 
 
 func _portee(c: TrackCurve) -> float:
@@ -287,7 +301,9 @@ func _construire(c: TrackCurve, racine: Node3D) -> void:
 			var h := _hauteur(c, x, z)
 			var proche := _plus_proche(x, z)
 			sommets.append(Vector3(x, h, z))
-			bordant.append(1 if proche.y <= portee and _du_monde[int(proche.x)] else 0)
+			var borde := proche.y <= portee and _du_monde[int(proche.x)] \
+				and _de_ce_cote(c.distance_of(Vector3(x, h, z)))
+			bordant.append(1 if borde else 0)
 			var ref := _echantillons[int(proche.x)].y
 			# L'herbe varie un peu ; le fond du ravin est de terre et de roche,
 			# les sommets un peu plus secs.

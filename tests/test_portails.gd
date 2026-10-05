@@ -68,6 +68,16 @@ func test_le_portail_se_rouvre_au_tour_suivant() -> void:
 	assert_true(p.ouvert(500.0 + 300.0 - 20.0, 400.0, 500.0))
 
 
+func test_l_anneau_couvre_toute_la_largeur_de_la_route() -> void:
+	var p := _portail(100.0)
+	var c := track.track_curve
+	var r := p.rayon_de_l_anneau(c)
+	# Le cercle, centré à r × CENTRE au-dessus de la route, coupé par elle.
+	var h := r * TrackPortail.CENTRE_DE_L_ANNEAU
+	var demi_corde := sqrt(r * r - h * h)
+	assert_gte(demi_corde, c.half_width + 1.0, "les deux bords de la route passent dans l'anneau")
+
+
 func test_le_couloir_est_plus_grand_dedans_que_dehors() -> void:
 	var p := _portail(100.0)
 	assert_almost_eq(p.rayon_du_couloir(0.0), p.rayon, 0.01)
@@ -82,6 +92,20 @@ func test_l_effet_sur_la_camera_ne_joue_qu_au_portail() -> void:
 	assert_eq(p.effet_a(10.0, tour), 0.0, "loin avant")
 	assert_eq(p.effet_a(300.0, tour), 0.0, "loin après")
 	assert_gt(p.effet_a(100.0 + p.longueur * 0.5, tour), 0.8, "en plein couloir")
+
+
+func test_la_traversee_dure_moins_d_une_seconde_et_demie() -> void:
+	var p := _portail(100.0)
+	p._ouverture = 1.0
+	var tour := track.track_curve.length
+	var deforme := 0.0
+	var d := 0.0
+	while d < 300.0:
+		if p.effet_a(d, tour) > 0.05:
+			deforme += 1.0
+		d += 1.0
+	# À la vitesse de pointe, 22 m/s.
+	assert_lt(deforme / 22.0, 1.5, "%.0f m de perspective déformée" % deforme)
 
 
 func test_un_portail_ferme_ne_deforme_rien() -> void:

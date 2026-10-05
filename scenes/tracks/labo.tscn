@@ -1,0 +1,253 @@
+[gd_scene format=3]
+
+[ext_resource type="Shader" path="res://shaders/ciel.gdshader" id="sh_ciel"]
+[ext_resource type="Script" path="res://scripts/track/track.gd" id="1_track"]
+[ext_resource type="Curve3D" path="res://resources/tracks/labo_curve.tres" id="2_curve"]
+[ext_resource type="Script" path="res://scripts/track/features/track_anneau.gd" id="s_anneau"]
+[ext_resource type="Script" path="res://scripts/track/features/track_boost.gd" id="s_boost"]
+[ext_resource type="Script" path="res://scripts/track/features/track_courant.gd" id="s_courant"]
+[ext_resource type="Script" path="res://scripts/track/features/track_decor.gd" id="s_decor"]
+[ext_resource type="Script" path="res://scripts/track/features/track_gap.gd" id="s_gap"]
+[ext_resource type="Script" path="res://scripts/track/features/track_jump.gd" id="s_jump"]
+[ext_resource type="Script" path="res://scripts/track/features/track_obstacle.gd" id="s_obstacle"]
+[ext_resource type="Script" path="res://scripts/track/features/track_portail.gd" id="s_portail"]
+[ext_resource type="Script" path="res://scripts/track/features/track_sol.gd" id="s_sol"]
+[ext_resource type="Script" path="res://scripts/track/features/track_tunnel.gd" id="s_tunnel"]
+
+[sub_resource type="ShaderMaterial" id="Ciel"]
+shader = ExtResource("sh_ciel")
+shader_parameter/haut = Color(0.78, 0.82, 0.86, 1)
+shader_parameter/horizon = Color(0.95, 0.96, 0.97, 1)
+shader_parameter/sol_horizon = Color(0.8, 0.82, 0.84, 1)
+shader_parameter/sol_bas = Color(0.6, 0.62, 0.65, 1)
+shader_parameter/nuages = 0
+shader_parameter/couleur_nuages = Color(1, 1, 1, 1)
+shader_parameter/etoiles = 0
+shader_parameter/soleil = 0.5
+
+[sub_resource type="Sky" id="Sky"]
+sky_material = SubResource("Ciel")
+
+[sub_resource type="Environment" id="Env"]
+background_mode = 2
+sky = SubResource("Sky")
+ambient_light_source = 2
+ambient_light_color = Color(0.95, 0.97, 1, 1)
+ambient_light_energy = 0.8
+glow_enabled = true
+glow_intensity = 0.3
+
+[sub_resource type="ShaderMaterial" id="Ciel_salles"]
+shader = ExtResource("sh_ciel")
+shader_parameter/haut = Color(0.08, 0.12, 0.16, 1)
+shader_parameter/horizon = Color(0.25, 0.35, 0.4, 1)
+shader_parameter/sol_horizon = Color(0.15, 0.2, 0.22, 1)
+shader_parameter/sol_bas = Color(0.05, 0.07, 0.08, 1)
+shader_parameter/nuages = 0
+shader_parameter/couleur_nuages = Color(1, 1, 1, 1)
+shader_parameter/etoiles = 0
+shader_parameter/soleil = 0
+
+[sub_resource type="Sky" id="Sky_salles"]
+sky_material = SubResource("Ciel_salles")
+
+[sub_resource type="Environment" id="Env_salles"]
+background_mode = 2
+sky = SubResource("Sky_salles")
+ambient_light_source = 2
+ambient_light_color = Color(0.7, 0.85, 0.95, 1)
+ambient_light_energy = 0.75
+fog_enabled = true
+fog_light_color = Color(0.2, 0.28, 0.32, 1)
+fog_density = 0.005
+glow_enabled = true
+glow_intensity = 0.7
+
+[node name="Track" type="Node3D"]
+script = ExtResource("1_track")
+curve = ExtResource("2_curve")
+rangees_objets = PackedFloat32Array(0.12, 0.45, 0.66)
+road_color = Color(0.55, 0.57, 0.6, 1)
+bordures = true
+couleur_bordure = Color(0.25, 0.6, 1, 1)
+couleur_bordure_bis = Color(1, 0.55, 0.15, 1)
+musique = 26
+
+[node name="CurveEditor" type="Path3D" parent="."]
+curve = ExtResource("2_curve")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.766, -0.492, 0.414, 0, 0.643, 0.766, -0.643, -0.587, 0.492, 0, 60, 0)
+light_color = Color(1, 1, 1, 1)
+light_energy = 1
+shadow_enabled = true
+
+[node name="DalleDuHall" type="Node3D" parent="."]
+script = ExtResource("s_sol")
+portion = true
+debut = 1054
+longueur = 434.3
+marge = 60
+altitude = -0.4
+couleur = Color(0.8, 0.82, 0.85, 1)
+
+[node name="PanneauxDuHall" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 42
+debut = 1070
+longueur = 400
+decalage = 21
+espacement = 14
+eviter_la_route = true
+graine = 1
+
+[node name="CubesLestes" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 44
+debut = 1080
+longueur = 380
+decalage = 13.5
+espacement = 38
+graine = 2
+
+[node name="TourellesDuHall" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 43
+debut = 60
+longueur = 200
+decalage = -15
+espacement = 50
+symetrique = false
+graine = 3
+
+[node name="PlaqueDuHall" type="Node3D" parent="."]
+script = ExtResource("s_boost")
+debut = 60
+decalage = 3
+
+[node name="TapisDuHall" type="Node3D" parent="."]
+script = ExtResource("s_courant")
+style = 2
+debut = 180
+longueur = 60
+largeur = 18
+poussee_laterale = 0
+poussee_avant = 6
+
+[node name="PortailBleu" type="Node3D" parent="."]
+script = ExtResource("s_portail")
+mode = 1
+debut = 312
+couleur_a = Color(0.15, 0.5, 1, 1)
+couleur_b = Color(0.55, 0.85, 1, 1)
+ambiance = SubResource("Env_salles")
+decors = Array[NodePath]([NodePath("../Conduit"), NodePath("../PanneauxDesSalles"), NodePath("../TourellesDesSalles"), NodePath("../Plancher"), NodePath("../CubesDesSalles")])
+
+[node name="Conduit" type="Node3D" parent="."]
+script = ExtResource("s_tunnel")
+debut = 330
+longueur = 330
+couleur_roche = Color(0.86, 0.88, 0.9, 1)
+couleur_lampes = Color(0.4, 0.8, 1, 1)
+espacement_lampes = 12
+
+[node name="TapisDeTravers" type="Node3D" parent="."]
+script = ExtResource("s_courant")
+style = 2
+debut = 470
+longueur = 50
+largeur = 18
+poussee_laterale = 4
+periode = 5
+
+[node name="PlaqueDuConduit" type="Node3D" parent="."]
+script = ExtResource("s_boost")
+debut = 560
+decalage = -3
+
+[node name="Plancher" type="Node3D" parent="."]
+script = ExtResource("s_sol")
+portion = true
+debut = 690
+longueur = 320
+marge = 30
+altitude = 19.6
+couleur = Color(0.62, 0.65, 0.7, 1)
+
+[node name="PanneauxDesSalles" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 42
+debut = 700
+longueur = 300
+decalage = 22
+espacement = 14
+eviter_la_route = true
+graine = 4
+
+[node name="TourellesDesSalles" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 43
+debut = 720
+longueur = 270
+decalage = 14
+espacement = 45
+graine = 5
+
+[node name="CubesDesSalles" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 44
+debut = 740
+longueur = 250
+decalage = -13.5
+espacement = 60
+symetrique = false
+graine = 6
+
+[node name="PlaqueDeProjection" type="Node3D" parent="."]
+script = ExtResource("s_jump")
+debut = 830
+longueur = 4
+largeur = 18
+impulsion = 9
+duree_turbo = 0.6
+
+[node name="Anneau1" type="Node3D" parent="."]
+script = ExtResource("s_anneau")
+debut = 846
+hauteur = 3.6
+rayon = 2.4
+couleur = Color(0.3, 0.7, 1, 1)
+
+[node name="Anneau2" type="Node3D" parent="."]
+script = ExtResource("s_anneau")
+debut = 864
+decalage = 2.5
+hauteur = 3.4
+rayon = 2.4
+couleur = Color(1, 0.6, 0.2, 1)
+
+[node name="Presse" type="Node3D" parent="."]
+script = ExtResource("s_obstacle")
+type = 1
+debut = 935
+periode = 3.2
+couleur = Color(0.75, 0.77, 0.8, 1)
+
+[node name="PortailOrange" type="Node3D" parent="."]
+script = ExtResource("s_portail")
+mode = 2
+debut = 1010
+longueur = 20
+fond_du_puits = Color(0.25, 0.08, 0, 1)
+lueur_du_puits = Color(1, 0.55, 0.1, 1)
+pierre_du_puits = Color(0.9, 0.91, 0.93, 1)
+decors = Array[NodePath]([NodePath("../DalleDuHall"), NodePath("../PanneauxDuHall"), NodePath("../CubesLestes"), NodePath("../TourellesDuHall")])
+
+[node name="ChuteDansLeHall" type="Node3D" parent="."]
+script = ExtResource("s_gap")
+debut = 1010
+longueur = 44
+chute_voulue = true

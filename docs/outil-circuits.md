@@ -19,7 +19,7 @@ pose **sur le tracé**, comme enfant du nœud `Track`.
 | `TrackApesanteur` | la gravité faiblit (`gravite`) : chaque saut dure plus longtemps. Une arche violette à chaque bout | non, c'est une zone |
 | `TrackAnneau` | un anneau d'or flottant à `hauteur` m : le traverser donne un turbo | non |
 | `TrackObstacle` | un obstacle mobile : marteau qui balance (`PENDULE`), pilon qui s'abat (`PISTON`), bloc ou tonneau qui va et vient (`BLOC`, `TONNEAU`), gardien qui arpente la route (`GARDIEN`). Le kart pris part en tête-à-queue | non : une zone qui fait tourner le kart |
-| `TrackPortail` | un passage vers un autre monde : de l'autre côté, un autre ciel (`ambiance`) et d'autres décors (`decors`). `mode` : `VORTEX`, un tourbillon qui s'ouvre devant le premier et se ferme derrière le dernier ; `CADRE`, un voile dans un cadre de blocs d'obsidienne, toujours ouvert ; `SOL`, un puits d'étoiles à plat sur un trou à `chute_voulue` : on tombe dedans et l'on ressort au bas du plongeon, sans rien perdre (`Kart.teleporter`) ; `SEUIL`, rien à voir, on change seulement de contrée. `nouveau_monde` à faux : le ciel change, les décors restent. On voit à travers un `VORTEX` ou un `CADRE` : voir plus bas | non |
+| `TrackPortail` | un passage vers un autre monde : de l'autre côté, un autre ciel (`ambiance`) et d'autres décors (`decors`). `mode` : `VORTEX`, un anneau d'étincelles d'or qui naît tout petit et grandit devant le premier, et se ferme derrière le dernier ; `CADRE`, un voile dans un cadre de blocs d'obsidienne, toujours ouvert ; `SOL`, un puits d'étoiles à plat sur un trou à `chute_voulue` : on tombe dedans et l'on ressort au bas du plongeon, sans rien perdre (`Kart.teleporter`) ; `SEUIL`, rien à voir, on change seulement de contrée. `nouveau_monde` à faux : le ciel change, les décors restent. On voit à travers un `VORTEX` ou un `CADRE` : voir plus bas | non |
 | `TrackSpectacle` | une scène animée autour de la route : éclair, voitures volantes, train, méduses, bulles, lune, dragon | non |
 | `TrackSol` | un sol plat à `altitude` autour du circuit (prairie, banquise, dalle), percé là où la route passe dessous : une galerie qui plonge sous la surface ne le traverse pas. `portion` le limite aux abords d'une portion du tracé. Percé aussi sous un trou de la route. Les décors posés à côté de la route s'y posent au lieu de flotter à hauteur de bitume | oui, sur `Track.PORTEE_HORS_PISTE` (14 m) de chaque côté de la route de son monde : voir « Sols réels » |
 | `TrackDecor` | une rangée de décor le long du tracé : palmiers, phare, piliers enflammés, étoiles, champignons géants, rochers. `espacement` 0 pose un objet seul | oui, sauf les étoiles : une forme simple au pied de chaque objet (tronc, pied de champignon, base d'immeuble) ; `solide` à faux pour qu'on la traverse. Un test vérifie qu'aucun décor solide ne mord sur la route |
@@ -190,13 +190,35 @@ Coupe Odyssée — des courses longues, à travers plusieurs mondes :
 | Carnaval de la Lune | 4 300 m, d'un seul tenant | une course linéaire, sans tours, en trois sections : le bourg de l'horloge et ses remparts, la plaine, la montagne enneigée et son col verglacé, la baie et son temple, le marais, le canyon et la spirale autour de la tour de pierre, un pont jusqu'au sommet de l'horloge — puis la bouche de la lune, et l'arrivée sur la lune, au pied du grand arbre. La lune descend vers la tour au fil de la course |
 | Terres Carrées | 2 424 m (2 tours) | la prairie ; un portail d'obsidienne toujours ouvert vers le monde du dessous et ses ponts sur la lave (trou à sauter 667 à 681 m) ; un puits d'étoiles à même le sol où l'on tombe (904 m), vers l'île du bout du monde au-dessus du vide et son dragon ; un second puits (1 356 m) vers la cité engloutie et son gardien (1 450 m), et la longue remontée dans la grotte jusqu'à la prairie |
 
+Coupe Prisme — tout ce que savent faire les portails et les sols :
+
+| Circuit | Longueur | Ce qui le distingue |
+|---|---|---|
+| Jardin des Saisons | 1 694 m (3 tours) | quatre saisons, quatre mondes : la prairie fleurie du printemps, la plage d'été (dune à sauter dans un anneau), la colline d'automne et sa bourrasque, la descente enneigée de l'hiver (ruisseau gelé à sauter 1 202 à 1 216 m, lac verglacé). Deux tourbillons (295, 1 110 m) et deux cadres (615, 1 555 m) : à travers chacun, la saison suivante. Un relief par saison (`TrackTerrain` à `portion`), où l'on roule |
+| Laboratoire des Portails | 1 176 m (3 tours) | le hall blanc du départ, son tapis roulant ; un cadre bleu (312 m) vers l'étage des épreuves : un conduit qui monte de 20 m, un tapis de travers, une plaque qui projette dans deux anneaux, une presse (935 m) ; un portail orange à même le plancher (1 010 m) : on tombe dans le hall, sur la ligne d'arrivée |
+| Escalier sans Fin | 1 855 m (2 tours) | un jardin à la française ; un tourbillon (180 m) vers un rêve : deux tours de spirale autour d'une tour, 21 m l'un au-dessus de l'autre, entre des escaliers qui flottent ; un tremplin en apesanteur au sommet ; puis un puits (1 379 m) où l'on tombe de 42 m, au pied de la tour, dans le jardin. On ne redescend jamais, et l'on recommence |
+| Route des Étoiles | 2 790 m, d'un seul tenant | une course linéaire, en trois sections : la base de lancement et sa fusée, un tourbillon (705 m) vers le canyon de la planète rouge (tempête de poussière, crevasse 1 080 à 1 094 m), un cadre (1 462 m) vers la lune de glace (banquise, tremplin en apesanteur), un puits dans la banquise (2 011 m) vers les nuages d'une géante gazeuse, un tourbillon (2 215 m) vers la station, où l'on arrive |
+
+Le puits d'un portail à plat prend ses couleurs dans `fond_du_puits`,
+`lueur_du_puits` et `pierre_du_puits` (par défaut, celles du bout du monde).
+Un circuit peut avoir un relief par portion (un par saison) : chaque décor se
+pose sur celui de sa portion. Un sol plat (`TrackSol`) s'abaisse sous une
+route au ras de lui (`hauteur_en`) : le bord bas d'un virage relevé ne passe
+plus dessous. Aux portails, deux sols se chevauchent : chacun ne porte que du
+côté de son monde. Nouveaux décors : `ARBRE_AUTOMNE`, `BONHOMME_DE_NEIGE`,
+`PARASOL`, `FLEUR`, `PANNEAU_LABO` (qui longe la route), `TOURELLE`,
+`CUBE_LESTE`, `ESCALIER_FLOTTANT` (il flotte), `FUSEE`, `PARABOLE`,
+`ROCHER_ROUGE`. Musiques : `SAISONS`, `LABO`, `ESCHER`, `ETOILES`.
+
 Les portails (`TrackPortail`) relient les mondes d'un circuit. Chacun
 s'ouvre quand le premier en approche à 90 m, et se referme quand le dernier
 l'a passé (`Track.tete_total`, `queue_total`, que `RaceSession` tient à
-jour) : en réseau, tout le monde le voit ouvert au même moment. Son couloir
-s'évase au double de l'entrée, et la caméra qui le traverse change de
-perspective (`ChaseCamera.vortex` : elle se rapproche du kart pendant que son
-champ s'ouvre) — le couloir semble bien plus long qu'il ne l'est. De l'autre
+jour) : en réseau, tout le monde le voit ouvert au même moment. C'est un
+anneau d'étincelles d'or : à l'ouverture, il naît tout petit, l'autre monde
+déjà dedans, et grandit jusqu'à sa taille, en crachant une pluie
+d'étincelles (`portail_etincelles.gdshader`, `CPUParticles3D`). La
+caméra qui le traverse change brièvement de perspective (`ChaseCamera.vortex`
+: elle se rapproche du kart pendant que son champ s'ouvre). De l'autre
 côté, le ciel est celui de `ambiance`, et seuls les nœuds de `decors` de ce
 portail se voient, jusqu'au portail suivant (`Track.montrer_le_monde_de`) :
 de la grand-place, on ne voit pas les tours du futur.

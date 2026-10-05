@@ -2,17 +2,14 @@
 class_name TrackPortail
 extends TrackFeature
 
-## Un portail : un tourbillon de lumière en travers de la route, qui s'ouvre
-## quand le premier approche et se referme une fois le dernier passé. On le
-## traverse sans rien sentir sous les roues — ce n'est pas un obstacle —,
-## mais pas sans rien voir.
-##
-## Il est plus grand dedans que dehors : l'anneau d'entrée fait `rayon`
-## mètres, puis le couloir s'évase jusqu'au double avant de se resserrer à la
-## sortie. La caméra qui le traverse change de perspective en même temps
-## (ChaseCamera.vortex : le champ s'ouvre pendant qu'elle se rapproche du
-## kart), si bien que le couloir semble s'étirer bien au-delà de sa longueur :
-## une perspective qui ne tient pas debout, celle d'un voyage dans le temps.
+## Un portail : un anneau d'étincelles d'or en travers de la route, qui
+## s'ouvre quand le premier approche et se referme une fois le dernier passé.
+## Il naît tout petit, l'autre monde déjà dedans, et grandit jusqu'à sa
+## taille ; l'anneau crache une pluie d'étincelles
+## (portail_etincelles.gdshader). On le traverse sans rien sentir sous les
+## roues — ce n'est pas un obstacle —, mais pas sans rien voir : la caméra
+## change de perspective pendant `longueur` mètres (ChaseCamera.vortex : le
+## champ s'ouvre pendant qu'elle se rapproche du kart).
 ##
 ## De l'autre côté, le monde a changé : `ambiance`, le ciel et la lumière de
 ## la portion qui suit, jusqu'au prochain portail (Track.ambiance_en).
@@ -20,7 +17,7 @@ extends TrackFeature
 ## Il s'ouvre et se ferme d'après la course (Track.tete_total et
 ## queue_total) : en réseau, chaque machine voit le même portail ouvert.
 ##
-## Ça, c'est le tourbillon (`VORTEX`). Trois autres formes :
+## Ça, c'est l'anneau (`VORTEX`). Trois autres formes :
 ## - `CADRE` : un voile violet qui ondule dans un grand cadre de blocs
 ##   d'obsidienne, en travers de la route, toujours ouvert ;
 ## - `SOL` : un puits d'étoiles posé à plat sur la route, dans un cadre de
@@ -44,6 +41,21 @@ enum Mode { VORTEX, CADRE, SOL, SEUIL }
 
 @export var couleur_a: Color = Color(0.3, 0.65, 1.0)
 @export var couleur_b: Color = Color(1.0, 0.45, 1.0)
+
+## Le puits d'un portail à plat (SOL) : son fond, la lueur qui y tourne, et
+## les pierres de son cadre. Par défaut, celui du bout du monde.
+@export var fond_du_puits: Color = Color(0.02, 0.05, 0.06):
+	set(valeur):
+		fond_du_puits = valeur
+		_modifie()
+@export var lueur_du_puits: Color = Color(0.25, 0.85, 0.75):
+	set(valeur):
+		lueur_du_puits = valeur
+		_modifie()
+@export var pierre_du_puits: Color = Color(0.78, 0.8, 0.62):
+	set(valeur):
+		pierre_du_puits = valeur
+		_modifie()
 
 ## Le ciel et la lumière de l'autre côté. Rien : on garde ceux du circuit.
 @export var ambiance: Environment
@@ -80,6 +92,7 @@ var _plan_origine := Vector3.ZERO
 var _plan_avant := Vector3.FORWARD
 var _materiaux: Array[ShaderMaterial] = []
 var _anneaux: Array[Node3D] = []
+var _gerbes: Array[CPUParticles3D] = []
 var _lumiere: OmniLight3D
 
 const SHADER := preload("res://shaders/vortex.gdshader")
@@ -88,7 +101,14 @@ const SHADER_FENETRE := preload("res://shaders/fenetre_portail.gdshader")
 ## On voit à travers un portail (VORTEX ou CADRE) jusqu'à cette distance ;
 ## au-delà, son voile est opaque et sa caméra se repose.
 const PORTEE_FENETRE := 260.0
+## L'effet sur la caméra commence tant de mètres avant le portail et finit
+## tant de mètres après le couloir.
+const EFFET_AUTOUR := 5.0
 const SHADER_SOL := preload("res://shaders/portail_end.gdshader")
+const SHADER_ETINCELLES := preload("res://shaders/portail_etincelles.gdshader")
+## Le rayon de l'anneau d'étincelles dans son carré : le reste est pour le
+## halo et la gerbe (portail_etincelles.gdshader, `anneau`).
+const ANNEAU := 0.77
 
 ## Le cadre d'obsidienne : sa marge de chaque côté de la route, sa hauteur.
 const CADRE_MARGE := 1.5
@@ -97,7 +117,10 @@ const BLOC := 1.5
 
 
 func _init() -> void:
-	longueur = 36.0
+	# Un couloir court : on le traverse en moins d'une seconde. Deux fois
+	# plus long, sa perspective déformée durait trois secondes, et quatre
+	# courses d'une coupe en enchaînent une dizaine.
+	longueur = 18.0
 	largeur = 18.0
 
 
@@ -122,6 +145,22 @@ func ouvert(tete: float, queue: float, tour: float) -> bool:
 	return queue < passage + longueur + APRES
 
 
+## Le centre de l'anneau, au-dessus de la route, en fraction de son rayon :
+## le bas du cercle passe sous le bitume, et c'est à hauteur de route qu'il
+## doit être assez large.
+const CENTRE_DE_L_ANNEAU := 0.3
+## La marge de l'anneau au-delà de chaque bord de la route, à hauteur de
+## roue : les bordures passent dedans.
+const MARGE_DE_L_ANNEAU := 1.5
+
+
+## Le rayon de l'anneau sur ce tracé : au moins `rayon`, et assez pour que
+## le cercle, coupé par la route, en couvre toute la largeur.
+func rayon_de_l_anneau(c: TrackCurve) -> float:
+	var demi := c.half_width + MARGE_DE_L_ANNEAU
+	return maxf(rayon, demi / sqrt(1.0 - CENTRE_DE_L_ANNEAU * CENTRE_DE_L_ANNEAU))
+
+
 ## Le rayon du couloir à cette fraction de sa longueur : plus grand dedans.
 func rayon_du_couloir(t: float) -> float:
 	return rayon * lerpf(1.0, EVASEMENT, sin(clampf(t, 0.0, 1.0) * PI))
@@ -132,8 +171,8 @@ func rayon_du_couloir(t: float) -> float:
 func effet_a(distance: float, tour: float) -> float:
 	if mode == Mode.SEUIL:
 		return 0.0
-	var etendue := longueur + 30.0
-	var t := wrapf(distance - debut + 15.0, 0.0, tour)
+	var etendue := longueur + EFFET_AUTOUR * 2.0
+	var t := wrapf(distance - debut + EFFET_AUTOUR, 0.0, tour)
 	if t > etendue:
 		return 0.0
 	return sin(t / etendue * PI) * _ouverture
@@ -161,14 +200,18 @@ func _ouvrir_une_fenetre(c: TrackCurve, racine: Node3D, surface: MeshInstance3D,
 	_oeil = null
 	if Engine.is_editor_hint() or not fenetre_possible():
 		return
-	_fenetre = ShaderMaterial.new()
-	_fenetre.shader = SHADER_FENETRE
-	_fenetre.set_shader_parameter("couleur_a", couleur_a)
-	_fenetre.set_shader_parameter("couleur_b", couleur_b)
-	_fenetre.set_shader_parameter("disque", rond)
+	if rond:
+		# L'anneau d'étincelles sait déjà montrer l'autre monde.
+		_fenetre = surface.material_override as ShaderMaterial
+	else:
+		_fenetre = ShaderMaterial.new()
+		_fenetre.shader = SHADER_FENETRE
+		_fenetre.set_shader_parameter("couleur_a", couleur_a)
+		_fenetre.set_shader_parameter("couleur_b", couleur_b)
+		_fenetre.set_shader_parameter("disque", false)
+		_materiaux.append(_fenetre)
+		surface.material_override = _fenetre
 	_fenetre.set_shader_parameter("actif", 0.0)
-	_materiaux.append(_fenetre)
-	surface.material_override = _fenetre
 	surface.layers = Track.CALQUE_FENETRES
 	_vue = SubViewport.new()
 	_vue.name = "VueSurLAutreMonde"
@@ -191,10 +234,11 @@ static func fenetre_possible() -> bool:
 	return QualiteGraphique.effectif(GameSettings.qualite) != QualiteGraphique.Niveau.BASSE
 
 
-## La fraction de l'écran de la seconde image : moitié de la résolution en
-## qualité moyenne, trois quarts en haute.
+## La fraction de l'écran de la seconde image : la même résolution que la
+## scène elle-même. Plus basse, l'autre monde paraissait flou à côté de
+## celui-ci.
 static func echelle_de_la_fenetre() -> float:
-	return 0.75 if QualiteGraphique.effectif(GameSettings.qualite) == QualiteGraphique.Niveau.HAUTE else 0.5
+	return QualiteGraphique.echelle_3d(GameSettings.qualite)
 
 
 ## Ce que filme la seconde caméra : le monde de l'autre côté du portail par
@@ -227,9 +271,14 @@ func _mettre_a_jour_la_fenetre() -> void:
 	_oeil.near = camera.near
 	_oeil.far = camera.far
 	_oeil.current = true
-	var taille := Vector2i(get_viewport().get_visible_rect().size * echelle_de_la_fenetre())
+	var ecran := get_viewport()
+	var taille := Vector2i(ecran.get_visible_rect().size * echelle_de_la_fenetre())
 	if _vue.size != taille:
 		_vue.size = taille
+	# Le même lissage des bords que l'écran : sans lui, l'autre monde
+	# crénelait à côté de celui-ci.
+	_vue.msaa_3d = ecran.msaa_3d
+	_vue.screen_space_aa = ecran.screen_space_aa
 	if _fenetre.get_shader_parameter("vue") == null:
 		_fenetre.set_shader_parameter("vue", _vue.get_texture())
 	_vue.render_target_update_mode = SubViewport.UPDATE_ALWAYS
@@ -250,6 +299,7 @@ func _materiau(couloir: bool) -> ShaderMaterial:
 func _construire(c: TrackCurve, racine: Node3D) -> void:
 	_materiaux.clear()
 	_anneaux.clear()
+	_gerbes.clear()
 	_lumiere = null
 	match mode:
 		Mode.SEUIL:
@@ -260,59 +310,73 @@ func _construire(c: TrackCurve, racine: Node3D) -> void:
 		Mode.SOL:
 			_construire_le_puits(c, racine)
 			return
-	var lumineux := StandardMaterial3D.new()
-	lumineux.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	lumineux.albedo_color = couleur_a.lerp(Color.WHITE, 0.4)
-	# L'entrée : un anneau lumineux et le disque du tourbillon.
+	# L'entrée : un anneau d'étincelles, et dedans l'autre monde. Pas de
+	# couloir à voir : on passe un cercle de feu, et l'on est ailleurs.
 	var entree := Node3D.new()
-	entree.transform = Transform3D(c.basis_at(debut), TrackFeature.point(c, debut, 0.0, rayon * 0.8))
+	var r := rayon_de_l_anneau(c)
+	entree.transform = Transform3D(c.basis_at(debut), TrackFeature.point(c, debut, 0.0, r * CENTRE_DE_L_ANNEAU))
 	racine.add_child(entree)
-	var cercle := MeshInstance3D.new()
-	var tore := TorusMesh.new()
-	tore.inner_radius = rayon - 0.35
-	tore.outer_radius = rayon + 0.35
-	tore.rings = 48
-	cercle.mesh = tore
-	cercle.material_override = lumineux
-	cercle.rotation.x = PI * 0.5
-	entree.add_child(cercle)
 	var disque := MeshInstance3D.new()
 	var plan := QuadMesh.new()
-	plan.size = Vector2(rayon * 2.0, rayon * 2.0)
+	plan.size = Vector2.ONE * r * 2.0 / ANNEAU
 	disque.mesh = plan
-	disque.material_override = _materiau(false)
+	var feu := ShaderMaterial.new()
+	feu.shader = SHADER_ETINCELLES
+	feu.set_shader_parameter("anneau", ANNEAU)
+	feu.set_shader_parameter("ouverture", 0.0)
+	_materiaux.append(feu)
+	disque.material_override = feu
+	disque.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	entree.add_child(disque)
 	_ouvrir_une_fenetre(c, racine, disque, true)
+	entree.add_child(_gerbe(r))
 	_anneaux.append(entree)
-	# Le couloir : des anneaux de tourbillon qui s'évasent puis se resserrent.
-	var n := maxi(int(longueur / PAS_DES_ANNEAUX), 2)
-	var materiau_couloir := _materiau(true)
-	for i in range(1, n + 1):
-		var t := float(i) / float(n)
-		var d := debut + longueur * t
-		var r := rayon_du_couloir(t)
-		var anneau := Node3D.new()
-		anneau.transform = Transform3D(c.basis_at(d), TrackFeature.point(c, d, 0.0, r * 0.55))
-		racine.add_child(anneau)
-		var forme := MeshInstance3D.new()
-		var tube := TorusMesh.new()
-		tube.inner_radius = r - 0.8
-		tube.outer_radius = r + 0.8
-		tube.rings = 40
-		tube.ring_segments = 6
-		forme.mesh = tube
-		forme.material_override = materiau_couloir
-		forme.rotation.x = PI * 0.5
-		anneau.add_child(forme)
-		_anneaux.append(anneau)
 	if not Engine.is_editor_hint():
 		_lumiere = OmniLight3D.new()
-		_lumiere.light_color = couleur_b
-		_lumiere.omni_range = rayon * 4.0
+		_lumiere.light_color = Color(1.0, 0.55, 0.15)
+		_lumiere.omni_range = r * 4.0
 		_lumiere.light_energy = 0.0
 		_lumiere.position = Vector3(0, 0, -2.0)
 		entree.add_child(_lumiere)
 	_appliquer()
+
+
+## Les étincelles qui jaillissent de l'anneau et retombent en pluie d'or.
+func _gerbe(r: float) -> CPUParticles3D:
+	var gerbe := CPUParticles3D.new()
+	gerbe.name = "Etincelles"
+	gerbe.amount = 70 if QualiteGraphique.effectif(GameSettings.qualite) != QualiteGraphique.Niveau.BASSE else 30
+	gerbe.lifetime = 0.9
+	gerbe.local_coords = true
+	gerbe.emitting = false
+	gerbe.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING
+	gerbe.emission_ring_axis = Vector3(0.0, 0.0, 1.0)
+	gerbe.emission_ring_radius = r
+	gerbe.emission_ring_inner_radius = r - 0.25
+	gerbe.emission_ring_height = 0.1
+	gerbe.spread = 180.0
+	gerbe.initial_velocity_min = 1.5
+	gerbe.initial_velocity_max = 4.5
+	gerbe.gravity = Vector3(0.0, -6.0, 0.0)
+	gerbe.scale_amount_min = 0.5
+	gerbe.scale_amount_max = 1.2
+	var degrade := Gradient.new()
+	degrade.set_color(0, Color(1.0, 0.95, 0.7, 1.0))
+	degrade.set_color(1, Color(1.0, 0.3, 0.05, 0.0))
+	degrade.add_point(0.4, Color(1.0, 0.6, 0.15, 1.0))
+	gerbe.color_ramp = degrade
+	var grain := QuadMesh.new()
+	grain.size = Vector2(0.24, 0.24)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.vertex_color_use_as_albedo = true
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	grain.material = m
+	gerbe.mesh = grain
+	_gerbes.append(gerbe)
+	return gerbe
 
 
 ## Le portail du monde d'en dessous : un cadre de blocs d'obsidienne autour
@@ -373,16 +437,18 @@ func _construire_le_puits(c: TrackCurve, racine: Node3D) -> void:
 	puits.mesh = plan
 	var m := ShaderMaterial.new()
 	m.shader = SHADER_SOL
+	m.set_shader_parameter("fond", fond_du_puits)
+	m.set_shader_parameter("lueur", lueur_du_puits)
 	puits.material_override = m
 	puits.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	puits.position = Vector3(0.0, 0.02, -longueur * 0.5)
 	repere.add_child(puits)
 	var pierre := StandardMaterial3D.new()
-	pierre.albedo_color = Color(0.78, 0.8, 0.62)
+	pierre.albedo_color = pierre_du_puits
 	var oeil := StandardMaterial3D.new()
-	oeil.albedo_color = Color(0.2, 0.7, 0.45)
+	oeil.albedo_color = lueur_du_puits.darkened(0.15)
 	oeil.emission_enabled = true
-	oeil.emission = Color(0.15, 0.6, 0.35)
+	oeil.emission = lueur_du_puits.darkened(0.3)
 	# Une rangée de pierres le long de chaque rive, et au fond : le kart
 	# entre par le côté ouvert.
 	var z := 0.0
@@ -439,17 +505,20 @@ func _process(delta: float) -> void:
 	if p == null:
 		return
 	var cible := 1.0 if ouvert(p.tete_total, p.queue_total, p.track_curve.length) else 0.0
-	_ouverture = move_toward(_ouverture, cible, delta * (1.2 if cible > _ouverture else 0.8))
+	_ouverture = move_toward(_ouverture, cible, delta * (0.75 if cible > _ouverture else 0.8))
 	_appliquer()
 
 
 func _appliquer() -> void:
 	for m in _materiaux:
 		m.set_shader_parameter("ouverture", _ouverture)
-	# Il naît d'un point et y retourne : tout le portail grandit avec lui.
-	var echelle := lerpf(0.04, 1.0, smoothstep(0.0, 1.0, _ouverture))
+	# Un tout petit cercle, l'autre monde déjà dedans, qui grandit jusqu'à sa
+	# taille — et rapetisse jusqu'à disparaître à la fermeture.
+	var echelle := lerpf(0.03, 1.0, 1.0 - pow(1.0 - _ouverture, 2.0))
 	for anneau in _anneaux:
 		anneau.scale = Vector3.ONE * echelle
 		anneau.visible = _ouverture > 0.01
+	for gerbe in _gerbes:
+		gerbe.emitting = _ouverture > 0.15
 	if _lumiere != null:
 		_lumiere.light_energy = 3.0 * _ouverture

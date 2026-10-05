@@ -5,7 +5,8 @@ extends GutTest
 ## pouvaient le corrompre, et le jeu se fermait d'un coup.
 
 func test_deux_fils_qui_composent_en_meme_temps_remplissent_le_cache() -> void:
-	var styles := [Musique.Style.TEMPS, Musique.Style.RECIF, Musique.Style.LUNE, Musique.Style.CUBES]
+	var styles := [Musique.Style.TEMPS, Musique.Style.RECIF, Musique.Style.LUNE, Musique.Style.CUBES,
+		Musique.Style.SAISONS, Musique.Style.LABO, Musique.Style.ESCHER, Musique.Style.ETOILES]
 	var taches: Array[int] = []
 	for style in styles:
 		taches.append(WorkerThreadPool.add_task(Musique.composer.bind(style), false, "essai"))
