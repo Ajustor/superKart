@@ -9,3 +9,4 @@ nom = "Laboratoire des Portails"
 description = "Un laboratoire blanc et ses salles d'essai. Un portail bleu ouvre sur l'étage des épreuves : tapis roulants, presse, plaque qui vous projette dans les anneaux. Au bout, un portail orange posé au sol : on tombe dedans et l'on ressort dans le hall, deux étages plus bas, sur la ligne d'arrivée."
 chemin_scene = "res://scenes/tracks/labo.tscn"
 tours = 3
+portails = true

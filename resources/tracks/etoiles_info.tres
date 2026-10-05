@@ -9,3 +9,4 @@ nom = "Route des Étoiles"
 description = "Une course d'une traite, de planète en planète. On quitte la base de lancement, on traverse un portail vers le canyon de la planète rouge, un cadre vers la lune de glace ; là, un puits s'ouvre dans la banquise et l'on tombe dans les nuages d'une géante gazeuse, jusqu'au dernier portail : l'arrivée est sur la station."
 chemin_scene = "res://scenes/tracks/etoiles.tscn"
 tours = 1
+portails = true

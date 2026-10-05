@@ -46,11 +46,23 @@ func _ready() -> void:
 	add_child(course)
 
 
+## Les circuits que la course de fond peut prendre : pas ceux à portails. Ils
+## font tourner une seconde caméra par portail en plus du menu, et le jeu
+## plantait sur téléphone pendant qu'on choisissait sa course.
+static func pistes_possibles() -> Array[TrackInfo]:
+	var liste: Array[TrackInfo] = []
+	for piste in TrackCatalog.PISTES:
+		if not piste.portails:
+			liste.append(piste)
+	return liste
+
+
 ## La course, prête à entrer dans l'arbre : sans interface ni son, sans
 ## décompte, et le kart du joueur confié lui aussi à l'IA.
 static func monter(rng: RandomNumberGenerator) -> Node:
 	var reglage := RaceSetup.new()
-	reglage.choisir_piste(TrackCatalog.PISTES[rng.randi_range(0, TrackCatalog.PISTES.size() - 1)])
+	var possibles := pistes_possibles()
+	reglage.choisir_piste(possibles[rng.randi_range(0, possibles.size() - 1)])
 	reglage.mode = RaceSetup.Mode.COURSE
 	reglage.tours = TOURS
 	reglage.couleur = rng.randi_range(0, ModeleKart.COULEURS.size() - 1)

@@ -9,3 +9,4 @@ nom = "Terres Carrées"
 description = "Un monde fait de cubes. On quitte la prairie par un portail d'obsidienne qui reste ouvert, vers le monde du dessous et ses ponts sur la lave. Là, un portail posé à même le sol : on tombe dedans, sur l'île du bout du monde où tourne un dragon. Un autre puits, et l'on retombe dans la cité engloutie, où rôde son gardien aveugle, avant de remonter vers la lumière."
 chemin_scene = "res://scenes/tracks/terres_cubiques.tscn"
 tours = 2
+portails = true

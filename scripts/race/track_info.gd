@@ -24,3 +24,7 @@ var scene: PackedScene:
 			return null
 		return load(chemin_scene) as PackedScene
 @export_range(1, 9) var tours: int = 3
+## Le circuit a des portails (TrackPortail). La course derrière le menu les
+## évite : une seconde caméra par portail, c'est trop pour un téléphone qui
+## fait déjà tourner le menu.
+@export var portails: bool = false

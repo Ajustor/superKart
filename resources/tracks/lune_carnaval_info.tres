@@ -9,3 +9,4 @@ nom = "Carnaval de la Lune"
 description = "Une course d'un seul tenant, sous une lune grimaçante qui tombe sur la ville. Le bourg de l'horloge et ses remparts, la plaine, la montagne enneigée, la baie et son temple, le marais, le canyon et sa tour de pierre, puis un pont jusqu'au sommet de l'horloge — et l'arrivée sur la lune, au pied du grand arbre."
 chemin_scene = "res://scenes/tracks/lune_carnaval.tscn"
 tours = 1
+portails = true
