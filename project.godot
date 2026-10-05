@@ -25,6 +25,7 @@ config/windows_native_icon="res://resources/icone/icone.ico"
 [autoload]
 
 GameSettings="*res://scripts/core/game_settings.gd"
+Journal="*res://scripts/core/journal.gd"
 Reseau="*res://scripts/net/network_manager.gd"
 PerfOverlay="*res://scripts/core/perf_overlay.gd"
 MiseAJour="*res://scripts/core/mise_a_jour.gd"

@@ -44,6 +44,12 @@ var afficher_fps: bool = false
 
 ## Voir QualiteGraphique.
 var qualite: int = QualiteGraphique.Niveau.AUTO
+## La taille de l'interface. Elle est dessinée pour un téléphone tenu à bout
+## de bras : sur un écran de PC, à la même échelle, tout est énorme.
+enum TailleInterface { AUTO, PETITE, NORMALE, GRANDE }
+var taille_interface: int = TailleInterface.AUTO
+## Vrai une fois l'aide des commandes vue, au premier lancement.
+var aide_vue: bool = false
 
 ## Le nom affiché aux autres joueurs en réseau.
 var pseudo: String = ""
@@ -115,6 +121,9 @@ func charger() -> void:
 	mini_carte = bool(fichier.get_value("affichage", "mini_carte", mini_carte))
 	course_de_fond = bool(fichier.get_value("affichage", "course_de_fond", course_de_fond))
 	afficher_fps = bool(fichier.get_value("affichage", "fps", afficher_fps))
+	taille_interface = clampi(int(fichier.get_value("affichage", "taille_interface", taille_interface)),
+		TailleInterface.AUTO, TailleInterface.GRANDE)
+	aide_vue = bool(fichier.get_value("general", "aide_vue", aide_vue))
 	qualite = clampi(int(fichier.get_value("affichage", "qualite", qualite)),
 		QualiteGraphique.Niveau.AUTO, QualiteGraphique.Niveau.BASSE)
 	pseudo = str(fichier.get_value("reseau", "pseudo", pseudo))
@@ -167,6 +176,8 @@ func sauver() -> void:
 	fichier.set_value("affichage", "course_de_fond", course_de_fond)
 	fichier.set_value("affichage", "fps", afficher_fps)
 	fichier.set_value("affichage", "qualite", qualite)
+	fichier.set_value("affichage", "taille_interface", taille_interface)
+	fichier.set_value("general", "aide_vue", aide_vue)
 	fichier.set_value("reseau", "pseudo", pseudo)
 	fichier.set_value("reseau", "adresse", derniere_adresse)
 	fichier.set_value("reseau", "mises_a_jour", verifier_mises_a_jour)
@@ -223,8 +234,23 @@ func appliquer_graphismes() -> void:
 		return
 	var fenetre := get_tree().root
 	fenetre.scaling_3d_scale = QualiteGraphique.echelle_3d(qualite)
+	fenetre.content_scale_factor = echelle_interface(taille_interface)
 	if get_tree().current_scene != null:
 		QualiteGraphique.appliquer_a(get_tree().current_scene, qualite)
+
+
+## Le facteur d'échelle de l'interface (Window.content_scale_factor). En
+## automatique : normale sur un téléphone ou un écran tactile, plus petite
+## ailleurs — sur un écran de PC, on la lit de près.
+static func echelle_interface(taille: int) -> float:
+	match taille:
+		TailleInterface.PETITE:
+			return 0.7
+		TailleInterface.NORMALE:
+			return 1.0
+		TailleInterface.GRANDE:
+			return 1.2
+	return 1.0 if OS.has_feature("mobile") or DisplayServer.is_touchscreen_available() else 0.75
 
 
 ## linear_to_db(0) vaut -inf, que le mixeur n'aime pas : le silence passe par

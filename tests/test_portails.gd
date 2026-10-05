@@ -108,6 +108,17 @@ func test_la_traversee_dure_moins_d_une_seconde_et_demie() -> void:
 	assert_lt(deforme / 22.0, 1.5, "%.0f m de perspective déformée" % deforme)
 
 
+func test_le_tour_de_chauffe_ouvre_le_portail_puis_le_referme() -> void:
+	var p := _portail(100.0)
+	p.reconstruire()
+	p.chauffer(null)
+	assert_eq(p.ouverture(), 1.0, "grand ouvert le temps du tour : tout se compile")
+	p._process(0.1)
+	assert_eq(p.ouverture(), 1.0, "pendant le tour, rien ne bouge")
+	p.fin_de_chauffe()
+	assert_eq(p.ouverture(), 0.0, "fermé ensuite, comme avant le tour")
+
+
 func test_un_portail_ferme_ne_deforme_rien() -> void:
 	var p := _portail(100.0)
 	p._ouverture = 0.0

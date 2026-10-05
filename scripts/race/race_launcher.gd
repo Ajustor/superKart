@@ -20,6 +20,8 @@ const AMBIANCE := ["WorldEnvironment", "DirectionalLight3D"]
 ## suite, charge et monte la course derrière lui, et s'efface au départ.
 static func lancer(arbre: SceneTree, reglage: RaceSetup) -> void:
 	arbre.paused = false
+	Journal.reperer("course : %s, mode %d — %s" % [reglage.piste.id if reglage.piste != null else "?",
+		reglage.mode, Journal.etat_memoire()])
 	_par_l_ecran(arbre, EcranChargement.pour_reglage(reglage))
 
 
@@ -28,6 +30,7 @@ static func lancer(arbre: SceneTree, reglage: RaceSetup) -> void:
 ## chargement attend en plus que tous les joueurs soient prêts.
 static func lancer_reseau(arbre: SceneTree, plan: Array, config: Dictionary, moi: int, hote: bool) -> void:
 	arbre.paused = false
+	Journal.reperer("course en réseau : %s — %s" % [str(config.get("piste", "?")), Journal.etat_memoire()])
 	var ecran := EcranChargement.new()
 	ecran.fabrique = func() -> Node: return monter_reseau(plan, config, moi, hote)
 	ecran.a_charger = PackedStringArray([SCENE_COURSE])

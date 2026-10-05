@@ -9,6 +9,10 @@ var _selection: Control
 var _options: OptionsPanel
 var _multi: MultiplayerPanel
 var _astuces: AstucesPanel
+var _aide: AideCommandes
+var _journal: JournalPanel
+var _journal_depuis_options := false
+var _aide_depuis_astuces := false
 var _garage: GaragePanel
 ## L'écran d'où l'on est venu au garage : l'accueil ou le salon.
 var _avant_garage: Control
@@ -70,12 +74,40 @@ func _ready() -> void:
 	_astuces = AstucesPanel.new()
 	add_child(_astuces)
 	_astuces.ferme.connect(_montrer.bind(_accueil))
+	_journal = JournalPanel.new()
+	add_child(_journal)
+	_options.journal.connect(func() -> void:
+		_journal_depuis_options = true
+		_montrer(_journal))
+	_journal.ferme.connect(func() -> void:
+		var retour: Control = _options if _journal_depuis_options else _accueil
+		_journal_depuis_options = false
+		_montrer(retour))
+	if Journal.plantage_precedent and not ServeurDedie.actif:
+		_bandeau_plantage(_accueil)
+	_aide = AideCommandes.new()
+	add_child(_aide)
+	_astuces.commandes.connect(func() -> void:
+		_aide_depuis_astuces = true
+		_montrer(_aide))
+	# Après l'aide : retour d'où l'on venait — l'accueil au premier lancement,
+	# les astuces ensuite.
+	_aide.ferme.connect(func() -> void:
+		var retour: Control = _astuces if _aide_depuis_astuces else _accueil
+		_aide_depuis_astuces = false
+		_montrer(retour))
 	_garage = GaragePanel.new()
 	add_child(_garage)
 	_garage.ferme.connect(func() -> void: _montrer(_avant_garage))
 	_multi.garage.connect(_ouvrir_garage.bind(_multi))
-	# De retour d'une course en réseau : on revient droit au salon.
-	_montrer(_multi if Reseau.actif() else _accueil)
+	# De retour d'une course en réseau : on revient droit au salon. Au tout
+	# premier lancement, l'aide des commandes d'abord.
+	if Reseau.actif():
+		_montrer(_multi)
+	elif not GameSettings.aide_vue and not ServeurDedie.actif:
+		_montrer(_aide)
+	else:
+		_montrer(_accueil)
 
 
 func _fond() -> void:
@@ -144,6 +176,27 @@ static func texte_version() -> String:
 ## Un encart en bas à droite de l'accueil quand une nouvelle version existe :
 ## un bouton la télécharge et l'installe (voir MiseAJour). Caché le reste du
 ## temps — un jeu à jour n'a rien à dire.
+## Le jeu s'est fermé d'un coup la dernière fois : on le dit, et l'on propose
+## de lire le journal, pour l'envoyer.
+func _bandeau_plantage(ecran: Control) -> void:
+	var bandeau := PanelContainer.new()
+	bandeau.name = "Plantage"
+	bandeau.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 16)
+	bandeau.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	ecran.add_child(bandeau)
+	var colonne := VBoxContainer.new()
+	colonne.add_theme_constant_override("separation", 8)
+	bandeau.add_child(colonne)
+	var texte := Label.new()
+	texte.text = "Le jeu s'est fermé brutalement la dernière fois."
+	texte.custom_minimum_size.x = 340
+	texte.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	texte.add_theme_color_override("font_color", UITheme.ACCENT)
+	texte.add_theme_font_size_override("font_size", 20)
+	colonne.add_child(texte)
+	colonne.add_child(UITheme.bouton("Voir le journal", func() -> void: _montrer(_journal)))
+
+
 func _bandeau_mise_a_jour(ecran: Control) -> void:
 	_bandeau_maj = PanelContainer.new()
 	_bandeau_maj.name = "MiseAJour"
@@ -203,7 +256,7 @@ func _rafraichir_mise_a_jour() -> void:
 
 
 func _montrer(ecran: Control) -> void:
-	for e in [_accueil, _selection, _options, _multi, _astuces, _garage]:
+	for e in [_accueil, _selection, _options, _multi, _astuces, _garage, _aide, _journal]:
 		e.visible = e == ecran
 	# Le focus clavier/manette : sans lui, un joueur à la manette ne peut rien
 	# faire dans le menu.

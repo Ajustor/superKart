@@ -407,13 +407,9 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 	# (comme le relief, TrackTerrain) : tombé d'un pont dans le pré d'en
 	# dessous, on n'est pas sur la route qui passe au-dessus. Le long de la
 	# normale, le bas-côté plat d'un virage relevé passait pour un fossé.
-	var droite := _track.track_curve.right_at(d)
-	var niveau := _track.track_curve.position_at(d).y \
-		+ droite.y * clampf(lateral, -_demi_largeur, _demi_largeur)
-	var hauteur := point.y - niveau
-	# Hors du bitume, ou sur une zone hors-piste posée sur la route.
+	var hauteur := hauteur_sur_la_route(point, d, lateral)
 	var zone := _track.en_zone_hors_piste(d, lateral)
-	var dehors := ecart > _demi_largeur or zone or hauteur < -HAUTEUR_SOUS_LA_ROUTE
+	var dehors := hors_piste(point, d, lateral)
 	entree.kart.set_offroad(dehors)
 
 	var rampe := _track.rampe_en(d, lateral)
@@ -502,6 +498,23 @@ func avancer(entree: RaceEntry, point: Vector3, delta: float) -> void:
 		var reprise := _track.point_de_reprise(entree.derniere_en_piste)
 		entree.derniere_en_piste = reprise
 		entree.kart.respawn_at(_track.spawn_at(reprise))
+
+
+## La hauteur de ce point au-dessus de la chaussée, prolongée à plat au-delà
+## du bord.
+func hauteur_sur_la_route(point: Vector3, d: float, lateral: float) -> float:
+	var c := _track.track_curve
+	var niveau := c.position_at(d).y + c.right_at(d).y * clampf(lateral, -c.half_width, c.half_width)
+	return point.y - niveau
+
+
+## Hors piste en ce point : tout ce qui n'est pas le bitume — un sol, un
+## relief, un bas-côté, une zone hors-piste posée sur la route, le pré sous un
+## pont. Seule la chaussée entre ses deux bords (bordures comprises) est la
+## piste.
+func hors_piste(point: Vector3, d: float, lateral: float) -> bool:
+	return absf(lateral) > _track.track_curve.half_width or _track.en_zone_hors_piste(d, lateral) \
+		or hauteur_sur_la_route(point, d, lateral) < -HAUTEUR_SOUS_LA_ROUTE
 
 
 ## Une course linéaire : chaque section franchie se compte comme un tour (le
