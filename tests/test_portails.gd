@@ -68,6 +68,16 @@ func test_le_portail_se_rouvre_au_tour_suivant() -> void:
 	assert_true(p.ouvert(500.0 + 300.0 - 20.0, 400.0, 500.0))
 
 
+func test_l_anneau_couvre_toute_la_largeur_de_la_route() -> void:
+	var p := _portail(100.0)
+	var c := track.track_curve
+	var r := p.rayon_de_l_anneau(c)
+	# Le cercle, centré à r × CENTRE au-dessus de la route, coupé par elle.
+	var h := r * TrackPortail.CENTRE_DE_L_ANNEAU
+	var demi_corde := sqrt(r * r - h * h)
+	assert_gte(demi_corde, c.half_width + 1.0, "les deux bords de la route passent dans l'anneau")
+
+
 func test_le_couloir_est_plus_grand_dedans_que_dehors() -> void:
 	var p := _portail(100.0)
 	assert_almost_eq(p.rayon_du_couloir(0.0), p.rayon, 0.01)

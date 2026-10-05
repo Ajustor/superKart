@@ -145,6 +145,22 @@ func ouvert(tete: float, queue: float, tour: float) -> bool:
 	return queue < passage + longueur + APRES
 
 
+## Le centre de l'anneau, au-dessus de la route, en fraction de son rayon :
+## le bas du cercle passe sous le bitume, et c'est à hauteur de route qu'il
+## doit être assez large.
+const CENTRE_DE_L_ANNEAU := 0.3
+## La marge de l'anneau au-delà de chaque bord de la route, à hauteur de
+## roue : les bordures passent dedans.
+const MARGE_DE_L_ANNEAU := 1.5
+
+
+## Le rayon de l'anneau sur ce tracé : au moins `rayon`, et assez pour que
+## le cercle, coupé par la route, en couvre toute la largeur.
+func rayon_de_l_anneau(c: TrackCurve) -> float:
+	var demi := c.half_width + MARGE_DE_L_ANNEAU
+	return maxf(rayon, demi / sqrt(1.0 - CENTRE_DE_L_ANNEAU * CENTRE_DE_L_ANNEAU))
+
+
 ## Le rayon du couloir à cette fraction de sa longueur : plus grand dedans.
 func rayon_du_couloir(t: float) -> float:
 	return rayon * lerpf(1.0, EVASEMENT, sin(clampf(t, 0.0, 1.0) * PI))
@@ -297,11 +313,12 @@ func _construire(c: TrackCurve, racine: Node3D) -> void:
 	# L'entrée : un anneau d'étincelles, et dedans l'autre monde. Pas de
 	# couloir à voir : on passe un cercle de feu, et l'on est ailleurs.
 	var entree := Node3D.new()
-	entree.transform = Transform3D(c.basis_at(debut), TrackFeature.point(c, debut, 0.0, rayon * 0.8))
+	var r := rayon_de_l_anneau(c)
+	entree.transform = Transform3D(c.basis_at(debut), TrackFeature.point(c, debut, 0.0, r * CENTRE_DE_L_ANNEAU))
 	racine.add_child(entree)
 	var disque := MeshInstance3D.new()
 	var plan := QuadMesh.new()
-	plan.size = Vector2.ONE * rayon * 2.0 / ANNEAU
+	plan.size = Vector2.ONE * r * 2.0 / ANNEAU
 	disque.mesh = plan
 	var feu := ShaderMaterial.new()
 	feu.shader = SHADER_ETINCELLES
@@ -312,12 +329,12 @@ func _construire(c: TrackCurve, racine: Node3D) -> void:
 	disque.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	entree.add_child(disque)
 	_ouvrir_une_fenetre(c, racine, disque, true)
-	entree.add_child(_gerbe())
+	entree.add_child(_gerbe(r))
 	_anneaux.append(entree)
 	if not Engine.is_editor_hint():
 		_lumiere = OmniLight3D.new()
 		_lumiere.light_color = Color(1.0, 0.55, 0.15)
-		_lumiere.omni_range = rayon * 4.0
+		_lumiere.omni_range = r * 4.0
 		_lumiere.light_energy = 0.0
 		_lumiere.position = Vector3(0, 0, -2.0)
 		entree.add_child(_lumiere)
@@ -325,7 +342,7 @@ func _construire(c: TrackCurve, racine: Node3D) -> void:
 
 
 ## Les étincelles qui jaillissent de l'anneau et retombent en pluie d'or.
-func _gerbe() -> CPUParticles3D:
+func _gerbe(r: float) -> CPUParticles3D:
 	var gerbe := CPUParticles3D.new()
 	gerbe.name = "Etincelles"
 	gerbe.amount = 70 if QualiteGraphique.effectif(GameSettings.qualite) != QualiteGraphique.Niveau.BASSE else 30
@@ -334,8 +351,8 @@ func _gerbe() -> CPUParticles3D:
 	gerbe.emitting = false
 	gerbe.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING
 	gerbe.emission_ring_axis = Vector3(0.0, 0.0, 1.0)
-	gerbe.emission_ring_radius = rayon
-	gerbe.emission_ring_inner_radius = rayon - 0.25
+	gerbe.emission_ring_radius = r
+	gerbe.emission_ring_inner_radius = r - 0.25
 	gerbe.emission_ring_height = 0.1
 	gerbe.spread = 180.0
 	gerbe.initial_velocity_min = 1.5
