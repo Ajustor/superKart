@@ -4,5 +4,8 @@ un jeu commercial, sans obligation de citer l'auteur (merci quand même).
 
   karts/    Car Kit         https://kenney.nl/assets/car-kit
   pilotes/  Mini Characters https://kenney.nl/assets/mini-characters
+  decor/    Nature Kit, Graveyard Kit, Pirate Kit, City Kit (Suburban,
+            Commercial)      https://kenney.nl/assets
+  course/   Racing Kit       https://kenney.nl/assets/racing-kit
 
 https://creativecommons.org/publicdomain/zero/1.0/

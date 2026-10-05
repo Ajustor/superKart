@@ -128,3 +128,66 @@ espacement = 60.0
 hauteur = -2.5
 echelle = 1.5
 graine = 6
+
+[node name="PaddockTribunes" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 49
+debut = 6.0
+longueur = 28.0
+decalage = 24.0
+espacement = 14.0
+symetrique = false
+eviter_la_route = true
+graine = 3
+
+[node name="PaddockStands" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 54
+debut = 6.0
+longueur = 28.0
+decalage = -24.0
+espacement = 14.0
+symetrique = false
+eviter_la_route = true
+graine = 4
+
+[node name="PaddockTours" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 51
+debut = 1.0
+longueur = 0.0
+decalage = 12.5
+espacement = 0.0
+eviter_la_route = true
+
+[node name="PaddockDrapeaux" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 52
+debut = 10.0
+longueur = 48.0
+decalage = 11.5
+espacement = 12.0
+solide = false
+eviter_la_route = true
+graine = 6
+
+[node name="PaddockTentes" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 50
+debut = 46.0
+longueur = 30.0
+decalage = 19.0
+espacement = 10.0
+eviter_la_route = true
+graine = 7
+
+[node name="PaddockPanneaux" type="Node3D" parent="."]
+script = ExtResource("s_decor")
+objet = 53
+debut = 90.0
+longueur = 80.0
+decalage = 15.0
+espacement = 40.0
+symetrique = false
+eviter_la_route = true
+graine = 8

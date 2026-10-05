@@ -328,3 +328,24 @@ l'herbe bien plus de tracé qu'il n'en roule (`RACCOURCI_TOLERE`) : on peut
 prendre la corde d'un virage, pas couper une épingle à travers champs. Les
 raccourcis voulus restent des `TrackOffroad`. `tests/test_sols_reels.gd`.
 
+
+## Le style Kenney
+
+Les circuits prennent l'allure des kits de Kenney (CC0, `assets/kenney/`) :
+- **La route** : un bitume uni et mat (`Track.peindre_l_asphalte`), des lignes
+  de rive jaunes continues (`TrackBuilder.lignes_de_rive`, posées dès qu'il y a
+  un marquage), et des bordures rouges et blanches bombées de 7 cm, en blocs
+  de 1,5 m (`TrackBuilder.bordures`).
+- **Les décors** : `KenneyDecor` remplace treize objets de `TrackDecor` par leur
+  modèle Kenney (palmier, sapin, arbre, arbre d'automne, arbre en cubes,
+  rocher, buisson, cactus, tête de pierre, botte de foin, tonneau, maison,
+  parasol), fondu en une seule maillage et mis à la taille de l'objet fait
+  main : les rangées, leurs collisions et leurs places restent les mêmes. Ce
+  qui brille et ce qui n'a pas d'équivalent reste fait main.
+- **Le bord de piste** (Racing Kit) : de nouveaux objets `TRIBUNE`, `STANDS`,
+  `TENTE`, `TOUR_BANNIERE`, `DRAPEAU_DAMIER`, `PANNEAU_PUB` et
+  `LAMPADAIRE_COURSE`, tournés vers la route (`TrackDecor.FACE_A_LA_ROUTE`).
+  Les circuits « à l'air libre » ont un paddock au départ (nœuds `Paddock*`) :
+  tribune d'un côté, stands de l'autre, tours à bannières sur la ligne,
+  drapeaux à damier, tentes et panneaux. Le circuit de la plage n'a ni tribune
+  ni stands : ils tomberaient dans la mer.

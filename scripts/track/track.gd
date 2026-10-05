@@ -18,6 +18,11 @@ const NOM_CORPS := "RoadBody"
 const NOM_BORDURES := "Bordures"
 const NOM_TABLIER := "Tablier"
 const NOM_MARQUAGE := "Marquage"
+const NOM_RIVES := "Rives"
+## Les bordures rouges et blanches : un mètre de large sur chaque rive.
+const LARGEUR_BORDURE := 1.0
+## Le jaune des lignes de rive.
+const COULEUR_RIVE := Color(0.98, 0.78, 0.22)
 
 ## L'allure de la chaussée.
 enum Motif {
@@ -194,8 +199,7 @@ func _reconstruire() -> void:
 		materiau.emission_enabled = true
 		materiau.emission = Color(0.22, 0.22, 0.3)
 	else:
-		_asphalte = materiau
-		detailler_l_asphalte(_detail_asphalte)
+		Track.peindre_l_asphalte(materiau)
 	maillage.surface_set_material(0, materiau)
 
 	var affichage := MeshInstance3D.new()
@@ -241,10 +245,24 @@ func _reconstruire() -> void:
 		ligne_centrale.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(ligne_centrale)
 
+	if marquage and not arc_en_ciel:
+		# Les lignes de rive jaunes des routes de Kenney, en dedans des
+		# bordures quand il y en a.
+		var rives := MeshInstance3D.new()
+		rives.name = NOM_RIVES
+		rives.mesh = TrackBuilder.lignes_de_rive(track_curve, trous(),
+			LARGEUR_BORDURE + 0.25 if bordures else 0.35)
+		var jaune := StandardMaterial3D.new()
+		jaune.albedo_color = COULEUR_RIVE
+		jaune.roughness = 0.6
+		rives.material_override = jaune
+		rives.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(rives)
+
 	if bordures:
 		var bandes := MeshInstance3D.new()
 		bandes.name = NOM_BORDURES
-		bandes.mesh = TrackBuilder.bordures(track_curve, trous(), 1.0, 3.0,
+		bandes.mesh = TrackBuilder.bordures(track_curve, trous(), LARGEUR_BORDURE, 1.5,
 			couleur_bordure, couleur_bordure_bis)
 		var peinture := StandardMaterial3D.new()
 		peinture.vertex_color_use_as_albedo = true
@@ -446,65 +464,11 @@ func _process(_delta: float) -> void:
 	montrer_le_monde_de(monde_en(ici), camera)
 
 
-var _asphalte: StandardMaterial3D
-## Le grain du bitume coûte trois lectures de texture par pixel de route,
-## deux fois : QualiteGraphique ne le laisse qu'en qualité haute.
-var _detail_asphalte := true
-
-
-## Met ou retire le grain du bitume (voir habiller_l_asphalte).
-func detailler_l_asphalte(actif: bool) -> void:
-	_detail_asphalte = actif
-	if _asphalte == null:
-		return
-	if actif:
-		Track.habiller_l_asphalte(_asphalte)
-	else:
-		_asphalte.albedo_texture = null
-		_asphalte.normal_enabled = false
-		_asphalte.uv1_triplanar = false
-		_asphalte.roughness = 0.85
-
-
-static var _grain: NoiseTexture2D
-static var _relief: NoiseTexture2D
-
-
-## Donne du grain à un bitume uni : une texture de bruit qui le tachète, un
-## relief fin qui accroche la lumière rasante, un peu de reflet. Projetée en
-## coordonnées du monde (la route n'a pas d'UV), et partagée par tous les
-## circuits : deux petites textures, faites une fois.
-static func habiller_l_asphalte(materiau: StandardMaterial3D) -> void:
-	if _grain == null:
-		var bruit := FastNoiseLite.new()
-		bruit.noise_type = FastNoiseLite.TYPE_SIMPLEX
-		bruit.frequency = 0.09
-		bruit.fractal_octaves = 3
-		var rampe := Gradient.new()
-		rampe.set_color(0, Color(0.8, 0.8, 0.8))
-		rampe.set_color(1, Color(1.05, 1.05, 1.05))
-		_grain = NoiseTexture2D.new()
-		_grain.width = 256
-		_grain.height = 256
-		_grain.seamless = true
-		_grain.noise = bruit
-		_grain.color_ramp = rampe
-		_relief = NoiseTexture2D.new()
-		_relief.width = 256
-		_relief.height = 256
-		_relief.seamless = true
-		_relief.as_normal_map = true
-		_relief.bump_strength = 3.0
-		_relief.noise = bruit
-	materiau.albedo_texture = _grain
-	materiau.normal_enabled = true
-	materiau.normal_texture = _relief
-	materiau.normal_scale = 0.6
-	materiau.uv1_triplanar = true
-	materiau.uv1_world_triplanar = true
-	materiau.uv1_scale = Vector3.ONE * 0.18
-	materiau.roughness = 0.78
-	materiau.metallic_specular = 0.35
+## Le bitume, à la manière des routes de Kenney : uni, mat, sans grain. Les
+## couleurs franches et les lignes de rive font le reste.
+static func peindre_l_asphalte(materiau: StandardMaterial3D) -> void:
+	materiau.roughness = 0.9
+	materiau.metallic_specular = 0.2
 
 
 ## Les murs, tremplins et zones hors-piste posés sur ce circuit. Gardés en

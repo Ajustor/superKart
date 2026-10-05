@@ -23,7 +23,8 @@ enum Objet { PALMIER, PHARE, PILIER_DE_FEU, ETOILE, CHAMPIGNON, ROCHER, SAPIN, L
 	ANTENNE, FANTOME, NUAGE, PYLONE, TOUR_HORLOGE, MAISON, SALOON, ANANAS, TETE_DE_PIERRE, CORAIL,
 	ALGUE, MASQUE, ARBRE_CUBE, BLOC, PILIER_OBSIDIENNE, SCULK, CADRE_OBSIDIENNE, LANTERNE,
 	ARBRE_AUTOMNE, BONHOMME_DE_NEIGE, PARASOL, FLEUR, PANNEAU_LABO, TOURELLE, CUBE_LESTE, ESCALIER_FLOTTANT,
-	FUSEE, PARABOLE, ROCHER_ROUGE }
+	FUSEE, PARABOLE, ROCHER_ROUGE,
+	TRIBUNE, TENTE, TOUR_BANNIERE, DRAPEAU_DAMIER, PANNEAU_PUB, STANDS, LAMPADAIRE_COURSE }
 
 ## Ce qui flotte : on passe dessous ou au travers, sans collision, et sa
 ## hauteur varie d'un objet à l'autre.
@@ -32,6 +33,11 @@ const FLOTTANTS := [Objet.ETOILE, Objet.FANTOME, Objet.NUAGE, Objet.ESCALIER_FLO
 
 ## Ce qui longe la route au lieu d'être tourné au hasard.
 const ALIGNES := [Objet.PANNEAU_LABO]
+
+## Ce qui regarde la route : les tribunes, les tentes, les panneaux du bord de
+## piste (le Racing Kit de Kenney, voir KenneyDecor.COURSE).
+const FACE_A_LA_ROUTE := [Objet.TRIBUNE, Objet.TENTE, Objet.TOUR_BANNIERE, Objet.DRAPEAU_DAMIER,
+	Objet.PANNEAU_PUB, Objet.STANDS, Objet.LAMPADAIRE_COURSE]
 
 
 static func flotte(quoi: Objet) -> bool:
@@ -134,6 +140,10 @@ func placements(c: TrackCurve) -> Array[Transform3D]:
 			if objet in ALIGNES:
 				var avant := c.forward_at(wrapf(ici, 0.0, c.length))
 				lacet = atan2(-avant.z, avant.x)
+			elif objet in FACE_A_LA_ROUTE:
+				# Leur face (+z) vers l'axe de la route.
+				var vers_la_route := -c.right_at(wrapf(ici, 0.0, c.length)) * signf(lateral)
+				lacet = atan2(vers_la_route.x, vers_la_route.z)
 			var base := Basis(Vector3.UP, lacet).scaled(Vector3.ONE * taille)
 			poses.append(Transform3D(base, ou))
 	return poses
@@ -334,6 +344,16 @@ static func forme_de(quoi: Objet) -> Dictionary:
 			return {type = "cylindre", rayon = 0.5, hauteur = 4.0, centre = Vector3(0.0, 2.0, 0.0)}
 		Objet.ROCHER_ROUGE:
 			return {type = "cylindre", rayon = 1.6, hauteur = 2.2, centre = Vector3(0.0, 0.6, 0.0)}
+		Objet.TRIBUNE, Objet.STANDS:
+			return {type = "boite", taille = Vector3(10.0, 8.0, 10.0), centre = Vector3(0.0, 4.0, 0.0)}
+		Objet.TENTE:
+			return {type = "boite", taille = Vector3(6.0, 4.0, 6.0), centre = Vector3(0.0, 2.0, 0.0)}
+		Objet.TOUR_BANNIERE:
+			return {type = "boite", taille = Vector3(2.4, 8.0, 2.4), centre = Vector3(0.0, 4.0, 0.0)}
+		Objet.PANNEAU_PUB:
+			return {type = "boite", taille = Vector3(8.0, 8.0, 1.0), centre = Vector3(0.0, 4.0, 0.0)}
+		Objet.DRAPEAU_DAMIER, Objet.LAMPADAIRE_COURSE:
+			return {type = "cylindre", rayon = 0.25, hauteur = 6.0, centre = Vector3(0.0, 3.0, 0.0)}
 		Objet.PYLONE:
 			# Il pend sous la route : personne ne l'atteint, mais il se touche.
 			return {type = "cylindre", rayon = 0.6, hauteur = 60.0, centre = Vector3(0.0, -30.3, 0.0)}
@@ -350,6 +370,18 @@ static var _cache: Dictionary = {}
 static func maillage_de(quoi: Objet) -> ArrayMesh:
 	if _cache.has(quoi):
 		return _cache[quoi]
+	if KenneyDecor.COURSE.has(quoi):
+		_cache[quoi] = KenneyDecor.maillage_de_course(quoi)
+		return _cache[quoi]
+	var maillage := _fait_main(quoi)
+	# Le modèle Kenney, s'il y en a un, à la taille de l'objet fait main.
+	if KenneyDecor.a_un_modele(quoi):
+		maillage = KenneyDecor.maillage(quoi, maillage.get_aabb())
+	_cache[quoi] = maillage
+	return maillage
+
+
+static func _fait_main(quoi: Objet) -> ArrayMesh:
 	var mat := _Assemblage.new()
 	var brille := _Assemblage.new()
 	match quoi:
@@ -456,7 +488,6 @@ static func maillage_de(quoi: Objet) -> ArrayMesh:
 		mat.dans(maillage, _materiau(false))
 	if not brille.vide():
 		brille.dans(maillage, _materiau(true))
-	_cache[quoi] = maillage
 	return maillage
 
 

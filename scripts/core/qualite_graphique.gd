@@ -49,9 +49,7 @@ static func appliquer_a(racine: Node, niveau: int) -> void:
 	# find_children ne connaît que les classes du moteur, pas celles des
 	# scripts : on trie à la main.
 	for noeud in racine.find_children("*", "Node", true, false):
-		if noeud is Track:
-			(noeud as Track).detailler_l_asphalte(n == Niveau.HAUTE)
-		elif noeud is EffetsEcran:
+		if noeud is EffetsEcran:
 			# Un rectangle transparent sur tout l'écran : sur un petit
 			# téléphone, autant de pixels à mélanger une fois de plus.
 			(noeud as CanvasItem).visible = n != Niveau.BASSE
