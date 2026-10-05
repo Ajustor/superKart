@@ -19,7 +19,7 @@ pose **sur le tracé**, comme enfant du nœud `Track`.
 | `TrackApesanteur` | la gravité faiblit (`gravite`) : chaque saut dure plus longtemps. Une arche violette à chaque bout | non, c'est une zone |
 | `TrackAnneau` | un anneau d'or flottant à `hauteur` m : le traverser donne un turbo | non |
 | `TrackObstacle` | un obstacle mobile : marteau qui balance (`PENDULE`), pilon qui s'abat (`PISTON`), bloc ou tonneau qui va et vient (`BLOC`, `TONNEAU`), gardien qui arpente la route (`GARDIEN`). Le kart pris part en tête-à-queue | non : une zone qui fait tourner le kart |
-| `TrackPortail` | un passage vers un autre monde : de l'autre côté, un autre ciel (`ambiance`) et d'autres décors (`decors`). `mode` : `VORTEX`, un tourbillon qui s'ouvre devant le premier et se ferme derrière le dernier ; `CADRE`, un voile dans un cadre de blocs d'obsidienne, toujours ouvert ; `SOL`, un puits d'étoiles à plat sur un trou à `chute_voulue` : on tombe dedans et l'on ressort au bas du plongeon, sans rien perdre (`Kart.teleporter`) ; `SEUIL`, rien à voir, on change seulement de contrée. `nouveau_monde` à faux : le ciel change, les décors restent. On voit à travers un `VORTEX` ou un `CADRE` : voir plus bas | non |
+| `TrackPortail` | un passage vers un autre monde : de l'autre côté, un autre ciel (`ambiance`) et d'autres décors (`decors`). `mode` : `VORTEX`, un anneau d'étincelles d'or qui naît tout petit et grandit devant le premier, et se ferme derrière le dernier ; `CADRE`, un voile dans un cadre de blocs d'obsidienne, toujours ouvert ; `SOL`, un puits d'étoiles à plat sur un trou à `chute_voulue` : on tombe dedans et l'on ressort au bas du plongeon, sans rien perdre (`Kart.teleporter`) ; `SEUIL`, rien à voir, on change seulement de contrée. `nouveau_monde` à faux : le ciel change, les décors restent. On voit à travers un `VORTEX` ou un `CADRE` : voir plus bas | non |
 | `TrackSpectacle` | une scène animée autour de la route : éclair, voitures volantes, train, méduses, bulles, lune, dragon | non |
 | `TrackSol` | un sol plat à `altitude` autour du circuit (prairie, banquise, dalle), percé là où la route passe dessous : une galerie qui plonge sous la surface ne le traverse pas. `portion` le limite aux abords d'une portion du tracé. Percé aussi sous un trou de la route. Les décors posés à côté de la route s'y posent au lieu de flotter à hauteur de bitume | oui, sur `Track.PORTEE_HORS_PISTE` (14 m) de chaque côté de la route de son monde : voir « Sols réels » |
 | `TrackDecor` | une rangée de décor le long du tracé : palmiers, phare, piliers enflammés, étoiles, champignons géants, rochers. `espacement` 0 pose un objet seul | oui, sauf les étoiles : une forme simple au pied de chaque objet (tronc, pied de champignon, base d'immeuble) ; `solide` à faux pour qu'on la traverse. Un test vérifie qu'aucun décor solide ne mord sur la route |
@@ -213,10 +213,12 @@ côté de son monde. Nouveaux décors : `ARBRE_AUTOMNE`, `BONHOMME_DE_NEIGE`,
 Les portails (`TrackPortail`) relient les mondes d'un circuit. Chacun
 s'ouvre quand le premier en approche à 90 m, et se referme quand le dernier
 l'a passé (`Track.tete_total`, `queue_total`, que `RaceSession` tient à
-jour) : en réseau, tout le monde le voit ouvert au même moment. Son couloir
-s'évase au double de l'entrée, et la caméra qui le traverse change de
-perspective (`ChaseCamera.vortex` : elle se rapproche du kart pendant que son
-champ s'ouvre) — le couloir semble bien plus long qu'il ne l'est. De l'autre
+jour) : en réseau, tout le monde le voit ouvert au même moment. C'est un
+anneau d'étincelles d'or : à l'ouverture, il naît tout petit, l'autre monde
+déjà dedans, et grandit jusqu'à sa taille, en crachant une pluie
+d'étincelles (`portail_etincelles.gdshader`, `CPUParticles3D`). La
+caméra qui le traverse change brièvement de perspective (`ChaseCamera.vortex`
+: elle se rapproche du kart pendant que son champ s'ouvre). De l'autre
 côté, le ciel est celui de `ambiance`, et seuls les nœuds de `decors` de ce
 portail se voient, jusqu'au portail suivant (`Track.montrer_le_monde_de`) :
 de la grand-place, on ne voit pas les tours du futur.
