@@ -22,7 +22,7 @@ const TIER_COLORS := [
 
 var _kart: Kart
 var _body: Node3D
-var _sparks: GPUParticles3D
+var _sparks: CPUParticles3D
 var _spark_material: StandardMaterial3D
 var _inclinaison: float = 0.0
 ## Le tonneau d'une figure, de 0 à 1 ; négatif hors figure.
@@ -49,7 +49,7 @@ func _ready() -> void:
 	_kart = get_node(kart_path) as Kart
 	_body = get_node(body_path) as Node3D
 	_roues = _kart.get_node_or_null("Wheels") as Node3D if _kart != null else null
-	_sparks = get_node(sparks_path) as GPUParticles3D
+	_sparks = get_node(sparks_path) as CPUParticles3D
 	assert(_kart != null and _body != null and _sparks != null,
 		"KartVisuals a besoin du kart, de la caisse et des particules")
 
@@ -192,8 +192,11 @@ func _update_sparks(motor: KartMotor) -> void:
 	if _spark_material.albedo_color != color:
 		_spark_material.albedo_color = color
 	# Plus le palier est haut, plus la gerbe est fournie : on la lit du coin
-	# de l'œil, sans regarder la couleur.
-	_sparks.amount_ratio = [0.35, 0.7, 1.0][mini(tier, 3) - 1]
+	# de l'œil, sans regarder la couleur. Des étincelles plus grosses plutôt
+	# que plus nombreuses : changer leur nombre relancerait la gerbe.
+	var taille: float = [0.6, 0.85, 1.2][mini(tier, 3) - 1]
+	_sparks.scale_amount_min = 0.5 * taille
+	_sparks.scale_amount_max = 1.2 * taille
 
 
 ## Peu de particules, calculées par le processeur : quelques nuages beiges

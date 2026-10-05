@@ -132,7 +132,9 @@ static func nieme(action: StringName, quelle: int, rang: int) -> InputEvent:
 ## W d'un clavier QWERTY est le Z d'un AZERTY), et s'affichent sous leur vrai
 ## nom. Rend le code tel quel si le système ne sait pas le dire.
 static func touche_affichee(physique: Key) -> Key:
-	if DisplayServer.get_name() == "headless":
+	# Android ne sait pas le dire, et chaque question écrivait une erreur
+	# dans le journal.
+	if DisplayServer.get_name() == "headless" or OS.has_feature("mobile") or OS.has_feature("web"):
 		return physique
 	var etiquette := DisplayServer.keyboard_get_label_from_physical(physique)
 	return etiquette if etiquette != KEY_NONE else physique
@@ -141,7 +143,8 @@ static func touche_affichee(physique: Key) -> Key:
 ## La disposition du clavier détectée, pour l'écran des touches : « French »,
 ## « English (US) »… Vide si le système ne la donne pas.
 static func disposition() -> String:
-	if DisplayServer.get_name() == "headless" or DisplayServer.keyboard_get_layout_count() <= 0:
+	if DisplayServer.get_name() == "headless" or OS.has_feature("mobile") or OS.has_feature("web") \
+			or DisplayServer.keyboard_get_layout_count() <= 0:
 		return ""
 	var courante := DisplayServer.keyboard_get_current_layout()
 	var nom := DisplayServer.keyboard_get_layout_name(courante)

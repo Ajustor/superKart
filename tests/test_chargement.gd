@@ -106,3 +106,28 @@ func test_le_tour_de_chauffe_montre_chaque_objet_et_chaque_effet() -> void:
 	await wait_until(func() -> bool: return reste.get_ref() == null, 2.0)
 	assert_null(reste.get_ref(), "puis il s'en va")
 	assert_eq(course.get_viewport().get_camera_3d(), course.get_node("ChaseCamera"))
+
+
+## Les particules calculées par la carte graphique (GPUParticles3D) faisaient
+## planter certains téléphones (Adreno, en GL Compatibility) dès la course
+## derrière le menu : tout ce qui jaillit est calculé par le processeur.
+func test_aucune_particule_calculee_par_la_carte_graphique() -> void:
+	for chemin in ["res://scenes/kart/kart.tscn", "res://scenes/kart/ai_kart.tscn", "res://scenes/race/race.tscn"]:
+		if not ResourceLoader.exists(chemin):
+			continue
+		var scene: Node = (load(chemin) as PackedScene).instantiate()
+		assert_eq(scene.find_children("*", "GPUParticles3D", true, false).size(), 0, chemin)
+		scene.free()
+	for dossier in ["res://scripts", "res://scenes"]:
+		_sans_gpu_particles(dossier)
+
+
+func _sans_gpu_particles(dossier: String) -> void:
+	var dir := DirAccess.open(dossier)
+	for sous in dir.get_directories():
+		_sans_gpu_particles(dossier.path_join(sous))
+	for nom in dir.get_files():
+		if nom.ends_with(".tscn") or (nom.ends_with(".gd") and nom != "tour_de_chauffe.gd" and nom != "fantome_course.gd"):
+			var texte := FileAccess.get_file_as_string(dossier.path_join(nom))
+			assert_false(texte.contains("GPUParticles3D.new") or texte.contains("type=\"GPUParticles3D\""),
+				"%s n'utilise pas de GPUParticles3D" % nom)
