@@ -349,6 +349,10 @@ func _physics_process(delta: float) -> void:
 	_relancer_les_cales(delta)
 	for entree in entries:
 		avancer(entree, entree.kart.global_position, delta)
+	var positions: Array[Vector3] = []
+	for entree in entries:
+		positions.append(entree.kart.global_position)
+	aspirer(positions, delta)
 	classer()
 	partager_la_course()
 	_raconter_au_circuit()
@@ -365,6 +369,36 @@ func _relancer_les_cales(delta: float) -> void:
 
 func _exit_tree() -> void:
 	TouchControls.gaz_auto_retenus = false
+
+
+## L'aspiration de chacun, d'après les positions de tous (dans l'ordre de
+## `entries`) : dans le sillage d'un autre kart, la jauge monte ; pleine, un
+## turbo. Seuls les karts simulés ici aspirent ; tous ont un sillage.
+func aspirer(positions: Array[Vector3], delta: float) -> void:
+	for i in entries.size():
+		var entree := entries[i]
+		var kart := entree.kart
+		if not kart.simule:
+			continue
+		var aspire := false
+		if en_course and not entree.finished and kart.au_sol \
+				and kart.motor.state != KartMotor.State.STUNNED \
+				and kart.motor.speed >= Aspiration.VITESSE_MIN * kart.motor.stats.max_speed:
+			var cap := Aspiration.cap(kart.motor.velocity_dir)
+			for j in entries.size():
+				var autre := entries[j].kart
+				if j == i or autre.motor.speed < Aspiration.VITESSE_DU_MENEUR:
+					continue
+				if Aspiration.dans_le_sillage(positions[i], cap, positions[j], Aspiration.cap(autre.motor.velocity_dir)):
+					aspire = true
+					break
+		kart.motor.dans_le_sillage = aspire
+		var resultat := Aspiration.charger(entree.aspiration, aspire, delta)
+		entree.aspiration = resultat[0]
+		if resultat[1]:
+			kart.motor.accorder_turbo(Aspiration.DUREE_TURBO, Aspiration.FORCE_TURBO)
+			kart.aspire.emit()
+		kart.aspiration = entree.aspiration / Aspiration.CHARGE
 
 
 ## Le point est passé plutôt que lu sur le kart : global_position exige

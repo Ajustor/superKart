@@ -69,6 +69,8 @@ var gaz_tenu: bool = false
 ## tonneau au kart, et l'atterrissage donne un turbo. Le risque, c'est le
 ## moment : trop près du sol, il n'y a pas le temps.
 signal figure
+## La jauge d'aspiration vient de se remplir : le turbo part.
+signal aspire
 ## Retombé au sol : `vitesse` est la vitesse de chute, en m/s.
 signal atterri(vitesse: float)
 ## Un autre kart heurté (KartCollisions) : `force`, la vitesse de rapprochement.
@@ -99,6 +101,9 @@ var _figure_demandee: bool = false
 ## Posé à vrai l'image où le kart quitte le sol en montant — sommet d'une
 ## rampe, rebord —, lu et remis à faux par la session.
 var vient_de_decoller: bool = false
+## La jauge d'aspiration, de 0 à 1 (tenue par RaceSession) : le sillage se
+## voit autour du kart tant qu'elle monte.
+var aspiration: float = 0.0
 
 ## Vitesse verticale, en m/s, que la rampe sous le kart lui donnerait s'il en
 ## quittait le sommet maintenant. Zéro hors d'une rampe. Renseignée par la

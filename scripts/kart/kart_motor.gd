@@ -26,6 +26,9 @@ var boost_timer: float = 0.0
 ## passer par une glisse, doit pousser quand même.
 var boost_multiplier: float = 1.0
 var on_offroad: bool = false    ## piloté de l'extérieur par la détection de terrain
+## Dans le sillage d'un autre kart (piloté par RaceSession, voir Aspiration) :
+## la vitesse de pointe monte un peu, sur le bitume et hors turbo.
+var dans_le_sillage: bool = false
 
 ## Adhérence du sol, de 1 (bitume) à près de 0 (verglas). Pilotée de
 ## l'extérieur, comme on_offroad. En deçà de 1, le nez tourne mais la
@@ -138,6 +141,8 @@ func _current_max_speed() -> float:
 		return base * VITESSE_ETOILE
 	if on_offroad:
 		return base * stats.offroad_speed_multiplier
+	if dans_le_sillage:
+		return base * Aspiration.BONUS_DE_POINTE
 	return base
 
 
@@ -448,6 +453,7 @@ func reset(yaw: float) -> void:
 	# Une remise en piste coûte ses pièces, comme un choc.
 	pieces = maxi(pieces - PIECES_PERDUES, 0)
 	on_offroad = false
+	dans_le_sillage = false
 	adherence = 1.0
 	_sur_glace = false
 	drift_dir = 0

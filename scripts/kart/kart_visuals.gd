@@ -33,6 +33,10 @@ var _roues: Node3D
 const DUREE_FIGURE := 0.45
 var _poussiere: CPUParticles3D
 var _flammes: CPUParticles3D
+## Le sillage d'un autre kart : des filets de vent qui filent autour de la
+## caisse tant que la jauge d'aspiration monte.
+var _sillage: CPUParticles3D
+var _matiere_sillage: StandardMaterial3D
 var _matiere_flammes: StandardMaterial3D
 ## Rétréci par un éclair : la caisse et les roues à cette échelle, lissée.
 const ECHELLE_RETRECI := 0.6
@@ -67,6 +71,8 @@ func _ready() -> void:
 	add_child(_poussiere)
 	_flammes = _creer_flammes()
 	add_child(_flammes)
+	_sillage = _creer_sillage()
+	add_child(_sillage)
 	_position_caisse = _body.position
 	_echelle_caisse = _body.scale
 
@@ -78,6 +84,7 @@ func _process(delta: float) -> void:
 	# De la poussière sous les roues hors piste : on sent qu'on y perd.
 	_poussiere.emitting = motor.on_offroad and _kart.au_sol and absf(motor.speed) > 5.0
 	_update_flammes(motor)
+	_update_sillage()
 	_update_taille(motor, delta)
 	_update_aura(motor)
 
@@ -96,7 +103,7 @@ func echantillons() -> Array[Node3D]:
 	matiere.albedo_color = Color(1, 0.8, 0.3, 0.35)
 	aura.material_override = matiere
 	liste.append(aura)
-	for source in [_sparks, _poussiere, _flammes]:
+	for source in [_sparks, _poussiere, _flammes, _sillage]:
 		# Sans émettre : une particule qui démarre hors de l'arbre lit sa
 		# position globale, qui n'existe pas encore. TourDeChauffe l'allume
 		# une fois posée.
@@ -276,5 +283,41 @@ func _creer_flammes() -> CPUParticles3D:
 	_matiere_flammes.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	_matiere_flammes.albedo_color = TIER_COLORS[0]
 	forme.material = _matiere_flammes
+	p.mesh = forme
+	return p
+
+
+## Les filets de vent, de plus en plus francs à mesure que la jauge monte.
+func _update_sillage() -> void:
+	var jauge := _kart.aspiration
+	_sillage.emitting = jauge > 0.05
+	if _sillage.emitting:
+		_matiere_sillage.albedo_color.a = lerpf(0.15, 0.6, jauge)
+
+
+## Des traits fins, blancs, qui partent de l'avant du kart et filent vers
+## l'arrière, dans son repère : on les voit passer, comme le vent.
+func _creer_sillage() -> CPUParticles3D:
+	var p := CPUParticles3D.new()
+	p.emitting = false
+	p.amount = 16
+	p.lifetime = 0.22
+	p.local_coords = true
+	p.position = Vector3(0.0, 0.6, -1.6)
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	p.emission_box_extents = Vector3(1.3, 0.5, 0.3)
+	p.direction = Vector3(0.0, 0.0, 1.0)
+	p.spread = 3.0
+	p.initial_velocity_min = 14.0
+	p.initial_velocity_max = 18.0
+	p.gravity = Vector3.ZERO
+	var forme := BoxMesh.new()
+	forme.size = Vector3(0.03, 0.03, 0.9)
+	_matiere_sillage = StandardMaterial3D.new()
+	_matiere_sillage.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_matiere_sillage.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_matiere_sillage.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	_matiere_sillage.albedo_color = Color(0.85, 0.95, 1.0, 0.3)
+	forme.material = _matiere_sillage
 	p.mesh = forme
 	return p

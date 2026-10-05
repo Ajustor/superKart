@@ -18,8 +18,9 @@ extends TrackFeature
 		impulsion = valeur
 		_modifie()
 
-## Turbo accordé au décollage, en secondes. Zéro : pas de turbo.
-@export_range(0.0, 3.0, 0.05) var duree_turbo: float = 0.0:
+## Turbo accordé au décollage, en secondes : prendre un tremplin lance
+## toujours un peu. Zéro : pas de turbo.
+@export_range(0.0, 3.0, 0.05) var duree_turbo: float = 0.8:
 	set(valeur):
 		duree_turbo = valeur
 		_modifie()

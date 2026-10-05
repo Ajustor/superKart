@@ -71,6 +71,10 @@ var derniere_en_piste: float = 0.0
 var repere_dehors: float = 0.0
 var roule_dehors: float = -1.0
 
+## La jauge d'aspiration, en secondes passées dans le sillage d'un autre
+## kart (voir Aspiration).
+var aspiration: float = 0.0
+
 ## Ligne de crue des tours comptés. Le numéro de tour de RaceProgress, lui,
 ## redescend quand le kart recule.
 var tours_comptes: int = 0
