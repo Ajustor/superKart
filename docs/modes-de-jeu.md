@@ -430,6 +430,22 @@ au clavier sur des cercles de 12 à 90 m ; le palier 3 y tombe entre 3,2 et
 garde ainsi. L'IA, réglée sur l'ancienne courbe, contre-braque moins fort
 (`AIInput.CONTRE_BRAQUAGE_MAX`, -0,4 au lieu de -0,7) pour garder ses temps.
 
+## Tremplins et aspiration
+
+- **Tremplins** (`TrackJump`) : chacun donne un turbo au décollage, 0,8 s à
+  1,3 fois la vitesse de pointe par défaut (`duree_turbo`, `force_turbo` ;
+  certains circuits en règlent un plus long). Une figure en vol en ajoute un
+  à l'atterrissage.
+- **Aspiration** (`Aspiration`, tenue par `RaceSession.aspirer`) : un kart
+  qui roule dans le sillage d'un autre — entre 1,5 et 16 m derrière lui, à
+  moins de 2 m de son axe, dans le même sens et sur le même étage — remplit
+  une jauge. 1,2 s dans le sillage la remplit et lance un turbo de 1 s à
+  1,25 fois la vitesse de pointe. Il faut rouler à 60 % de sa vitesse de
+  pointe au moins, au sol, et derrière un kart qui roule ; hors du sillage,
+  la jauge se vide deux fois plus vite qu'elle ne monte. Des filets de vent
+  filent autour du kart pendant qu'elle monte, et un souffle annonce le
+  turbo. L'IA en profite comme le joueur, sans le chercher.
+
 ## Figures (`Kart._figures`)
 
 Un appui sur Glisse pendant un vrai saut (tremplin ou rampe) fait faire un

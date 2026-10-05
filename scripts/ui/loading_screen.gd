@@ -27,6 +27,8 @@ const ASTUCES := [
 	"Tenez DRIFT en braquant : les étincelles bleues, puis orange, puis violettes donnent un turbo de plus en plus fort.",
 	"Accélérez juste avant le vert pour partir en trombe. Trop tôt, et le moteur cale.",
 	"Appuyez sur DRIFT en plein saut pour faire une figure : un petit turbo à l'atterrissage.",
+	"Chaque tremplin donne un turbo au décollage. Ajoutez une figure : un deuxième à l'atterrissage.",
+	"Collez un adversaire, juste derrière lui : quand le vent siffle, l'aspiration lance un turbo pour le doubler.",
 	"Gardez OBJET enfoncé : la banane ou la carapace traîne derrière vous et arrête les carapaces.",
 	"Objet tenu : lâchez pour le lancer devant, ou lâchez en freinant pour l'envoyer derrière.",
 	"Sans objet, le bouton OBJET klaxonne. Chaque pilote a son klaxon.",

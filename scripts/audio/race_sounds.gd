@@ -120,6 +120,9 @@ func _ready() -> void:
 	joueur.kart.motor.palier_atteint.connect(func(p: int) -> void:
 		_jouer_objet(joueur, dings[mini(p, 3) - 1]))
 	joueur.kart.motor.mini_turbo.connect(func(_p: int) -> void: _jouer_objet(joueur, souffle))
+	# L'aspiration : un souffle qui monte, en glissando.
+	var aspiration := Synth.notes([[523.0, 0.04], [659.0, 0.04], [784.0, 0.04], [1047.0, 0.1]], 0.3)
+	joueur.kart.aspire.connect(func() -> void: _jouer_objet(joueur, aspiration))
 
 
 func _process(delta: float) -> void:
