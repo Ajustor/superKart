@@ -29,7 +29,7 @@ const CHARGE := 1.2
 ## remplit : on ne la garde pas d'un adversaire à l'autre.
 const DECHARGE := 2.0
 ## Le turbo d'aspiration : plus doux qu'un champignon, assez pour passer.
-const DUREE_TURBO := 1.0
+const DUREE_TURBO := 5.0
 const FORCE_TURBO := 1.25
 
 

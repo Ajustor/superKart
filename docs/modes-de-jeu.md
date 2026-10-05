@@ -439,7 +439,7 @@ garde ainsi. L'IA, réglée sur l'ancienne courbe, contre-braque moins fort
 - **Aspiration** (`Aspiration`, tenue par `RaceSession.aspirer`) : un kart
   qui roule dans le sillage d'un autre — entre 1,5 et 16 m derrière lui, à
   moins de 2 m de son axe, dans le même sens et sur le même étage — remplit
-  une jauge. 1,2 s dans le sillage la remplit et lance un turbo de 1 s à
+  une jauge. 1,2 s dans le sillage la remplit et lance un turbo de 5 s à
   1,25 fois la vitesse de pointe. Il faut rouler à 60 % de sa vitesse de
   pointe au moins, au sol, et derrière un kart qui roule ; hors du sillage,
   la jauge se vide deux fois plus vite qu'elle ne monte. Des filets de vent
