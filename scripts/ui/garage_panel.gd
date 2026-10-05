@@ -1,8 +1,8 @@
 class_name GaragePanel
 extends Control
 
-## Le garage : le kart du joueur, monté en trois pièces (carrosserie, roues,
-## aileron), sa couleur et le pilote assis dedans. Les jauges suivent la
+## Le garage : le kart du joueur — son réglage moteur, ses roues, sa couleur —
+## et le pilote assis dedans. Les jauges suivent la
 ## combinaison. Le choix s'enregistre aussitôt, comme les options, et part à
 ## l'hôte si l'on est dans un salon.
 
@@ -11,7 +11,7 @@ signal ferme
 const SCENE_KART := "res://scenes/kart/kart.tscn"
 
 ## Les trois pièces, dans l'ordre : leur nom affiché et leur bouton ▶.
-const PIECES := ["Carrosserie", "Roues", "Aileron"]
+const PIECES := ["Moteur", "Roues", "Aileron"]
 var _noms_pieces: Array[Label] = []
 var _suivants: Array[Button] = []
 ## La pièce changée en dernier : c'est elle que décrit la ligne du dessous.
@@ -87,7 +87,10 @@ func _ready() -> void:
 	droite.add_theme_constant_override("separation", 10)
 	milieu.add_child(droite)
 	for p in PIECES.size():
-		droite.add_child(_selecteur(p))
+		var ligne := _selecteur(p)
+		# Un seul aileron (ModeleKart) : rien à choisir.
+		ligne.visible = p != 2 or ModeleKart.nombre_ailerons() > 1
+		droite.add_child(ligne)
 	_description = Label.new()
 	_description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_description.custom_minimum_size = Vector2(380, 52)
@@ -234,7 +237,21 @@ func _relire() -> void:
 		reglage.aileron)
 	Personnage.habiller(_vitrine, reglage.personnage)
 	_nom_pilote.text = Personnage.nom(reglage.personnage)
-	_origine_pilote.text = "D'après : %s" % Personnage.origine(reglage.personnage)
+	_origine_pilote.text = Personnage.origine(reglage.personnage)
+	_poser_les_roues()
+
+
+## Sans suspension, les roues de la vitrine restent à leur ancrage : on les
+## descend de la longueur du ressort au repos, là où la course les pose.
+func _poser_les_roues() -> void:
+	var roues := _vitrine.get_node_or_null("Wheels")
+	if roues == null:
+		return
+	var reglages := KartSuspension.new()
+	var pendant := reglages.rest_length - reglages.travel * 0.5
+	reglages.free()
+	for roue in roues.get_children():
+		(roue as Node3D).position.y -= pendant
 
 
 func _changer_pilote(pas: int) -> void:

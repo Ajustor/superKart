@@ -1,0 +1,8 @@
+Modèles 3D de Kenney (www.kenney.nl), sous licence Creative Commons Zero
+(CC0 1.0 Universal) : domaine public, utilisables librement, y compris dans
+un jeu commercial, sans obligation de citer l'auteur (merci quand même).
+
+  karts/    Car Kit         https://kenney.nl/assets/car-kit
+  pilotes/  Mini Characters https://kenney.nl/assets/mini-characters
+
+https://creativecommons.org/publicdomain/zero/1.0/
