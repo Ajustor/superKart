@@ -28,8 +28,11 @@ const CHARGE := 1.2
 ## Hors du sillage, la jauge se vide deux fois plus vite qu'elle ne se
 ## remplit : on ne la garde pas d'un adversaire à l'autre.
 const DECHARGE := 2.0
+## Dans le sillage, avant même le turbo, la vitesse de pointe monte un peu :
+## on sent tout de suite que coller l'autre paie.
+const BONUS_DE_POINTE := 1.06
 ## Le turbo d'aspiration : plus doux qu'un champignon, assez pour passer.
-const DUREE_TURBO := 5.0
+const DUREE_TURBO := 2.0
 const FORCE_TURBO := 1.25
 
 

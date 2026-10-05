@@ -392,6 +392,7 @@ func aspirer(positions: Array[Vector3], delta: float) -> void:
 				if Aspiration.dans_le_sillage(positions[i], cap, positions[j], Aspiration.cap(autre.motor.velocity_dir)):
 					aspire = true
 					break
+		kart.motor.dans_le_sillage = aspire
 		var resultat := Aspiration.charger(entree.aspiration, aspire, delta)
 		entree.aspiration = resultat[0]
 		if resultat[1]:

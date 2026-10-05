@@ -152,3 +152,23 @@ func test_un_tremplin_sans_reglage_donne_un_turbo() -> void:
 	session.avancer(session.entries[0], TrackFeature.point(track.track_curve, 42.0, 0.0, 0.4), 1.0 / 60.0)
 	assert_false(karts[0].au_sol)
 	assert_gt(karts[0].motor.boost_timer, 0.0, "un tremplin lance toujours un peu")
+
+
+# --- La vitesse de pointe dans le sillage ---------------------------------------
+
+func test_dans_le_sillage_la_vitesse_de_pointe_monte() -> void:
+	_session()
+	var pointe := karts[0].motor._current_max_speed()
+	_suivre(6.0, 0.0, 0.1)
+	assert_true(karts[0].motor.dans_le_sillage)
+	assert_almost_eq(karts[0].motor._current_max_speed(), pointe * Aspiration.BONUS_DE_POINTE, 0.001)
+	_suivre(6.0, 5.0, 1.0 / 60.0)
+	assert_false(karts[0].motor.dans_le_sillage, "sorti du sillage, le bonus tombe")
+	assert_almost_eq(karts[0].motor._current_max_speed(), pointe, 0.001)
+
+
+func test_le_bonus_ne_survit_pas_a_une_remise_en_piste() -> void:
+	_session()
+	_suivre(6.0, 0.0, 0.1)
+	karts[0].motor.reset(0.0)
+	assert_false(karts[0].motor.dans_le_sillage)
