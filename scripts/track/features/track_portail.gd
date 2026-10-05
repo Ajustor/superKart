@@ -103,6 +103,9 @@ const SHADER_FENETRE := preload("res://shaders/fenetre_portail.gdshader")
 ## On voit à travers un portail (VORTEX ou CADRE) jusqu'à cette distance ;
 ## au-delà, son voile est opaque et sa caméra se repose.
 const PORTEE_FENETRE := 260.0
+## L'effet sur la caméra commence tant de mètres avant le portail et finit
+## tant de mètres après le couloir.
+const EFFET_AUTOUR := 5.0
 const SHADER_SOL := preload("res://shaders/portail_end.gdshader")
 
 ## Le cadre d'obsidienne : sa marge de chaque côté de la route, sa hauteur.
@@ -112,7 +115,10 @@ const BLOC := 1.5
 
 
 func _init() -> void:
-	longueur = 36.0
+	# Un couloir court : on le traverse en moins d'une seconde. Deux fois
+	# plus long, sa perspective déformée durait trois secondes, et quatre
+	# courses d'une coupe en enchaînent une dizaine.
+	longueur = 18.0
 	largeur = 18.0
 
 
@@ -147,8 +153,8 @@ func rayon_du_couloir(t: float) -> float:
 func effet_a(distance: float, tour: float) -> float:
 	if mode == Mode.SEUIL:
 		return 0.0
-	var etendue := longueur + 30.0
-	var t := wrapf(distance - debut + 15.0, 0.0, tour)
+	var etendue := longueur + EFFET_AUTOUR * 2.0
+	var t := wrapf(distance - debut + EFFET_AUTOUR, 0.0, tour)
 	if t > etendue:
 		return 0.0
 	return sin(t / etendue * PI) * _ouverture
@@ -206,10 +212,11 @@ static func fenetre_possible() -> bool:
 	return QualiteGraphique.effectif(GameSettings.qualite) != QualiteGraphique.Niveau.BASSE
 
 
-## La fraction de l'écran de la seconde image : moitié de la résolution en
-## qualité moyenne, trois quarts en haute.
+## La fraction de l'écran de la seconde image : la même résolution que la
+## scène elle-même. Plus basse, l'autre monde paraissait flou à côté de
+## celui-ci.
 static func echelle_de_la_fenetre() -> float:
-	return 0.75 if QualiteGraphique.effectif(GameSettings.qualite) == QualiteGraphique.Niveau.HAUTE else 0.5
+	return QualiteGraphique.echelle_3d(GameSettings.qualite)
 
 
 ## Ce que filme la seconde caméra : le monde de l'autre côté du portail par
@@ -242,9 +249,14 @@ func _mettre_a_jour_la_fenetre() -> void:
 	_oeil.near = camera.near
 	_oeil.far = camera.far
 	_oeil.current = true
-	var taille := Vector2i(get_viewport().get_visible_rect().size * echelle_de_la_fenetre())
+	var ecran := get_viewport()
+	var taille := Vector2i(ecran.get_visible_rect().size * echelle_de_la_fenetre())
 	if _vue.size != taille:
 		_vue.size = taille
+	# Le même lissage des bords que l'écran : sans lui, l'autre monde
+	# crénelait à côté de celui-ci.
+	_vue.msaa_3d = ecran.msaa_3d
+	_vue.screen_space_aa = ecran.screen_space_aa
 	if _fenetre.get_shader_parameter("vue") == null:
 		_fenetre.set_shader_parameter("vue", _vue.get_texture())
 	_vue.render_target_update_mode = SubViewport.UPDATE_ALWAYS

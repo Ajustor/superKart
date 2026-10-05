@@ -84,6 +84,20 @@ func test_l_effet_sur_la_camera_ne_joue_qu_au_portail() -> void:
 	assert_gt(p.effet_a(100.0 + p.longueur * 0.5, tour), 0.8, "en plein couloir")
 
 
+func test_la_traversee_dure_moins_d_une_seconde_et_demie() -> void:
+	var p := _portail(100.0)
+	p._ouverture = 1.0
+	var tour := track.track_curve.length
+	var deforme := 0.0
+	var d := 0.0
+	while d < 300.0:
+		if p.effet_a(d, tour) > 0.05:
+			deforme += 1.0
+		d += 1.0
+	# À la vitesse de pointe, 22 m/s.
+	assert_lt(deforme / 22.0, 1.5, "%.0f m de perspective déformée" % deforme)
+
+
 func test_un_portail_ferme_ne_deforme_rien() -> void:
 	var p := _portail(100.0)
 	p._ouverture = 0.0
