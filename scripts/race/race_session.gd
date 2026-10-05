@@ -620,6 +620,7 @@ func _arriver(entree: RaceEntry, place: int, point: Vector3) -> void:
 	if entree.kart.est_pilote_par_le_joueur() and entree.kart.simule:
 		_passer_en_pilote_automatique(entree, point)
 	arrivee.emit(entree)
+	entree.kart.geste.emit(Kart.GESTE_VICTOIRE if place <= 3 else Kart.GESTE_DEFAITE)
 	if _arrives >= entries.size():
 		terminee = true
 		course_terminee.emit()

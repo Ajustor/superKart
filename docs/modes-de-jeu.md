@@ -230,6 +230,19 @@ plus grands que nature (×1,35) pour que leur tête et leurs épaules dépassent
 du dossier, vus de dos par la caméra de poursuite. Purement d'allure : ils ne
 changent que le ton du klaxon.
 
+Leur animation suit ce qui arrive au kart (`KartVisuals._update_pilote`),
+en fondu de 0,15 s :
+- **Tête-à-queue** : « fall », les bras qui battent, tant qu'il dure ;
+- **Figure** en l'air : « jump », les bras levés ;
+- **Objet lancé** : « attack-melee-right », le geste du lancer (0,4 s) ;
+- **Choc** contre un kart à plus de 4 m/s : « emote-no » (0,65 s) ;
+- **Arrivée** : « emote-yes » sur le podium, « emote-no » au-delà, jusqu'à la
+  fin ;
+- sinon **« drive »**, au volant.
+
+Le kart Kenney, lui, n'a pas d'animation : ses roues tournent et braquent
+avec la suspension, et la caisse penche dans les virages comme avant.
+
 Le choix se fait au garage (flèches sous l'aperçu), s'enregistre avec le kart
 et voyage dans le salon en réseau ; l'IA prend les pilotes restants.
 

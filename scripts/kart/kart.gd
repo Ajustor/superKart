@@ -71,6 +71,11 @@ var gaz_tenu: bool = false
 signal figure
 ## La jauge d'aspiration vient de se remplir : le turbo part.
 signal aspire
+## Un geste du pilote (KartVisuals l'anime) : un objet lancé, l'arrivée.
+signal geste(quoi: StringName)
+const GESTE_LANCER := &"lancer"
+const GESTE_VICTOIRE := &"victoire"
+const GESTE_DEFAITE := &"defaite"
 ## Retombé au sol : `vitesse` est la vitesse de chute, en m/s.
 signal atterri(vitesse: float)
 ## Un autre kart heurté (KartCollisions) : `force`, la vitesse de rapprochement.

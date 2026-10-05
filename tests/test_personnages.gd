@@ -72,3 +72,25 @@ func test_une_course_seule_assoit_un_pilote_par_kart() -> void:
 		vus[Personnage.pilote_de(kart)] = true
 	assert_eq(Personnage.pilote_de(session.get_node(session.kart_paths[0])), Personnage.MEI)
 	assert_eq(vus.size(), session.kart_paths.size(), "huit pilotes différents")
+
+
+func test_le_pilote_joue_ce_qui_arrive_au_kart() -> void:
+	var kart := (load("res://scenes/kart/kart.tscn") as PackedScene).instantiate() as Kart
+	add_child_autofree(kart)
+	Personnage.habiller(kart, Personnage.MAX)
+	await wait_frames(2)
+	var anim := kart.get_node("Body/Pilote").find_child("AnimationPlayer", true, false) as AnimationPlayer
+	assert_eq(anim.current_animation, Personnage.ANIMATION, "au volant")
+	kart.geste.emit(Kart.GESTE_LANCER)
+	await wait_frames(2)
+	assert_eq(anim.current_animation, "attack-melee-right", "il lance son objet")
+	await wait_seconds(0.6)
+	assert_eq(anim.current_animation, Personnage.ANIMATION, "puis reprend le volant")
+	kart.motor.stun()
+	await wait_frames(2)
+	assert_eq(anim.current_animation, KartVisuals.ANIM_TETE_A_QUEUE, "en tête-à-queue, il panique")
+	kart.motor.stun_timer = 0.0
+	kart.motor.state = KartMotor.State.GRIP
+	kart.geste.emit(Kart.GESTE_VICTOIRE)
+	await wait_frames(2)
+	assert_eq(anim.current_animation, "emote-yes", "à l'arrivée, il fête sa place")

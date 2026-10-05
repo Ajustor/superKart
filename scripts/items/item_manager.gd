@@ -260,6 +260,7 @@ func _appui(entree: RaceEntry, point: Vector3) -> void:
 	if lance != ItemKind.NONE:
 		_lancer(entree, point, lance, sens_vise(entree.kart, false))
 		objet_utilise.emit(entree, lance)
+		entree.kart.geste.emit(Kart.GESTE_LANCER)
 
 
 ## Le bouton est relâché : l'objet tenu part, là où vise le joueur (voir
@@ -274,6 +275,7 @@ func _lacher(entree: RaceEntry, point: Vector3) -> void:
 		return
 	_lancer(entree, point, lance, sens_vise(entree.kart, not bref))
 	objet_utilise.emit(entree, lance)
+	entree.kart.geste.emit(Kart.GESTE_LANCER)
 
 
 enum Sens { HABITUEL, AVANT, ARRIERE }

@@ -44,6 +44,24 @@ var _echelle: float = 1.0
 var _position_caisse := Vector3.ZERO
 ## L'allure du modèle (ModeleKart), que le rétrécissement respecte.
 var _echelle_caisse := Vector3.ONE
+## Le pilote (Personnage) : son animation suit ce qui arrive au kart.
+## Un geste bref (objet lancé, choc) passe avant la conduite ; une figure et
+## un tête-à-queue passent avant tout ; l'arrivée dure jusqu'au bout.
+const ANIM_FIGURE := "jump"
+const ANIM_TETE_A_QUEUE := "fall"
+const GESTES := {
+	&"lancer": ["attack-melee-right", 0.4],
+	&"choc": ["emote-no", 0.65],
+}
+const FETES := {&"victoire": "emote-yes", &"defaite": "emote-no"}
+## Un choc contre un autre kart en deçà de cette force, en m/s, ne se voit pas.
+const CHOC_VISIBLE := 4.0
+const FONDU_PILOTE := 0.15
+var _pilote: Node
+var _anim_pilote: AnimationPlayer
+var _geste := ""
+var _geste_reste := 0.0
+var _fete := ""
 ## Sous étoile, une bulle aux couleurs qui tournent.
 var _aura: MeshInstance3D
 var _matiere_aura: StandardMaterial3D
@@ -67,6 +85,10 @@ func _ready() -> void:
 	_sparks.material_override = _spark_material
 	_sparks.emitting = false
 	_kart.figure.connect(func() -> void: _figure = 0.0)
+	_kart.geste.connect(_sur_geste)
+	_kart.bouscule.connect(func(force: float) -> void:
+		if force >= CHOC_VISIBLE:
+			_sur_geste(&"choc"))
 	_poussiere = _creer_poussiere()
 	add_child(_poussiere)
 	_flammes = _creer_flammes()
@@ -85,6 +107,7 @@ func _process(delta: float) -> void:
 	_poussiere.emitting = motor.on_offroad and _kart.au_sol and absf(motor.speed) > 5.0
 	_update_flammes(motor)
 	_update_sillage()
+	_update_pilote(motor, delta)
 	_update_taille(motor, delta)
 	_update_aura(motor)
 
@@ -321,3 +344,38 @@ func _creer_sillage() -> CPUParticles3D:
 	forme.material = _matiere_sillage
 	p.mesh = forme
 	return p
+
+
+func _sur_geste(quoi: StringName) -> void:
+	if FETES.has(quoi):
+		_fete = FETES[quoi]
+	elif GESTES.has(quoi):
+		_geste = GESTES[quoi][0]
+		_geste_reste = GESTES[quoi][1]
+
+
+## L'animation du pilote : retrouvée quand le pilote change (le garage, le
+## salon), puis choisie à chaque image, en fondu.
+func _update_pilote(motor: KartMotor, delta: float) -> void:
+	var pilote := _kart.get_node_or_null("Body/Pilote")
+	if pilote != _pilote:
+		_pilote = pilote
+		_anim_pilote = pilote.find_child("AnimationPlayer", true, false) as AnimationPlayer if pilote != null else null
+	if _anim_pilote == null:
+		return
+	_geste_reste = maxf(_geste_reste - delta, 0.0)
+	var voulue: String = Personnage.ANIMATION
+	if motor.state == KartMotor.State.STUNNED:
+		voulue = ANIM_TETE_A_QUEUE
+	elif _figure >= 0.0:
+		voulue = ANIM_FIGURE
+	elif _geste_reste > 0.0:
+		voulue = _geste
+	elif _fete != "":
+		voulue = _fete
+	if _anim_pilote.current_animation != voulue and _anim_pilote.has_animation(voulue):
+		var anim := _anim_pilote.get_animation(voulue)
+		# Ce qui dure se répète ; un geste se joue une fois.
+		if voulue == ANIM_TETE_A_QUEUE or voulue == _fete:
+			anim.loop_mode = Animation.LOOP_LINEAR
+		_anim_pilote.play(voulue, FONDU_PILOTE)
