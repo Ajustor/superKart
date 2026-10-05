@@ -72,17 +72,6 @@ bottom_radius = 0.07
 height = 0.17
 radial_segments = 10
 
-[sub_resource type="ParticleProcessMaterial" id="Proc_sparks"]
-emission_shape = 1
-emission_sphere_radius = 0.25
-direction = Vector3(0, 1, 0)
-spread = 45.0
-initial_velocity_min = 1.5
-initial_velocity_max = 3.0
-gravity = Vector3(0, -2, 0)
-scale_min = 0.05
-scale_max = 0.12
-
 [sub_resource type="QuadMesh" id="Mesh_spark"]
 size = Vector2(0.1, 0.1)
 
@@ -142,13 +131,21 @@ transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0.18, 0)
 mesh = SubResource("Mesh_wheelrim")
 surface_material_override/0 = SubResource("Mat_rim")
 
-[node name="Sparks" type="GPUParticles3D" parent="Body"]
+[node name="Sparks" type="CPUParticles3D" parent="Body"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0.9)
 emitting = false
 amount = 24
 lifetime = 0.35
-process_material = SubResource("Proc_sparks")
-draw_pass_1 = SubResource("Mesh_spark")
+mesh = SubResource("Mesh_spark")
+emission_shape = 1
+emission_sphere_radius = 0.25
+direction = Vector3(0, 1, 0)
+spread = 45.0
+initial_velocity_min = 1.5
+initial_velocity_max = 3.0
+gravity = Vector3(0, -2, 0)
+scale_amount_min = 0.5
+scale_amount_max = 1.2
 
 [node name="Wheels" type="Node3D" parent="."]
 
