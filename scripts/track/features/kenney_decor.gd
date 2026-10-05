@@ -15,9 +15,11 @@ extends RefCounted
 
 const DOSSIER := "res://assets/kenney/decor/"
 
-## Objet : [modèle Kenney, ce qui donne sa taille]. « hauteur » : celle de
-## l'objet fait main, la largeur suit (sans dépasser le double) ; « largeur » :
-## l'emprise au sol, pour ce qui s'étale (un rocher).
+## Objet : [modèle Kenney, ce qui donne sa taille, lueur]. « hauteur » : celle
+## de l'objet fait main, la largeur suit (sans dépasser le double) ;
+## « largeur » : l'emprise au sol, pour ce qui s'étale (un rocher). La lueur,
+## facultative, fait briller le modèle comme brillait l'objet fait main (une
+## lanterne, une étoile, un fantôme dans la nuit).
 const MODELES := {
 	TrackDecor.Objet.PALMIER: ["tree-palmdetailedtall", "hauteur"],
 	TrackDecor.Objet.ROCHER: ["rock-largeb", "largeur"],
@@ -32,6 +34,17 @@ const MODELES := {
 	TrackDecor.Objet.TONNEAU: ["barrel", "hauteur"],
 	TrackDecor.Objet.MAISON: ["building-type-a", "hauteur"],
 	TrackDecor.Objet.PARASOL: ["detail-parasol-a", "hauteur"],
+	TrackDecor.Objet.FANTOME: ["character-ghost", "hauteur", 0.2],
+	TrackDecor.Objet.LANTERNE: ["lantern-glass", "hauteur", 0.6],
+	TrackDecor.Objet.CITROUILLE: ["pumpkin-carved", "hauteur", 0.25],
+	TrackDecor.Objet.ANANAS: ["pineapple", "hauteur"],
+	TrackDecor.Objet.FLEUR: ["flowers-tall", "hauteur"],
+	TrackDecor.Objet.ETOILE: ["star", "hauteur", 0.5],
+	TrackDecor.Objet.BLOC: ["block-grass", "largeur"],
+	TrackDecor.Objet.CUBE_LESTE: ["crate-strong", "largeur"],
+	TrackDecor.Objet.PARABOLE: ["satellitedish-large", "largeur"],
+	TrackDecor.Objet.ANTENNE: ["satellitedish", "largeur"],
+	TrackDecor.Objet.TOURELLE: ["turret-double", "largeur"],
 }
 
 
@@ -89,8 +102,48 @@ static func maillage(quoi: int, gabarit: AABB) -> ArrayMesh:
 		echelle = large_voulu / large
 	elif large > 0.0 and large_voulu > 0.0:
 		echelle = minf(echelle, 2.0 * large_voulu / large)
-	var mise := Transform3D(Basis.from_scale(Vector3.ONE * echelle), Vector3(0.0, -boite.position.y * echelle, 0.0))
-	return transformer(fondu, mise)
+	# Centré sur son pied : l'origine d'un modèle Kenney est souvent dans un
+	# coin, et l'objet tomberait à côté de sa place (et de sa collision).
+	var centre := boite.get_center()
+	var mise := Transform3D(Basis.from_scale(Vector3.ONE * echelle),
+		Vector3(-centre.x, -boite.position.y, -centre.z) * echelle)
+	var resultat := transformer(fondu, mise)
+	var donnees: Array = MODELES[quoi]
+	if donnees.size() > 2:
+		faire_briller(resultat, float(donnees[2]))
+	return resultat
+
+
+## Fait briller chaque surface de sa propre couleur (des copies : les
+## matériaux du modèle sont partagés).
+static func faire_briller(maillage_source: ArrayMesh, force: float) -> void:
+	for s in maillage_source.get_surface_count():
+		var m := maillage_source.surface_get_material(s) as StandardMaterial3D
+		if m == null:
+			continue
+		var lumineux := m.duplicate() as StandardMaterial3D
+		lumineux.emission_enabled = true
+		lumineux.emission = m.albedo_color
+		lumineux.emission_texture = m.albedo_texture
+		lumineux.emission_energy_multiplier = force
+		maillage_source.surface_set_material(s, lumineux)
+
+
+## Un modèle Kenney fondu, sa plus grande dimension ramenée à `taille`,
+## centré sur son pied (les objets lancés : ItemManager). Fait une fois.
+static var _modeles: Dictionary = {}
+
+static func modele(chemin: String, taille: float) -> ArrayMesh:
+	var cle := "%s@%.2f" % [chemin, taille]
+	if not _modeles.has(cle):
+		var racine := (load(chemin) as PackedScene).instantiate() as Node3D
+		var fondu := fondre(racine)
+		racine.free()
+		var boite := fondu.get_aabb()
+		var echelle := taille / maxf(maxf(boite.size.x, boite.size.y), maxf(boite.size.z, 0.001))
+		var centre := boite.get_center()
+		_modeles[cle] = transformer(fondu, Transform3D(Basis.from_scale(Vector3.ONE * echelle), -centre * echelle))
+	return _modeles[cle]
 
 
 ## Toutes les maillages sous `racine`, dans son repère, en une seule.

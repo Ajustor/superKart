@@ -221,6 +221,13 @@ défendre) et `regularite` (fréquence des erreurs). Le banc d'essai
 piste, et des temps à 1–3 % de l'ancienne IA, plus étalés d'un kart à
 l'autre.
 
+## Regarder derrière (`ChaseCamera.regarde_derriere`)
+
+Tant qu'on tient « Regarder derrière » (C au clavier, Y à la manette, RÉTRO
+à l'écran tactile), la caméra passe devant le kart, tournée vers l'arrière,
+d'un coup, et revient d'un coup quand on lâche. Seulement pour le kart du
+joueur, et pas pendant le décompte. La touche se change dans les options.
+
 ## Pilotes (`Personnage`)
 
 Douze pilotes assis dans les karts : les Mini Characters de Kenney (CC0,

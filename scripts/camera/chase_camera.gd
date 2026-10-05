@@ -39,6 +39,7 @@ var vortex: float = 0.0
 ## le kart. Sans ça elle partait de l'origine du monde et traversait le décor
 ## pendant tout le décompte, pile quand le joueur regarde sa case.
 var _placee: bool = false
+var _derriere: bool = false
 
 ## La caméra d'arrivée : une fois la ligne franchie (ou le joueur éliminé en
 ## bataille), elle quitte l'arrière du kart et vient le montrer de face, puis
@@ -78,12 +79,26 @@ func suivre(kart: Kart) -> void:
 	orbite = -1.0
 
 
+## Le pilote regarde derrière lui (action « regarder_derriere ») : la caméra
+## passe devant le kart, tournée vers l'arrière, d'un coup, comme un
+## rétroviseur, et revient d'un coup quand on lâche.
+func regarde_derriere() -> bool:
+	return Input.is_action_pressed(&"regarder_derriere") and _kart.est_pilote_par_le_joueur() \
+		and _kart.controle_actif
+
+
 func _physics_process(delta: float) -> void:
 	var motor := _kart.motor
 	if orbite >= 0.0:
 		_tourner_autour(delta)
 		return
 	var forward := Vector3(sin(motor.velocity_dir), 0.0, -cos(motor.velocity_dir))
+	var derriere := regarde_derriere()
+	if derriere != _derriere:
+		_derriere = derriere
+		_placee = false
+	if derriere:
+		forward = -forward
 
 	var recul := 1.0 - 0.45 * vortex
 	var desired := _kart.global_position - forward * distance * recul + Vector3.UP * height * recul

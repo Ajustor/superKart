@@ -340,8 +340,15 @@ Les circuits prennent l'allure des kits de Kenney (CC0, `assets/kenney/`) :
   modèle Kenney (palmier, sapin, arbre, arbre d'automne, arbre en cubes,
   rocher, buisson, cactus, tête de pierre, botte de foin, tonneau, maison,
   parasol), fondu en une seule maillage et mis à la taille de l'objet fait
-  main : les rangées, leurs collisions et leurs places restent les mêmes. Ce
-  qui brille et ce qui n'a pas d'équivalent reste fait main.
+  main et centré sur son pied : les rangées, leurs collisions et leurs places
+  restent les mêmes. Ce qui brillait brille encore (lanterne, citrouille,
+  étoile, fantôme : `faire_briller`). S'y ajoutent fantôme, lanterne,
+  citrouille, ananas, fleurs, étoile, bloc d'herbe, caisse lestée, paraboles et
+  tourelle. Ce qui n'a pas d'équivalent (champignons, phare, moulin, néons…)
+  reste fait main.
+- **Les objets** : la boîte à objets est la caisse du Platformer Kit (rougie
+  pour la fausse boîte), la banane celle du Food Kit. Les carapaces restent
+  faites main : Kenney n'en a pas.
 - **Le bord de piste** (Racing Kit) : de nouveaux objets `TRIBUNE`, `STANDS`,
   `TENTE`, `TOUR_BANNIERE`, `DRAPEAU_DAMIER`, `PANNEAU_PUB` et
   `LAMPADAIRE_COURSE`, tournés vers la route (`TrackDecor.FACE_A_LA_ROUTE`).

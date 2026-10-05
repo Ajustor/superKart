@@ -87,6 +87,8 @@ static func boutons(taille: Vector2, joystick: bool = false) -> Array[Dictionary
 		# Au-dessus du frein, à portée du même pouce que le dérapage : on lance
 		# un objet entre deux glisses, pas pendant qu'on freine.
 		{action = &"use_item", centre = Vector2(taille.x - marge - r * 3.45, bas - r * 2.2), rayon = r * 0.85, texte = "OBJET"},
+		# Le rétroviseur : petit, en haut, loin des pouces qui conduisent.
+		{action = &"regarder_derriere", centre = Vector2(taille.x - marge - r * 3.6, bas - r * 4.0), rayon = r * 0.6, texte = "RÉTRO"},
 	]
 	return liste.slice(2) if joystick else liste
 
