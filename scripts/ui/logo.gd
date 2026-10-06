@@ -23,10 +23,10 @@ func _init() -> void:
 
 
 func _draw() -> void:
-	var super := "SUPER"
-	var kart := "KART"
-	var l_super := _police.get_string_size(super, HORIZONTAL_ALIGNMENT_LEFT, -1, TAILLE).x
-	var l_kart := _police.get_string_size(kart, HORIZONTAL_ALIGNMENT_LEFT, -1, TAILLE).x
+	var mot_1 := "SUPER"
+	var mot_2 := "KART"
+	var l_super := _police.get_string_size(mot_1, HORIZONTAL_ALIGNMENT_LEFT, -1, TAILLE).x
+	var l_kart := _police.get_string_size(mot_2, HORIZONTAL_ALIGNMENT_LEFT, -1, TAILLE).x
 	var ecart := 14.0
 	var largeur := l_super + ecart + l_kart
 	var ligne := size.y * 0.66
@@ -38,8 +38,8 @@ func _draw() -> void:
 
 	# Les lettres penchées : un cisaillement autour de la ligne de base.
 	draw_set_transform_matrix(Transform2D(Vector2(1, 0), Vector2(-ITALIQUE, 1), Vector2(ITALIQUE * ligne, 0)))
-	_mot(super, Vector2(gauche, ligne), Color(0.97, 0.97, 1.0))
-	_mot(kart, Vector2(gauche + l_super + ecart, ligne), UITheme.ACCENT)
+	_mot(mot_1, Vector2(gauche, ligne), Color(0.97, 0.97, 1.0))
+	_mot(mot_2, Vector2(gauche + l_super + ecart, ligne), UITheme.ACCENT)
 	draw_set_transform_matrix(Transform2D.IDENTITY)
 
 
@@ -56,5 +56,5 @@ func _damier(cadre: Rect2) -> void:
 	var colonnes := int(cadre.size.x / CASE)
 	for rangee in 2:
 		for c in colonnes:
-			var case := Rect2(cadre.position + Vector2(c * CASE, rangee * CASE), Vector2(CASE, CASE))
-			draw_rect(case, Color.WHITE if (c + rangee) % 2 == 0 else Color(0.12, 0.12, 0.16))
+			var carre := Rect2(cadre.position + Vector2(c * CASE, rangee * CASE), Vector2(CASE, CASE))
+			draw_rect(carre, Color.WHITE if (c + rangee) % 2 == 0 else Color(0.12, 0.12, 0.16))
