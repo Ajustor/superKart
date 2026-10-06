@@ -27,6 +27,26 @@ static func echelle_3d(niveau: int) -> float:
 	return ECHELLE[effectif(niveau)]
 
 
+## Le lissage des bords (MSAA) : net sur un ordinateur, 4× en haute et 2× en
+## moyenne. Jamais sur téléphone : certaines puces mobiles plantaient avec
+## (voir GaragePanel), et leur écran très dense crénelle moins.
+static func anticrenelage(niveau: int) -> Viewport.MSAA:
+	if OS.has_feature("mobile") or OS.has_feature("web"):
+		return Viewport.MSAA_DISABLED
+	match effectif(niveau):
+		Niveau.HAUTE:
+			return Viewport.MSAA_4X
+		Niveau.MOYENNE:
+			return Viewport.MSAA_2X
+	return Viewport.MSAA_DISABLED
+
+
+## Les ombres portées sont-elles dessinées ? Sinon, chaque kart pose au sol
+## une ombre de contact (KartVisuals).
+static func ombres_portees(niveau: int) -> bool:
+	return effectif(niveau) == Niveau.HAUTE
+
+
 ## Règle les ombres, la lueur et le brouillard de tout ce qui est sous
 ## `racine`. Ce que le circuit a prévu est retenu la première fois : repasser
 ## en HAUTE rend au Prisme de Minuit sa lueur, sans en donner à qui n'en avait pas.
@@ -36,6 +56,14 @@ static func appliquer_a(racine: Node, niveau: int) -> void:
 		if not lumiere.has_meta("ombres_prevues"):
 			lumiere.set_meta("ombres_prevues", lumiere.shadow_enabled)
 		lumiere.shadow_enabled = lumiere.get_meta("ombres_prevues") and n == Niveau.HAUTE
+		# Des ombres douces, qui portent loin : le flou adoucit les bords
+		# crénelés de la carte d'ombre, et deux découpes gardent la netteté
+		# près du kart.
+		var soleil := lumiere as DirectionalLight3D
+		soleil.shadow_blur = 1.5
+		soleil.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+		soleil.directional_shadow_max_distance = 140.0
+		soleil.directional_shadow_blend_splits = true
 	for monde in racine.find_children("*", "WorldEnvironment", true, false):
 		var env: Environment = monde.environment
 		if env == null:

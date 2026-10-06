@@ -234,6 +234,7 @@ func appliquer_graphismes() -> void:
 		return
 	var fenetre := get_tree().root
 	fenetre.scaling_3d_scale = QualiteGraphique.echelle_3d(qualite)
+	fenetre.msaa_3d = QualiteGraphique.anticrenelage(qualite)
 	fenetre.content_scale_factor = echelle_interface(taille_interface)
 	if get_tree().current_scene != null:
 		QualiteGraphique.appliquer_a(get_tree().current_scene, qualite)

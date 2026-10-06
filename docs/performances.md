@@ -116,3 +116,17 @@ mémoire, autant d'objets à 1 % près — pas de fuite d'une course à l'autre.
 
   Avec `--headless --fixed-fps 60` à la place, il ne mesure que le coût
   processeur.
+
+## Finitions de l'image selon la qualité
+
+- **Lissage des bords** (`QualiteGraphique.anticrenelage`) : MSAA 4× en haute
+  et 2× en moyenne sur ordinateur ; jamais sur téléphone (certaines puces
+  plantaient, voir le garage), dont l'écran dense crénelle moins.
+- **Ombres du soleil** (haute seulement) : floutées (`shadow_blur` 1,5), en
+  deux découpes fondues l'une dans l'autre, jusqu'à 140 m.
+- **Ombres de contact** : quand le soleil ne projette pas d'ombre (moyenne,
+  basse, donc les téléphones), chaque kart pose sous lui une tache sombre
+  et floue (`KartVisuals._creer_ombre_de_contact`), cachée en l'air.
+- **Fumées** : le sprite de fumée de Kenney (`assets/kenney/effets/`), en
+  quelques particules calculées par le processeur, pour la poussière hors
+  piste et la fumée blanche des pneus en glisse.

@@ -8,6 +8,7 @@ un jeu commercial, sans obligation de citer l'auteur (merci quand même).
             Commercial), Food Kit, Platformer Kit, Space Kit
                              https://kenney.nl/assets
   objets/   Platformer Kit, Food Kit
+  effets/   Starter Kit Racing (fumée)
   course/   Racing Kit       https://kenney.nl/assets/racing-kit
 
 https://creativecommons.org/publicdomain/zero/1.0/
