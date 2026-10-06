@@ -877,35 +877,54 @@ func _visuel_banane() -> Node3D:
 
 
 func _visuel_carapace(genre: int) -> Node3D:
+	# À la manière des objets de Kenney : peu de facettes, des couleurs
+	# franches. Un dôme à huit pans, une plaque plus claire au sommet, un
+	# bourrelet blanc à la base.
 	var racine := Node3D.new()
+	var couleur: Color = [Color(0.2, 0.78, 0.3), Color(0.92, 0.2, 0.16), Color(0.2, 0.42, 1.0)][genre]
 	var dome := MeshInstance3D.new()
 	dome.mesh = _forme("dome", func() -> Mesh:
 		var sphere := SphereMesh.new()
 		sphere.radius = 0.42
-		sphere.height = 0.55
+		sphere.height = 0.6
+		sphere.radial_segments = 8
+		sphere.rings = 4
+		sphere.is_hemisphere = true
 		return sphere)
-	var couleur: Color = [Color(0.15, 0.75, 0.2), Color(0.9, 0.12, 0.1), Color(0.15, 0.35, 1.0)][genre]
-	dome.material_override = _materiau(couleur, 0.6 if genre == Genre.BLEUE else 0.3)
+	dome.material_override = _materiau(couleur, 0.6 if genre == Genre.BLEUE else 0.15)
 	racine.add_child(dome)
+	var plaque := MeshInstance3D.new()
+	plaque.mesh = _forme("plaque", func() -> Mesh:
+		var cylindre := CylinderMesh.new()
+		cylindre.top_radius = 0.16
+		cylindre.bottom_radius = 0.2
+		cylindre.height = 0.06
+		cylindre.radial_segments = 6
+		return cylindre)
+	plaque.material_override = _materiau(couleur.lightened(0.35), 0.15)
+	plaque.position = Vector3(0.0, 0.28, 0.0)
+	racine.add_child(plaque)
 	var bord := MeshInstance3D.new()
 	bord.mesh = _forme("anneau", func() -> Mesh:
 		var anneau := TorusMesh.new()
 		anneau.inner_radius = 0.34
-		anneau.outer_radius = 0.46
+		anneau.outer_radius = 0.48
+		anneau.rings = 8
+		anneau.ring_segments = 4
 		return anneau)
 	bord.material_override = _materiau(Color(0.97, 0.97, 0.95))
-	bord.position = Vector3(0.0, -0.08, 0.0)
+	bord.position = Vector3(0.0, 0.0, 0.0)
 	racine.add_child(bord)
 	if genre == Genre.BLEUE:
 		# Des ailes blanches : on la reconnaît de loin, au-dessus du peloton.
 		for cote in [-1.0, 1.0]:
 			var aile := MeshInstance3D.new()
 			aile.mesh = _forme("aile", func() -> Mesh:
-				var plaque := BoxMesh.new()
-				plaque.size = Vector3(0.7, 0.05, 0.3)
-				return plaque)
+				var plaque_aile := BoxMesh.new()
+				plaque_aile.size = Vector3(0.7, 0.05, 0.3)
+				return plaque_aile)
 			aile.material_override = _materiau(Color(0.97, 0.97, 1.0), 0.4)
-			aile.position = Vector3(cote * 0.62, 0.12, 0.0)
+			aile.position = Vector3(cote * 0.62, 0.2, 0.0)
 			aile.rotation = Vector3(0.0, 0.0, cote * deg_to_rad(-20.0))
 			racine.add_child(aile)
 	return racine

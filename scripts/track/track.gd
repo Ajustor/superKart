@@ -490,6 +490,20 @@ func calque_a(distance: float) -> int:
 	return calque_du_monde(monde_en(wrapf(distance, 0.0, track_curve.length)))
 
 
+## Rend ou retire leur ombre portée à toutes les pièces de `noeud`, en
+## gardant celles qui n'en faisaient pas (une ombre de contact, des
+## particules).
+static func poser_ombres(noeud: Node, actives: bool) -> void:
+	if noeud is GeometryInstance3D:
+		var piece := noeud as GeometryInstance3D
+		if not piece.has_meta("ombre_prevue"):
+			piece.set_meta("ombre_prevue", piece.cast_shadow)
+		piece.cast_shadow = piece.get_meta("ombre_prevue") if actives \
+			else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for enfant in noeud.get_children():
+		poser_ombres(enfant, actives)
+
+
 static func poser_calque(noeud: Node, calque: int) -> void:
 	if noeud is VisualInstance3D:
 		(noeud as VisualInstance3D).layers = calque

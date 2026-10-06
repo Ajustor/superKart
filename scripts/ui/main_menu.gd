@@ -37,7 +37,12 @@ var _circuits: GridContainer
 ## circuits, la grille sortait de l'écran et poussait Démarrer avec elle.
 var _defilement_coupes: ScrollContainer
 var _defilement_circuits: ScrollContainer
-const HAUTEUR_DES_GRILLES := 250.0
+const HAUTEUR_DES_GRILLES := 330.0
+## Les vignettes des circuits (tools/vignettes.gd).
+const VIGNETTES := "res://resources/vignettes/"
+## Par coupe, le titre et la ligne des circuits (et du trophée gagné).
+var _titres_coupe: Array[Label] = []
+var _details_coupe: Array[Label] = []
 var _reglages: HBoxContainer
 var _description: Label
 var _record: Label
@@ -291,13 +296,8 @@ func _ecran_accueil() -> Control:
 	colonne.add_theme_constant_override("separation", 12)
 	centre.add_child(colonne)
 
-	colonne.add_child(UITheme.titre("SUPERKART", 88))
-	var sous_titre := Label.new()
-	sous_titre.text = "Course de karts"
-	sous_titre.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sous_titre.add_theme_color_override("font_color", UITheme.TEXTE_DOUX)
-	colonne.add_child(sous_titre)
-	colonne.add_child(_espace(6))
+	colonne.add_child(Logo.new())
+	colonne.add_child(_espace(4))
 
 	# Une lambda et non _montrer.bind(_selection) : l'écran de sélection est
 	# construit après celui-ci, bind aurait capturé null.
@@ -386,8 +386,9 @@ func _ecran_selection() -> Control:
 	_coupes.add_theme_constant_override("v_separation", 10)
 	var groupe_coupes := ButtonGroup.new()
 	for i in TrackCatalog.COUPES.size():
-		var b := _bascule("", groupe_coupes, Vector2(470, 88), 18)
+		var b := _bascule("", groupe_coupes, Vector2(470, 150), 18)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_carte_de_coupe(b, TrackCatalog.COUPES[i])
 		b.button_pressed = i == _coupe
 		b.pressed.connect(func() -> void:
 			_coupe = i
@@ -404,14 +405,16 @@ func _ecran_selection() -> Control:
 	_circuits.add_theme_constant_override("v_separation", 8)
 	var groupe := ButtonGroup.new()
 	for piste in TrackCatalog.PISTES:
-		var b := _bascule(piste.nom, groupe, Vector2(234, 52), 19)
+		var b := _bascule(piste.nom, groupe, Vector2(234, 160), 19)
+		_mettre_vignette(b, piste.id)
 		b.button_pressed = piste == reglage.piste
 		b.pressed.connect(_choisir_piste.bind(piste))
 		_circuits.add_child(b)
 		_boutons_piste.append(b)
 	# Les arènes, pour la bataille, dans la même grille (même groupe).
 	for arene in TrackCatalog.ARENES:
-		var b := _bascule(arene.nom, groupe, Vector2(234, 52), 19)
+		var b := _bascule(arene.nom, groupe, Vector2(234, 160), 19)
+		_mettre_vignette(b, arene.id)
 		b.button_pressed = arene == reglage.piste
 		b.pressed.connect(_choisir_piste.bind(arene))
 		_circuits.add_child(b)
@@ -568,6 +571,68 @@ func _lancer() -> void:
 
 ## Remet à jour tout ce qui dépend du réglage : le texte des coupes, la
 ## description, le record.
+## La vignette d'un circuit, ou null si elle n'a pas été faite.
+static func vignette(id: String) -> Texture2D:
+	var chemin := VIGNETTES + id + ".jpg"
+	return load(chemin) as Texture2D if ResourceLoader.exists(chemin) else null
+
+
+## La vignette au-dessus du nom, sur toute la largeur du bouton.
+func _mettre_vignette(b: Button, id: String) -> void:
+	b.icon = vignette(id)
+	if b.icon == null:
+		b.custom_minimum_size.y = 52
+		return
+	b.expand_icon = true
+	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+	b.clip_text = true
+
+
+## Une coupe : son nom, la bande des vignettes de ses circuits, leurs noms
+## (et le trophée gagné) dessous. Le contenu ne prend pas les clics : c'est
+## le bouton qui les reçoit.
+func _carte_de_coupe(b: Button, coupe: Dictionary) -> void:
+	var marge := MarginContainer.new()
+	marge.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for cote in ["left", "right", "top", "bottom"]:
+		marge.add_theme_constant_override("margin_" + cote, 8)
+	marge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(marge)
+	var colonne := VBoxContainer.new()
+	colonne.add_theme_constant_override("separation", 4)
+	colonne.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	marge.add_child(colonne)
+	var titre := Label.new()
+	titre.text = coupe.nom
+	titre.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	titre.add_theme_font_size_override("font_size", 21)
+	titre.add_theme_color_override("font_color", UITheme.ACCENT)
+	colonne.add_child(titre)
+	_titres_coupe.append(titre)
+	var bande := HBoxContainer.new()
+	bande.add_theme_constant_override("separation", 4)
+	bande.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	bande.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	colonne.add_child(bande)
+	for id in coupe.pistes:
+		var image := TextureRect.new()
+		image.texture = vignette(id)
+		image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		image.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		image.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bande.add_child(image)
+	var detail := Label.new()
+	detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	detail.add_theme_font_size_override("font_size", 15)
+	detail.add_theme_color_override("font_color", UITheme.TEXTE_DOUX)
+	detail.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	detail.clip_text = true
+	colonne.add_child(detail)
+	_details_coupe.append(detail)
+
+
 func _rafraichir() -> void:
 	var reglage := GameSettings.course
 	for i in _boutons_coupe.size():
@@ -575,12 +640,12 @@ func _rafraichir() -> void:
 		var noms := PackedStringArray()
 		for id in coupe.pistes:
 			noms.append(TrackCatalog.par_id(id).nom)
-		var texte := "%s\n%s" % [coupe.nom, " · ".join(noms)]
 		var trophee := GameSettings.trophee(i, reglage.classe)
+		_titres_coupe[i].text = coupe.nom
 		if trophee > 0:
-			texte += "\n%s en %s" % [PodiumScreen.MEDAILLES[trophee - 1], Cylindree.nom(reglage.classe)]
-		_boutons_coupe[i].text = texte
-		_boutons_coupe[i].autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			_titres_coupe[i].text += "   %s %s" % [PodiumScreen.MEDAILLES[trophee - 1], Cylindree.nom(reglage.classe)]
+		_details_coupe[i].text = " · ".join(noms)
+		_boutons_coupe[i].tooltip_text = "%s : %s" % [coupe.nom, ", ".join(noms)]
 
 	match reglage.mode:
 		RaceSetup.Mode.GRAND_PRIX:

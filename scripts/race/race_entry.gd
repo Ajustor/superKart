@@ -78,6 +78,9 @@ var aspiration: float = 0.0
 ## Le calque de rendu du monde où roule le kart (Track.calque_a), 0 sans
 ## monde.
 var calque: int = 0
+## Le kart projette-t-il son ombre ? Faux quand il roule dans un monde que
+## la caméra ne voit pas (Track.poser_ombres).
+var ombre_visible: bool = true
 
 ## Ligne de crue des tours comptés. Le numéro de tour de RaceProgress, lui,
 ## redescend quand le kart recule.

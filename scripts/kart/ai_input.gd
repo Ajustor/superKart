@@ -330,6 +330,13 @@ func _choisir_sa_ligne(delta: float) -> void:
 
 	_depassement_reste = maxf(_depassement_reste - delta, 0.0)
 	var devant := kart_devant(PORTEE_DEPASSEMENT, LARGEUR_FILE)
+	# Dans une ligne droite, on se cale d'abord dans son sillage : la jauge
+	# d'aspiration se remplit, et c'est avec son turbo qu'on double.
+	var sillage := kart_devant(Aspiration.PORTEE, LARGEUR_FILE)
+	if veut_aspirer(sillage, liberte):
+		_depassement_reste = 0.0
+		_aller_vers(voisins[sillage].y, delta)
+		return
 	if devant >= 0 and (voisins[mon_index].z > voisins[devant].z - 0.5 or audace > 0.6):
 		if _depassement_reste <= 0.0:
 			_cote_depassement = cote_pour_doubler(voisins[devant].y)
@@ -354,6 +361,19 @@ func _choisir_sa_ligne(delta: float) -> void:
 		voulu -= signf(track.turn_at(ou)) * 2.0
 
 	_aller_vers(voulu, delta)
+
+
+## Se caler derrière le kart `i` pour l'aspiration ? Seulement dans une
+## ligne droite (`liberte` : la route est large devant), pas trop près, sans
+## turbo en cours — c'est le turbo qui sert à doubler — et tant que la jauge
+## n'est pas pleine.
+func veut_aspirer(i: int, liberte: float) -> bool:
+	if i < 0 or kart == null or liberte < 0.9:
+		return false
+	if kart.motor.boost_timer > 0.0 or kart.aspiration >= 0.95:
+		return false
+	var avance := _relatif(i).x
+	return avance > Aspiration.PORTEE_MIN + 1.0 and voisins[i].z >= Aspiration.VITESSE_DU_MENEUR
 
 
 func _aller_vers(voulu: float, delta: float) -> void:
