@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b41kw8uvfmbkv"
-path="res://.godot/imported/boite.png-297b4eec73677781451412e3f8f63bff.ctex"
+uid="uid://c62iuadamnx6x"
+path="res://.godot/imported/ruban_celeste.jpg-3616069e190d286f424d4a054a5ea953.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://resources/icones_objets/boite.png"
-dest_files=["res://.godot/imported/boite.png-297b4eec73677781451412e3f8f63bff.ctex"]
+source_file="res://resources/vignettes/ruban_celeste.jpg"
+dest_files=["res://.godot/imported/ruban_celeste.jpg-3616069e190d286f424d4a054a5ea953.ctex"]
 
 [params]
 
