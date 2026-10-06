@@ -130,3 +130,15 @@ mémoire, autant d'objets à 1 % près — pas de fuite d'une course à l'autre.
 - **Fumées** : le sprite de fumée de Kenney (`assets/kenney/effets/`), en
   quelques particules calculées par le processeur, pour la poussière hors
   piste et la fumée blanche des pneus en glisse.
+
+## Images du menu et du HUD
+
+Les vignettes des circuits (`resources/vignettes/`, 384×216, faites par
+`tools/vignettes.sh`) ne sont chargées qu'avec le menu, pas pendant la
+course : 29 images, une dizaine de Mo en mémoire vidéo. Les icônes d'objets
+(`resources/icones_objets/`, 128×128, faites par `tools/icones_objets.gd`)
+sont des photos des modèles du jeu, chargées une fois à la première
+utilisation ; s'il en manque une, `ItemIcons` la dessine au trait.
+
+Sur téléphone, le mieux est encore de regarder le Journal après quelques
+courses : il note les images par seconde et la mémoire toutes les 30 s.
