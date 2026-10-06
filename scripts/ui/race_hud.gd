@@ -184,6 +184,7 @@ func _draw() -> void:
 		return
 	_dessiner_vitesse()
 	_dessiner_objet()
+	_dessiner_aspiration()
 	_dessiner_pieces()
 	_dessiner_feux()
 
@@ -207,13 +208,31 @@ func _dessiner_objet() -> void:
 			"×%d" % inventaire.charges, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color.WHITE)
 
 
+## La jauge d'aspiration (Aspiration) : une barre verticale contre
+## l'emplacement d'objet, qui monte tant qu'on est dans le sillage d'un autre
+## kart et s'efface quand elle se vide. Pleine, le turbo part.
+const LARGEUR_JAUGE := 12.0
+
+func _dessiner_aspiration() -> void:
+	var jauge := _session.entries[0].kart.aspiration
+	if jauge <= 0.02:
+		return
+	var cadre := Rect2(Vector2(size.x - 104.0 - CASE_OBJET - LARGEUR_JAUGE - 8.0, 16.0),
+		Vector2(LARGEUR_JAUGE, CASE_OBJET))
+	draw_rect(cadre, Color(0.05, 0.05, 0.07, 0.7))
+	var plein := cadre.size.y * clampf(jauge, 0.0, 1.0)
+	var couleur := Color(0.45, 0.9, 1.0).lerp(Color(1.0, 1.0, 1.0), jauge * jauge)
+	draw_rect(Rect2(cadre.position + Vector2(0.0, cadre.size.y - plein), Vector2(cadre.size.x, plein)), couleur)
+	draw_rect(cadre, Color(1, 1, 1, 0.6), false, 2.0)
+
+
 ## Les pièces, à gauche de l'emplacement d'objet (dessous, c'est la
 ## mini-carte), dès qu'on en a une.
 func _dessiner_pieces() -> void:
 	var pieces := _session.entries[0].kart.motor.pieces
 	if pieces <= 0:
 		return
-	var coin := Vector2(size.x - 104.0 - CASE_OBJET - 86.0, 16.0 + CASE_OBJET * 0.5 - 14.0)
+	var coin := Vector2(size.x - 104.0 - CASE_OBJET - LARGEUR_JAUGE - 94.0, 16.0 + CASE_OBJET * 0.5 - 14.0)
 	ItemIcons.piece(self, coin + Vector2(14, 14), 13.0)
 	draw_string(ThemeDB.fallback_font, coin + Vector2(34, 22), "×%d" % pieces,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color.WHITE)

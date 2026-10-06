@@ -415,7 +415,12 @@ garde ainsi. L'IA, réglée sur l'ancienne courbe, contre-braque moins fort
   pointe au moins, au sol, et derrière un kart qui roule ; hors du sillage,
   la jauge se vide deux fois plus vite qu'elle ne monte. Des filets de vent
   filent autour du kart pendant qu'elle monte, et un souffle annonce le
-  turbo. L'IA en profite comme le joueur, sans le chercher.
+  turbo. Une jauge verticale, à gauche de la case d'objet, montre où elle
+  en est.
+- **L'IA cherche le sillage** (`AIInput.veut_aspirer`) : quand la route est
+  dégagée devant elle, qu'elle n'a pas déjà un turbo et qu'un kart assez
+  rapide roule à portée d'aspiration, elle se cale dans son axe plutôt que
+  de le doubler tout de suite — elle le passera, turbo en poche.
 
 ## Figures (`Kart._figures`)
 

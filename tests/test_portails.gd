@@ -337,3 +337,16 @@ func test_une_contree_garde_les_decors_de_son_monde() -> void:
 	assert_eq(track.monde_en(250.0), termina, "dans le marais, on est toujours à Termina")
 	assert_eq(track.ambiance_en(250.0), marais.ambiance, "mais sous le ciel du marais")
 	assert_eq(track.monde_en(450.0), lune)
+
+
+func test_un_kart_cache_ne_fait_pas_d_ombre() -> void:
+	var kart := MeshInstance3D.new()
+	var tache := MeshInstance3D.new()
+	tache.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	kart.add_child(tache)
+	Track.poser_ombres(kart, false)
+	assert_eq(kart.cast_shadow, GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+	Track.poser_ombres(kart, true)
+	assert_eq(kart.cast_shadow, GeometryInstance3D.SHADOW_CASTING_SETTING_ON, "son ombre revient")
+	assert_eq(tache.cast_shadow, GeometryInstance3D.SHADOW_CASTING_SETTING_OFF, "ce qui n'en faisait pas n'en fait toujours pas")
+	kart.free()

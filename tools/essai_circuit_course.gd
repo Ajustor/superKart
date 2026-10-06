@@ -25,6 +25,12 @@ const LIMITE := 600.0
 
 var _session: RaceSession
 var _precedent: Array[Vector3] = []
+## La distance de chacun à l'image d'avant : un kart qui tombe dans un portail
+## posé à plat (TrackGap.chute_voulue) ressort plus loin, et ce n'est pas une
+## remise en piste.
+var _d_avant: Array[float] = []
+## Les turbos d'aspiration de chacun (Kart.aspire).
+var _aspirations: Array[int] = []
 var _remises: Array[int] = []
 var _arrets: Array[int] = []
 var _ou: Dictionary = {}
@@ -100,7 +106,9 @@ func _physics_process(delta: float) -> void:
 		var e := _session.entries[i]
 		var p := e.kart.global_position
 		if _session.en_course and not e.finished:
-			if p.distance_to(_precedent[i]) > 6.0:
+			var trou := _session.circuit().trou_en(_d_avant[i])
+			var voulu := trou != null and trou.chute_voulue
+			if p.distance_to(_precedent[i]) > 6.0 and not voulu:
 				_remises[i] += 1
 				var ou := int(e.derniere_en_piste / 10.0) * 10
 				_ou[ou] = int(_ou.get(ou, 0)) + 1
@@ -117,6 +125,7 @@ func _physics_process(delta: float) -> void:
 				var ici := int(e.progress.distance / 10.0) * 10
 				_arrets_ou[ici] = int(_arrets_ou.get(ici, 0)) + 1
 		_precedent[i] = p
+		_d_avant[i] = e.progress.distance
 	if _session.terminee or _temps > LIMITE:
 		_bilan()
 		get_tree().quit()
@@ -126,12 +135,16 @@ func _physics_process(delta: float) -> void:
 func _brancher() -> void:
 	for e in _session.entries:
 		_precedent.append(e.kart.global_position)
+		_d_avant.append(e.progress.distance)
 		_remises.append(0)
 		_arrets.append(0)
 		_glisses.append(0)
 		_plaques.append(0)
 		_etat_avant.append(KartMotor.State.GRIP)
 		_sur_plaque.append(false)
+		_aspirations.append(0)
+		var n := _aspirations.size() - 1
+		e.kart.aspire.connect(func() -> void: _aspirations[n] += 1)
 	var kart: Kart = _session.entries[0].kart
 	var ia := AIInput.new()
 	kart.add_child(ia)
@@ -150,9 +163,9 @@ func _bilan() -> void:
 		var e := _session.entries[i]
 		if e.finished:
 			arrives += 1
-		print("  %-10s %s  remises %2d  arrêts %4d  glisses %3d  figures %2d  plaques %2d" % [e.kart.name,
+		print("  %-10s %s  remises %2d  arrêts %4d  glisses %3d  figures %2d  plaques %2d  aspirations %2d" % [e.kart.name,
 			("%6.1f s" % e.temps_course) if e.finished else "  ---   ", _remises[i], _arrets[i], _glisses[i],
-			e.kart.figures, _plaques[i]])
+			e.kart.figures, _plaques[i], _aspirations[i]])
 	var cles := _ou.keys()
 	cles.sort()
 	var lieux := PackedStringArray()

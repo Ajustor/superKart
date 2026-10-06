@@ -737,11 +737,19 @@ func _raconter_au_circuit() -> void:
 	_track.tours_course = lap_count
 	# Chaque kart n'est dessiné que dans le monde où il roule : de ce côté-ci
 	# d'un portail, ceux qui l'ont passé ne se voient qu'à travers lui.
+	var camera := get_viewport().get_camera_3d() if is_inside_tree() else null
 	for e in entries:
 		var calque := _track.calque_a(e.progress.distance)
 		if calque != 0 and calque != e.calque:
 			e.calque = calque
 			Track.poser_calque(e.kart, calque)
+		# Caché à la caméra, il ne fait pas d'ombre non plus : son ombre
+		# tomberait de ce côté-ci du portail, sous un kart invisible.
+		if e.calque != 0 and camera != null:
+			var vu := camera.cull_mask & e.calque != 0
+			if vu != e.ombre_visible:
+				e.ombre_visible = vu
+				Track.poser_ombres(e.kart, vu)
 
 
 ## Les concurrents dans l'ordre du classement.

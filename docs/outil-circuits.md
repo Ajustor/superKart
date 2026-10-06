@@ -141,7 +141,16 @@ déplacer un point de contrôle emmène les murs et les zones avec lui.
        -s tools/capture_circuit.gd -- <id> <dossier> 100 250 400h
    ```
    Tout le monde doit arriver ; les remises en piste et les arrêts sont
-   comptés par tranche de 10 m, ce qui montre où ça coince.
+   comptés par tranche de 10 m, ce qui montre où ça coince. Une chute voulue
+   dans un portail posé à plat (`TrackGap.chute_voulue`) n'est pas une
+   remise en piste. La colonne « aspirations » compte les turbos de sillage
+   de chacun.
+5. Photographier sa vignette pour le choix des courses
+   (`resources/vignettes/<id>.jpg`), puis importer :
+   ```
+   tools/vignettes.sh godot <id>
+   godot --headless --path . --import
+   ```
    `tests/test_circuits.gd` vérifie ensuite chaque circuit du catalogue :
    virages roulables, rampe devant chaque trou, grille et boîtes sur la
    route, liquide sous la route, pas de tronçons confondus.
@@ -381,4 +390,6 @@ tremplins, plaques… sauf ceux que réclame déjà un monde, voir
 `TrackPortail.decors`) et les boîtes à objets prennent le calque du monde où
 ils sont (`Track.calque_a`), et chaque kart celui du monde où il roule,
 tenu à jour par la session à chaque image. Celui qui vient de passer le
-portail ne se voit plus qu'à travers lui.
+portail ne se voit plus qu'à travers lui, et son ombre disparaît avec lui
+(`Track.poser_ombres`) : sans quoi une ombre sans kart glissait sur la
+route d'ici.

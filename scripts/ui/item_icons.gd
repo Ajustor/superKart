@@ -1,12 +1,63 @@
 class_name ItemIcons
 extends RefCounted
 
-## Les pictogrammes d'objets, dessinés au trait plutôt que chargés : le dépôt
-## n'a pas d'images, et une forme simple se lit mieux d'un coup d'œil qu'un
-## dessin détaillé réduit à 40 pixels.
+## Les pictogrammes d'objets : les photos des modèles 3D du jeu
+## (resources/icones_objets/, faites par tools/icones_objets.gd), et à défaut
+## un dessin au trait — l'éclair, qui n'a pas de modèle, l'est toujours.
+
+const DOSSIER := "res://resources/icones_objets/"
+## Le nom de la photo de chaque objet.
+const PHOTOS := {
+	ItemKind.MUSHROOM: "champignon",
+	ItemKind.BANANA: "banane",
+	ItemKind.GREEN_SHELL: "carapace_verte",
+	ItemKind.RED_SHELL: "carapace_rouge",
+	ItemKind.BLUE_SHELL: "carapace_bleue",
+	ItemKind.STAR: "etoile",
+	ItemKind.FAKE_BOX: "fausse_boite",
+}
+static var _photos: Dictionary = {}
+
+
+## La photo `nom`, chargée une fois ; null si elle manque.
+static func photo(nom: String) -> Texture2D:
+	if not _photos.has(nom):
+		var chemin := DOSSIER + nom + ".png"
+		_photos[nom] = load(chemin) as Texture2D if ResourceLoader.exists(chemin) else null
+	return _photos[nom]
+
+
+## Pose la photo `nom` dans le carré de demi-côté r autour de centre. Faux si
+## elle manque.
+static func poser(toile: CanvasItem, nom: String, centre: Vector2, r: float, teinte := Color.WHITE) -> bool:
+	var texture := photo(nom)
+	if texture == null:
+		return false
+	toile.draw_texture_rect(texture, Rect2(centre - Vector2(r, r), Vector2(r, r) * 2.0), false, teinte)
+	return true
+
+
+## Le point d'interrogation d'une caisse, blanc cerclé de noir.
+static func signe(toile: CanvasItem, texte: String, centre: Vector2, r: float) -> void:
+	var police := ThemeDB.fallback_font
+	var taille := int(r * 1.1)
+	var largeur := police.get_string_size(texte, HORIZONTAL_ALIGNMENT_LEFT, -1, taille).x
+	var ou := centre + Vector2(-largeur * 0.5, taille * 0.35)
+	toile.draw_string_outline(police, ou, texte, HORIZONTAL_ALIGNMENT_LEFT, -1, taille, maxi(2, int(r * 0.12)), Color.BLACK)
+	toile.draw_string(police, ou, texte, HORIZONTAL_ALIGNMENT_LEFT, -1, taille, Color.WHITE)
 
 
 static func dessiner(toile: CanvasItem, objet: int, centre: Vector2, r: float) -> void:
+	if PHOTOS.has(objet) and poser(toile, PHOTOS[objet], centre, r * 1.15):
+		if objet == ItemKind.FAKE_BOX:
+			signe(toile, "¿", centre, r)
+		return
+	if objet == ItemKind.TRIPLE_MUSHROOM and photo("champignon") != null:
+		var petit := r * 0.62
+		poser(toile, "champignon", centre + Vector2(0, -r * 0.4), petit)
+		poser(toile, "champignon", centre + Vector2(-r * 0.48, r * 0.38), petit)
+		poser(toile, "champignon", centre + Vector2(r * 0.48, r * 0.38), petit)
+		return
 	match objet:
 		ItemKind.MUSHROOM:
 			_champignon(toile, centre, r)
@@ -89,6 +140,8 @@ static func etoile(centre: Vector2, grand: float, petit: float) -> PackedVector2
 
 
 static func piece(toile: CanvasItem, centre: Vector2, r: float) -> void:
+	if poser(toile, "piece", centre, r * 1.15):
+		return
 	toile.draw_circle(centre, r, Color(0.85, 0.62, 0.1))
 	toile.draw_circle(centre, r * 0.78, Color(1.0, 0.84, 0.2))
 	toile.draw_rect(Rect2(centre - Vector2(r * 0.12, r * 0.45), Vector2(r * 0.24, r * 0.9)), Color(0.85, 0.62, 0.1))
