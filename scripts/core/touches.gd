@@ -9,7 +9,7 @@ extends RefCounted
 
 ## Les actions de jeu qu'on peut changer, dans l'ordre de l'écran.
 const ACTIONS: Array[StringName] = [&"throttle", &"brake", &"steer_left", &"steer_right",
-	&"drift", &"use_item", &"pause"]
+	&"drift", &"use_item", &"regarder_derriere", &"pause"]
 
 enum Famille { CLAVIER, MANETTE }
 

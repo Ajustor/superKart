@@ -182,6 +182,9 @@ func poser_rangee(distance: float) -> void:
 		boite.position = _au_sol(distance, boite.lateral, HAUTEUR_BOITE)
 		boite.noeud = _visuel_boite()
 		boite.noeud.position = boite.position
+		# Derrière un portail, la boîte n'est que de son monde (Track.calque_a).
+		if _circuit != null and _circuit.calque_a(distance) != 0:
+			Track.poser_calque(boite.noeud, _circuit.calque_a(distance))
 		add_child(boite.noeud)
 		boites.append(boite)
 
@@ -260,6 +263,7 @@ func _appui(entree: RaceEntry, point: Vector3) -> void:
 	if lance != ItemKind.NONE:
 		_lancer(entree, point, lance, sens_vise(entree.kart, false))
 		objet_utilise.emit(entree, lance)
+		entree.kart.geste.emit(Kart.GESTE_LANCER)
 
 
 ## Le bouton est relâché : l'objet tenu part, là où vise le joueur (voir
@@ -274,6 +278,7 @@ func _lacher(entree: RaceEntry, point: Vector3) -> void:
 		return
 	_lancer(entree, point, lance, sens_vise(entree.kart, not bref))
 	objet_utilise.emit(entree, lance)
+	entree.kart.geste.emit(Kart.GESTE_LANCER)
 
 
 enum Sens { HABITUEL, AVANT, ARRIERE }
@@ -838,15 +843,17 @@ func _materiau(couleur: Color, emission: float = 0.0, transparent: bool = false)
 	return m
 
 
+## La caisse à objets du Platformer Kit de Kenney, et la banane du Food Kit.
+const CAISSE := "res://assets/kenney/objets/crate-item.glb"
+const BANANE := "res://assets/kenney/objets/banana.glb"
+static var _caisse_rougie: StandardMaterial3D
+
+
 func _visuel_boite() -> Node3D:
 	var racine := Node3D.new()
 	var cube := MeshInstance3D.new()
-	cube.mesh = _forme("boite", func() -> Mesh:
-		var boite := BoxMesh.new()
-		boite.size = Vector3(1.1, 1.1, 1.1)
-		return boite)
-	cube.material_override = _materiau(Color(0.35, 0.75, 1.0, 0.75), 0.6, true)
-	# Posé sur un coin : c'est la silhouette que tout le monde reconnaît.
+	cube.mesh = KenneyDecor.modele(CAISSE, 1.2)
+	# Posée sur un coin : c'est la silhouette que tout le monde reconnaît.
 	cube.rotation = Vector3(deg_to_rad(35.0), 0.0, deg_to_rad(45.0))
 	racine.add_child(cube)
 	var signe := Label3D.new()
@@ -864,24 +871,8 @@ func _visuel_boite() -> Node3D:
 func _visuel_banane() -> Node3D:
 	var racine := Node3D.new()
 	var corps := MeshInstance3D.new()
-	corps.mesh = _forme("banane", func() -> Mesh:
-		var capsule := CapsuleMesh.new()
-		capsule.radius = 0.16
-		capsule.height = 0.8
-		return capsule)
-	corps.material_override = _materiau(Color(1.0, 0.86, 0.15))
-	corps.rotation = Vector3(0.0, 0.0, deg_to_rad(70.0))
+	corps.mesh = KenneyDecor.modele(BANANE, 1.4)
 	racine.add_child(corps)
-	var queue := MeshInstance3D.new()
-	queue.mesh = _forme("tige", func() -> Mesh:
-		var tige := CylinderMesh.new()
-		tige.top_radius = 0.04
-		tige.bottom_radius = 0.05
-		tige.height = 0.18
-		return tige)
-	queue.material_override = _materiau(Color(0.35, 0.25, 0.1))
-	queue.position = Vector3(0.36, 0.2, 0.0)
-	racine.add_child(queue)
 	return racine
 
 
@@ -925,7 +916,11 @@ func _visuel_carapace(genre: int) -> Node3D:
 func _visuel_fausse_boite() -> Node3D:
 	var racine := _visuel_boite()
 	var cube := racine.get_child(0) as MeshInstance3D
-	cube.material_override = _materiau(Color(1.0, 0.45, 0.4, 0.75), 0.6, true)
+	# La même caisse, rougie.
+	if _caisse_rougie == null:
+		_caisse_rougie = (cube.mesh.surface_get_material(0) as StandardMaterial3D).duplicate() as StandardMaterial3D
+		_caisse_rougie.albedo_color = Color(1.0, 0.5, 0.45)
+	cube.material_override = _caisse_rougie
 	var signe := racine.get_child(1) as Label3D
 	signe.text = "¿"
 	return racine

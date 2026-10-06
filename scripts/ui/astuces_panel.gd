@@ -16,6 +16,7 @@ const ACTIONS := {
 	&"steer_right": "Tourner à droite",
 	&"drift": "Sauter / déraper / figure",
 	&"use_item": "Objet (tenir : derrière soi) / klaxon",
+	&"regarder_derriere": "Regarder derrière",
 	&"pause": "Pause",
 }
 

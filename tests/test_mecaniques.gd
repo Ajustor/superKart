@@ -288,6 +288,20 @@ func test_la_voute_passe_au_dessus_des_karts_et_le_massif_au_dessus_de_la_voute(
 			"le massif enveloppe la voûte")
 
 
+func test_un_mur_prend_les_barrieres_kenney() -> void:
+	var bas := _poser(TrackWall.new(), 100.0, 40.0) as TrackWall
+	bas.cote = TrackWall.Cote.DROITE
+	bas.reconstruire()
+	assert_eq(bas.find_children("*", "StaticBody3D", true, false).size(), 1, "le mur reste solide")
+	assert_eq(bas.find_children("*", "MultiMeshInstance3D", true, false).size(), 2,
+		"des blocs de deux couleurs, en alternance")
+	var haut := _poser(TrackWall.new(), 200.0, 40.0) as TrackWall
+	haut.cote = TrackWall.Cote.GAUCHE
+	haut.hauteur = 4.0
+	haut.reconstruire()
+	assert_eq(haut.find_children("*", "MultiMeshInstance3D", true, false).size(), 1, "un mur de béton à bande")
+
+
 func test_le_tunnel_se_construit() -> void:
 	var tunnel := _poser(TrackTunnel.new(), 100.0, 60.0) as TrackTunnel
 	tunnel.reconstruire()

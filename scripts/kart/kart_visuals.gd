@@ -36,6 +36,8 @@ var _flammes: CPUParticles3D
 ## Le sillage d'un autre kart : des filets de vent qui filent autour de la
 ## caisse tant que la jauge d'aspiration monte.
 var _sillage: CPUParticles3D
+var _fumee_de_glisse: CPUParticles3D
+var _ombre: MeshInstance3D
 var _matiere_sillage: StandardMaterial3D
 var _matiere_flammes: StandardMaterial3D
 ## Rétréci par un éclair : la caisse et les roues à cette échelle, lissée.
@@ -44,6 +46,24 @@ var _echelle: float = 1.0
 var _position_caisse := Vector3.ZERO
 ## L'allure du modèle (ModeleKart), que le rétrécissement respecte.
 var _echelle_caisse := Vector3.ONE
+## Le pilote (Personnage) : son animation suit ce qui arrive au kart.
+## Un geste bref (objet lancé, choc) passe avant la conduite ; une figure et
+## un tête-à-queue passent avant tout ; l'arrivée dure jusqu'au bout.
+const ANIM_FIGURE := "jump"
+const ANIM_TETE_A_QUEUE := "fall"
+const GESTES := {
+	&"lancer": ["attack-melee-right", 0.4],
+	&"choc": ["emote-no", 0.65],
+}
+const FETES := {&"victoire": "emote-yes", &"defaite": "emote-no"}
+## Un choc contre un autre kart en deçà de cette force, en m/s, ne se voit pas.
+const CHOC_VISIBLE := 4.0
+const FONDU_PILOTE := 0.15
+var _pilote: Node
+var _anim_pilote: AnimationPlayer
+var _geste := ""
+var _geste_reste := 0.0
+var _fete := ""
 ## Sous étoile, une bulle aux couleurs qui tournent.
 var _aura: MeshInstance3D
 var _matiere_aura: StandardMaterial3D
@@ -67,12 +87,20 @@ func _ready() -> void:
 	_sparks.material_override = _spark_material
 	_sparks.emitting = false
 	_kart.figure.connect(func() -> void: _figure = 0.0)
+	_kart.geste.connect(_sur_geste)
+	_kart.bouscule.connect(func(force: float) -> void:
+		if force >= CHOC_VISIBLE:
+			_sur_geste(&"choc"))
 	_poussiere = _creer_poussiere()
 	add_child(_poussiere)
 	_flammes = _creer_flammes()
 	add_child(_flammes)
 	_sillage = _creer_sillage()
 	add_child(_sillage)
+	_fumee_de_glisse = _creer_fumee_de_glisse()
+	add_child(_fumee_de_glisse)
+	_ombre = _creer_ombre_de_contact()
+	add_child(_ombre)
 	_position_caisse = _body.position
 	_echelle_caisse = _body.scale
 
@@ -83,8 +111,11 @@ func _process(delta: float) -> void:
 	_update_sparks(motor)
 	# De la poussière sous les roues hors piste : on sent qu'on y perd.
 	_poussiere.emitting = motor.on_offroad and _kart.au_sol and absf(motor.speed) > 5.0
+	_fumee_de_glisse.emitting = motor.state == KartMotor.State.DRIFT and _kart.au_sol and absf(motor.speed) > 6.0
+	_ombre.visible = _kart.au_sol and not QualiteGraphique.ombres_portees(GameSettings.qualite)
 	_update_flammes(motor)
 	_update_sillage()
+	_update_pilote(motor, delta)
 	_update_taille(motor, delta)
 	_update_aura(motor)
 
@@ -103,7 +134,7 @@ func echantillons() -> Array[Node3D]:
 	matiere.albedo_color = Color(1, 0.8, 0.3, 0.35)
 	aura.material_override = matiere
 	liste.append(aura)
-	for source in [_sparks, _poussiere, _flammes, _sillage]:
+	for source in [_sparks, _poussiere, _flammes, _sillage, _fumee_de_glisse]:
 		# Sans émettre : une particule qui démarre hors de l'arbre lit sa
 		# position globale, qui n'existe pas encore. TourDeChauffe l'allume
 		# une fois posée.
@@ -206,38 +237,93 @@ func _update_sparks(motor: KartMotor) -> void:
 	_sparks.scale_amount_max = 1.2 * taille
 
 
-## Peu de particules, calculées par le processeur : quelques nuages beiges
-## qui montent et s'étalent derrière le kart. Assez pour se voir, pas assez
-## pour peser sur un téléphone.
+## Peu de particules, calculées par le processeur : des bouffées de fumée
+## (le sprite de fumée de Kenney) qui montent et s'étalent derrière le kart.
+## Assez pour se voir, pas assez pour peser sur un téléphone.
 func _creer_poussiere() -> CPUParticles3D:
+	return _creer_fumee(Color(0.72, 0.62, 0.45), 18, 0.6, Vector3(0.0, 0.15, 0.8), 1.4)
+
+
+## La fumée des pneus pendant une glisse : blanche, en bouffées qui
+## s'étalent derrière les roues arrière.
+func _creer_fumee_de_glisse() -> CPUParticles3D:
+	var p := _creer_fumee(Color(0.92, 0.92, 0.95), 16, 0.7, Vector3(0.0, 0.12, 0.75), 1.6)
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	p.emission_box_extents = Vector3(0.55, 0.05, 0.1)
+	p.initial_velocity_min = 0.8
+	p.initial_velocity_max = 1.8
+	return p
+
+
+const FUMEE := "res://assets/kenney/effets/fumee.png"
+static var _matiere_fumee: StandardMaterial3D
+
+
+func _creer_fumee(teinte: Color, nombre: int, duree: float, ou: Vector3, grandit: float) -> CPUParticles3D:
 	var p := CPUParticles3D.new()
 	p.emitting = false
-	p.amount = 18
-	p.lifetime = 0.6
-	p.position = Vector3(0.0, 0.15, 0.8)
+	p.amount = nombre
+	p.lifetime = duree
+	p.position = ou
 	p.direction = Vector3(0.0, 1.0, 1.0)
 	p.spread = 35.0
 	p.initial_velocity_min = 1.5
 	p.initial_velocity_max = 3.0
-	p.gravity = Vector3(0.0, -2.0, 0.0)
-	p.scale_amount_min = 0.35
-	p.scale_amount_max = 0.7
+	p.gravity = Vector3(0.0, 0.6, 0.0)
+	p.angle_min = 0.0
+	p.angle_max = 360.0
+	p.scale_amount_min = 0.5
+	p.scale_amount_max = 0.9
 	var courbe := Curve.new()
-	courbe.add_point(Vector2(0.0, 0.6))
-	courbe.add_point(Vector2(1.0, 1.4))
+	courbe.add_point(Vector2(0.0, 0.5))
+	courbe.add_point(Vector2(1.0, grandit))
 	p.scale_amount_curve = courbe
-	var forme := SphereMesh.new()
-	forme.radius = 0.25
-	forme.height = 0.5
-	forme.radial_segments = 6
-	forme.rings = 3
-	var matiere := StandardMaterial3D.new()
-	matiere.albedo_color = Color(0.72, 0.62, 0.45, 0.55)
-	matiere.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	matiere.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	forme.material = matiere
+	# Elle se dissipe : opaque à la naissance, transparente à la fin.
+	var fondu := Gradient.new()
+	fondu.set_color(0, Color(teinte, 0.7))
+	fondu.set_color(1, Color(teinte, 0.0))
+	p.color_ramp = fondu
+	var forme := QuadMesh.new()
+	forme.size = Vector2(0.9, 0.9)
+	if _matiere_fumee == null:
+		_matiere_fumee = StandardMaterial3D.new()
+		_matiere_fumee.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_matiere_fumee.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_matiere_fumee.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+		_matiere_fumee.vertex_color_use_as_albedo = true
+		_matiere_fumee.albedo_texture = load(FUMEE)
+		_matiere_fumee.cull_mode = BaseMaterial3D.CULL_DISABLED
+	forme.material = _matiere_fumee
 	p.mesh = forme
 	return p
+
+
+## L'ombre de contact : une tache sombre et floue sous le kart, quand le
+## soleil ne projette pas d'ombre (qualité moyenne ou basse, les téléphones) :
+## sans elle, le kart flotte au-dessus de la route.
+func _creer_ombre_de_contact() -> MeshInstance3D:
+	var tache := MeshInstance3D.new()
+	var forme := PlaneMesh.new()
+	forme.size = Vector2(1.9, 2.8)
+	tache.mesh = forme
+	var degrade := Gradient.new()
+	degrade.set_color(0, Color(0.0, 0.0, 0.0, 0.55))
+	degrade.set_color(1, Color(0.0, 0.0, 0.0, 0.0))
+	var texture := GradientTexture2D.new()
+	texture.gradient = degrade
+	texture.fill = GradientTexture2D.FILL_RADIAL
+	texture.fill_from = Vector2(0.5, 0.5)
+	texture.fill_to = Vector2(0.5, 0.0)
+	texture.width = 64
+	texture.height = 64
+	var matiere := StandardMaterial3D.new()
+	matiere.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	matiere.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	matiere.albedo_texture = texture
+	tache.material_override = matiere
+	tache.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	tache.position = Vector3(0.0, 0.04, 0.0)
+	return tache
 
 
 ## Des flammes aux pots d'échappement pendant un turbo, de la couleur de sa
@@ -321,3 +407,38 @@ func _creer_sillage() -> CPUParticles3D:
 	forme.material = _matiere_sillage
 	p.mesh = forme
 	return p
+
+
+func _sur_geste(quoi: StringName) -> void:
+	if FETES.has(quoi):
+		_fete = FETES[quoi]
+	elif GESTES.has(quoi):
+		_geste = GESTES[quoi][0]
+		_geste_reste = GESTES[quoi][1]
+
+
+## L'animation du pilote : retrouvée quand le pilote change (le garage, le
+## salon), puis choisie à chaque image, en fondu.
+func _update_pilote(motor: KartMotor, delta: float) -> void:
+	var pilote := _kart.get_node_or_null("Body/Pilote")
+	if pilote != _pilote:
+		_pilote = pilote
+		_anim_pilote = pilote.find_child("AnimationPlayer", true, false) as AnimationPlayer if pilote != null else null
+	if _anim_pilote == null:
+		return
+	_geste_reste = maxf(_geste_reste - delta, 0.0)
+	var voulue: String = Personnage.ANIMATION
+	if motor.state == KartMotor.State.STUNNED:
+		voulue = ANIM_TETE_A_QUEUE
+	elif _figure >= 0.0:
+		voulue = ANIM_FIGURE
+	elif _geste_reste > 0.0:
+		voulue = _geste
+	elif _fete != "":
+		voulue = _fete
+	if _anim_pilote.current_animation != voulue and _anim_pilote.has_animation(voulue):
+		var anim := _anim_pilote.get_animation(voulue)
+		# Ce qui dure se répète ; un geste se joue une fois.
+		if voulue == ANIM_TETE_A_QUEUE or voulue == _fete:
+			anim.loop_mode = Animation.LOOP_LINEAR
+		_anim_pilote.play(voulue, FONDU_PILOTE)

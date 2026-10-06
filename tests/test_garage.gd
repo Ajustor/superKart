@@ -5,14 +5,13 @@ extends GutTest
 
 
 func _couleur_de(kart: Node) -> Color:
-	var plancher := kart.get_node("Body/Floor") as MeshInstance3D
-	return (plancher.get_surface_override_material(0) as StandardMaterial3D).albedo_color
+	return ModeleKart.teinte_de(kart as Node3D)
 
 
 func test_chaque_modele_est_complet() -> void:
 	for i in ModeleKart.nombre():
 		var m := ModeleKart.modele(i)
-		for cle in ["nom", "description", "vitesse", "acceleration", "virage", "glisse", "poids", "caisse"]:
+		for cle in ["nom", "description", "vitesse", "acceleration", "virage", "glisse", "poids"]:
 			assert_true(m.has(cle), "%s : %s" % [ModeleKart.nom(i), cle])
 		assert_eq(ModeleKart.jauges(i).size(), ModeleKart.JAUGES.size())
 	assert_eq(ModeleKart.NOMS_COULEURS.size(), ModeleKart.COULEURS.size())
@@ -74,7 +73,7 @@ func test_la_course_habille_le_joueur_et_colore_l_ia() -> void:
 	var joueur := session.get_node(session.kart_paths[0]) as Kart
 	assert_almost_eq(joueur.stats.max_speed, KartStats.new().max_speed * ModeleKart.modele(ModeleKart.FUSEE).vitesse, 0.01)
 	assert_eq(_couleur_de(joueur), ModeleKart.couleur(3))
-	assert_eq(joueur.get_node("Body").scale, ModeleKart.modele(ModeleKart.FUSEE).caisse)
+	assert_not_null(joueur.get_node_or_null("Body/Kenney"), "le kart Kenney")
 	var vues := [ModeleKart.couleur(3)]
 	for chemin in session.kart_paths.slice(1):
 		var c := _couleur_de(session.get_node(chemin))
@@ -87,8 +86,8 @@ func test_le_choix_du_garage_survit_au_redemarrage() -> void:
 	var reglages: Node = load("res://scripts/core/game_settings.gd").new()
 	reglages.chemin = "user://test_garage.cfg"
 	reglages.course.modele = ModeleKart.PLUME
-	reglages.course.roues = ModeleKart.ROLLER
-	reglages.course.aileron = ModeleKart.AILETTES
+	reglages.course.roues = ModeleKart.LEGERES
+	reglages.course.aileron = ModeleKart.BECQUET
 	reglages.course.couleur = 6
 	reglages.sauver()
 	reglages.free()
@@ -96,8 +95,8 @@ func test_le_choix_du_garage_survit_au_redemarrage() -> void:
 	relus.chemin = "user://test_garage.cfg"
 	relus.charger()
 	assert_eq(relus.course.modele, ModeleKart.PLUME)
-	assert_eq(relus.course.roues, ModeleKart.ROLLER)
-	assert_eq(relus.course.aileron, ModeleKart.AILETTES)
+	assert_eq(relus.course.roues, ModeleKart.LEGERES)
+	assert_eq(relus.course.aileron, ModeleKart.BECQUET)
 	assert_eq(relus.course.couleur, 6)
 	relus.free()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_garage.cfg"))
@@ -107,11 +106,11 @@ func test_le_salon_transporte_les_karts() -> void:
 	var l := Lobby.new()
 	l.ajouter(1, "Hôte")
 	l.ajouter(42, "Client")
-	l.choisir_vehicule(42, ModeleKart.COSTAUD, 4, Personnage.CHEVALIER, ModeleKart.MONSTRE, ModeleKart.VOILE)
+	l.choisir_vehicule(42, ModeleKart.COSTAUD, 4, Personnage.THEO, ModeleKart.MONSTRE, ModeleKart.BECQUET)
 	var copie := Lobby.new()
 	copie.depuis_liste(l.en_liste())
-	assert_eq(copie.vehicule(42), [ModeleKart.COSTAUD, 4, Personnage.CHEVALIER, ModeleKart.MONSTRE, ModeleKart.VOILE])
-	assert_eq(copie.vehicule(1), [ModeleKart.STANDARD, 0, Personnage.CHEVALIER, ModeleKart.ROUES_STANDARD,
+	assert_eq(copie.vehicule(42), [ModeleKart.COSTAUD, 4, Personnage.THEO, ModeleKart.MONSTRE, ModeleKart.BECQUET])
+	assert_eq(copie.vehicule(1), [ModeleKart.STANDARD, 0, Personnage.THEO, ModeleKart.ROUES_STANDARD,
 		ModeleKart.BECQUET], "sans choix, le kart d'origine")
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 2
@@ -120,7 +119,7 @@ func test_le_salon_transporte_les_karts() -> void:
 			assert_eq(place.modele, ModeleKart.COSTAUD)
 			assert_eq(place.couleur, 4)
 			assert_eq(place.roues, ModeleKart.MONSTRE)
-			assert_eq(place.aileron, ModeleKart.VOILE)
+			assert_eq(place.aileron, ModeleKart.BECQUET)
 
 
 func test_en_reseau_chacun_roule_dans_son_kart() -> void:
@@ -131,7 +130,7 @@ func test_en_reseau_chacun_roule_dans_son_kart() -> void:
 			plan.append({gid = gid, peer = 1, nom = "Hôte", niveau_ia = 0, modele = ModeleKart.PLUME, couleur = 2})
 		elif gid == 0:
 			plan.append({gid = gid, peer = 42, nom = "Client", niveau_ia = 0, modele = ModeleKart.COSTAUD, couleur = 5,
-				roues = ModeleKart.SLICKS, aileron = ModeleKart.GRAND_AILERON})
+				roues = ModeleKart.SLICKS, aileron = ModeleKart.BECQUET})
 		else:
 			plan.append({gid = gid, peer = 0, nom = Lobby.NOMS_IA[niveau - 1], niveau_ia = niveau})
 			niveau += 1
@@ -140,7 +139,7 @@ func test_en_reseau_chacun_roule_dans_son_kart() -> void:
 	var moi := session.get_node(session.kart_paths[0]) as Kart
 	assert_eq(_couleur_de(moi), ModeleKart.couleur(5))
 	assert_almost_eq(moi.stats.poids,
-		ModeleKart.facteur("poids", ModeleKart.COSTAUD, ModeleKart.SLICKS, ModeleKart.GRAND_AILERON), 0.001)
+		ModeleKart.facteur("poids", ModeleKart.COSTAUD, ModeleKart.SLICKS, ModeleKart.BECQUET), 0.001)
 	var hote: Kart = null
 	for k in session.kart_paths.size():
 		if session.noms_reels[k] == "Hôte":
@@ -188,10 +187,9 @@ func test_chaque_piece_hors_standard_gagne_et_perd_quelque_chose() -> void:
 
 func test_les_pieces_se_multiplient() -> void:
 	var base := KartStats.new()
-	var s := ModeleKart.stats(base, ModeleKart.FUSEE, ModeleKart.SLICKS, ModeleKart.GRAND_AILERON)
-	var attendu := 1.02 * 1.008 * 1.003
-	assert_almost_eq(s.max_speed, base.max_speed * attendu, 0.001)
-	assert_almost_eq(s.acceleration, base.acceleration * 0.8 * 0.95 * 0.95, 0.001)
+	var s := ModeleKart.stats(base, ModeleKart.FUSEE, ModeleKart.SLICKS, ModeleKart.BECQUET)
+	assert_almost_eq(s.max_speed, base.max_speed * 1.02 * 1.008, 0.001)
+	assert_almost_eq(s.acceleration, base.acceleration * 0.8 * 0.95, 0.001)
 
 
 func test_les_roues_monstre_tiennent_le_hors_piste() -> void:
@@ -222,7 +220,7 @@ func test_chaque_combinaison_garde_la_parabole_des_sauts() -> void:
 
 func test_les_jauges_suivent_la_combinaison() -> void:
 	var standard := ModeleKart.jauges(ModeleKart.STANDARD)
-	var tout_terrain := ModeleKart.jauges(ModeleKart.BUGGY, ModeleKart.MONSTRE, ModeleKart.VOILE)
+	var tout_terrain := ModeleKart.jauges(ModeleKart.COSTAUD, ModeleKart.MONSTRE, ModeleKart.BECQUET)
 	assert_eq(standard.size(), ModeleKart.JAUGES.size())
 	var t := ModeleKart.CLES.find("terrain")
 	assert_gt(tout_terrain[t], standard[t])
@@ -235,25 +233,46 @@ func test_les_jauges_suivent_la_combinaison() -> void:
 
 func test_l_allure_suit_les_pieces() -> void:
 	var kart: Node3D = (load("res://scenes/kart/kart.tscn") as PackedScene).instantiate()
-	ModeleKart.habiller(kart, ModeleKart.FUSEE, ModeleKart.couleur(1), ModeleKart.MONSTRE, ModeleKart.GRAND_AILERON)
-	var pneu := kart.get_node("Wheels/WheelFL/Tire") as MeshInstance3D
-	var monstre := pneu.mesh
+	ModeleKart.habiller(kart, ModeleKart.FUSEE, ModeleKart.couleur(1), ModeleKart.MONSTRE)
+	var jante := kart.get_node("Wheels/WheelFL/Jante") as MeshInstance3D
+	var monstre := jante.mesh
 	var hauteur_monstre := (kart.get_node("Wheels/WheelFL") as Node3D).position.y
-	assert_almost_eq((kart.get_node("Suspension") as KartSuspension).wheel_radius, 0.24, 0.001)
-	var aileron := (kart.get_node("Body/Aileron") as MeshInstance3D).mesh
-	assert_not_null(aileron)
-	assert_not_null(kart.get_node("Body/Carrosserie"))
+	assert_almost_eq((kart.get_node("Suspension") as KartSuspension).wheel_radius,
+		float(ModeleKart.roues(ModeleKart.MONSTRE).rayon), 0.001)
+	assert_false((kart.get_node("Wheels/WheelFL/Tire") as Node3D).visible, "les roues d'origine sont cachées")
+	assert_false((kart.get_node("Body/Floor") as Node3D).visible, "la caisse d'origine aussi")
 	# On rhabille : rien ne s'empile, tout se remplace.
 	ModeleKart.habiller(kart, ModeleKart.STANDARD, ModeleKart.couleur(2))
-	assert_ne(pneu.mesh, monstre)
+	assert_ne(jante.mesh, monstre)
 	assert_lt((kart.get_node("Wheels/WheelFL") as Node3D).position.y, hauteur_monstre,
 		"une roue plus petite se monte plus bas")
-	assert_ne((kart.get_node("Body/Aileron") as MeshInstance3D).mesh, aileron)
-	var ailerons := kart.get_node("Body").get_children().filter(func(n: Node) -> bool:
-		return n.name.begins_with("Aileron"))
-	assert_eq(ailerons.size(), 1)
+	assert_eq(kart.get_node("Body").get_children().filter(func(n: Node) -> bool:
+		return n.name.begins_with("Kenney")).size(), 1)
+	assert_eq(kart.get_node("Wheels/WheelFL").get_children().filter(func(n: Node) -> bool:
+		return n.name.begins_with("Jante")).size(), 1)
 	assert_eq(_couleur_de(kart), ModeleKart.couleur(2), "repeint, même après un premier habillage")
 	kart.free()
+
+
+func test_les_roues_touchent_le_sol() -> void:
+	# Pendues sous leur ancre de la longueur du ressort au repos, les roues
+	# de chaque train touchent le sol (y = 0) ; la caisse Kenney suit.
+	var kart: Node3D = (load("res://scenes/kart/kart.tscn") as PackedScene).instantiate()
+	var suspension := kart.get_node("Suspension") as KartSuspension
+	var pendant := suspension.rest_length - suspension.travel * 0.5
+	for r in ModeleKart.nombre_roues():
+		ModeleKart.habiller(kart, ModeleKart.STANDARD, ModeleKart.couleur(0), r)
+		var rayon: float = ModeleKart.roues(r).rayon
+		for roue in kart.get_node("Wheels").get_children():
+			assert_almost_eq((roue as Node3D).position.y - pendant, rayon, 0.001, ModeleKart.roues(r).nom)
+		var chassis := kart.get_node("Body/Kenney") as Node3D
+		assert_almost_eq(chassis.position.y + ModeleKart.RAYON_KENNEY * ModeleKart.ECHELLE, rayon, 0.001)
+	kart.free()
+
+
+func test_la_peinture_se_partage_par_couleur() -> void:
+	assert_same(ModeleKart.peinture(ModeleKart.couleur(3)), ModeleKart.peinture(ModeleKart.couleur(3)))
+	assert_ne(ModeleKart.peinture(ModeleKart.couleur(3)), ModeleKart.peinture(ModeleKart.couleur(4)))
 
 
 func test_l_ia_court_dans_des_karts_varies() -> void:

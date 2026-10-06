@@ -69,6 +69,11 @@ func sous_la_voute(distance: float, longueur_tour: float) -> bool:
 	return couvre(distance, longueur_tour)
 
 
+## Les parois font corps avec la voûte : pas de barrières Kenney.
+func _en_barrieres() -> bool:
+	return false
+
+
 func _construire(c: TrackCurve, racine: Node3D) -> void:
 	super(c, racine)
 	var roche := StandardMaterial3D.new()

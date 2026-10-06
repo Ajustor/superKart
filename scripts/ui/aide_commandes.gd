@@ -16,6 +16,7 @@ const ACTIONS := [
 	[&"steer_right", "Tourner à droite", ""],
 	[&"drift", "Sauter, déraper", "en l'air : une figure, et un turbo à l'atterrissage"],
 	[&"use_item", "Lancer l'objet", "maintenir : le garder derrière soi ; sans objet : klaxon"],
+	[&"regarder_derriere", "Regarder derrière", "tant qu'on la tient"],
 	[&"pause", "Pause", ""],
 ]
 

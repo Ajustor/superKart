@@ -18,6 +18,11 @@ const NOM_CORPS := "RoadBody"
 const NOM_BORDURES := "Bordures"
 const NOM_TABLIER := "Tablier"
 const NOM_MARQUAGE := "Marquage"
+const NOM_RIVES := "Rives"
+## Les bordures rouges et blanches : un mètre de large sur chaque rive.
+const LARGEUR_BORDURE := 1.0
+## Le jaune des lignes de rive, celui des routes de Kenney.
+const COULEUR_RIVE := Color("ffcf60")
 
 ## L'allure de la chaussée.
 enum Motif {
@@ -93,7 +98,8 @@ const ARC_EN_CIEL: PackedColorArray = [
 		marquage = valeur
 		_reconstruire_si_montee()
 
-@export var couleur_bordure: Color = Color(0.85, 0.12, 0.12):
+## Par défaut, le rouge des bordures du Racing Kit de Kenney.
+@export var couleur_bordure: Color = Color("d4564e"):
 	set(valeur):
 		couleur_bordure = valeur
 		_reconstruire_si_montee()
@@ -180,9 +186,37 @@ func _reconstruire() -> void:
 	track_curve = TrackCurve.new(curve, half_width)
 
 	var arc_en_ciel := motif == Motif.ARC_EN_CIEL
-	var maillage := TrackBuilder.build(track_curve, segment_length, trous(),
-		ARC_EN_CIEL if arc_en_ciel else PackedColorArray())
 
+	var corps := StaticBody3D.new()
+	corps.name = NOM_CORPS
+	var forme := CollisionShape3D.new()
+	# La collision n'a que faire des couleurs : les sept bandes de
+	# l'arc-en-ciel y feraient sept fois plus de triangles à tester, à chaque
+	# roue et chaque image. Elle est d'un seul tenant, tous mondes confondus.
+	forme.shape = TrackBuilder.build(track_curve, segment_length, trous()).create_trimesh_shape()
+	corps.add_child(forme)
+	add_child(corps)
+
+	# Ce qui se voit de la route, monde par monde : chacun sur son calque.
+	# Sans portail, une seule portion, la route entière, sur le calque commun.
+	for portion in portions_visibles():
+		_dessiner_la_route(portion.trous, portion.calque, portion.suffixe, arc_en_ciel)
+
+	# Les éléments posés sur le tracé le suivent : retoucher la courbe
+	# déplace les murs, les tremplins et les zones avec elle.
+	for element in elements():
+		element.reconstruire()
+
+	if Engine.is_editor_hint():
+		update_configuration_warnings()
+
+
+## La route visible d'une portion : la chaussée, son dessous, le marquage,
+## les rives et les bordures, sans ce qui est dans `sans` (les trous, et les
+## autres mondes), sur le calque `calque`.
+func _dessiner_la_route(sans: Array[Vector2], calque: int, suffixe: String, arc_en_ciel: bool) -> void:
+	var maillage := TrackBuilder.build(track_curve, segment_length, sans,
+		ARC_EN_CIEL if arc_en_ciel else PackedColorArray())
 	var materiau := StandardMaterial3D.new()
 	materiau.albedo_color = road_color
 	if arc_en_ciel:
@@ -194,32 +228,11 @@ func _reconstruire() -> void:
 		materiau.emission_enabled = true
 		materiau.emission = Color(0.22, 0.22, 0.3)
 	else:
-		_asphalte = materiau
-		detailler_l_asphalte(_detail_asphalte)
+		Track.peindre_l_asphalte(materiau)
 	maillage.surface_set_material(0, materiau)
-
-	var affichage := MeshInstance3D.new()
-	affichage.name = NOM_MAILLAGE
-	affichage.mesh = maillage
-	add_child(affichage)
-
-	var corps := StaticBody3D.new()
-	corps.name = NOM_CORPS
-	var forme := CollisionShape3D.new()
-	# La collision n'a que faire des couleurs : les sept bandes de
-	# l'arc-en-ciel y feraient sept fois plus de triangles à tester, à chaque
-	# roue et chaque image.
-	var pour_la_collision := maillage
-	if arc_en_ciel:
-		pour_la_collision = TrackBuilder.build(track_curve, segment_length, trous())
-	forme.shape = pour_la_collision.create_trimesh_shape()
-	corps.add_child(forme)
-	add_child(corps)
+	_poser_la_partie(NOM_MAILLAGE + suffixe, maillage, null, calque)
 
 	# Le dessous de la route, pour qu'un pont se voie d'en bas.
-	var tablier := MeshInstance3D.new()
-	tablier.name = NOM_TABLIER
-	tablier.mesh = TrackBuilder.tablier(track_curve, trous(), 0.9, segment_length)
 	var beton := StandardMaterial3D.new()
 	beton.vertex_color_use_as_albedo = true
 	beton.albedo_color = road_color.lerp(Color(0.5, 0.48, 0.46), 0.5) if not arc_en_ciel else Color(0.3, 0.3, 0.42)
@@ -227,37 +240,89 @@ func _reconstruire() -> void:
 	# Les deux faces : vue de côté ou d'en dessous, la dalle doit rester
 	# pleine, et Godot retourne la normale des faces arrière.
 	beton.cull_mode = BaseMaterial3D.CULL_DISABLED
-	tablier.material_override = beton
-	add_child(tablier)
+	_poser_la_partie(NOM_TABLIER + suffixe, TrackBuilder.tablier(track_curve, sans, 0.9, segment_length), beton, calque)
 
 	if marquage and not arc_en_ciel:
-		var ligne_centrale := MeshInstance3D.new()
-		ligne_centrale.name = NOM_MARQUAGE
-		ligne_centrale.mesh = TrackBuilder.marquage(track_curve, trous())
 		var peinture_blanche := StandardMaterial3D.new()
 		peinture_blanche.albedo_color = Color(0.92, 0.92, 0.88)
 		peinture_blanche.roughness = 0.6
-		ligne_centrale.material_override = peinture_blanche
-		ligne_centrale.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(ligne_centrale)
+		_poser_la_partie(NOM_MARQUAGE + suffixe, TrackBuilder.marquage(track_curve, sans),
+			peinture_blanche, calque, false)
+		# Les lignes de rive jaunes des routes de Kenney, en dedans des
+		# bordures quand il y en a.
+		var jaune := StandardMaterial3D.new()
+		jaune.albedo_color = COULEUR_RIVE
+		jaune.roughness = 0.6
+		_poser_la_partie(NOM_RIVES + suffixe, TrackBuilder.lignes_de_rive(track_curve, sans,
+			LARGEUR_BORDURE + 0.25 if bordures else 0.35), jaune, calque, false)
 
 	if bordures:
-		var bandes := MeshInstance3D.new()
-		bandes.name = NOM_BORDURES
-		bandes.mesh = TrackBuilder.bordures(track_curve, trous(), 1.0, 3.0,
-			couleur_bordure, couleur_bordure_bis)
 		var peinture := StandardMaterial3D.new()
 		peinture.vertex_color_use_as_albedo = true
-		bandes.material_override = peinture
-		add_child(bandes)
+		_poser_la_partie(NOM_BORDURES + suffixe, TrackBuilder.bordures(track_curve, sans, LARGEUR_BORDURE, 1.5,
+			couleur_bordure, couleur_bordure_bis), peinture, calque)
 
-	# Les éléments posés sur le tracé le suivent : retoucher la courbe
-	# déplace les murs, les tremplins et les zones avec elle.
-	for element in elements():
-		element.reconstruire()
 
-	if Engine.is_editor_hint():
-		update_configuration_warnings()
+func _poser_la_partie(nom: String, maillage: Mesh, materiau: Material, calque: int, ombre := true) -> void:
+	var partie := MeshInstance3D.new()
+	partie.name = nom
+	partie.mesh = maillage
+	if materiau != null:
+		partie.material_override = materiau
+	partie.layers = calque
+	if not ombre:
+		partie.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(partie)
+
+
+## Les portions de route à dessiner chacune à part : une par monde (voir
+## TrackPortail.nouveau_monde), sur le calque de ce monde. La route d'au-delà
+## d'un portail n'est dessinée que pour qui est déjà de l'autre côté — ou la
+## caméra du portail : vue d'ici, elle s'arrête au portail, et l'on ne voit la
+## suite qu'à travers lui. Chaque portion : {trous, calque, suffixe}.
+func portions_visibles() -> Array[Dictionary]:
+	var liste_mondes := mondes()
+	if Engine.is_editor_hint() or liste_mondes.is_empty():
+		return [{trous = trous(), calque = CALQUE_COMMUN, suffixe = ""}]
+	# Où commence et finit chaque monde, au mètre près : le tracé, parcouru
+	# d'un bout à l'autre (une course linéaire range sa grille dans le monde
+	# du départ, voir _dernier_franchi).
+	var etendues := {}
+	var longueur := track_curve.length
+	var pas := 1.0
+	var d := 0.0
+	var courant: TrackPortail = null
+	var debut_courant := 0.0
+	while d < longueur:
+		var ici := monde_en(minf(d + pas * 0.5, longueur - 0.01))
+		if ici != courant:
+			if courant != null:
+				etendues[courant].append(Vector2(debut_courant, d))
+			courant = ici
+			debut_courant = d
+			if not etendues.has(courant):
+				etendues[courant] = []
+		d += pas
+	etendues[courant].append(Vector2(debut_courant, longueur))
+	var portions: Array[Dictionary] = []
+	var n := 0
+	for monde in liste_mondes:
+		if not etendues.has(monde):
+			continue
+		var sans := trous()
+		# Tout ce qui n'est pas à ce monde est un « trou » pour lui.
+		var curseur := 0.0
+		for e: Vector2 in etendues[monde]:
+			if e.x > curseur:
+				sans.append(Vector2(curseur, e.x))
+			curseur = e.y
+		if curseur < longueur:
+			sans.append(Vector2(curseur, longueur))
+		var calque := calque_du_monde(monde)
+		portions.append({trous = sans, calque = calque if calque != 0 else CALQUE_COMMUN,
+			suffixe = "" if n == 0 else "_%d" % n})
+		n += 1
+	return portions
 
 
 func _physics_process(delta: float) -> void:
@@ -398,10 +463,31 @@ func masque_pour(monde: TrackPortail) -> int:
 ## se reconstruit : ses maillages tout neufs naissent sur le calque commun.
 func ranger_les_mondes() -> void:
 	_mondes_ranges = true
+	var reclames := {}
 	for monde in mondes():
 		var calque := calque_du_monde(monde)
 		for noeud in monde.decors_du_monde():
 			poser_calque(noeud, calque)
+			reclames[noeud] = true
+	if mondes().is_empty():
+		return
+	# Ce qui est posé sur la route (murs, tremplins, plaques…) appartient au
+	# monde où il est : comme la route (portions_visibles), on ne le voit
+	# d'un autre monde qu'à travers le portail.
+	for element in elements():
+		if element is TrackPortail or reclames.has(element):
+			continue
+		var calque := calque_a(element.debut + minf(element.longueur * 0.5, 1.0))
+		if calque != 0:
+			poser_calque(element, calque)
+
+
+## Le calque du monde à cette distance, 0 s'il n'y a pas de mondes : pour
+## ranger ce qui y est posé (boîtes à objets, karts).
+func calque_a(distance: float) -> int:
+	if mondes().is_empty() or track_curve == null:
+		return 0
+	return calque_du_monde(monde_en(wrapf(distance, 0.0, track_curve.length)))
 
 
 static func poser_calque(noeud: Node, calque: int) -> void:
@@ -446,65 +532,11 @@ func _process(_delta: float) -> void:
 	montrer_le_monde_de(monde_en(ici), camera)
 
 
-var _asphalte: StandardMaterial3D
-## Le grain du bitume coûte trois lectures de texture par pixel de route,
-## deux fois : QualiteGraphique ne le laisse qu'en qualité haute.
-var _detail_asphalte := true
-
-
-## Met ou retire le grain du bitume (voir habiller_l_asphalte).
-func detailler_l_asphalte(actif: bool) -> void:
-	_detail_asphalte = actif
-	if _asphalte == null:
-		return
-	if actif:
-		Track.habiller_l_asphalte(_asphalte)
-	else:
-		_asphalte.albedo_texture = null
-		_asphalte.normal_enabled = false
-		_asphalte.uv1_triplanar = false
-		_asphalte.roughness = 0.85
-
-
-static var _grain: NoiseTexture2D
-static var _relief: NoiseTexture2D
-
-
-## Donne du grain à un bitume uni : une texture de bruit qui le tachète, un
-## relief fin qui accroche la lumière rasante, un peu de reflet. Projetée en
-## coordonnées du monde (la route n'a pas d'UV), et partagée par tous les
-## circuits : deux petites textures, faites une fois.
-static func habiller_l_asphalte(materiau: StandardMaterial3D) -> void:
-	if _grain == null:
-		var bruit := FastNoiseLite.new()
-		bruit.noise_type = FastNoiseLite.TYPE_SIMPLEX
-		bruit.frequency = 0.09
-		bruit.fractal_octaves = 3
-		var rampe := Gradient.new()
-		rampe.set_color(0, Color(0.8, 0.8, 0.8))
-		rampe.set_color(1, Color(1.05, 1.05, 1.05))
-		_grain = NoiseTexture2D.new()
-		_grain.width = 256
-		_grain.height = 256
-		_grain.seamless = true
-		_grain.noise = bruit
-		_grain.color_ramp = rampe
-		_relief = NoiseTexture2D.new()
-		_relief.width = 256
-		_relief.height = 256
-		_relief.seamless = true
-		_relief.as_normal_map = true
-		_relief.bump_strength = 3.0
-		_relief.noise = bruit
-	materiau.albedo_texture = _grain
-	materiau.normal_enabled = true
-	materiau.normal_texture = _relief
-	materiau.normal_scale = 0.6
-	materiau.uv1_triplanar = true
-	materiau.uv1_world_triplanar = true
-	materiau.uv1_scale = Vector3.ONE * 0.18
-	materiau.roughness = 0.78
-	materiau.metallic_specular = 0.35
+## Le bitume, à la manière des routes de Kenney : uni, mat, sans grain. Les
+## couleurs franches et les lignes de rive font le reste.
+static func peindre_l_asphalte(materiau: StandardMaterial3D) -> void:
+	materiau.roughness = 0.9
+	materiau.metallic_specular = 0.2
 
 
 ## Les murs, tremplins et zones hors-piste posés sur ce circuit. Gardés en
@@ -713,8 +745,13 @@ func _reconstruire_si_montee() -> void:
 
 
 func _vider() -> void:
-	for nom in [NOM_MAILLAGE, NOM_CORPS, NOM_BORDURES, NOM_TABLIER, NOM_MARQUAGE]:
-		var ancien := get_node_or_null(NodePath(nom))
+	var noms := [NOM_MAILLAGE, NOM_CORPS, NOM_BORDURES, NOM_TABLIER, NOM_MARQUAGE, NOM_RIVES]
+	for enfant in get_children():
+		var nom := String(enfant.name)
+		var ancien: Node = null
+		for prefixe in noms:
+			if nom == prefixe or nom.begins_with(prefixe + "_"):
+				ancien = enfant
 		if ancien != null:
 			# Retiré tout de suite plutôt que seulement mis en file : sinon le
 			# nom reste pris et Godot rebaptise le nouveau « RoadMesh2 ».

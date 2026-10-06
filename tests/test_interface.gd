@@ -69,6 +69,26 @@ func test_la_camera_tourne_a_l_arrivee_du_joueur() -> void:
 	assert_gt(camera.orbite, 0.0)
 
 
+func test_on_regarde_derriere_tant_qu_on_tient_la_touche() -> void:
+	var course := RaceLauncher.monter(RaceSetup.new())
+	var session := course.get_node("Session") as RaceSession
+	session.duree_decompte = 0.0
+	add_child_autofree(course)
+	await wait_until(func() -> bool: return session.en_course, 3.0)
+	var camera := course.get_node("ChaseCamera") as ChaseCamera
+	var kart := session.entries[0].kart
+	await wait_physics_frames(3)
+	var avant := Vector3(sin(kart.motor.velocity_dir), 0.0, -cos(kart.motor.velocity_dir))
+	assert_lt((camera.global_position - kart.global_position).dot(avant), 0.0, "la caméra suit, derrière")
+	Input.action_press(&"regarder_derriere")
+	await wait_physics_frames(2)
+	assert_gt((camera.global_position - kart.global_position).dot(avant), 0.0, "on regarde derrière : elle passe devant")
+	assert_lt(-camera.global_basis.z.dot(avant), 0.0, "tournée vers l'arrière")
+	Input.action_release(&"regarder_derriere")
+	await wait_physics_frames(2)
+	assert_lt((camera.global_position - kart.global_position).dot(avant), 0.0, "on lâche : elle revient derrière")
+
+
 # --- Version affichée au menu --------------------------------------------------------
 
 func test_le_menu_affiche_la_version_en_bas_a_gauche() -> void:

@@ -34,10 +34,13 @@ static func build(track: TrackCurve, segment_length: float = 2.0,
 	return outil.commit()
 
 
-## Des bordures rouges et blanches sur chaque rive, comme sur un vrai circuit :
-## des bandes de `largeur` mètres posées sur le bord de la chaussée, qui
-## changent de couleur tous les `pas` mètres. Juste au-dessus du bitume, sans
-## collision : elles se voient, elles ne se sentent pas.
+## Des bordures rouges et blanches sur chaque rive, comme sur un vrai circuit
+## et sur les routes de Kenney : des blocs de `largeur` mètres posés sur le
+## bord de la chaussée, bombés (plus hauts au milieu), qui changent de couleur
+## tous les `pas` mètres. Sans collision : elles se voient, elles ne se
+## sentent pas.
+const BOMBE_DES_BORDURES := 0.07
+
 static func bordures(track: TrackCurve, trous: Array[Vector2], largeur: float, pas: float,
 		couleur: Color, couleur_bis: Color) -> ArrayMesh:
 	var outil := SurfaceTool.new()
@@ -53,13 +56,47 @@ static func bordures(track: TrackCurve, trous: Array[Vector2], largeur: float, p
 			outil.set_color(couleur if i % 2 == 0 else couleur_bis)
 			for cote: float in [-1.0, 1.0]:
 				var dedans := (demi - largeur) * cote
+				var milieu := (demi - largeur * 0.5) * cote
 				var dehors := demi * cote
 				var a0 := _sur_la_route(track, d0, dedans)
+				var m0 := _bord(track, d0, milieu, BOMBE_DES_BORDURES)
 				var b0 := _sur_la_route(track, d0, dehors)
 				var a1 := _sur_la_route(track, d1, dedans)
+				var m1 := _bord(track, d1, milieu, BOMBE_DES_BORDURES)
 				var b1 := _sur_la_route(track, d1, dehors)
 				# Toujours dans le même sens de rotation, quel que soit le côté :
 				# vues d'en haut, les deux rives doivent faire face au ciel.
+				if cote < 0.0:
+					_quad(outil, m0, m1, a0, a1)
+					_quad(outil, b0, b1, m0, m1)
+				else:
+					_quad(outil, a0, a1, m0, m1)
+					_quad(outil, m0, m1, b0, b1)
+	outil.generate_normals()
+	return outil.commit()
+
+
+## Les lignes de rive continues, à `ecart` mètres en dedans de chaque bord,
+## comme sur les routes de Kenney.
+static func lignes_de_rive(track: TrackCurve, trous: Array[Vector2], ecart: float,
+		largeur: float = 0.25, pas: float = 2.0) -> ArrayMesh:
+	var outil := SurfaceTool.new()
+	outil.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var demi := track.half_width
+	for morceau in troncons(track.length, trous):
+		var etendue := morceau.y - morceau.x
+		var n := maxi(int(round(etendue / pas)), 1)
+		var longueur := etendue / float(n)
+		for i in n:
+			var d0 := morceau.x + longueur * float(i)
+			var d1 := d0 + longueur
+			for cote: float in [-1.0, 1.0]:
+				var dedans := (demi - ecart - largeur) * cote
+				var dehors := (demi - ecart) * cote
+				var a0 := _bord(track, d0, dedans, 0.025)
+				var b0 := _bord(track, d0, dehors, 0.025)
+				var a1 := _bord(track, d1, dedans, 0.025)
+				var b1 := _bord(track, d1, dehors, 0.025)
 				if cote < 0.0:
 					_quad(outil, b0, b1, a0, a1)
 				else:

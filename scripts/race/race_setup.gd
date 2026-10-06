@@ -32,7 +32,7 @@ var roues: int = ModeleKart.ROUES_STANDARD
 var aileron: int = ModeleKart.BECQUET
 var couleur: int = 0
 ## Le pilote assis dedans (Personnage).
-var personnage: int = Personnage.CHEVALIER
+var personnage: int = Personnage.THEO
 ## Le circuit retourné gauche-droite (Miroir). Se débloque.
 var miroir := false
 var piste: TrackInfo

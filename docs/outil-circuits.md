@@ -328,3 +328,57 @@ l'herbe bien plus de tracé qu'il n'en roule (`RACCOURCI_TOLERE`) : on peut
 prendre la corde d'un virage, pas couper une épingle à travers champs. Les
 raccourcis voulus restent des `TrackOffroad`. `tests/test_sols_reels.gd`.
 
+
+## Le style Kenney
+
+Les circuits prennent l'allure des kits de Kenney (CC0, `assets/kenney/`) :
+- **La route** : un bitume uni et mat (`Track.peindre_l_asphalte`), des lignes
+  de rive jaunes continues (`TrackBuilder.lignes_de_rive`, posées dès qu'il y a
+  un marquage), et des bordures rouges et blanches bombées de 7 cm, en blocs
+  de 1,5 m (`TrackBuilder.bordures`). Le jaune des rives (#ffcf60) et le rouge
+  des bordures par défaut (#d4564e) sont ceux de la palette des routes du
+  Racing Kit. La route reste notre ruban : les pièces de route de Kenney, à
+  poser sur une grille, ne suivraient pas nos tracés courbes, relevés et en
+  hélice.
+- **Les murs** (`TrackWall`) prennent les barrières du Racing Kit : des blocs
+  bas en alternance (`couleur`, `couleur_bis`) jusqu'à 2 m de haut, au-delà le
+  mur de béton à bande. Chaque barrière est étirée sur une bande de 2 m du
+  tracé, à la hauteur et à l'épaisseur du mur ; la collision reste le muret
+  lisse d'avant. Les parois des tunnels gardent leur muret, qui fait corps
+  avec la voûte.
+- **Les décors** : `KenneyDecor` remplace treize objets de `TrackDecor` par leur
+  modèle Kenney (palmier, sapin, arbre, arbre d'automne, arbre en cubes,
+  rocher, buisson, cactus, tête de pierre, botte de foin, tonneau, maison,
+  parasol), fondu en une seule maillage et mis à la taille de l'objet fait
+  main et centré sur son pied : les rangées, leurs collisions et leurs places
+  restent les mêmes. Ce qui brillait brille encore (lanterne, citrouille,
+  étoile, fantôme : `faire_briller`). S'y ajoutent fantôme, lanterne,
+  citrouille, ananas, fleurs, étoile, bloc d'herbe, caisse lestée, paraboles et
+  tourelle. Ce qui n'a pas d'équivalent (champignons, phare, moulin, néons…)
+  reste fait main.
+- **Les objets** : la boîte à objets est la caisse du Platformer Kit (rougie
+  pour la fausse boîte), la banane celle du Food Kit. Les carapaces restent
+  faites main : Kenney n'en a pas.
+- **Le bord de piste** (Racing Kit) : de nouveaux objets `TRIBUNE`, `STANDS`,
+  `TENTE`, `TOUR_BANNIERE`, `DRAPEAU_DAMIER`, `PANNEAU_PUB` et
+  `LAMPADAIRE_COURSE`, tournés vers la route (`TrackDecor.FACE_A_LA_ROUTE`).
+  Les circuits « à l'air libre » ont un paddock au départ (nœuds `Paddock*`) :
+  tribune d'un côté, stands de l'autre, tours à bannières sur la ligne,
+  drapeaux à damier, tentes et panneaux. Le circuit de la plage n'a ni tribune
+  ni stands : ils tomberaient dans la mer.
+
+## La route s'arrête au portail
+
+Derrière un portail qui mène à un autre monde, la route n'existe que pour ce
+monde : `Track.portions_visibles` découpe ce qui se voit de la route
+(chaussée, dessous, marquage, rives, bordures) en une portion par monde,
+chacune sur le calque de son monde. Vue d'ici, la route s'arrête net au
+portail ; la suite n'apparaît que dans le portail, filmée par sa caméra, et
+se révèle quand on le traverse. La collision, elle, reste d'un seul tenant.
+
+Il en va de même de ce qui est posé dessus : les éléments du tracé (murs,
+tremplins, plaques… sauf ceux que réclame déjà un monde, voir
+`TrackPortail.decors`) et les boîtes à objets prennent le calque du monde où
+ils sont (`Track.calque_a`), et chaque kart celui du monde où il roule,
+tenu à jour par la session à chaque image. Celui qui vient de passer le
+portail ne se voit plus qu'à travers lui.

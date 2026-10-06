@@ -157,10 +157,11 @@ func test_les_finitions_suivent_la_qualite() -> void:
 	var route := piste.get_node(Track.NOM_MAILLAGE) as MeshInstance3D
 	var bitume := route.mesh.surface_get_material(0) as StandardMaterial3D
 	QualiteGraphique.appliquer_a(racine, QualiteGraphique.Niveau.HAUTE)
-	assert_true(bitume.uv1_triplanar, "le grain du bitume en haute")
+	# Le bitume est uni, à la manière des routes de Kenney, à toute qualité.
+	assert_null(bitume.albedo_texture, "pas de grain, même en haute")
+	assert_false(bitume.uv1_triplanar)
 	assert_true(effets.visible)
 	QualiteGraphique.appliquer_a(racine, QualiteGraphique.Niveau.MOYENNE)
-	assert_false(bitume.uv1_triplanar, "pas de grain sur téléphone")
 	assert_null(bitume.albedo_texture)
 	assert_true(effets.visible)
 	QualiteGraphique.appliquer_a(racine, QualiteGraphique.Niveau.BASSE)
