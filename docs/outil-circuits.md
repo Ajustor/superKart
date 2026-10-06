@@ -335,7 +335,17 @@ Les circuits prennent l'allure des kits de Kenney (CC0, `assets/kenney/`) :
 - **La route** : un bitume uni et mat (`Track.peindre_l_asphalte`), des lignes
   de rive jaunes continues (`TrackBuilder.lignes_de_rive`, posées dès qu'il y a
   un marquage), et des bordures rouges et blanches bombées de 7 cm, en blocs
-  de 1,5 m (`TrackBuilder.bordures`).
+  de 1,5 m (`TrackBuilder.bordures`). Le jaune des rives (#ffcf60) et le rouge
+  des bordures par défaut (#d4564e) sont ceux de la palette des routes du
+  Racing Kit. La route reste notre ruban : les pièces de route de Kenney, à
+  poser sur une grille, ne suivraient pas nos tracés courbes, relevés et en
+  hélice.
+- **Les murs** (`TrackWall`) prennent les barrières du Racing Kit : des blocs
+  bas en alternance (`couleur`, `couleur_bis`) jusqu'à 2 m de haut, au-delà le
+  mur de béton à bande. Chaque barrière est étirée sur une bande de 2 m du
+  tracé, à la hauteur et à l'épaisseur du mur ; la collision reste le muret
+  lisse d'avant. Les parois des tunnels gardent leur muret, qui fait corps
+  avec la voûte.
 - **Les décors** : `KenneyDecor` remplace treize objets de `TrackDecor` par leur
   modèle Kenney (palmier, sapin, arbre, arbre d'automne, arbre en cubes,
   rocher, buisson, cactus, tête de pierre, botte de foin, tonneau, maison,

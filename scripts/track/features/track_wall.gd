@@ -35,7 +35,7 @@ enum Cote { GAUCHE, DROITE, LES_DEUX, LIBRE }
 		_modifie()
 
 ## Les deux couleurs des bandes alternées, comme un vibreur.
-@export var couleur: Color = Color(0.85, 0.15, 0.15):
+@export var couleur: Color = Color("d4564e"):
 	set(valeur):
 		couleur = valeur
 		_modifie()
@@ -77,12 +77,101 @@ func contient(distance: float, lateral: float, longueur_tour: float) -> bool:
 	return false
 
 
+## Les barrières du Racing Kit de Kenney (CC0) : des blocs bas pour un mur
+## bas, le mur de béton à bande pour un mur haut. Chacune est étirée sur une
+## bande de BANDE mètres et dans la hauteur et l'épaisseur du mur, aux
+## couleurs du mur (couleur, couleur_bis en alternance).
+const BARRIERE := "res://assets/kenney/course/barrierRed.glb"
+const MUR_DE_BETON := "res://assets/kenney/course/barrierWall.glb"
+## Au-delà de cette hauteur, un mur n'est plus une barrière mais un mur.
+const HAUTEUR_DE_BARRIERE := 2.0
+
+static var _formes: Dictionary = {}
+
+
 func _construire(c: TrackCurve, racine: Node3D) -> void:
-	var materiau := StandardMaterial3D.new()
-	materiau.vertex_color_use_as_albedo = true
-	materiau.roughness = 0.7
 	for l in lignes(c.half_width):
-		TrackFeature._poser(racine, _muret(c, l), materiau, true)
+		var muret := _muret(c, l)
+		if not _en_barrieres() or not ResourceLoader.exists(BARRIERE):
+			var materiau := StandardMaterial3D.new()
+			materiau.vertex_color_use_as_albedo = true
+			materiau.roughness = 0.7
+			TrackFeature._poser(racine, muret, materiau, true)
+			continue
+		# La collision reste celle du muret : un pavé lisse, sans accroc.
+		var corps := StaticBody3D.new()
+		var forme := CollisionShape3D.new()
+		forme.shape = muret.create_trimesh_shape()
+		corps.add_child(forme)
+		racine.add_child(corps)
+		_poser_les_barrieres(c, l, racine)
+
+
+## Faux : le mur garde sa forme de muret à bandes (un tunnel, dont les
+## parois font corps avec la voûte).
+func _en_barrieres() -> bool:
+	return true
+
+
+## Une barrière Kenney fondue en une maillage, ramenée à la boîte unité
+## (x de 0 à 1 le long du mur, y de 0 à 1, z de -0,5 à 0,5).
+static func forme_unite(chemin: String) -> ArrayMesh:
+	if not _formes.has(chemin):
+		var racine := (load(chemin) as PackedScene).instantiate() as Node3D
+		var fondu := KenneyDecor.fondre(racine)
+		racine.free()
+		var b := fondu.get_aabb()
+		var mise := Transform3D(Basis.from_scale(Vector3(1.0 / b.size.x, 1.0 / b.size.y, 1.0 / b.size.z)),
+			Vector3(-b.position.x / b.size.x, -b.position.y / b.size.y, -(b.position.z + b.size.z * 0.5) / b.size.z))
+		_formes[chemin] = KenneyDecor.transformer(fondu, mise)
+	return _formes[chemin]
+
+
+func _poser_les_barrieres(c: TrackCurve, centre: float, racine: Node3D) -> void:
+	var haut := hauteur > HAUTEUR_DE_BARRIERE
+	var forme := forme_unite(MUR_DE_BETON if haut else BARRIERE)
+	var poses: Array[Array] = [[], []]
+	var sections := _sections(BANDE)
+	for i in sections.size() - 1:
+		var d0 := sections[i]
+		var d1 := sections[i + 1]
+		var p0 := point(c, d0, centre, -0.2)
+		var p1 := point(c, d1, centre, -0.2)
+		var le_long := p1 - p0
+		if le_long.length() < 0.01:
+			continue
+		var debout := (point(c, d0, centre, 1.0) - point(c, d0, centre, 0.0)).normalized()
+		var travers := le_long.cross(debout).normalized()
+		debout = travers.cross(le_long).normalized()
+		var base := Basis(le_long, debout * (hauteur + 0.2), travers * epaisseur)
+		var bande := 0 if haut else int(floor((d0 - debut) / BANDE)) % 2
+		poses[bande].append(Transform3D(base, p0))
+	for bande in 2:
+		if poses[bande].is_empty():
+			continue
+		var multi := MultiMesh.new()
+		multi.transform_format = MultiMesh.TRANSFORM_3D
+		# Les couleurs du mur : le mur de béton garde sa bande (couleur) sur un
+		# corps clair (couleur_bis) ; les blocs bas alternent. Une MultiMesh ne
+		# prend pas de matériau par surface : on les pose sur une copie.
+		var teintes: Array = [couleur_bis, couleur] if haut else [couleur if bande == 0 else couleur_bis]
+		var peinte := forme.duplicate() as ArrayMesh
+		for s in peinte.get_surface_count():
+			peinte.surface_set_material(s, _materiau_unique(teintes[mini(s, teintes.size() - 1)]))
+		multi.mesh = peinte
+		multi.instance_count = poses[bande].size()
+		for i in poses[bande].size():
+			multi.set_instance_transform(i, poses[bande][i])
+		var affichage := MultiMeshInstance3D.new()
+		affichage.multimesh = multi
+		racine.add_child(affichage)
+
+
+static func _materiau_unique(teinte: Color) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = teinte
+	m.roughness = 0.6
+	return m
 
 
 ## Un pavé extrudé le long du tracé : deux flancs, le dessus, et les deux bouts.

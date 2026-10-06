@@ -21,8 +21,8 @@ const NOM_MARQUAGE := "Marquage"
 const NOM_RIVES := "Rives"
 ## Les bordures rouges et blanches : un mètre de large sur chaque rive.
 const LARGEUR_BORDURE := 1.0
-## Le jaune des lignes de rive.
-const COULEUR_RIVE := Color(0.98, 0.78, 0.22)
+## Le jaune des lignes de rive, celui des routes de Kenney.
+const COULEUR_RIVE := Color("ffcf60")
 
 ## L'allure de la chaussée.
 enum Motif {
@@ -98,7 +98,8 @@ const ARC_EN_CIEL: PackedColorArray = [
 		marquage = valeur
 		_reconstruire_si_montee()
 
-@export var couleur_bordure: Color = Color(0.85, 0.12, 0.12):
+## Par défaut, le rouge des bordures du Racing Kit de Kenney.
+@export var couleur_bordure: Color = Color("d4564e"):
 	set(valeur):
 		couleur_bordure = valeur
 		_reconstruire_si_montee()
