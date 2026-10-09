@@ -207,55 +207,75 @@ static func troncons(longueur: float, trous: Array[Vector2]) -> Array[Vector2]:
 
 
 ## L'écart toléré entre le bitume et la courbe, au milieu d'une section.
-const ECART_MAX := 0.01
-## Une bande d'une section tordue fait au plus cette largeur.
-const BANDE_MAX := 3.0
+const ECART_MAX := 0.015
+## Les écarts latéraux où on le mesure, en fraction de la demi-largeur.
+const MESURES := [-0.98, -0.5, 0.0, 0.5, 0.98]
 
 
+## Une section de route, de d0 à d1.
+##
+## Une section dont le dévers change d'un bout à l'autre est un
+## quadrilatère tordu : coupé selon une seule diagonale, son milieu passait
+## jusqu'à 20 cm sous la courbe, sous un marquage qui flottait. Elle est
+## recoupée dans la longueur, en bandes, chacune d'autant moins tordue ; et
+## si le milieu reste à plus de ECART_MAX de la courbe (le dévers ne change
+## pas d'un pas régulier, la pente s'arrondit), coupée en deux dans le sens
+## de la marche. Une section plate garde ses deux triangles.
 static func _section(outil: SurfaceTool, track: TrackCurve, d0: float, d1: float,
 		couleurs: PackedColorArray = PackedColorArray()) -> void:
-	# Le dévers ne change pas toujours d'un pas régulier : au milieu de la
-	# section, le bord peut passer au-dessus ou au-dessous de la corde qui
-	# joint ses deux bouts. On la coupe alors en deux, dans le sens de la
-	# marche. Seule la hauteur compte : à plat, la corde d'un virage est la
-	# même pour toutes les routes.
-	if d1 - d0 > 0.25:
-		var m := (d0 + d1) * 0.5
-		for lateral: float in [-track.half_width, 0.0, track.half_width]:
-			var vrai := track.position_at(m) + track.right_at(m) * lateral
-			var corde := (track.position_at(d0) + track.right_at(d0) * lateral
-				+ track.position_at(d1) + track.right_at(d1) * lateral) * 0.5
-			if absf(vrai.y - corde.y) > ECART_MAX:
-				_section(outil, track, d0, m, couleurs)
-				_section(outil, track, m, d1, couleurs)
-				return
 	var largeur := track.half_width * 2.0
 	var p0 := track.position_at(d0)
 	var p1 := track.position_at(d1)
 	var r0 := track.right_at(d0)
 	var r1 := track.right_at(d1)
-	# Une section dont le dévers change d'un bout à l'autre est un
-	# quadrilatère tordu : coupé selon une seule diagonale, son milieu
-	# passait jusqu'à 20 cm sous la courbe, sous un marquage qui flottait.
-	# Recoupée dans la longueur, en bandes, chacune n'est plus tordue que
-	# d'autant moins. Une section plate garde ses deux triangles.
-	var g0 := p0 - r0 * track.half_width
-	var g1 := p1 - r1 * track.half_width
-	var dr0 := p0 + r0 * track.half_width
-	var dr1 := p1 + r1 * track.half_width
-	var plan := Plane(g0, g1, dr0)
-	var torsion := absf(plan.distance_to(dr1))
-	var bandes := 1
-	if torsion * 0.25 > ECART_MAX:
-		bandes = maxi(ceili(largeur / BANDE_MAX), ceili(torsion * 0.25 / ECART_MAX))
+	var torsion := absf(Plane(p0 - r0 * track.half_width, p1 - r1 * track.half_width,
+		p0 + r0 * track.half_width).distance_to(p1 + r1 * track.half_width))
+	var bandes := maxi(ceili(torsion * 0.25 / ECART_MAX), 1)
 	# Les couleurs de l'arc-en-ciel découpent déjà la chaussée : chacune
 	# est recoupée de même.
 	var n := maxi(couleurs.size(), 1)
-	var par_couleur := maxi(ceili(float(bandes) / n), 1) if bandes > 1 else 1
+	var par_couleur := ceili(float(bandes) / n) if bandes > 1 else 1
+	var bords := PackedFloat32Array()
+	for k in n * par_couleur + 1:
+		bords.append(-track.half_width + largeur * float(k) / float(n * par_couleur))
+	if d1 - d0 > 0.25 and _ecart(track, d0, d1, bords) > ECART_MAX:
+		var m := (d0 + d1) * 0.5
+		_section(outil, track, d0, m, couleurs)
+		_section(outil, track, m, d1, couleurs)
+		return
 	for j in n:
 		if not couleurs.is_empty():
 			outil.set_color(couleurs[j])
 		for k in par_couleur:
-			var g := -track.half_width + largeur * float(j * par_couleur + k) / float(n * par_couleur)
-			var d := -track.half_width + largeur * float(j * par_couleur + k + 1) / float(n * par_couleur)
+			var g := bords[j * par_couleur + k]
+			var d := bords[j * par_couleur + k + 1]
 			_quad(outil, p0 + r0 * g, p1 + r1 * g, p0 + r0 * d, p1 + r1 * d)
+
+
+## Le plus grand écart vertical, au milieu de la section, entre la courbe et
+## ses bandes coupées en triangles (voir _quad).
+static func _ecart(track: TrackCurve, d0: float, d1: float, bords: PackedFloat32Array) -> float:
+	var p0 := track.position_at(d0)
+	var p1 := track.position_at(d1)
+	var r0 := track.right_at(d0)
+	var r1 := track.right_at(d1)
+	var m := (d0 + d1) * 0.5
+	var pire := 0.0
+	for f: float in MESURES:
+		var vrai := track.position_at(m) + track.right_at(m) * track.half_width * f
+		var depuis := vrai + Vector3.UP * 5.0
+		var trouve := false
+		for k in bords.size() - 1:
+			var a0 := p0 + r0 * bords[k]
+			var a1 := p1 + r1 * bords[k]
+			var b0 := p0 + r0 * bords[k + 1]
+			var b1 := p1 + r1 * bords[k + 1]
+			for t: Array in [[a0, a1, b0], [b0, a1, b1]]:
+				var touche: Variant = Geometry3D.ray_intersects_triangle(depuis, Vector3.DOWN, t[0], t[1], t[2])
+				if touche != null:
+					pire = maxf(pire, absf((touche as Vector3).y - vrai.y))
+					trouve = true
+					break
+			if trouve:
+				break
+	return pire
