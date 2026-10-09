@@ -117,4 +117,5 @@ func _confier_le_joueur_a_l_ia() -> void:
 
 ## Un cut, comme en régie : la caméra se replace d'un coup derrière l'autre kart.
 func _couper_sur(kart: Kart) -> void:
+	Journal.reperer("course de fond : caméra sur %s" % kart.name)
 	camera.suivre(kart)
