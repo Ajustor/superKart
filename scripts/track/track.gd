@@ -19,6 +19,7 @@ const NOM_BORDURES := "Bordures"
 const NOM_TABLIER := "Tablier"
 const NOM_MARQUAGE := "Marquage"
 const NOM_RIVES := "Rives"
+const NOM_TALUS := "Talus"
 ## Les bordures rouges et blanches : un mètre de large sur chaque rive.
 const LARGEUR_BORDURE := 1.0
 ## Le jaune des lignes de rive, celui des routes de Kenney.
@@ -206,9 +207,63 @@ func _reconstruire() -> void:
 	# déplace les murs, les tremplins et les zones avec elle.
 	for element in elements():
 		element.reconstruire()
+	# Après les éléments : les sols doivent exister pour dire où ils bordent.
+	_poser_les_talus(arc_en_ciel)
 
 	if Engine.is_editor_hint():
 		update_configuration_warnings()
+
+
+## Les talus le long des deux bords de la route, partout où un sol réel la
+## borde (TrackTalus) : sans eux, le bord était une marche qu'on ne
+## remontait pas, ou sous laquelle on passait. Jamais au-dessus du vide :
+## ce serait un sol invisible. Coupés comme la collision de la route, pour
+## que leur arête suive exactement celle du bitume.
+func _poser_les_talus(arc_en_ciel: bool) -> void:
+	var c := track_curve
+	var demi := c.half_width
+	var par_calque := {}
+	var sections_totales := maxi(int(c.length / segment_length), 8)
+	for morceau in TrackBuilder.troncons(c.length, trous()):
+		var etendue := morceau.y - morceau.x
+		var n := maxi(int(round(sections_totales * etendue / c.length)), 1)
+		var sections := PackedFloat32Array()
+		for i in n + 1:
+			sections.append(morceau.x + etendue * float(i) / float(n))
+		for cote: float in [-1.0, 1.0]:
+			var triangles := TrackTalus.le_long(c, sections, demi * cote, cote,
+				_borde_par_un_sol.bind(cote))
+			# Rangés par monde : chacun ne se voit que du sien.
+			for t in range(0, triangles.size(), 6):
+				var milieu := c.distance_of((triangles[t] + triangles[t + 1]) * 0.5)
+				var calque := calque_a(milieu)
+				if calque == 0:
+					calque = CALQUE_COMMUN
+				if not par_calque.has(calque):
+					par_calque[calque] = PackedVector3Array()
+				par_calque[calque].append_array(triangles.slice(t, t + 6))
+	if par_calque.is_empty():
+		return
+	var racine := Node3D.new()
+	racine.name = NOM_TALUS
+	add_child(racine)
+	var beton := StandardMaterial3D.new()
+	beton.albedo_color = road_color.lerp(Color(0.5, 0.48, 0.46), 0.5) if not arc_en_ciel else Color(0.3, 0.3, 0.42)
+	beton.roughness = 0.9
+	beton.cull_mode = BaseMaterial3D.CULL_DISABLED
+	for calque in par_calque:
+		TrackTalus.poser(racine, par_calque[calque], beton, calque)
+
+
+## Un sol réel borde-t-il la route à cette distance, de ce côté, et assez
+## haut pour que le talus plonge dessous ? Ni dans un trou, ni hors course.
+func _borde_par_un_sol(distance: float, cote: float) -> bool:
+	if hors_course(distance) or trou_en(distance) != null:
+		return false
+	var c := track_curve
+	var bord := TrackFeature.point(c, distance, cote * c.half_width, 0.0)
+	var sol := hauteur_du_sol_reel(TrackFeature.point(c, distance, cote * (c.half_width + 2.0), 0.0), distance)
+	return sol >= bord.y - TrackTalus.CHUTE
 
 
 ## La route visible d'une portion : la chaussée, son dessous, le marquage,
@@ -732,6 +787,18 @@ func sol_reel(point: Vector3, distance: float) -> bool:
 	return false
 
 
+## La hauteur du sol réel le plus haut qui porte ce point (TrackSol,
+## TrackTerrain), -INF s'il n'y en a pas.
+func hauteur_du_sol_reel(point: Vector3, distance: float) -> float:
+	var h := -INF
+	for element in elements():
+		if element is TrackSol and (element as TrackSol).porte(point, distance):
+			h = maxf(h, (element as TrackSol).hauteur_en(point.x, point.z))
+		elif element is TrackTerrain and (element as TrackTerrain).porte(point, distance):
+			h = maxf(h, (element as TrackTerrain).hauteur_en(point.x, point.z))
+	return h
+
+
 ## Le monde dont ce nœud est un décor (TrackPortail.decors), ou null s'il est
 ## de tous les mondes.
 func monde_du_decor(noeud: Node) -> TrackPortail:
@@ -759,7 +826,7 @@ func _reconstruire_si_montee() -> void:
 
 
 func _vider() -> void:
-	var noms := [NOM_MAILLAGE, NOM_CORPS, NOM_BORDURES, NOM_TABLIER, NOM_MARQUAGE, NOM_RIVES]
+	var noms := [NOM_MAILLAGE, NOM_CORPS, NOM_BORDURES, NOM_TABLIER, NOM_MARQUAGE, NOM_RIVES, NOM_TALUS]
 	for enfant in get_children():
 		var nom := String(enfant.name)
 		var ancien: Node = null

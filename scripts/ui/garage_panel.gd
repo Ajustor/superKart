@@ -1,7 +1,7 @@
 class_name GaragePanel
 extends Control
 
-## Le garage : le kart du joueur — son réglage moteur, ses roues, sa couleur —
+## Le garage : le kart du joueur — le kart lui-même, ses roues, sa couleur —
 ## et le pilote assis dedans. Les jauges suivent la
 ## combinaison. Le choix s'enregistre aussitôt, comme les options, et part à
 ## l'hôte si l'on est dans un salon.
@@ -11,12 +11,16 @@ signal ferme
 const SCENE_KART := "res://scenes/kart/kart.tscn"
 
 ## Les trois pièces, dans l'ordre : leur nom affiché et leur bouton ▶.
-const PIECES := ["Moteur", "Roues", "Aileron"]
+const PIECES := ["Kart", "Roues", "Aileron"]
+var _lignes: Array[Control] = []
 var _noms_pieces: Array[Label] = []
 var _suivants: Array[Button] = []
 ## La pièce changée en dernier : c'est elle que décrit la ligne du dessous.
 var _derniere_piece := 0
 var _boutons_couleur: Array[Button] = []
+var _couleurs: Control
+## La vitrine descend d'autant pour le nuage magique, où le pilote est debout.
+const DESCENTE_NUAGE := 0.3
 var _description: Label
 var _jauges: Jauges
 var _vitrine: Node3D
@@ -88,9 +92,8 @@ func _ready() -> void:
 	milieu.add_child(droite)
 	for p in PIECES.size():
 		var ligne := _selecteur(p)
-		# Un seul aileron (ModeleKart) : rien à choisir.
-		ligne.visible = p != 2 or ModeleKart.nombre_ailerons() > 1
 		droite.add_child(ligne)
+		_lignes.append(ligne)
 	_description = Label.new()
 	_description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_description.custom_minimum_size = Vector2(380, 52)
@@ -103,6 +106,7 @@ func _ready() -> void:
 	couleurs.alignment = BoxContainer.ALIGNMENT_CENTER
 	couleurs.add_theme_constant_override("separation", 10)
 	colonne.add_child(couleurs)
+	_couleurs = couleurs
 	for i in ModeleKart.COULEURS.size():
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(56, 56)
@@ -230,6 +234,15 @@ func _relire() -> void:
 		ModeleKart.aileron(reglage.aileron)]
 	for p in pieces.size():
 		_noms_pieces[p].text = pieces[p].nom
+	# Le nuage magique n'a ni roues ni peinture : on cache ces choix, qui
+	# restent enregistrés pour quand on repasse sur un kart. Un seul aileron
+	# (ModeleKart) : rien à choisir.
+	var nuage := ModeleKart.est_nuage(reglage.modele)
+	_lignes[1].visible = not nuage
+	_lignes[2].visible = ModeleKart.nombre_ailerons() > 1
+	_couleurs.visible = not nuage
+	# Debout, le pilote dépasse du cadre : on descend la vitrine d'autant.
+	_vitrine.position.y = -DESCENTE_NUAGE if nuage else 0.0
 	_description.text = "%s : %s" % [pieces[_derniere_piece].nom, pieces[_derniere_piece].description]
 	_jauges.valeurs = ModeleKart.jauges(reglage.modele, reglage.roues, reglage.aileron)
 	_jauges.queue_redraw()

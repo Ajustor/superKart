@@ -94,3 +94,36 @@ func test_le_pilote_joue_ce_qui_arrive_au_kart() -> void:
 	kart.geste.emit(Kart.GESTE_VICTOIRE)
 	await wait_frames(2)
 	assert_eq(anim.current_animation, "emote-yes", "à l'arrivée, il fête sa place")
+
+
+func test_sur_le_nuage_le_pilote_se_tient_debout_au_centre() -> void:
+	var kart := (load("res://scenes/kart/kart.tscn") as PackedScene).instantiate() as Kart
+	ModeleKart.habiller(kart, ModeleKart.NUAGE, ModeleKart.couleur(0), ModeleKart.MONSTRE)
+	add_child_autofree(kart)
+	Personnage.habiller(kart, Personnage.ZOE)
+	await wait_frames(2)
+	var pilote := kart.get_node("Body/Pilote") as Node3D
+	assert_almost_eq(pilote.position.x, 0.0, 0.001, "au centre du nuage")
+	assert_almost_eq(pilote.position.z, 0.0, 0.001)
+	assert_almost_eq(pilote.position.y, ModeleKart.PIEDS_SUR_LE_NUAGE, NuageMagique.BERCEMENT + 0.001,
+		"les pieds dans le haut du nuage, qui le berce")
+	var anim := pilote.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	assert_eq(anim.current_animation, Personnage.ANIMATION_DEBOUT, "debout, au repos")
+	kart.geste.emit(Kart.GESTE_LANCER)
+	await wait_frames(2)
+	assert_eq(anim.current_animation, "attack-melee-right", "le geste passe avant le repos")
+	await wait_seconds(0.6)
+	assert_eq(anim.current_animation, Personnage.ANIMATION_DEBOUT, "puis il reprend la pose")
+	# Rhabillé en kart, il se rassoit au volant.
+	ModeleKart.habiller(kart, ModeleKart.STANDARD, ModeleKart.couleur(0))
+	await wait_frames(2)
+	assert_eq(anim.current_animation, Personnage.ANIMATION)
+	assert_almost_eq(pilote.position.y, ModeleKart.siege().origin.y, 0.001, "assis, il ne se berce plus")
+
+
+func test_chaque_pilote_sait_se_tenir_debout() -> void:
+	for i in Personnage.nombre():
+		var pilote := Personnage.scene(i).instantiate()
+		var anim := pilote.find_child("AnimationPlayer", true, false) as AnimationPlayer
+		assert_true(anim != null and anim.has_animation(Personnage.ANIMATION_DEBOUT), Personnage.nom(i))
+		pilote.free()

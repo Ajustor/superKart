@@ -106,15 +106,23 @@ func test_les_roues_font_le_tonneau_avec_la_caisse() -> void:
 	var roues := kart.get_node("Wheels") as Node3D
 	var caisse := kart.get_node("Body") as Node3D
 	var visuels := kart.get_node("Visuals") as KartVisuals
+	var centre := visuels._boite_de_la_caisse().get_center()
+	var au_repos := caisse.transform * centre
 	kart.figure.emit()
 	visuels._update_lean(kart.motor, KartVisuals.DUREE_FIGURE * 0.25)
+	visuels._composer_la_caisse()
 	var roulis_roues := roues.transform.basis.get_euler().z
 	assert_ne(roulis_roues, 0.0, "les roues tournent pendant la figure")
 	assert_almost_eq(wrapf(roulis_roues - caisse.rotation.z, -PI, PI), 0.0, 0.05,
 		"du même angle que la caisse (hors dérapage)")
-	# Le pivot est celui de la caisse : son centre ne se déplace pas.
-	assert_almost_eq(roues.transform * caisse.position, caisse.position, Vector3.ONE * 0.001)
+	# Le pivot est le centre de la caisse, plus son pied : tourné au ras du
+	# sol, le tonneau enfonçait la caisse jusqu'à 78 cm sous la route. Les
+	# roues tournent autour du même point, et sont relevées d'autant que la
+	# caisse.
+	assert_almost_eq(roues.transform * au_repos, caisse.transform * centre, Vector3.ONE * 0.001)
+	assert_almost_eq((caisse.transform * centre).x, au_repos.x, 0.001, "le centre ne bouge pas en travers")
 	visuels._update_lean(kart.motor, KartVisuals.DUREE_FIGURE)
+	visuels._composer_la_caisse()
 	assert_eq(roues.transform, Transform3D.IDENTITY, "à plat une fois la figure finie")
 
 

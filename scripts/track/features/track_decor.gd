@@ -214,9 +214,9 @@ func _construire(c: TrackCurve, racine: Node3D) -> void:
 			racine.add_child(corps)
 
 
-## Un seul corps pour toute la rangée, une forme par objet. Des formes
-## simples plutôt que le maillage : un cylindre ou une boîte se testent en
-## un rien de temps, et n'accrochent pas le kart sur chaque facette.
+## Un seul corps pour toute la rangée, quelques formes par objet. Des
+## prismes convexes plutôt que le maillage : ils se testent en un rien de
+## temps, et n'accrochent pas le kart sur chaque facette.
 func corps_de_collision(poses: Array[Transform3D]) -> StaticBody3D:
 	var gabarit := forme_de(objet)
 	if gabarit.is_empty() or poses.is_empty():
@@ -225,9 +225,23 @@ func corps_de_collision(poses: Array[Transform3D]) -> StaticBody3D:
 	corps.name = "Collisions"
 	corps.collision_layer = Kart.COUCHE_DECOR
 	corps.collision_mask = 0
+	var prismes := prismes_de(objet)
 	for pose in poses:
 		var taille := pose.basis.get_scale().x
 		var sens := pose.basis.orthonormalized()
+		if not prismes.is_empty():
+			for prisme: Dictionary in prismes:
+				var points := PackedVector3Array()
+				for p: Vector2 in prisme.contour:
+					points.append(Vector3(p.x, prisme.bas, p.y) * taille)
+					points.append(Vector3(p.x, prisme.haut, p.y) * taille)
+				var convexe := ConvexPolygonShape3D.new()
+				convexe.points = points
+				var piece := CollisionShape3D.new()
+				piece.shape = convexe
+				piece.transform = Transform3D(sens, pose.origin)
+				corps.add_child(piece)
+			continue
 		var forme := CollisionShape3D.new()
 		if gabarit.type == "cylindre":
 			var cylindre := CylinderShape3D.new()
@@ -243,12 +257,333 @@ func corps_de_collision(poses: Array[Transform3D]) -> StaticBody3D:
 	return corps
 
 
-## La forme de collision d'un objet à l'échelle 1, dans son propre repère :
-## un cylindre (rayon, hauteur) ou une boîte (taille), et son centre. Vide
-## pour ce qui ne se touche pas.
+## La hauteur de kart : la caisse va de 3 à 73 cm au-dessus du sol. Elle
+## heurte un objet là où il est le plus large entre les deux.
+const KART_BAS := 0.05
+const KART_HAUT := 0.73
+## Deux morceaux du modèle plus proches que ça font un seul obstacle.
+const MAILLE_DE_FORME := 0.2
+## Les sommets d'un prisme, au plus.
+const SOMMETS_MAX := 16
+## Une enveloppe qui passe plus loin que ça du modèle enjambe un creux (une
+## porte, l'ouverture d'un garage) ; en deçà, ce n'est qu'une bosse, et
+## l'enveloppe suffit.
+const CREUX := 0.1
+const COUPES_MAX := 4
+
+static var _prismes: Dictionary = {}
+
+
+## Les formes de collision d'un objet à l'échelle 1, tirées de son modèle à
+## hauteur de kart : des prismes convexes, {contour (x, z), bas, haut}. Vide
+## si le modèle n'a rien à cette hauteur (le pylône, qui pend sous la
+## route) : son gabarit (forme_de) sert alors tel quel.
 ##
-## Elle suit ce qu'un kart heurte, à hauteur de caisse : le tronc d'un arbre,
-## pas son houppier.
+## Les gabarits faits main ne suivaient pas les modèles Kenney rééchelonnés :
+## une tente faisait un bloc de 6 × 4 × 6 m où l'on ne voit que quatre
+## montants, un panneau une dalle de 8 m sous un panneau perché, un sapin un
+## mètre de trop. Ici, le modèle à hauteur de kart est coupé en morceaux d'un
+## seul tenant, et chacun devient l'enveloppe convexe de ce qu'on y voit. Le
+## gabarit ne donne plus que la hauteur : ce qui touche le haut de la tranche
+## monte jusqu'à son sommet, ce qui touche le bas descend jusqu'à son pied.
+static func prismes_de(quoi: Objet) -> Array:
+	if _prismes.has(quoi):
+		return _prismes[quoi]
+	var gabarit := forme_de(quoi)
+	var prismes := []
+	if not gabarit.is_empty():
+		var demi: float = gabarit.hauteur * 0.5 if gabarit.type == "cylindre" else gabarit.taille.y * 0.5
+		var pied: float = gabarit.centre.y - demi
+		var sommet: float = gabarit.centre.y + demi
+		prismes = _morceaux(_triangles(maillage_de(quoi)), KART_BAS, KART_HAUT)
+		for m: Dictionary in prismes:
+			if m.bas <= KART_BAS + 0.01:
+				m.bas = minf(m.bas, pied)
+			if m.haut >= KART_HAUT - 0.01:
+				m.haut = maxf(m.haut, sommet)
+	_prismes[quoi] = prismes
+	return prismes
+
+
+## Les triangles d'un maillage, toutes surfaces.
+static func _triangles(maillage: ArrayMesh) -> PackedVector3Array:
+	var triangles := PackedVector3Array()
+	for s in maillage.get_surface_count():
+		var tableaux := maillage.surface_get_arrays(s)
+		var sommets: PackedVector3Array = tableaux[Mesh.ARRAY_VERTEX]
+		var indices = tableaux[Mesh.ARRAY_INDEX]
+		if indices is PackedInt32Array and (indices as PackedInt32Array).size() > 0:
+			for i in indices:
+				triangles.append(sommets[i])
+		else:
+			triangles.append_array(sommets)
+	return triangles
+
+
+## Les morceaux du modèle entre y0 et y1 : leurs contours convexes vus d'en
+## haut, et ce qu'ils occupent en hauteur, {contour, bas, haut}.
+static func _morceaux(triangles: PackedVector3Array, y0: float, y1: float) -> Array:
+	# Chaque triangle coupé à la tranche ; le bord de ce qui reste, en
+	# points tous les 5 cm.
+	var cases := {}
+	for t in range(0, triangles.size(), 3):
+		var poly := _couper([triangles[t], triangles[t + 1], triangles[t + 2]], y0, y1)
+		for i in poly.size():
+			var a: Vector3 = poly[i]
+			var b: Vector3 = poly[(i + 1) % poly.size()]
+			var n := maxi(ceili(Vector2(a.x - b.x, a.z - b.z).length() / 0.05), 1)
+			for k in n:
+				var p := a.lerp(b, float(k) / n)
+				var cle := Vector2i(floori(p.x / MAILLE_DE_FORME), floori(p.z / MAILLE_DE_FORME))
+				if not cases.has(cle):
+					cases[cle] = PackedVector3Array()
+				cases[cle].append(p)
+	if cases.is_empty():
+		return []
+	var plein := _Coupe.new(cases)
+	# Les cases voisines font un morceau.
+	var contours := []
+	var vues := {}
+	for depart: Vector2i in cases:
+		if vues.has(depart):
+			continue
+		vues[depart] = true
+		var pile: Array[Vector2i] = [depart]
+		var points := PackedVector3Array()
+		while not pile.is_empty():
+			var c: Vector2i = pile.pop_back()
+			points.append_array(cases[c])
+			for dx in range(-1, 2):
+				for dz in range(-1, 2):
+					var voisine := c + Vector2i(dx, dz)
+					if cases.has(voisine) and not vues.has(voisine):
+						vues[voisine] = true
+						pile.append(voisine)
+		contours.append_array(_convexes(points, plein))
+	return contours
+
+
+## La coupe du modèle à une tranche, sur une grille de 5 cm : pleine là où
+## est le modèle, son bord comme son dedans. Le dehors se trouve en
+## remplissant depuis les bords de la grille ; ce qu'il n'atteint pas est
+## dedans.
+class _Coupe:
+	const COTE := 0.05
+	var origine: Vector2
+	var largeur: int
+	var hauteur: int
+	## 0 : dehors ; 1 : bord ; 2 : dedans.
+	var cases := PackedByteArray()
+
+	func _init(points_par_case: Dictionary) -> void:
+		var mini := Vector2(INF, INF)
+		var maxi := Vector2(-INF, -INF)
+		for c in points_par_case:
+			for p: Vector3 in points_par_case[c]:
+				mini = mini.min(Vector2(p.x, p.z))
+				maxi = maxi.max(Vector2(p.x, p.z))
+		origine = mini - Vector2.ONE * 2.0 * COTE
+		largeur = ceili((maxi.x - origine.x) / COTE) + 3
+		hauteur = ceili((maxi.y - origine.y) / COTE) + 3
+		cases.resize(largeur * hauteur)
+		cases.fill(2)
+		for c in points_par_case:
+			for p: Vector3 in points_par_case[c]:
+				cases[_indice(Vector2(p.x, p.z))] = 1
+		# Le dehors, de proche en proche (sans les diagonales : un mur en
+		# biais ne laisse pas passer).
+		var pile := PackedInt32Array([0])
+		cases[0] = 0
+		while not pile.is_empty():
+			var i := pile[pile.size() - 1]
+			pile.remove_at(pile.size() - 1)
+			var x := i % largeur
+			var z := i / largeur
+			for v: Vector2i in [Vector2i(x - 1, z), Vector2i(x + 1, z), Vector2i(x, z - 1), Vector2i(x, z + 1)]:
+				if v.x < 0 or v.y < 0 or v.x >= largeur or v.y >= hauteur:
+					continue
+				var j := v.y * largeur + v.x
+				if cases[j] == 2:
+					cases[j] = 0
+					pile.append(j)
+
+	func _indice(p: Vector2) -> int:
+		var x := clampi(floori((p.x - origine.x) / COTE), 0, largeur - 1)
+		var z := clampi(floori((p.y - origine.y) / COTE), 0, hauteur - 1)
+		return z * largeur + x
+
+	## La coupe dans `zone`, pavée de rectangles : chacun s'étend d'abord en
+	## largeur, puis en profondeur tant que la rangée reste pleine.
+	func rectangles(zone: Rect2) -> Array[Rect2]:
+		var x0 := clampi(floori((zone.position.x - origine.x) / COTE), 0, largeur - 1)
+		var z0 := clampi(floori((zone.position.y - origine.y) / COTE), 0, hauteur - 1)
+		var x1 := clampi(floori((zone.end.x - origine.x) / COTE), 0, largeur - 1)
+		var z1 := clampi(floori((zone.end.y - origine.y) / COTE), 0, hauteur - 1)
+		var pris := {}
+		var liste: Array[Rect2] = []
+		for z in range(z0, z1 + 1):
+			for x in range(x0, x1 + 1):
+				if cases[z * largeur + x] == 0 or pris.has(z * largeur + x):
+					continue
+				var fin_x := x
+				while fin_x + 1 <= x1 and cases[z * largeur + fin_x + 1] != 0 and not pris.has(z * largeur + fin_x + 1):
+					fin_x += 1
+				var fin_z := z
+				while fin_z + 1 <= z1:
+					var pleine := true
+					for xx in range(x, fin_x + 1):
+						var k := (fin_z + 1) * largeur + xx
+						if cases[k] == 0 or pris.has(k):
+							pleine = false
+							break
+					if not pleine:
+						break
+					fin_z += 1
+				for zz in range(z, fin_z + 1):
+					for xx in range(x, fin_x + 1):
+						pris[zz * largeur + xx] = true
+				liste.append(Rect2(origine + Vector2(x, z) * COTE, Vector2(fin_x - x + 1, fin_z - z + 1) * COTE))
+		return liste
+
+	## Ce point est-il dans le modèle, ou à moins de `portee` ?
+	func pres(p: Vector2, portee: float) -> bool:
+		var x := floori((p.x - origine.x) / COTE)
+		var z := floori((p.y - origine.y) / COTE)
+		var n := ceili(portee / COTE)
+		for dx in range(-n, n + 1):
+			for dz in range(-n, n + 1):
+				var v := Vector2i(x + dx, z + dz)
+				if v.x < 0 or v.y < 0 or v.x >= largeur or v.y >= hauteur or cases[v.y * largeur + v.x] == 0:
+					continue
+				# Le point de la case le plus proche.
+				var coin := origine + Vector2(v) * COTE
+				var proche := p.clamp(coin, coin + Vector2.ONE * COTE)
+				if proche.distance_to(p) <= portee:
+					return true
+		return false
+
+
+## Les prismes d'un morceau : son enveloppe convexe, s'il n'a pas de creux.
+## Sinon, coupé en deux le long de sa plus grande dimension, et ainsi de
+## suite ; au-delà de COUPES_MAX coupes (un bâtiment, sa porte, ses
+## fenêtres), la coupe pavée de rectangles, au plus 5 cm au-delà du modèle.
+static func _convexes(points: PackedVector3Array, plein: _Coupe, coupes: int = 0) -> Array:
+	var plan := PackedVector2Array()
+	var bas := INF
+	var haut := -INF
+	for p in points:
+		plan.append(Vector2(p.x, p.z))
+		bas = minf(bas, p.y)
+		haut = maxf(haut, p.y)
+	var enveloppe := _simplifier(Geometry2D.convex_hull(plan))
+	if not _enjambe_un_creux(enveloppe, plein):
+		return [{contour = enveloppe, bas = bas, haut = haut}]
+	var boite := _emprise(plan)
+	if coupes >= COUPES_MAX:
+		var pieces := []
+		for r: Rect2 in plein.rectangles(boite):
+			pieces.append({contour = PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end,
+				Vector2(r.position.x, r.end.y)]), bas = bas, haut = haut})
+		return pieces
+	var en_x := boite.size.x >= boite.size.y
+	var milieu: float = boite.get_center().x if en_x else boite.get_center().y
+	var avant := PackedVector3Array()
+	var apres := PackedVector3Array()
+	for p in points:
+		if (p.x if en_x else p.z) < milieu:
+			avant.append(p)
+		else:
+			apres.append(p)
+	# La coupe, là où elle traverse le plein, aux deux moitiés : leurs
+	# enveloppes s'y rejoignent, sans déborder dans le vide. Chacune la
+	# dépasse d'un centimètre : bord à bord, un rayon passait entre les deux.
+	var debut: float = boite.position.y if en_x else boite.position.x
+	var fin: float = boite.end.y if en_x else boite.end.x
+	var t := debut
+	while t <= fin:
+		var ici := Vector2(milieu, t) if en_x else Vector2(t, milieu)
+		if plein.pres(ici, 0.0):
+			var pas := Vector2(0.01, 0.0) if en_x else Vector2(0.0, 0.01)
+			for y in [bas, haut]:
+				avant.append(Vector3(ici.x + pas.x, y, ici.y + pas.y))
+				apres.append(Vector3(ici.x - pas.x, y, ici.y - pas.y))
+		t += 0.05
+	if avant.size() < 3 or apres.size() < 3:
+		return [{contour = enveloppe, bas = bas, haut = haut}]
+	return _convexes(avant, plein, coupes + 1) + _convexes(apres, plein, coupes + 1)
+
+
+## L'enveloppe passe-t-elle quelque part à plus de CREUX du modèle, dehors ?
+## Le long d'une coupe, elle traverse le dedans : ce n'est pas un creux.
+static func _enjambe_un_creux(enveloppe: PackedVector2Array, plein: _Coupe) -> bool:
+	for i in enveloppe.size():
+		var a := enveloppe[i]
+		var b := enveloppe[(i + 1) % enveloppe.size()]
+		var n := maxi(ceili(a.distance_to(b) / 0.05), 1)
+		for k in n:
+			if not plein.pres(a.lerp(b, float(k) / n), CREUX):
+				return true
+	return false
+
+
+## Le triangle coupé entre les plans y = y0 et y = y1 : un polygone, vide
+## s'il est tout entier dehors.
+static func _couper(poly: Array, y0: float, y1: float) -> Array:
+	for plan: Array in [[y0, 1.0], [y1, -1.0]]:
+		var h: float = plan[0]
+		var sens: float = plan[1]
+		var garde := []
+		for i in poly.size():
+			var a: Vector3 = poly[i]
+			var b: Vector3 = poly[(i + 1) % poly.size()]
+			var da := (a.y - h) * sens
+			var db := (b.y - h) * sens
+			if da >= 0.0:
+				garde.append(a)
+			if (da >= 0.0) != (db >= 0.0):
+				garde.append(a.lerp(b, da / (da - db)))
+		poly = garde
+		if poly.is_empty():
+			return poly
+	return poly
+
+
+## Au plus SOMMETS_MAX sommets : on retire, un à un, celui qui couvre le moins.
+## Le contour ne fait que rentrer, de quelques millimètres.
+static func _simplifier(contour: PackedVector2Array) -> PackedVector2Array:
+	var points := contour
+	# convex_hull referme le contour en répétant son premier point.
+	if points.size() > 1 and points[0] == points[points.size() - 1]:
+		points.remove_at(points.size() - 1)
+	while points.size() > SOMMETS_MAX:
+		var moindre := 0
+		var aire_min := INF
+		for i in points.size():
+			var a := points[(i - 1 + points.size()) % points.size()]
+			var b := points[i]
+			var c := points[(i + 1) % points.size()]
+			var aire := absf((b - a).cross(c - a))
+			if aire < aire_min:
+				aire_min = aire
+				moindre = i
+		points.remove_at(moindre)
+	return points
+
+
+## Le rectangle qui contient ces points.
+static func _emprise(contour: PackedVector2Array) -> Rect2:
+	var r := Rect2(contour[0], Vector2.ZERO)
+	for p in contour:
+		r = r.expand(p)
+	return r
+
+
+## Le gabarit d'un objet à l'échelle 1, dans son propre repère : un cylindre
+## (rayon, hauteur) ou une boîte (taille), et son centre. Vide pour ce qui
+## ne se touche pas.
+##
+## Il ne donne plus que la hauteur des prismes (prismes_de), sauf pour ce qui
+## n'a rien à hauteur de kart.
 static func forme_de(quoi: Objet) -> Dictionary:
 	match quoi:
 		Objet.PALMIER:

@@ -337,6 +337,31 @@ l'herbe bien plus de tracé qu'il n'en roule (`RACCOURCI_TOLERE`) : on peut
 prendre la corde d'un virage, pas couper une épingle à travers champs. Les
 raccourcis voulus restent des `TrackOffroad`. `tests/test_sols_reels.gd`.
 
+### Talus et bandes : ce que le circuit pose seul
+
+Le sol est 14 à 45 cm sous le bord de la route (`SOUS_LE_BORD`, et
+`altitude`). Sans rien entre les deux, ce bord était une marche qu'on ne
+remontait pas, ou sous laquelle le kart passait. Le circuit pose donc seul
+des **talus** (`TrackTalus`, nœud `Talus`) :
+
+- **le long des deux bords de la route**, partout où un sol réel la borde
+  (`Track.hauteur_du_sol_reel`, sondé 2 m au-delà du bord), hors des trous et
+  de la portion qu'on ne court pas. Jamais au-dessus du vide : ce serait un
+  sol invisible. Ni là où le sol est plus bas que la pente ne descend ;
+- **le long des bords d'une `TrackOffroad` qui ne touchent pas la route**
+  (le bord extérieur, et l'intérieur d'une bande détachée), et **en travers
+  de ses deux bouts**, partout où un sol réel est dessous.
+
+Une pente de 15° : du bord, à la hauteur du bitume, elle descend de 1,2 m sur
+4,5 m (`TrackTalus.CHUTE`, `LARGEUR`), et plonge sous le sol à quelques
+dizaines de centimètres du bord. Elle est visible, de la couleur du dessous de
+la route, pour que le kart qui la remonte ne flotte pas au-dessus de rien.
+Solide des deux côtés : on ne passe plus dessous.
+
+Une `TrackOffroad` est dessinée 2 cm au-dessus du bitume, pour qu'on la voie
+là où elle le recouvre, mais sa collision est **au ras** : ces deux
+centimètres faisaient un mur sous le pare-chocs. `tests/test_bords_de_piste.gd`.
+
 
 ## Le style Kenney
 
