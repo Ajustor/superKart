@@ -128,10 +128,25 @@ func test_la_forme_suit_l_objet_et_sa_taille() -> void:
 	decor.reconstruire()
 	var pose := decor.placements(track.track_curve)[0]
 	var forme := decor.find_children("*", "CollisionShape3D", true, false)[0] as CollisionShape3D
-	var cylindre := forme.shape as CylinderShape3D
-	assert_not_null(cylindre)
-	assert_almost_eq(cylindre.radius, 2.8 * 2.0, 0.01, "le rayon suit l'échelle")
-	assert_almost_eq(forme.transform.origin.y - pose.origin.y, 4.5 * 2.0, 0.01, "posée sur le sol, pas enfoncée")
+	# Un prisme tiré du modèle à hauteur de kart (TrackDecor.prismes_de),
+	# monté jusqu'au sommet du gabarit (9 m pour le moulin).
+	var prisme := forme.shape as ConvexPolygonShape3D
+	assert_not_null(prisme)
+	var a_l_unite: Dictionary = TrackDecor.prismes_de(TrackDecor.Objet.MOULIN)[0]
+	var bas := INF
+	var haut := -INF
+	var large := 0.0
+	for p in prisme.points:
+		bas = minf(bas, p.y)
+		haut = maxf(haut, p.y)
+		large = maxf(large, Vector2(p.x, p.z).length())
+	var large_a_l_unite := 0.0
+	for p: Vector2 in a_l_unite.contour:
+		large_a_l_unite = maxf(large_a_l_unite, p.length())
+	assert_almost_eq(large, large_a_l_unite * 2.0, 0.01, "l'emprise suit l'échelle")
+	assert_almost_eq(bas, 0.0, 0.01, "posée sur le sol, pas enfoncée")
+	assert_almost_eq(haut, 9.0 * 2.0, 0.01, "jusqu'au sommet, à l'échelle")
+	assert_almost_eq(forme.transform.origin, pose.origin, Vector3.ONE * 0.01)
 	assert_almost_eq(forme.transform.basis.get_scale().x, 1.0, 0.001,
 		"la forme n'est pas mise à l'échelle : ses dimensions le sont")
 
@@ -163,20 +178,32 @@ func test_aucun_decor_solide_ne_mord_sur_la_route() -> void:
 			var g := TrackDecor.forme_de(e.objet)
 			if g.is_empty():
 				continue
-			var hauteur: float = g.hauteur if g.type == "cylindre" else g.taille.y
-			# Le rayon qui dépasse le plus, quelle que soit l'orientation.
-			var rayon: float = g.rayon if g.type == "cylindre" else Vector2(g.taille.x, g.taille.z).length() * 0.5
+			# Les formes réelles : les prismes tirés du modèle, ou le gabarit
+			# pour ce qui n'a rien à hauteur de kart. Chacune : son centre (dans
+			# le repère de l'objet), le rayon qui dépasse le plus quelle que
+			# soit l'orientation, son bas et son haut.
+			var formes := []
+			for prisme: Dictionary in TrackDecor.prismes_de(e.objet):
+				var rayon_prisme := 0.0
+				for p: Vector2 in prisme.contour:
+					rayon_prisme = maxf(rayon_prisme, p.length())
+				formes.append([Vector3.ZERO, rayon_prisme, prisme.bas, prisme.haut])
+			if formes.is_empty():
+				var hauteur: float = g.hauteur if g.type == "cylindre" else g.taille.y
+				var rayon: float = g.rayon if g.type == "cylindre" else Vector2(g.taille.x, g.taille.z).length() * 0.5
+				formes.append([g.centre, rayon, g.centre.y - hauteur * 0.5, g.centre.y + hauteur * 0.5])
 			for pose: Transform3D in e.placements(c):
 				var t := pose.basis.get_scale().x
-				var centre: Vector3 = pose.origin + pose.basis.orthonormalized() * (g.centre * t)
-				var d := c.distance_of(centre)
-				var route := c.position_at(d)
-				# Au-dessus des karts, ou sous la route (un autre étage) : sans
-				# conséquence.
-				if centre.y - hauteur * t * 0.5 > route.y + 2.5 or centre.y + hauteur * t * 0.5 < route.y - 0.5:
-					continue
-				var marge := absf(c.lateral_offset_at(centre, d)) - rayon * t - c.half_width
-				assert_gt(marge, 0.0, "%s, %s à %.0f m : mord de %.2f m sur la route" % [info.id, e.name, d, -marge])
+				for f: Array in formes:
+					var centre: Vector3 = pose.origin + pose.basis.orthonormalized() * ((f[0] as Vector3) * t)
+					var d := c.distance_of(centre)
+					var route := c.position_at(d)
+					# Au-dessus des karts, ou sous la route (un autre étage) :
+					# sans conséquence.
+					if pose.origin.y + f[2] * t > route.y + 2.5 or pose.origin.y + f[3] * t < route.y - 0.5:
+						continue
+					var marge := absf(c.lateral_offset_at(centre, d)) - f[1] * t - c.half_width
+					assert_gt(marge, 0.0, "%s, %s à %.0f m : mord de %.2f m sur la route" % [info.id, e.name, d, -marge])
 
 
 func test_chaque_objet_qui_se_touche_a_une_forme_de_collision() -> void:
