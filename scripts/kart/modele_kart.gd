@@ -1,7 +1,7 @@
 class_name ModeleKart
 extends RefCounted
 
-## Le kart qu'on monte au garage : un réglage moteur, des roues, une couleur.
+## Le kart qu'on monte au garage : un kart, des roues, une couleur.
 ## Chaque choix retouche les caractéristiques du kart d'origine — celui sur
 ## lequel les circuits ont été validés — et les retouches se multiplient : un
 ## moteur rapide sur des roues rapides va plus vite encore, mais relance plus
@@ -25,8 +25,12 @@ extends RefCounted
 ## moteur ne se voit pas : c'est ce qu'on a sous le capot. Les ailerons ne
 ## sont plus qu'un : « Aucun », gardé pour que les réglages enregistrés et le
 ## salon en réseau gardent leur forme.
+##
+## Une exception : le nuage magique (NuageMagique), sur lequel le pilote se
+## tient debout. Ni caisse, ni roues, ni peinture : il est toujours doré, et
+## roule comme s'il était monté sur les roues Standard.
 
-enum { STANDARD, FUSEE, PLUME, DERIVEUR, COSTAUD }
+enum { STANDARD, FUSEE, PLUME, DERIVEUR, COSTAUD, NUAGE }
 enum { ROUES_STANDARD, SLICKS, MONSTRE, LEGERES }
 enum { BECQUET }
 
@@ -35,7 +39,9 @@ const CLES := ["vitesse", "acceleration", "virage", "glisse", "poids", "terrain"
 ## Les caractéristiques affichées au garage, de 0 à 1, dans cet ordre.
 const JAUGES := ["Vitesse", "Accélération", "Maniabilité", "Glisse", "Poids", "Tout-terrain"]
 
-## Les réglages moteur (anciennement les carrosseries).
+## Les karts du garage (anciennement les carrosseries) : les réglages moteur
+## du kart Kenney, puis le nuage magique. Toujours ajoutés en fin de liste :
+## une sauvegarde garde ses indices.
 const CARROSSERIES := [
 	{nom = "Standard", description = "Équilibré en tout.",
 		vitesse = 1.0, acceleration = 1.0, virage = 1.0, glisse = 1.0, poids = 1.0, terrain = 1.0},
@@ -47,6 +53,8 @@ const CARROSSERIES := [
 		vitesse = 0.995, acceleration = 0.95, virage = 1.0, glisse = 1.3, poids = 0.95, terrain = 0.95},
 	{nom = "Costaud", description = "Encaisse les murs et bouscule les autres.",
 		vitesse = 1.01, acceleration = 0.88, virage = 0.97, glisse = 0.95, poids = 1.4, terrain = 1.05},
+	{nom = "Nuage magique", description = "Il flotte sur l'herbe et glisse comme un rêve, mais un rien le bouscule.",
+		vitesse = 0.995, acceleration = 0.9, virage = 1.0, glisse = 1.25, poids = 0.75, terrain = 1.35},
 ]
 
 ## Les trains de roues. `modele` : le fichier Kenney (vide : les roues du kart
@@ -142,6 +150,16 @@ static func couleur(i: int) -> Color:
 	return COULEURS[posmod(i, COULEURS.size())]
 
 
+## Le nuage magique n'a ni roues ni peinture : le garage cache ces choix.
+static func est_nuage(carrosserie: int) -> bool:
+	return carrosserie == NUAGE
+
+
+## Ce kart (ou la vitrine du garage) est-il habillé en nuage ?
+static func sur_un_nuage(kart: Node) -> bool:
+	return kart != null and est_nuage(int(kart.get_meta("carrosserie", STANDARD)))
+
+
 ## Le kart de l'IA numéro `n` (0 pour le premier adversaire) : carrosserie,
 ## roues, aileron.
 static func kart_ia(n: int) -> Array:
@@ -150,7 +168,10 @@ static func kart_ia(n: int) -> Array:
 
 ## Une caractéristique de la combinaison : le produit de ce qu'en dit chaque
 ## pièce.
+## Le nuage n'a pas de roues : celles qu'on avait choisies n'y changent rien.
 static func facteur(cle: String, carrosserie: int, train: int = ROUES_STANDARD, aile: int = BECQUET) -> float:
+	if est_nuage(carrosserie):
+		train = ROUES_STANDARD
 	return float(modele(carrosserie)[cle]) * float(roues(train)[cle]) * float(aileron(aile)[cle])
 
 
@@ -245,6 +266,11 @@ const RAYON_KENNEY := 0.209777
 ## doivent dépasser du dossier.
 const SIEGE_KENNEY := Vector3(0.0, 0.2, -0.04)
 const ECHELLE_PILOTE := 1.35
+## Sur le nuage, le pilote se tient debout au centre, les pieds dans le haut
+## de la ouate, à cette hauteur au-dessus du sol. Un peu plus petit qu'assis :
+## debout à pleine taille, il cachait la route à la caméra de poursuite.
+const PIEDS_SUR_LE_NUAGE := 0.5
+const ECHELLE_PILOTE_DEBOUT := 1.1
 ## Les pièces du kart d'origine, faites de formes simples : on les cache.
 const PIECES_D_ORIGINE := ["Floor", "Nose", "SidePodL", "SidePodR", "SeatBase", "SeatBack", "Engine", "Column"]
 
@@ -257,9 +283,14 @@ static func repere_kenney() -> Transform3D:
 	return Transform3D(Basis(Vector3.UP, PI).scaled(Vector3.ONE * ECHELLE), Vector3.ZERO)
 
 
-## Où s'assoit le pilote, dans le repère de la caisse (Body).
-static func siege(train: int = ROUES_STANDARD) -> Transform3D:
+## Où s'assoit le pilote, dans le repère de la caisse (Body). Sur le nuage,
+## il se tient debout en son centre, quelles que soient les roues.
+static func siege(train: int = ROUES_STANDARD, carrosserie: int = STANDARD) -> Transform3D:
 	var t := repere_kenney()
+	if est_nuage(carrosserie):
+		t.origin = Vector3.UP * PIEDS_SUR_LE_NUAGE
+		t.basis = t.basis.scaled(Vector3.ONE * ECHELLE_PILOTE_DEBOUT)
+		return t
 	t.origin = t * SIEGE_KENNEY + Vector3.UP * _surelevation(train)
 	t.basis = t.basis.scaled(Vector3.ONE * ECHELLE_PILOTE)
 	return t
@@ -280,12 +311,20 @@ static func _scene(chemin: String) -> PackedScene:
 ## peint de `teinte`, sur le train de roues choisi. La suspension apprend le
 ## rayon des roues. Se rappelle autant qu'on veut (le garage le fait à chaque
 ## choix).
-static func habiller(kart: Node3D, _carrosserie: int, teinte: Color, train: int = ROUES_STANDARD,
+##
+## Le nuage magique remplace la caisse (`Body/Nuage` au lieu de
+## `Body/Kenney`) et cache les jantes : les nœuds des roues restent, la
+## suspension en a besoin, posés comme des roues Standard.
+static func habiller(kart: Node3D, carrosserie: int, teinte: Color, train: int = ROUES_STANDARD,
 		_aile: int = BECQUET) -> void:
 	var caisse := kart.get_node_or_null("Body") as Node3D
 	if caisse == null:
 		return
+	var nuage := est_nuage(carrosserie)
+	if nuage:
+		train = ROUES_STANDARD
 	kart.set_meta("train", train)
+	kart.set_meta("carrosserie", clampi(carrosserie, 0, CARROSSERIES.size() - 1))
 	for nom_piece in PIECES_D_ORIGINE:
 		var piece := caisse.get_node_or_null(nom_piece) as Node3D
 		if piece != null:
@@ -302,13 +341,22 @@ static func habiller(kart: Node3D, _carrosserie: int, teinte: Color, train: int 
 		(chassis.find_child("character", true, false) as Node3D).visible = false
 	chassis.transform = repere_kenney()
 	chassis.position.y = _surelevation(train)
+	chassis.visible = not nuage
 	var corps := chassis.find_child("kart-oobi", true, false) as MeshInstance3D
 	corps.material_override = peinture(teinte)
-	_monter_les_roues(kart, train, chassis)
-	# Le pilote suit la hauteur de la caisse.
+	var le_nuage := caisse.get_node_or_null("Nuage") as Node3D
+	if nuage and le_nuage == null:
+		le_nuage = NuageMagique.new()
+		le_nuage.name = "Nuage"
+		caisse.add_child(le_nuage)
+	if le_nuage != null:
+		le_nuage.visible = nuage
+	_monter_les_roues(kart, train, chassis, not nuage)
+	# Le pilote suit la hauteur de la caisse ; sur le nuage, il se lève.
 	var pilote := caisse.get_node_or_null("Pilote") as Node3D
 	if pilote != null:
-		pilote.transform = siege(train)
+		pilote.transform = siege(train, carrosserie)
+		Personnage.jouer(pilote, Personnage.animation_de(kart))
 
 
 ## Le matériau du châssis repeint : le gris-bleu de sa carrosserie prend la
@@ -336,7 +384,7 @@ static func teinte_de(kart: Node3D) -> Color:
 ## Les roues : leur forme, leur place (celle des roues du kart Kenney), leur
 ## hauteur (une roue plus grande se monte plus haut, pour toucher le même
 ## sol). La suspension apprend leur rayon : c'est lui qui la pose au sol.
-static func _monter_les_roues(kart: Node3D, train: int, chassis: Node3D) -> void:
+static func _monter_les_roues(kart: Node3D, train: int, chassis: Node3D, visibles: bool = true) -> void:
 	var r := roues(train)
 	var rayon: float = r.rayon
 	var suspension := kart.get_node_or_null("Suspension") as KartSuspension
@@ -368,6 +416,7 @@ static func _monter_les_roues(kart: Node3D, train: int, chassis: Node3D) -> void
 			jante = MeshInstance3D.new()
 			jante.name = "Jante"
 			r3.add_child(jante)
+		jante.visible = visibles
 		var gauche := place.x < 0.0
 		if str(r.modele) == "":
 			# Les roues du kart, chacune tournée vers l'extérieur.

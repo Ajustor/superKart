@@ -47,7 +47,8 @@ var _position_caisse := Vector3.ZERO
 ## L'allure du modèle (ModeleKart), que le rétrécissement respecte.
 var _echelle_caisse := Vector3.ONE
 ## Le pilote (Personnage) : son animation suit ce qui arrive au kart.
-## Un geste bref (objet lancé, choc) passe avant la conduite ; une figure et
+## Un geste bref (objet lancé, choc) passe avant la conduite (ou le repos,
+## debout sur le nuage magique) ; une figure et
 ## un tête-à-queue passent avant tout ; l'arrivée dure jusqu'au bout.
 const ANIM_FIGURE := "jump"
 const ANIM_TETE_A_QUEUE := "fall"
@@ -109,9 +110,11 @@ func _process(delta: float) -> void:
 	var motor := _kart.motor
 	_update_lean(motor, delta)
 	_update_sparks(motor)
-	# De la poussière sous les roues hors piste : on sent qu'on y perd.
-	_poussiere.emitting = motor.on_offroad and _kart.au_sol and absf(motor.speed) > 5.0
-	_fumee_de_glisse.emitting = motor.state == KartMotor.State.DRIFT and _kart.au_sol and absf(motor.speed) > 6.0
+	# De la poussière sous les roues hors piste : on sent qu'on y perd. Le
+	# nuage magique ne touche pas le sol : ni poussière, ni fumée de pneus.
+	var touche_le_sol := _kart.au_sol and not ModeleKart.sur_un_nuage(_kart)
+	_poussiere.emitting = motor.on_offroad and touche_le_sol and absf(motor.speed) > 5.0
+	_fumee_de_glisse.emitting = motor.state == KartMotor.State.DRIFT and touche_le_sol and absf(motor.speed) > 6.0
 	_ombre.visible = _kart.au_sol and not QualiteGraphique.ombres_portees(GameSettings.qualite)
 	_update_flammes(motor)
 	_update_sillage()
@@ -427,7 +430,7 @@ func _update_pilote(motor: KartMotor, delta: float) -> void:
 	if _anim_pilote == null:
 		return
 	_geste_reste = maxf(_geste_reste - delta, 0.0)
-	var voulue: String = Personnage.ANIMATION
+	var voulue := Personnage.animation_de(_kart)
 	if motor.state == KartMotor.State.STUNNED:
 		voulue = ANIM_TETE_A_QUEUE
 	elif _figure >= 0.0:

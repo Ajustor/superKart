@@ -2,7 +2,8 @@ class_name Personnage
 extends RefCounted
 
 ## Les pilotes qu'on assoit dans les karts : les Mini Characters de Kenney
-## (CC0, assets/kenney/LICENCE.txt), au volant (leur animation « drive »).
+## (CC0, assets/kenney/LICENCE.txt), au volant (leur animation « drive »), ou
+## debout sur le nuage magique (« idle »).
 ##
 ## Un pilote ne change rien au kart : c'est un choix d'allure, et le ton de
 ## son klaxon.
@@ -28,6 +29,8 @@ enum { THEO, GUS, MAX, VICTOR, LEON, SAMI, INES, LOU, NINA, CLAIRE, MEI, ZOE }
 
 ## L'animation jouée au volant.
 const ANIMATION := "drive"
+## Celle du pilote debout sur le nuage magique.
+const ANIMATION_DEBOUT := "idle"
 
 static var _scenes: Dictionary = {}
 
@@ -85,20 +88,32 @@ static func habiller(kart: Node3D, i: int) -> void:
 	var pilote := scene(i).instantiate() as Node3D
 	pilote.name = "Pilote"
 	pilote.set_meta("personnage", clampi(i, 0, nombre() - 1))
-	var train := ModeleKart.ROUES_STANDARD
-	if kart.has_meta("train"):
-		train = int(kart.get_meta("train"))
-	pilote.transform = ModeleKart.siege(train)
-	var anim := pilote.find_child("AnimationPlayer", true, false) as AnimationPlayer
-	var conduit := anim != null and anim.has_animation(ANIMATION)
-	if conduit:
-		anim.get_animation(ANIMATION).loop_mode = Animation.LOOP_LINEAR
-		anim.autoplay = ANIMATION
+	var train := int(kart.get_meta("train", ModeleKart.ROUES_STANDARD))
+	var carrosserie := int(kart.get_meta("carrosserie", ModeleKart.STANDARD))
+	pilote.transform = ModeleKart.siege(train, carrosserie)
 	caisse.add_child(pilote)
-	if conduit and anim.is_inside_tree():
-		anim.play(ANIMATION)
+	jouer(pilote, animation_de(kart))
 	if kart is Kart:
 		(kart as Kart).hauteur_klaxon = hauteur_klaxon(i)
+
+
+## L'animation de repos du pilote de ce kart : au volant, ou debout sur le
+## nuage. Les gestes, les figures et les fêtes passent avant (KartVisuals).
+static func animation_de(kart: Node) -> String:
+	return ANIMATION_DEBOUT if ModeleKart.sur_un_nuage(kart) else ANIMATION
+
+
+## Fait jouer en boucle cette animation de repos au pilote, dès qu'il entre
+## dans l'arbre s'il n'y est pas encore.
+static func jouer(pilote: Node, animation: String) -> void:
+	var anim := pilote.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	if anim == null or not anim.has_animation(animation):
+		return
+	anim.get_animation(animation).loop_mode = Animation.LOOP_LINEAR
+	if not anim.is_inside_tree():
+		anim.autoplay = animation
+	elif anim.current_animation != animation:
+		anim.play(animation)
 
 
 ## Le pilote assis dans ce kart, -1 s'il n'y en a pas.

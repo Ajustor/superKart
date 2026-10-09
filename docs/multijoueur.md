@@ -100,7 +100,10 @@ qui part, tout le monde revient au menu.
   relayé par l'hôte dès réception ; les objets sur la piste 30 fois par
   seconde ; le classement 10 fois par seconde.
 - Le protocole porte un numéro de version (`Reseau.VERSION`) : un joueur dont
-  le jeu n'est pas à la même version est refusé avec un message clair.
+  le jeu n'est pas à la même version est refusé avec un message clair. Il est
+  monté à 9 avec le nuage magique : un client plus ancien ignorerait l'indice
+  de kart 5 et calculerait d'autres caractéristiques pour le joueur qui le
+  monte.
 - L'état de chaque kart porte aussi son compteur de figures. Le tonneau d'un
   kart distant se voit partout, même si un paquet se perd.
 - Le turbo de départ, le dérapage (étincelles, paliers) et les flammes du

@@ -294,3 +294,124 @@ func test_la_glisse_allonge_les_mini_turbos() -> void:
 	var s := ModeleKart.stats(base, ModeleKart.DERIVEUR)
 	for p in s.boost_durations.size():
 		assert_gt(s.boost_durations[p], base.boost_durations[p])
+
+
+# --- Le nuage magique --------------------------------------------------------
+
+func _kart_habille(carrosserie: int, train: int = ModeleKart.ROUES_STANDARD) -> Node3D:
+	var kart: Node3D = (load("res://scenes/kart/kart.tscn") as PackedScene).instantiate()
+	ModeleKart.habiller(kart, carrosserie, ModeleKart.couleur(1), train)
+	return kart
+
+
+func _jantes_visibles(kart: Node3D) -> int:
+	var n := 0
+	for roue in kart.get_node("Wheels").get_children():
+		var jante := roue.get_node_or_null("Jante") as Node3D
+		if jante != null and jante.visible:
+			n += 1
+	return n
+
+
+func test_le_nuage_remplace_la_caisse() -> void:
+	var kart := _kart_habille(ModeleKart.NUAGE, ModeleKart.MONSTRE)
+	var nuage := kart.get_node_or_null("Body/Nuage") as NuageMagique
+	assert_not_null(nuage, "le nuage dans la caisse")
+	assert_true(nuage.visible)
+	var kenney := kart.get_node_or_null("Body/Kenney") as Node3D
+	assert_true(kenney == null or not kenney.visible, "plus de kart Kenney")
+	assert_eq(kart.get_node("Wheels").get_child_count(), 4, "les roues restent, la suspension en dépend")
+	assert_eq(_jantes_visibles(kart), 0, "mais on ne les voit plus")
+	assert_almost_eq((kart.get_node("Suspension") as KartSuspension).wheel_radius,
+		float(ModeleKart.roues(ModeleKart.ROUES_STANDARD).rayon), 0.001, "posé comme sur des roues Standard")
+	assert_true(ModeleKart.sur_un_nuage(kart))
+	kart.free()
+
+
+func test_du_kart_au_nuage_et_retour_rien_ne_s_empile() -> void:
+	var kart := _kart_habille(ModeleKart.FUSEE)
+	for carrosserie in [ModeleKart.NUAGE, ModeleKart.FUSEE, ModeleKart.NUAGE, ModeleKart.PLUME]:
+		ModeleKart.habiller(kart, carrosserie, ModeleKart.couleur(2), ModeleKart.SLICKS)
+		var nuage := ModeleKart.est_nuage(carrosserie)
+		var caisse := kart.get_node("Body")
+		var nuages := caisse.get_children().filter(func(n: Node) -> bool: return n.name.begins_with("Nuage"))
+		var kenneys := caisse.get_children().filter(func(n: Node) -> bool: return n.name.begins_with("Kenney"))
+		assert_lte(nuages.size(), 1, "un seul nuage")
+		assert_eq(kenneys.size(), 1, "un seul kart Kenney")
+		assert_eq((kenneys[0] as Node3D).visible, not nuage, ModeleKart.nom(carrosserie))
+		if not nuages.is_empty():
+			assert_eq((nuages[0] as Node3D).visible, nuage, ModeleKart.nom(carrosserie))
+		assert_eq(_jantes_visibles(kart), 0 if nuage else 4, ModeleKart.nom(carrosserie))
+	assert_false(ModeleKart.sur_un_nuage(kart))
+	assert_eq(_couleur_de(kart), ModeleKart.couleur(2), "le kart retrouve sa peinture")
+	kart.free()
+
+
+func test_les_roues_ne_changent_rien_au_nuage() -> void:
+	var base := KartStats.new()
+	var reference := ModeleKart.stats(base, ModeleKart.NUAGE)
+	var jauges := ModeleKart.jauges(ModeleKart.NUAGE)
+	for r in ModeleKart.nombre_roues():
+		var s := ModeleKart.stats(base, ModeleKart.NUAGE, r)
+		assert_almost_eq(s.max_speed, reference.max_speed, 0.0001, ModeleKart.roues(r).nom)
+		assert_almost_eq(s.turn_rate, reference.turn_rate, 0.0001)
+		assert_almost_eq(s.offroad_speed_multiplier, reference.offroad_speed_multiplier, 0.0001)
+		assert_almost_eq(s.poids, reference.poids, 0.0001)
+		assert_eq(ModeleKart.jauges(ModeleKart.NUAGE, r), jauges)
+	# Il flotte sur l'herbe, mais un rien le bouscule.
+	assert_gt(reference.offroad_speed_multiplier, base.offroad_speed_multiplier)
+	assert_lt(reference.poids, base.poids)
+
+
+func test_au_garage_le_nuage_cache_les_roues_et_la_couleur() -> void:
+	var avant: int = GameSettings.course.modele
+	var roues_avant: int = GameSettings.course.roues
+	var chemin_avant: String = GameSettings.chemin
+	GameSettings.chemin = "user://test_garage_nuage.cfg"
+	var garage := GaragePanel.new()
+	add_child_autofree(garage)
+	GameSettings.course.modele = ModeleKart.FUSEE
+	GameSettings.course.roues = ModeleKart.SLICKS
+	garage._relire()
+	assert_true(garage._lignes[1].visible, "un kart a des roues")
+	assert_true(garage._couleurs.visible, "et une couleur")
+	assert_eq(garage._lignes[0].get_child(0).text, "Kart")
+	GameSettings.course.modele = ModeleKart.COSTAUD
+	garage._changer_piece(0, 1)
+	assert_eq(GameSettings.course.modele, ModeleKart.NUAGE)
+	assert_false(garage._lignes[1].visible, "un nuage n'a pas de roues")
+	assert_false(garage._couleurs.visible, "et il est toujours doré")
+	assert_not_null(garage._vitrine.get_node_or_null("Body/Nuage"), "la vitrine montre le nuage")
+	garage._changer_piece(0, 1)
+	assert_eq(GameSettings.course.modele, ModeleKart.STANDARD, "on repasse sur un kart")
+	assert_true(garage._lignes[1].visible)
+	assert_true(garage._couleurs.visible)
+	assert_eq(GameSettings.course.roues, ModeleKart.SLICKS, "les roues choisies sont restées")
+	GameSettings.course.modele = avant
+	GameSettings.course.roues = roues_avant
+	GameSettings.chemin = chemin_avant
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_garage_nuage.cfg"))
+
+
+func test_un_joueur_sur_le_nuage_traverse_le_reseau() -> void:
+	var l := Lobby.new()
+	l.ajouter(1, "Hôte")
+	l.ajouter(42, "Client")
+	l.choisir_vehicule(42, ModeleKart.NUAGE, 4, Personnage.LOU, ModeleKart.MONSTRE, ModeleKart.BECQUET)
+	var copie := Lobby.new()
+	copie.depuis_liste(l.en_liste())
+	assert_eq(copie.vehicule(42)[0], ModeleKart.NUAGE)
+	var plan := copie.plan_de_course(RandomNumberGenerator.new())
+	var client: Dictionary = plan.filter(func(p): return p.peer == 42)[0]
+	assert_eq(client.modele, ModeleKart.NUAGE)
+	var chez_l_hote := RaceLauncher.monter_reseau(plan, {piste = "circuit_01", tours = 1}, 1, true)
+	var session := chez_l_hote.get_node("Session") as RaceSession
+	var lui: Kart = null
+	for k in session.kart_paths.size():
+		if session.noms_reels[k] == "Client":
+			lui = session.get_node(session.kart_paths[k])
+	assert_not_null(lui)
+	assert_true(ModeleKart.sur_un_nuage(lui), "vu de l'hôte, il est sur son nuage")
+	assert_true((lui.get_node("Body/Nuage") as Node3D).visible)
+	assert_almost_eq(lui.stats.poids, ModeleKart.facteur("poids", ModeleKart.NUAGE), 0.001)
+	chez_l_hote.free()

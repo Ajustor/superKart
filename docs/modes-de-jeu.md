@@ -237,6 +237,10 @@ plus grands que nature (×1,35) pour que leur tête et leurs épaules dépassent
 du dossier, vus de dos par la caméra de poursuite. Purement d'allure : ils ne
 changent que le ton du klaxon.
 
+Sur le nuage magique, le pilote se tient **debout au centre du nuage**
+(`ModeleKart.siege`), un peu plus petit (×1,1) pour ne pas cacher la route à
+la caméra, et joue « idle » au lieu de « drive ». Il se berce avec le nuage.
+
 Leur animation suit ce qui arrive au kart (`KartVisuals._update_pilote`),
 en fondu de 0,15 s :
 - **Tête-à-queue** : « fall », les bras qui battent, tant qu'il dure ;
@@ -245,7 +249,7 @@ en fondu de 0,15 s :
 - **Choc** contre un kart à plus de 4 m/s : « emote-no » (0,65 s) ;
 - **Arrivée** : « emote-yes » sur le podium, « emote-no » au-delà, jusqu'à la
   fin ;
-- sinon **« drive »**, au volant.
+- sinon **« drive »**, au volant, ou **« idle »**, debout sur le nuage.
 
 Le kart Kenney, lui, n'a pas d'animation : ses roues tournent et braquent
 avec la suspension, et la caisse penche dans les virages comme avant.
@@ -273,21 +277,22 @@ dédié.
 Tous les karts sont le kart du Car Kit de Kenney (CC0, `assets/kenney/`),
 peint de la couleur choisie : le gris-bleu de sa carrosserie prend la teinte
 (`shaders/kart_peint.gdshader`), ses détails jaunes et ses plastiques noirs
-restent. On choisit au garage un réglage moteur, un train de roues, l'une des
-huit couleurs et le pilote. Le garage s'ouvre depuis l'accueil et depuis le
+restent. On choisit au garage un kart (un réglage moteur, ou le nuage
+magique), un train de roues, l'une des huit couleurs et le pilote. Le garage s'ouvre depuis l'accueil et depuis le
 salon multijoueur ; chaque choix se fait avec ◀ ▶, les jauges suivent la
 combinaison, et la description dit ce que fait le dernier choix changé.
 
-Le moteur et les roues multiplient les caractéristiques du kart d'origine,
+Le kart et les roues multiplient les caractéristiques du kart d'origine,
 celui sur lequel les circuits sont validés :
 
-| Moteur | Vitesse | Accél. | Virage | Glisse | Poids | Terrain |
+| Kart | Vitesse | Accél. | Virage | Glisse | Poids | Terrain |
 | --- | --- | --- | --- | --- | --- | --- |
 | Standard | 1 | 1 | 1 | 1 | 1 | 1 |
 | Fusée | 1,02 | 0,8 | 1 | 0,9 | 1,1 | 0,95 |
 | Plume | 0,985 | 1,3 | 1,08 | 1,05 | 0,8 | 1 |
 | Dériveur | 0,995 | 0,95 | 1 | 1,3 | 0,95 | 0,95 |
 | Costaud | 1,01 | 0,88 | 0,97 | 0,95 | 1,4 | 1,05 |
+| Nuage magique | 0,995 | 0,9 | 1 | 1,25 | 0,75 | 1,35 |
 
 | Roues (modèle Kenney) | Vitesse | Accél. | Virage | Glisse | Poids | Terrain |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -335,8 +340,36 @@ L'allure (`ModeleKart.habiller`) :
   une roue plus grande se monte plus haut, la caisse suit, et la suspension
   apprend son rayon.
 
+### Le nuage magique (`ModeleKart.NUAGE`, `NuageMagique`)
+
+La sixième entrée de la ligne « Kart », ajoutée en fin de liste pour que les
+réglages enregistrés gardent leurs indices. Inspiré du nuage de Goku : un
+nuage doré sur lequel le pilote se tient debout. Il flotte sur l'herbe et
+glisse comme un rêve, mais un rien le bouscule.
+
+- **Au garage**, les lignes Roues et Couleur se cachent quand il est choisi :
+  il n'a pas de roues et il est toujours doré. Les choix restent enregistrés
+  pour quand on repasse sur un kart.
+- **Les roues ne comptent pas** : `ModeleKart.facteur` le traite comme monté
+  sur les roues Standard, quel que soit le train enregistré.
+- **L'allure** : `Body/Nuage` remplace `Body/Kenney`, qui est caché. Une
+  douzaine de boules aplaties et une traîne de trois bouffées, fusionnées en
+  un seul maillage partagé (un seul appel de dessin), en couleurs de sommets,
+  plus claires sur le dessus. Emprise d'environ 1,4 × 2 m, proche de la boîte
+  de collision : la physique et les chocs ne changent pas. Il se berce de
+  quelques centimètres, et sème de petites bouffées dorées (`CPUParticles3D`)
+  au-dessus de 3 m/s.
+- **Les roues** restent dans la scène (la suspension en dépend), posées comme
+  des roues Standard, mais leurs jantes sont cachées. Ni fumée de pneus ni
+  poussière hors piste ; les étincelles de glisse et les flammes du turbo
+  restent.
+- Rhabiller passe de l'un à l'autre sans rien empiler.
+
+L'IA ne le prend pas (`KARTS_IA`) ; la course en fond du menu peut le
+montrer.
+
 Les sept adversaires de l'IA courent dans des combinaisons variées et fixes
-(`ModeleKart.KARTS_IA`) : chaque machine d'une partie en réseau les habille
+(`ModeleKart.KARTS_IA`), jamais le nuage : chaque machine d'une partie en réseau les habille
 de la même façon. Leurs vitesses de pointe restent à 1 % de celle d'origine :
 le classement de l'IA reste une affaire de pilote. Un kart 4 % plus rapide
 gagnait 37 courses sur 40, même sur un pilote moyen.
