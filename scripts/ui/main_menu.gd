@@ -261,8 +261,11 @@ func _rafraichir_mise_a_jour() -> void:
 
 
 func _montrer(ecran: Control) -> void:
-	for e in [_accueil, _selection, _options, _multi, _astuces, _garage, _aide, _journal]:
+	var ecrans := [_accueil, _selection, _options, _multi, _astuces, _garage, _aide, _journal]
+	for e in ecrans:
 		e.visible = e == ecran
+	Journal.reperer("menu : %s" % ["accueil", "choix de la course", "options", "multijoueur", "astuces", "garage",
+		"aide", "journal"][ecrans.find(ecran)])
 	# Le focus clavier/manette : sans lui, un joueur à la manette ne peut rien
 	# faire dans le menu.
 	if ecran == _accueil:

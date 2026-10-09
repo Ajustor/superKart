@@ -25,6 +25,9 @@ func _ready() -> void:
 	_lecteur.bus = GameSettings.BUS_MUSIQUE
 	_lecteur.volume_db = VOLUME_DB
 	add_child(_lecteur)
+	# L'air ne boucle pas de lui-même (voir Musique._en_wav) : on le relance.
+	# À l'arrivée, stop() ne déclenche pas finished, et la musique se tait.
+	_lecteur.finished.connect(_lecteur.play)
 	if session.entries.is_empty():
 		await session.grille_prete
 	var piste := session.circuit()

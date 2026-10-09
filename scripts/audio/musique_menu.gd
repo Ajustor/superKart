@@ -18,6 +18,10 @@ func _ready() -> void:
 	_lecteur.bus = GameSettings.BUS_MUSIQUE
 	_lecteur.volume_db = -40.0
 	add_child(_lecteur)
+	# L'air ne boucle pas de lui-même (voir Musique._en_wav) : on le relance.
+	_lecteur.finished.connect(func() -> void:
+		Journal.reperer("musique du menu : reprise")
+		_lecteur.play())
 	if Musique.deja_composee(Musique.Style.MENU) == null:
 		_tache = WorkerThreadPool.add_task(Musique.composer.bind(Musique.Style.MENU), false, "musique du menu")
 	else:
