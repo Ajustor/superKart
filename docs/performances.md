@@ -50,6 +50,34 @@ xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 960x540 \
     --fixed-fps 30 -s tools/mesure_rendu.gd -- <circuit> [haute|moyenne|basse]
 ```
 
+## Triangles de la route
+
+`TrackBuilder` recoupe une section de route là où ses triangles s'écartent
+de plus de 1,5 cm de la courbe, mesurés en cinq points au milieu de la
+section. C'est le cas aux changements de dévers, où le quadrilatère se tord,
+et dans les pentes qui s'arrondissent. Une section plate garde ses deux
+triangles. Avant ce recoupage, le bitume passait jusqu'à 20 cm sous la
+courbe, sous un marquage qui flottait.
+
+Mesuré sur les 29 circuits (2026-10-09), triangles de la route, affichage et
+collision :
+
+| Circuit | Avant | Après |
+|---|---|---|
+| circuit_01 | 762 | 3 076 |
+| coeur_terre | 1 220 | 4 522 |
+| echelle_celeste | 1 682 | 4 900 |
+| pic_lacets | 1 454 | 4 060 |
+| lune_carnaval (le plus gros) | 4 488 | 6 302 |
+| arene_ovale (plate) | 246 | 246 |
+| **Total des 29** | **41 314** | **80 388** (+95 %) |
+
+Le plus gros circuit reste à 6 300 triangles de route, l'équivalent de deux
+modèles de décor Kenney. Points de la chaussée à plus de 2 cm de la courbe,
+avant → après : circuit_01 35 % → 0 %, coeur_terre 43 % → 0 %,
+echelle_celeste 32 % → 0,2 %, pic_lacets 19 % → 0,1 %
+(`tests/test_track_builder.gd` vérifie un changement de dévers).
+
 ## Ce qui a été fait contre les gels et les commandes perdues
 
 - **Moteur physique Jolt** au lieu de GodotPhysics, et projections sur le

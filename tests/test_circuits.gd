@@ -202,7 +202,7 @@ func test_aucun_decor_solide_ne_mord_sur_la_route() -> void:
 					# sans conséquence.
 					if pose.origin.y + f[2] * t > route.y + 2.5 or pose.origin.y + f[3] * t < route.y - 0.5:
 						continue
-					var marge := absf(c.lateral_offset_at(centre, d)) - f[1] * t - c.half_width
+					var marge: float = absf(c.lateral_offset_at(centre, d)) - f[1] * t - c.half_width
 					assert_gt(marge, 0.0, "%s, %s à %.0f m : mord de %.2f m sur la route" % [info.id, e.name, d, -marge])
 
 
