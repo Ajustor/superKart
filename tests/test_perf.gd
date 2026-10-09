@@ -96,7 +96,8 @@ func test_en_automatique_un_pc_est_en_haute() -> void:
 func test_chaque_style_compose_une_boucle_propre() -> void:
 	for style in Musique.Style.values():
 		var flux := Musique.composer(style)
-		assert_eq(flux.loop_mode, AudioStreamWAV.LOOP_FORWARD, "elle boucle")
+		assert_eq(flux.loop_mode, AudioStreamWAV.LOOP_DISABLED,
+			"le lecteur la relance : la boucle du flux faisait planter le FP5")
 		var secondes := flux.data.size() / 2.0 / Musique.FREQUENCE
 		assert_between(secondes, 8.0, 25.0, "style %d : huit mesures" % style)
 		assert_same(Musique.composer(style), flux, "composée une seule fois")

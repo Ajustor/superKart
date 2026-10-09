@@ -348,7 +348,8 @@ static func _en_wav(piste: PackedFloat32Array) -> AudioStreamWAV:
 	flux.mix_rate = FREQUENCE
 	flux.stereo = false
 	flux.data = donnees
-	flux.loop_mode = AudioStreamWAV.LOOP_FORWARD
-	flux.loop_begin = 0
-	flux.loop_end = piste.size()
+	# Pas de boucle dans le flux : sur un FP5 (Android 15), le jeu se fermait
+	# net au menu pile quand l'air de 18 s revenait au début. Les lecteurs
+	# (MusiqueMenu, RaceMusic) relancent eux-mêmes l'air quand il finit.
+	flux.loop_mode = AudioStreamWAV.LOOP_DISABLED
 	return flux
