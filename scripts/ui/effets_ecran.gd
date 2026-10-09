@@ -15,6 +15,11 @@ var _materiau: ShaderMaterial
 ## traverser.
 var _vortex: ColorRect
 var _materiau_vortex: ShaderMaterial
+## L'éclair (ItemManager.kart_foudroye) : un éclat blanc sur toute l'image,
+## qui s'efface en un instant.
+const DUREE_FLASH := 0.4
+var _flash: ColorRect
+var _force_flash: float = 0.0
 
 
 func _ready() -> void:
@@ -33,6 +38,12 @@ func _ready() -> void:
 	_vortex.material = _materiau_vortex
 	_vortex.visible = false
 	add_child(_vortex)
+	_flash = ColorRect.new()
+	_flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_flash.color = Color(0.92, 0.95, 1.0, 0.0)
+	_flash.visible = false
+	add_child(_flash)
 	resized.connect(_rapport)
 	_rapport()
 
@@ -43,7 +54,15 @@ func _rapport() -> void:
 		_materiau_vortex.set_shader_parameter("rapport", size.x / size.y)
 
 
+## Un éclair vient de tomber.
+func eclair() -> void:
+	_force_flash = 1.0
+
+
 func _process(delta: float) -> void:
+	_force_flash = move_toward(_force_flash, 0.0, delta / DUREE_FLASH)
+	_flash.visible = _force_flash > 0.0
+	_flash.color.a = 0.6 * _force_flash * _force_flash
 	var cible := 0.0
 	if session != null and not session.entries.is_empty():
 		var moteur := session.entries[0].kart.motor

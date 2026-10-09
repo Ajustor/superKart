@@ -47,6 +47,10 @@ func _ready() -> void:
 	effets.name = "EffetsEcran"
 	effets.session = _session
 	add_child(effets)
+	# L'éclair, où qu'il tombe, illumine tout l'écran.
+	var objets := _session.get_node_or_null("../Objets") as ItemManager
+	if objets != null:
+		objets.kart_foudroye.connect(func(_e: RaceEntry) -> void: effets.eclair())
 
 	_label = Label.new()
 	_label.position = Vector2(24, 16)

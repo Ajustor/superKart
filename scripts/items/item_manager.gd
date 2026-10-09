@@ -149,6 +149,7 @@ func _ready() -> void:
 	var session := get_node_or_null(session_path) as RaceSession
 	assert(session != null, "session_path doit pointer vers une RaceSession")
 	rng.randomize()
+	kart_foudroye.connect(_visuel_foudre)
 	if session.entries.is_empty():
 		await session.grille_prete
 	var circuit := session.get_node(session.track_path) as Track
@@ -971,6 +972,7 @@ func echantillons() -> Array[Node3D]:
 	for genre in [Genre.VERTE, Genre.ROUGE, Genre.BLEUE]:
 		liste.append(_visuel_carapace(genre))
 	liste.append(_boule_d_explosion())
+	liste.append(_trait_de_foudre())
 	return liste
 
 
@@ -995,3 +997,61 @@ func _visuel_explosion(ou: Vector3) -> void:
 	anime.tween_property(boule, "scale", Vector3.ONE * RAYON_EXPLOSION, 0.45).set_ease(Tween.EASE_OUT)
 	anime.tween_property(m, "albedo_color:a", 0.0, 0.45)
 	anime.chain().tween_callback(boule.queue_free)
+
+
+## La foudre qui tombe sur un kart foudroyé : un trait en zigzag du ciel
+## jusqu'à lui, qui vacille un instant. Sans elle, l'éclair ne se voyait
+## pas : les karts frappés sont devant, loin, et rétrécissent sans bruit.
+const HAUTEUR_FOUDRE := 24.0
+static var _matiere_foudre: StandardMaterial3D
+
+
+func _visuel_foudre(entree: RaceEntry) -> void:
+	if not is_inside_tree() or not entree.kart.is_inside_tree():
+		return
+	var eclat := _trait_de_foudre()
+	eclat.top_level = true
+	add_child(eclat)
+	eclat.global_position = entree.kart.global_position
+	# Derrière un portail, la foudre est du monde du kart (Track.calque_a).
+	if entree.calque != 0:
+		Track.poser_calque(eclat, entree.calque)
+	var anime := create_tween()
+	anime.tween_interval(0.1)
+	anime.tween_callback(func() -> void: eclat.visible = false)
+	anime.tween_interval(0.05)
+	anime.tween_callback(func() -> void: eclat.visible = true)
+	anime.tween_interval(0.2)
+	anime.tween_callback(eclat.queue_free)
+
+
+## Le trait lui-même, du ciel (HAUTEUR_FOUDRE) jusqu'au sol, en segments
+## brisés : jaune vif, sans ombre, insensible à la lumière.
+func _trait_de_foudre() -> Node3D:
+	if _matiere_foudre == null:
+		_matiere_foudre = StandardMaterial3D.new()
+		_matiere_foudre.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_matiere_foudre.albedo_color = Color(1.0, 0.95, 0.55)
+	var racine := Node3D.new()
+	var haut := Vector3(rng.randf_range(-3.0, 3.0), HAUTEUR_FOUDRE, rng.randf_range(-3.0, 3.0))
+	var segments := 7
+	var avant := haut
+	for i in segments:
+		var t := float(i + 1) / segments
+		var ici := haut.lerp(Vector3(0.0, 0.6, 0.0), t)
+		if i < segments - 1:
+			ici += Vector3(rng.randf_range(-1.6, 1.6), 0.0, rng.randf_range(-1.6, 1.6))
+		var morceau := MeshInstance3D.new()
+		morceau.mesh = _forme("foudre", func() -> Mesh:
+			var boite := BoxMesh.new()
+			boite.size = Vector3(0.32, 1.0, 0.32)
+			return boite)
+		morceau.material_override = _matiere_foudre
+		morceau.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var longueur := avant.distance_to(ici)
+		var axe := (avant - ici).normalized()
+		var base := Basis(Quaternion(Vector3.UP, axe)).scaled(Vector3(1.0, longueur, 1.0))
+		morceau.transform = Transform3D(base, (avant + ici) * 0.5)
+		racine.add_child(morceau)
+		avant = ici
+	return racine
