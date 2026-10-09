@@ -37,6 +37,8 @@ func _ready() -> void:
 	_rng.randomize()
 	course = monter(_rng)
 	session = course.get_node("Session") as RaceSession
+	Journal.reperer("course de fond : %s — %s" % [course.get_meta("piste", "?"),
+		Journal.etat_memoire()])
 	camera = course.get_node_or_null("ChaseCamera") as ChaseCamera
 	if camera != null:
 		# Plus haut et plus loin qu'en course : le kart suivi passe derrière
@@ -71,6 +73,7 @@ static func monter(rng: RandomNumberGenerator) -> Node:
 	reglage.roues = rng.randi_range(0, ModeleKart.nombre_roues() - 1)
 	reglage.aileron = rng.randi_range(0, ModeleKart.nombre_ailerons() - 1)
 	var course := RaceLauncher.monter(reglage, rng)
+	course.set_meta("piste", reglage.piste.id)
 	var session := course.get_node("Session") as RaceSession
 	session.duree_decompte = 0.0
 	session.id_piste = ""

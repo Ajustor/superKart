@@ -15,6 +15,10 @@ const MARQUE := "user://partie_en_cours"
 const DOSSIER := "user://logs"
 ## Un repère mémoire toutes les tant de secondes, en course comme au menu.
 const PERIODE_MEMOIRE := 30.0
+## Plus serrés au démarrage : un jeu qui se ferme dans la première minute
+## ne laissait que la ligne du lancement.
+const PERIODE_AU_DEMARRAGE := 5.0
+const DEMARRAGE := 60.0
 
 ## Vrai si la partie précédente ne s'est pas terminée proprement.
 var plantage_precedent := false
@@ -22,6 +26,7 @@ var plantage_precedent := false
 var journal_precedent := ""
 
 var _depuis_memoire := 0.0
+var _depuis_lancement := 0.0
 
 
 func _ready() -> void:
@@ -37,7 +42,9 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_depuis_memoire += delta
-	if _depuis_memoire >= PERIODE_MEMOIRE:
+	_depuis_lancement += delta
+	var periode := PERIODE_AU_DEMARRAGE if _depuis_lancement < DEMARRAGE else PERIODE_MEMOIRE
+	if _depuis_memoire >= periode:
 		_depuis_memoire = 0.0
 		reperer(etat_memoire())
 
