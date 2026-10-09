@@ -85,11 +85,16 @@ static func dessiner(toile: CanvasItem, objet: int, centre: Vector2, r: float) -
 				]), Color(0.97, 0.97, 1.0))
 			_carapace(toile, centre, r * 0.9, Color(0.15, 0.35, 1.0))
 		ItemKind.LIGHTNING:
-			toile.draw_colored_polygon(PackedVector2Array([
-				centre + Vector2(r * 0.25, -r * 0.95), centre + Vector2(-r * 0.5, r * 0.1),
-				centre + Vector2(-r * 0.02, r * 0.1), centre + Vector2(-r * 0.3, r * 0.95),
-				centre + Vector2(r * 0.5, -r * 0.15), centre + Vector2(r * 0.02, -r * 0.15),
-			]), Color(1.0, 0.88, 0.2))
+			# Large, cerclé de sombre : à côté des photos des autres objets, un
+			# trait fin se perdait.
+			var points := PackedVector2Array()
+			for p in [Vector2(0.35, -1.05), Vector2(-0.7, 0.15), Vector2(-0.05, 0.15), Vector2(-0.4, 1.05),
+					Vector2(0.7, -0.2), Vector2(0.05, -0.2)]:
+				points.append(centre + p * r)
+			toile.draw_colored_polygon(points, Color(1.0, 0.86, 0.15))
+			var contour := points.duplicate()
+			contour.append(points[0])
+			toile.draw_polyline(contour, Color(0.35, 0.2, 0.0), maxf(2.0, r * 0.08), true)
 		ItemKind.STAR:
 			toile.draw_colored_polygon(etoile(centre, r * 0.95, r * 0.42), Color(1.0, 0.85, 0.15))
 			toile.draw_circle(centre + Vector2(-r * 0.15, -r * 0.05), r * 0.08, Color(0.1, 0.1, 0.1))
