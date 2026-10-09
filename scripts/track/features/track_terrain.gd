@@ -82,6 +82,13 @@ var _dans_un_trou: Array[bool] = []
 ## porter.
 var _du_monde: Array[bool] = []
 var _grille: Dictionary = {}
+## Toute la route du circuit, portion ou pas, et où chaque échantillon est
+## le long du tracé : le relief reste sous elle aussi (_sous_les_autres_routes).
+var _routes := PackedVector3Array()
+var _routes_droites := PackedVector3Array()
+var _routes_d := PackedFloat32Array()
+var _grille_routes: Dictionary = {}
+var _distances := PackedFloat32Array()
 var _bruit: FastNoiseLite
 var _pour: TrackCurve
 
@@ -141,18 +148,32 @@ func _preparer(c: TrackCurve) -> void:
 	_dans_un_trou.clear()
 	_du_monde.clear()
 	_grille.clear()
+	_routes.clear()
+	_routes_droites.clear()
+	_routes_d.clear()
+	_grille_routes.clear()
+	_distances.clear()
 	var circuit := piste()
 	var monde: TrackPortail = circuit.monde_du_decor(self) if circuit != null else null
 	var n := maxi(int(c.length / PAS), 8)
 	for k in n:
 		var d := c.length * float(k) / float(n)
+		if circuit != null and circuit.hors_course(d):
+			continue
+		var r := _routes.size()
+		_routes.append(c.position_at(d))
+		_routes_droites.append(c.right_at(d))
+		_routes_d.append(d)
+		var case_route := _case(_routes[r].x, _routes[r].z)
+		var dans_la_case: PackedInt32Array = _grille_routes.get(case_route, PackedInt32Array())
+		dans_la_case.append(r)
+		_grille_routes[case_route] = dans_la_case
 		# Ce qui n'est pas de ce relief : hors de la portion, ou la boucle
 		# qu'on ne court pas après l'arrivée d'une course linéaire.
 		if portion and not couvre(d, c.length):
 			continue
-		if circuit != null and circuit.hors_course(d):
-			continue
 		var i := _echantillons.size()
+		_distances.append(d)
 		_echantillons.append(c.position_at(d))
 		_droites.append(c.right_at(d))
 		# Le ravin déborde un peu du trou : ses bords ne tombent pas à pic
@@ -249,24 +270,30 @@ func _hauteur(c: TrackCurve, x: float, z: float) -> float:
 ## Là où le tracé revient sur lui-même (une épingle), le point de route le
 ## plus proche n'est pas le seul au-dessus duquel passer : une maille entre
 ## deux branches à des hauteurs différentes percerait la plus basse. On reste
-## sous toute route à portée de maille.
+## sous toute route à portée de maille — celle du circuit entier, pas
+## seulement de la portion du relief : au sortir de sa portion, le désert
+## d'etoiles montait en collines jusqu'à 65 cm au-dessus du bitume.
 func _sous_les_autres_routes(x: float, z: float, deja: int, demi: float) -> float:
 	var plafond := INF
 	var portee := demi + maille * 1.5
 	var centre := _case(x, z)
+	var c := courbe()
+	var ici_d := _distances[deja]
 	for dx in range(-1, 2):
 		for dz in range(-1, 2):
 			var cle := centre + Vector2i(dx, dz)
-			if not _grille.has(cle):
+			if not _grille_routes.has(cle):
 				continue
-			for i in (_grille[cle] as PackedInt32Array):
-				if absi(i - deja) < 8:
+			for i in (_grille_routes[cle] as PackedInt32Array):
+				# La route d'à côté de l'échantillon le plus proche est déjà
+				# sous lui, avec ses bas-côtés au ras (_hauteur).
+				if absf(wrapf(_routes_d[i] - ici_d, -c.length * 0.5, c.length * 0.5)) < 8.0 * PAS:
 					continue
-				var e := _echantillons[i]
+				var e := _routes[i]
 				var d2 := (e.x - x) * (e.x - x) + (e.z - z) * (e.z - z)
 				if d2 > portee * portee:
 					continue
-				var droite := _droites[i]
+				var droite := _routes_droites[i]
 				var plat := Vector3(droite.x, 0.0, droite.z).normalized()
 				var lateral := (Vector3(x, e.y, z) - e).dot(plat)
 				plafond = minf(plafond, e.y + droite.y * clampf(lateral, -demi, demi) - SOUS_LA_ROUTE)
