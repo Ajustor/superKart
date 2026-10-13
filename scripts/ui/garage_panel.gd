@@ -20,7 +20,7 @@ var _derniere_piece := 0
 var _boutons_couleur: Array[Button] = []
 var _couleurs: Control
 ## La vitrine descend d'autant pour le nuage magique, où le pilote est debout.
-const DESCENTE_NUAGE := 0.3
+const DESCENTE_NUAGE := 0.3 + NuageMagique.HAUTEUR
 var _description: Label
 var _jauges: Jauges
 var _vitrine: Node3D

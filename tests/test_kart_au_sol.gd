@@ -29,9 +29,18 @@ class Temoin:
 
 	var jantes := INF
 	var caisse := INF
+	## La dernière image : ce qui flotte se lit là, pas dans le minimum.
+	var jantes_maintenant := INF
+	var caisse_maintenant := INF
 
 	func _process(_delta: float) -> void:
+		mesurer()
+		jantes = minf(jantes, jantes_maintenant)
+		caisse = minf(caisse, caisse_maintenant)
+
+	func mesurer() -> void:
 		var k := get_parent() as Kart
+		jantes_maintenant = INF
 		# Une roue est ronde : la boîte d'une jante qui tourne descend sous
 		# elle, jusqu'à r(√2 - 1) au quart de tour. Son point le plus bas est
 		# son centre moins son rayon, en travers de son axe.
@@ -41,19 +50,24 @@ class Temoin:
 			if not (r3.get_node("Jante") as Node3D).is_visible_in_tree():
 				continue
 			var axe := r3.global_basis.x.normalized()
-			jantes = minf(jantes, r3.global_position.y - rayon * sqrt(maxf(1.0 - axe.y * axe.y, 0.0)))
-		caisse = minf(caisse, Temoin.le_plus_bas(k.get_node("Body/Kenney")))
+			jantes_maintenant = minf(jantes_maintenant,
+				r3.global_position.y - rayon * sqrt(maxf(1.0 - axe.y * axe.y, 0.0)))
+		var nuage := k.get_node_or_null("Body/Nuage") as Node3D
+		var caisse_dessinee: Node = nuage if nuage != null and nuage.visible else k.get_node("Body/Kenney")
+		caisse_maintenant = Temoin.le_plus_bas(caisse_dessinee)
 
-	## Le point le plus bas des maillages visibles de `noeud`.
+	## Le point le plus bas des maillages visibles de `noeud`, sommet par
+	## sommet. Les coins d'une boîte inclinée descendent plus bas que le
+	## modèle : mesurer avec eux a fait relever la caisse de 16 cm de trop.
 	static func le_plus_bas(noeud: Node) -> float:
 		var y := INF
 		for m in noeud.find_children("*", "MeshInstance3D", true, false):
 			var mi := m as MeshInstance3D
 			if not mi.is_visible_in_tree() or mi.mesh == null:
 				continue
-			var boite := mi.get_aabb()
-			for i in 8:
-				y = minf(y, (mi.global_transform * boite.get_endpoint(i)).y)
+			var t := mi.global_transform
+			for sommet in mi.mesh.get_faces():
+				y = minf(y, (t * sommet).y)
 		return y
 
 
@@ -69,12 +83,14 @@ func _dalle() -> void:
 
 
 ## Un kart habillé sur ces roues, posé et immobile, puis le témoin.
-func _kart(roues: int = ModeleKart.ROUES_STANDARD) -> Pilote:
+func _kart(roues: int = ModeleKart.ROUES_STANDARD, carrosserie: int = ModeleKart.STANDARD) -> Pilote:
 	_dalle()
 	kart = (load("res://scenes/kart/kart.tscn") as PackedScene).instantiate() as Kart
-	ModeleKart.habiller(kart, ModeleKart.STANDARD, ModeleKart.couleur(0), roues)
+	ModeleKart.habiller(kart, carrosserie, ModeleKart.couleur(0), roues)
 	add_child_autofree(kart)
 	var pilote := Pilote.new()
+	# Enfant du kart : libéré avec lui, sans quoi chaque essai laisse un orphelin.
+	kart.add_child(pilote)
 	pilote.gaz = 0.0
 	kart.changer_pilote(pilote)
 	kart.respawn_at(Transform3D(Basis(), Vector3(0, 0.05, 0)))
@@ -94,8 +110,8 @@ func test_une_roue_delestee_ne_passe_pas_sous_le_sol() -> void:
 
 
 ## Glisse à fond d'un côté, nez plongé au freinage, sur ces roues.
-func _glisse(sens: int, roues: int) -> void:
-	await _kart(roues)
+func _glisse(sens: int, roues: int, carrosserie: int = ModeleKart.STANDARD) -> void:
+	await _kart(roues, carrosserie)
 	var suspension := kart.suspension
 	var visuels := kart.get_node("Visuals") as KartVisuals
 	for i in 40:
@@ -137,5 +153,51 @@ func test_au_repos_rien_ne_bouge() -> void:
 		await wait_seconds(0.3)
 		assert_almost_eq(temoin.jantes, 0.0, TOLERANCE, "les roues touchent le sol")
 		assert_almost_eq(temoin.caisse, cas[1], TOLERANCE, "la caisse à sa hauteur d'aujourd'hui")
+		kart.queue_free()
+		await wait_process_frames(2)
+
+
+func test_en_glisse_rien_ne_flotte() -> void:
+	# Mesuré sur 32846da : en glisse, les roues passaient 21 cm au-dessus de
+	# la route et la caisse 16 cm. La relève se calculait sur les coins de la
+	# boîte de toute la caisse, pilote compris, et soulevait aussi les roues
+	# alors que l'inclinaison de la glisse ne touche que la caisse.
+	for cas in [[ModeleKart.ROUES_STANDARD, 0.0498], [ModeleKart.LEGERES, 0.0018]]:
+		for sens in [-1, 1]:
+			await _glisse(sens, cas[0])
+			temoin.mesurer()
+			assert_lt(temoin.jantes_maintenant, 0.01,
+				"les roues restent au sol : %.3f m au-dessus (roues %d, sens %d)"
+				% [temoin.jantes_maintenant, cas[0], sens])
+			assert_lt(temoin.caisse_maintenant, cas[1] + 0.015,
+				"la caisse ne monte pas au-dessus de sa hauteur de repos : %.3f m (roues %d, sens %d)"
+				% [temoin.caisse_maintenant, cas[0], sens])
+			kart.queue_free()
+			await wait_process_frames(2)
+
+
+func test_le_nuage_flotte_au_dessus_du_sol() -> void:
+	# Mesuré sur 32846da : au repos, le bas du nuage était 3,4 cm dans la
+	# route en médiane, et 22 % du temps sous la route en roulant. Il doit
+	# flotter, sur toute la période de son bercement, sans s'envoler.
+	await _kart(ModeleKart.ROUES_STANDARD, ModeleKart.NUAGE)
+	var plus_bas := INF
+	var plus_haut := -INF
+	for i in 120:
+		await wait_process_frames(1)
+		temoin.mesurer()
+		plus_bas = minf(plus_bas, temoin.caisse_maintenant)
+		plus_haut = maxf(plus_haut, temoin.caisse_maintenant)
+	assert_gt(plus_bas, 0.03, "le nuage flotte : son bas à %.3f m du sol" % plus_bas)
+	assert_lt(plus_haut, 0.25, "sans s'envoler : %.3f m" % plus_haut)
+
+
+func test_le_nuage_ne_touche_pas_le_sol_en_glisse() -> void:
+	for sens in [-1, 1]:
+		await _glisse(sens, ModeleKart.ROUES_STANDARD, ModeleKart.NUAGE)
+		temoin.mesurer()
+		assert_gt(temoin.caisse_maintenant, 0.0,
+			"nez plongé et incliné, le nuage reste au-dessus du sol : %.3f m (sens %d)"
+			% [temoin.caisse_maintenant, sens])
 		kart.queue_free()
 		await wait_process_frames(2)

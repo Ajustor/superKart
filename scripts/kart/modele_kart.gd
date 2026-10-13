@@ -269,7 +269,7 @@ const ECHELLE_PILOTE := 1.35
 ## Sur le nuage, le pilote se tient debout au centre, les pieds dans le haut
 ## de la ouate, à cette hauteur au-dessus du sol. Un peu plus petit qu'assis :
 ## debout à pleine taille, il cachait la route à la caméra de poursuite.
-const PIEDS_SUR_LE_NUAGE := 0.5
+const PIEDS_SUR_LE_NUAGE := 0.5 + NuageMagique.HAUTEUR
 const ECHELLE_PILOTE_DEBOUT := 1.1
 ## Les pièces du kart d'origine, faites de formes simples : on les cache.
 const PIECES_D_ORIGINE := ["Floor", "Nose", "SidePodL", "SidePodR", "SeatBase", "SeatBack", "Engine", "Column"]

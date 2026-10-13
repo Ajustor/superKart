@@ -200,37 +200,50 @@ func _update_lean(motor: KartMotor, delta: float) -> void:
 			_tonneau = TAU * (1.0 - pow(1.0 - _figure, 2.0))
 
 
-## La caisse dessinée : sa boîte dans le repère de Body (Kenney ou nuage, et
-## le pilote), refaite à chaque habillage.
-var _boite := AABB()
-var _boite_pour: Array = []
+## La caisse dessinée, dans le repère de Body (Kenney ou nuage, et le
+## pilote), refaite à chaque habillage : les sommets de son enveloppe, son
+## centre et son point le plus bas.
+##
+## Pas les coins de sa boîte : inclinée, une boîte descend bien plus bas que
+## ce qu'elle contient, puisque son coin du dessous et du côté n'est sur aucun
+## modèle. Mesuré, la caisse se relevait ainsi de 16 cm de trop en glisse.
+var _enveloppe := PackedVector3Array()
+var _centre_caisse := Vector3.ZERO
+var _bas_caisse := 0.0
+var _enveloppe_pour: Array = []
 
 
-func _boite_de_la_caisse() -> AABB:
+func _relever_l_enveloppe() -> void:
 	var pilote := _body.get_node_or_null("Pilote")
 	var cle := [_kart.get_meta("carrosserie", 0), _kart.get_meta("train", 0), _body.get_child_count(),
 		pilote.get_instance_id() if pilote != null else 0]
-	if cle == _boite_pour:
-		return _boite
-	_boite_pour = cle
-	_boite = AABB()
+	if cle == _enveloppe_pour:
+		return
+	_enveloppe_pour = cle
+	_enveloppe = PackedVector3Array()
+	var boite := AABB()
 	var premiere := true
 	var vers_la_caisse := _body.global_transform.affine_inverse()
 	for m in _body.find_children("*", "MeshInstance3D", true, false):
 		var piece := m as MeshInstance3D
 		if piece.mesh == null or not piece.is_visible_in_tree():
 			continue
-		var boite := (vers_la_caisse * piece.global_transform) * piece.get_aabb()
-		_boite = boite if premiere else _boite.merge(boite)
+		var vers := vers_la_caisse * piece.global_transform
+		var forme := piece.mesh.create_convex_shape(true, false) as ConvexPolygonShape3D
+		for sommet in forme.points:
+			_enveloppe.append(vers * sommet)
+		var sienne := vers * piece.get_aabb()
+		boite = sienne if premiere else boite.merge(sienne)
 		premiere = false
-	return _boite
+	_centre_caisse = boite.get_center()
+	_bas_caisse = boite.position.y
 
 
-## Le point le plus bas de la boîte `boite` posée par `t`.
-static func _le_plus_bas(t: Transform3D, boite: AABB) -> float:
+## Le point le plus bas de l'enveloppe posée par `t`.
+func _le_plus_bas(t: Transform3D) -> float:
 	var y := INF
-	for i in 8:
-		y = minf(y, (t * boite.get_endpoint(i)).y)
+	for sommet in _enveloppe:
+		y = minf(y, (t * sommet).y)
 	return y
 
 
@@ -242,7 +255,9 @@ static func _le_plus_bas(t: Transform3D, boite: AABB) -> float:
 ##
 ## Les roues suivent le tonneau, autour du même pivot, et la même relève :
 ## sans ça, la caisse faisait sa vrille au-dessus de quatre roues restées à
-## plat. L'inclinaison du dérapage, elle, ne touche que la caisse.
+## plat. L'inclinaison du dérapage et le tangage, eux, ne touchent que la
+## caisse : les roues restent où la suspension les pose, sur la route. Leur
+## appliquer la relève à chaque image les soulevait de 21 cm en glisse.
 func _composer_la_caisse() -> void:
 	var enfoncement := 0.0
 	var tangage := 0.0
@@ -252,14 +267,20 @@ func _composer_la_caisse() -> void:
 	var echelle := Basis.from_scale(_echelle_caisse * _echelle)
 	var repos := Transform3D(echelle, _position_caisse * _echelle + Vector3.DOWN * enfoncement)
 	var pose := Transform3D(Basis.from_euler(Vector3(tangage, 0.0, _inclinaison)) * echelle, repos.origin)
-	var boite := _boite_de_la_caisse()
+	_relever_l_enveloppe()
 	var tour := Transform3D.IDENTITY
 	if _tonneau != 0.0:
-		var pivot := repos * boite.get_center()
+		var pivot := repos * _centre_caisse
 		var rotation_ := Basis(Vector3.BACK, _tonneau)
 		tour = Transform3D(rotation_, pivot - rotation_ * pivot)
 		pose = tour * pose
-	var releve := maxf(_le_plus_bas(repos, boite) - _le_plus_bas(pose, boite), 0.0)
+	var releve := 0.0
+	# À plat, rien ne descend : on s'épargne de parcourir l'enveloppe.
+	if pose.basis != repos.basis:
+		# Au repos, la caisse n'est que mise à l'échelle et décalée : son point
+		# le plus bas est celui de sa boîte.
+		var bas_au_repos := repos.origin.y + repos.basis.y.y * _bas_caisse
+		releve = maxf(bas_au_repos - _le_plus_bas(pose), 0.0)
 	var roues := Transform3D(tour.basis * Basis.from_scale(Vector3.ONE * _echelle), tour.origin)
 	if _roues != null and _tonneau != 0.0 and _kart.suspension != null:
 		# Les roues aussi restent au-dessus de leur hauteur de repos.
@@ -275,7 +296,8 @@ func _composer_la_caisse() -> void:
 	_body.transform = pose
 	if _roues == null:
 		return
-	roues.origin.y += releve
+	if _tonneau != 0.0:
+		roues.origin.y += releve
 	if _roues.transform != roues:
 		_roues.transform = roues
 

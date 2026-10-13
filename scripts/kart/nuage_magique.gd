@@ -32,9 +32,15 @@ const APLATI := 0.6
 ## Le doré : plus clair sur le dessus, plus chaud dessous.
 const DORE_DESSOUS := Color(0.93, 0.62, 0.12)
 const DORE_DESSUS := Color(1.0, 0.92, 0.55)
-## Le bercement : quelques centimètres, sur un peu plus d'une seconde.
+## Le bercement : quelques centimètres, sur un peu plus d'une seconde. Vers
+## le haut seulement, depuis HAUTEUR : il descendait aussi, et emmenait le
+## nuage sous la route.
 const BERCEMENT := 0.035
 const PERIODE := 1.7
+## Le nuage flotte : HAUTEUR au-dessus de la caisse, ce qui le garde à une
+## dizaine de centimètres de la route une fois la suspension tassée. Posé à
+## même la caisse, son dessous était 3,4 cm dans la route en médiane.
+const HAUTEUR := 0.12
 ## La traînée de bouffées, au-delà de cette vitesse (m/s).
 const VITESSE_TRAINEE := 3.0
 
@@ -51,6 +57,7 @@ func _init() -> void:
 	_forme = MeshInstance3D.new()
 	_forme.name = "Forme"
 	_forme.mesh = maillage()
+	_forme.position.y = HAUTEUR
 	add_child(_forme)
 	_trainee = _creer_trainee()
 	add_child(_trainee)
@@ -71,8 +78,8 @@ func _process(delta: float) -> void:
 		_trainee.emitting = false
 		return
 	_temps += delta
-	var bercement := sin(_temps * TAU / PERIODE) * BERCEMENT
-	_forme.position.y = bercement
+	var bercement := (0.5 + 0.5 * sin(_temps * TAU / PERIODE)) * BERCEMENT
+	_forme.position.y = HAUTEUR + bercement
 	# Le pilote se berce avec lui : il a les pieds dedans.
 	var pilote := get_parent().get_node_or_null("Pilote") as Node3D
 	if pilote != null:

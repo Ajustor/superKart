@@ -106,7 +106,8 @@ func test_les_roues_font_le_tonneau_avec_la_caisse() -> void:
 	var roues := kart.get_node("Wheels") as Node3D
 	var caisse := kart.get_node("Body") as Node3D
 	var visuels := kart.get_node("Visuals") as KartVisuals
-	var centre := visuels._boite_de_la_caisse().get_center()
+	visuels._relever_l_enveloppe()
+	var centre := visuels._centre_caisse
 	var au_repos := caisse.transform * centre
 	kart.figure.emit()
 	visuels._update_lean(kart.motor, KartVisuals.DUREE_FIGURE * 0.25)
