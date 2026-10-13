@@ -178,22 +178,23 @@ func test_aucun_decor_solide_ne_mord_sur_la_route() -> void:
 			var g := TrackDecor.forme_de(e.objet)
 			if g.is_empty():
 				continue
-			# Les formes réelles : les prismes tirés du modèle, ou le gabarit
-			# pour ce qui n'a rien à hauteur de kart. Chacune : son centre (dans
-			# le repère de l'objet), le rayon qui dépasse le plus quelle que
-			# soit l'orientation, son bas et son haut.
-			var formes := []
-			for prisme: Dictionary in TrackDecor.prismes_de(e.objet):
-				var rayon_prisme := 0.0
-				for p: Vector2 in prisme.contour:
-					rayon_prisme = maxf(rayon_prisme, p.length())
-				formes.append([Vector3.ZERO, rayon_prisme, prisme.bas, prisme.haut])
-			if formes.is_empty():
-				var hauteur: float = g.hauteur if g.type == "cylindre" else g.taille.y
-				var rayon: float = g.rayon if g.type == "cylindre" else Vector2(g.taille.x, g.taille.z).length() * 0.5
-				formes.append([g.centre, rayon, g.centre.y - hauteur * 0.5, g.centre.y + hauteur * 0.5])
 			for pose: Transform3D in e.placements(c):
 				var t := pose.basis.get_scale().x
+				# Les formes réelles : les prismes tirés du modèle à la taille de
+				# l'objet et à sa hauteur, ou le gabarit pour ce qui n'a rien à
+				# hauteur de kart. Chacune : son centre (dans le repère de
+				# l'objet), le rayon qui dépasse le plus quelle que soit
+				# l'orientation, son bas et son haut.
+				var formes := []
+				for prisme: Dictionary in TrackDecor.prismes_de(e.objet, t, e.hauteur):
+					var rayon_prisme := 0.0
+					for p: Vector2 in prisme.contour:
+						rayon_prisme = maxf(rayon_prisme, p.length())
+					formes.append([Vector3.ZERO, rayon_prisme, prisme.bas, prisme.haut])
+				if formes.is_empty():
+					var hauteur: float = g.hauteur if g.type == "cylindre" else g.taille.y
+					var rayon: float = g.rayon if g.type == "cylindre" else Vector2(g.taille.x, g.taille.z).length() * 0.5
+					formes.append([g.centre, rayon, g.centre.y - hauteur * 0.5, g.centre.y + hauteur * 0.5])
 				for f: Array in formes:
 					var centre: Vector3 = pose.origin + pose.basis.orthonormalized() * ((f[0] as Vector3) * t)
 					var d := c.distance_of(centre)
