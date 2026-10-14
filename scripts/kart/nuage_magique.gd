@@ -5,7 +5,7 @@ extends Node3D
 ## kart Kenney : une douzaine de boules dorées fusionnées en un seul maillage,
 ## plus claires sur le dessus, et une traîne de trois bouffées qui
 ## rapetissent vers l'arrière. Il flotte à quelques centimètres du sol en se
-## berçant, et sème de petites bouffées dorées quand il roule.
+## berçant, et laisse une vapeur dorée quand il roule.
 ##
 ## Purement cosmétique : la physique, les chocs et la suspension restent ceux
 ## du kart.
@@ -139,8 +139,7 @@ static func maillage() -> ArrayMesh:
 	return _maillage
 
 
-## La matière du nuage et de ses bouffées : la couleur des sommets, un peu
-## brillante.
+## La matière du nuage : la couleur des sommets, un peu brillante.
 static func matiere() -> StandardMaterial3D:
 	if _matiere == null:
 		_matiere = StandardMaterial3D.new()
@@ -151,35 +150,54 @@ static func matiere() -> StandardMaterial3D:
 	return _matiere
 
 
-## De petites bouffées dorées laissées derrière, qui fondent jusqu'à rien :
-## calculées par le processeur, comme toutes les particules du jeu.
+static var _matiere_vapeur: StandardMaterial3D
+
+
+## Une vapeur dorée laissée derrière : des bouffées translucides qui gonflent
+## et se dissipent, à hauteur du nuage. C'étaient de petites boules dorées
+## opaques, qui restaient un instant sur la route derrière lui : on les
+## prenait pour des pièces. Calculée par le processeur, comme toutes les
+## particules du jeu.
 func _creer_trainee() -> CPUParticles3D:
 	var p := CPUParticles3D.new()
 	p.name = "Trainee"
 	p.emitting = false
-	p.amount = 14
-	p.lifetime = 0.7
-	p.position = Vector3(0.0, 0.32, 1.0)
+	p.amount = 16
+	p.lifetime = 0.8
+	p.position = Vector3(0.0, HAUTEUR + 0.3, 1.0)
 	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
 	p.emission_sphere_radius = 0.25
 	p.direction = Vector3(0.0, 0.3, 1.0)
 	p.spread = 25.0
 	p.initial_velocity_min = 0.4
 	p.initial_velocity_max = 1.0
-	p.gravity = Vector3(0.0, 0.3, 0.0)
+	p.gravity = Vector3(0.0, 0.4, 0.0)
+	p.angle_min = 0.0
+	p.angle_max = 360.0
 	p.scale_amount_min = 0.7
-	p.scale_amount_max = 1.1
+	p.scale_amount_max = 1.0
 	var courbe := Curve.new()
-	courbe.add_point(Vector2(0.0, 1.0))
-	courbe.add_point(Vector2(1.0, 0.0))
+	courbe.add_point(Vector2(0.0, 0.6))
+	courbe.add_point(Vector2(1.0, 1.5))
 	p.scale_amount_curve = courbe
-	p.color = DORE_DESSOUS.lerp(DORE_DESSUS, 0.5)
+	# Dorée pâle à la naissance, blanche en se dissipant, jamais opaque. Le
+	# doré du nuage lui-même, à moitié transparent sur le gris de la route,
+	# tournait au beige de la poussière.
+	var fondu := Gradient.new()
+	fondu.set_color(0, Color(1.0, 0.96, 0.78, 0.5))
+	fondu.set_color(1, Color(1.0, 1.0, 1.0, 0.0))
+	p.color_ramp = fondu
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var bouffee := SphereMesh.new()
-	bouffee.radius = 0.14
-	bouffee.height = 0.2
-	bouffee.radial_segments = 8
-	bouffee.rings = 4
-	bouffee.material = matiere()
+	var bouffee := QuadMesh.new()
+	bouffee.size = Vector2(0.55, 0.55)
+	if _matiere_vapeur == null:
+		_matiere_vapeur = StandardMaterial3D.new()
+		_matiere_vapeur.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_matiere_vapeur.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_matiere_vapeur.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+		_matiere_vapeur.vertex_color_use_as_albedo = true
+		_matiere_vapeur.albedo_texture = load(KartVisuals.FUMEE)
+		_matiere_vapeur.cull_mode = BaseMaterial3D.CULL_DISABLED
+	bouffee.material = _matiere_vapeur
 	p.mesh = bouffee
 	return p

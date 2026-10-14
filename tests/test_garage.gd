@@ -328,6 +328,22 @@ func test_le_nuage_remplace_la_caisse() -> void:
 	kart.free()
 
 
+## Des boules dorées opaques restaient sur la route derrière le nuage : on les
+## prenait pour des pièces. La traînée est une vapeur qui se dissipe.
+func test_la_trainee_du_nuage_est_une_vapeur() -> void:
+	var nuage := NuageMagique.new()
+	var trainee := nuage.get_node("Trainee") as CPUParticles3D
+	var matiere := (trainee.mesh as PrimitiveMesh).material as BaseMaterial3D
+	assert_eq(matiere.transparency, BaseMaterial3D.TRANSPARENCY_ALPHA, "translucide")
+	assert_eq(matiere.billboard_mode, BaseMaterial3D.BILLBOARD_PARTICLES, "des bouffées, pas des boules")
+	assert_not_null(trainee.color_ramp)
+	if trainee.color_ramp != null:
+		var fondu := trainee.color_ramp
+		assert_lt(fondu.get_color(0).a, 1.0, "jamais opaque")
+		assert_eq(fondu.get_color(fondu.get_point_count() - 1).a, 0.0, "et elle finit en rien")
+	nuage.free()
+
+
 func test_du_kart_au_nuage_et_retour_rien_ne_s_empile() -> void:
 	var kart := _kart_habille(ModeleKart.FUSEE)
 	for carrosserie in [ModeleKart.NUAGE, ModeleKart.FUSEE, ModeleKart.NUAGE, ModeleKart.PLUME]:
