@@ -176,6 +176,49 @@ func test_en_glisse_rien_ne_flotte() -> void:
 			await wait_process_frames(2)
 
 
+## Le kart penche autrement que la route : l'entrée d'un virage relevé, un
+## vibreur. Le rayon de la suspension touche le sol sous le centre de la roue,
+## mais le flanc de la jante, une vingtaine de centimètres à côté, passait
+## sous la route : sur circuit_01, 2 % du temps de plus d'un centimètre,
+## jusqu'à 10 cm. Le kart reste à plat sur une dalle penchée de 6°, relevée
+## (de côté) puis en pente (d'avant en arrière).
+func test_sur_une_route_penchee_les_jantes_restent_dessus() -> void:
+	var trains := [ModeleKart.ROUES_STANDARD, ModeleKart.SLICKS, ModeleKart.MONSTRE, ModeleKart.LEGERES]
+	for penche in [Basis(Vector3.BACK, deg_to_rad(6.0)), Basis(Vector3.RIGHT, deg_to_rad(6.0))]:
+		for roues in trains:
+			var sol := StaticBody3D.new()
+			var forme := CollisionShape3D.new()
+			var boite := BoxShape3D.new()
+			boite.size = Vector3(40, 1, 40)
+			forme.shape = boite
+			forme.position.y = -0.5
+			sol.add_child(forme)
+			sol.basis = penche
+			add_child_autofree(sol)
+			kart = (load("res://scenes/kart/kart.tscn") as PackedScene).instantiate() as Kart
+			ModeleKart.habiller(kart, ModeleKart.STANDARD, ModeleKart.couleur(0), roues)
+			add_child_autofree(kart)
+			await wait_physics_frames(1)
+			# Le kart ne bouge plus de lui-même : il reste à plat, posé sur
+			# son centre, et seule la suspension travaille.
+			kart.set_physics_process(false)
+			kart.global_transform = Transform3D.IDENTITY
+			for i in 30:
+				kart.suspension._physics_process(1.0 / 60.0)
+			var normale: Vector3 = penche.y
+			var plus_bas := INF
+			for roue in kart.get_node("Wheels").get_children():
+				var jante := (roue as Node3D).get_node("Jante") as MeshInstance3D
+				var t := jante.global_transform
+				for sommet in jante.mesh.get_faces():
+					plus_bas = minf(plus_bas, normale.dot(t * sommet))
+			assert_gt(plus_bas, -TOLERANCE, "jante %.3f m sous la route (roues %d, %s)"
+				% [-plus_bas, roues, "relevée" if penche.z.y == 0.0 else "en pente"])
+			kart.queue_free()
+			sol.queue_free()
+			await wait_process_frames(2)
+
+
 func test_le_nuage_flotte_au_dessus_du_sol() -> void:
 	# Mesuré sur 32846da : au repos, le bas du nuage était 3,4 cm dans la
 	# route en médiane, et 22 % du temps sous la route en roulant. Il doit
