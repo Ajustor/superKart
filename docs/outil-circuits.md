@@ -365,10 +365,10 @@ couleur du dessous de la route, pour que le kart qui la remonte ne flotte pas
 au-dessus de rien. Solide des deux côtés : on ne passe plus dessous.
 
 Le haut du talus est **le bord, sommet pour sommet** : celui de la route est
-lu sur sa collision (`TrackTalus.bords_de_la_route`, la route est recoupée là
-où ses sections se tordent), celui d'une bande a ses sections d'un mètre.
-Coupés autrement, sa corde passait jusqu'à 1,3 cm au-dessus ou au-dessous du
-bord, une lèvre qui arrête un kart. Ses pieds, enfouis, suivent la droite du
+celui que `TrackBuilder.build` pose (`TrackBuilder.rives`, coupes des sections
+recoupées comprises), celui d'une bande a ses sections d'un mètre. Coupés
+autrement, sa corde passait jusqu'à 4,7 cm au-dessus ou au-dessous du bord, une
+lèvre qui arrête un kart. Ses pieds, enfouis, suivent la droite du
 tracé lissée sur trois mètres (`TrackFeature.plat_lisse`) : la courbe, cuite
 au mètre, tourne par à-coups, et des pieds pris sommet par sommet allaient et
 venaient. À l'intérieur d'un virage serré, ils ne vont pas au-delà de là où

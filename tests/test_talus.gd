@@ -249,23 +249,81 @@ func test_dans_les_virages_serres_ni_bande_ni_talus_ne_se_replie() -> void:
 		piste.free()
 
 
-## Les bords de la route lus sur sa collision : chaque sommet, à sa distance
-## le long du tracé, est le bord de la route (à un millimètre, l'arrondi de
-## get_faces). Repérés au prorata d'un tronçon entier, ils s'en écartaient de
-## dix-sept mètres dans un virage : le pied du talus partait de travers, en
-## feuillets superposés.
-func test_les_bords_de_la_route_sont_a_leur_distance() -> void:
-	var c := TrackCurve.new(_anneau(50.0, 16, DEVERS), DEMI)
-	var trous: Array[Vector2] = [Vector2(100.0, 112.0)]
-	var route := TrackBuilder.build(c, 2.0, trous)
-	var bords := TrackTalus.bords_de_la_route(route, c, TrackBuilder.troncons(c.length, trous), 2.0)
-	assert_eq(bords.size(), 4, "deux côtés, deux tronçons de part et d'autre du trou")
-	var pire := 0.0
-	var sommets := 0
-	for bord in bords:
-		sommets += bord.sommets.size()
-		for k in bord.sommets.size():
-			var attendu := TrackFeature.point(c, bord.distances[k], DEMI * bord.cote, 0.0)
-			pire = maxf(pire, bord.sommets[k].distance_to(attendu))
-	assert_gt(sommets, int(c.length / 2.0) * 2, "au moins les sections de base, des deux côtés")
-	assert_lt(pire, 0.001, "un sommet à %.3f m du bord, à sa distance" % pire)
+## Sur chaque circuit, le haut du talus de la route est le bord de sa
+## collision, à 3 mm près : ses arêtes hautes (deux sommets à moins de 10 cm
+## du bord), mesurées en cinq points, contre les arêtes de bord du bitume
+## (celles d'un seul triangle). Là où le bord du bitume recule un peu sur
+## lui-même — un intérieur de virage serré recoupé, de 1 à 25 cm —, l'arête
+## lue en marchant de sommet en sommet se perdait : le talus retombait sur
+## les seules sections de base, et s'écartait du bitume jusqu'à 53 mm sur le
+## Circuit, 30 mm sur la Route des étoiles.
+func test_sur_chaque_circuit_le_talus_part_du_bord_de_la_route() -> void:
+	for info in TrackCatalog.PISTES:
+		var piste: Track = info.scene.instantiate()
+		add_child(piste)
+		var couture := _couture(piste)
+		assert_lt(couture.pire, 0.003, "%s : le haut du talus s'écarte de %.1f mm du bord du bitume (%s)" % [
+			info.id, couture.pire * 1000.0, couture.ou])
+		remove_child(piste)
+		piste.free()
+
+
+## L'écart le plus grand entre les arêtes hautes du talus de la route et le
+## bord de sa collision : {pire, ou}.
+func _couture(piste: Track) -> Dictionary:
+	var faces := PackedVector3Array()
+	for f in piste.get_node(Track.NOM_CORPS).find_children("*", "CollisionShape3D", true, false):
+		faces.append_array(((f as CollisionShape3D).shape as ConcavePolygonShape3D).get_faces())
+	var compte := {}
+	for t in range(0, faces.size(), 3):
+		for k in 3:
+			var a := faces[t + k]
+			var b := faces[t + (k + 1) % 3]
+			var cle := [a, b] if (a.x < b.x or (a.x == b.x and (a.z < b.z or (a.z == b.z and a.y < b.y)))) else [b, a]
+			compte[cle] = int(compte.get(cle, 0)) + 1
+	var bords := []
+	for cle in compte:
+		if compte[cle] == 1:
+			bords.append(cle)
+	# Rangées par mètre carré, avec une marge.
+	var grille := {}
+	for i in bords.size():
+		var a: Vector3 = bords[i][0]
+		var b: Vector3 = bords[i][1]
+		for x in range(floori(minf(a.x, b.x) - 0.2), floori(maxf(a.x, b.x) + 0.2) + 1):
+			for z in range(floori(minf(a.z, b.z) - 0.2), floori(maxf(a.z, b.z) + 0.2) + 1):
+				var cle := Vector2i(x, z)
+				if not grille.has(cle):
+					grille[cle] = []
+				grille[cle].append(i)
+	var distance := func(p: Vector3) -> float:
+		var pire := INF
+		for i: int in grille.get(Vector2i(floori(p.x), floori(p.z)), []):
+			var a: Vector3 = bords[i][0]
+			pire = minf(pire, p.distance_to(Geometry3D.get_closest_point_to_segment(p, a, bords[i][1])))
+		return pire
+	var resultat := {pire = 0.0, ou = ""}
+	if not piste.has_node(Track.NOM_TALUS):
+		return resultat
+	var talus := PackedVector3Array()
+	for f in piste.get_node(Track.NOM_TALUS).find_children("*", "CollisionShape3D", true, false):
+		talus.append_array(((f as CollisionShape3D).shape as ConcavePolygonShape3D).get_faces())
+	var hauts := {}
+	for v in talus:
+		if not hauts.has(v):
+			hauts[v] = distance.call(v) <= 0.1
+	var c := piste.track_curve
+	for t in range(0, talus.size(), 3):
+		for k in 3:
+			var a := talus[t + k]
+			var b := talus[t + (k + 1) % 3]
+			if not (hauts[a] and hauts[b]):
+				continue
+			for u: float in [0.1, 0.3, 0.5, 0.7, 0.9]:
+				var p := a.lerp(b, u)
+				var ecart: float = distance.call(p)
+				if ecart > resultat.pire:
+					var d := c.distance_of(p)
+					resultat.pire = ecart
+					resultat.ou = "%.1f%s" % [d, "D" if c.lateral_offset_at(p, d) > 0.0 else "G"]
+	return resultat

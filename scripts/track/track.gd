@@ -194,8 +194,7 @@ func _reconstruire() -> void:
 	# La collision n'a que faire des couleurs : les sept bandes de
 	# l'arc-en-ciel y feraient sept fois plus de triangles à tester, à chaque
 	# roue et chaque image. Elle est d'un seul tenant, tous mondes confondus.
-	var route := TrackBuilder.build(track_curve, segment_length, trous())
-	forme.shape = route.create_trimesh_shape()
+	forme.shape = TrackBuilder.build(track_curve, segment_length, trous()).create_trimesh_shape()
 	corps.add_child(forme)
 	add_child(corps)
 
@@ -209,7 +208,7 @@ func _reconstruire() -> void:
 	for element in elements():
 		element.reconstruire()
 	# Après les éléments : les sols doivent exister pour dire où ils bordent.
-	_poser_les_talus(arc_en_ciel, route)
+	_poser_les_talus(arc_en_ciel)
 
 	if Engine.is_editor_hint():
 		update_configuration_warnings()
@@ -218,14 +217,14 @@ func _reconstruire() -> void:
 ## Les talus le long des deux bords de la route, partout où un sol réel la
 ## borde (TrackTalus) : sans eux, le bord était une marche qu'on ne
 ## remontait pas, ou sous laquelle on passait. Jamais au-dessus du vide :
-## ce serait un sol invisible. Leur arête est celle du bitume, lue sur
-## `route`, sa collision (TrackTalus.bords_de_la_route).
-func _poser_les_talus(arc_en_ciel: bool, route: Mesh) -> void:
+## ce serait un sol invisible. Leur arête est celle du bitume, sommet pour
+## sommet (TrackTalus.bords_de_rives).
+func _poser_les_talus(arc_en_ciel: bool) -> void:
 	var c := track_curve
 	var par_calque := {}
-	for bord in TrackTalus.bords_de_la_route(route, c, TrackBuilder.troncons(c.length, trous()), segment_length):
+	for bord in TrackTalus.bords_de_rives(TrackBuilder.rives(c, segment_length, trous())):
 		var pente := TrackTalus.le_long(self, c, bord, c.half_width * bord.cote, bord.cote,
-			func(d: float) -> bool: return not hors_course(d) and trou_en(d) == null)
+			func(d: float) -> bool: return not hors_course(c.wrap(d)) and trou_en(c.wrap(d)) == null)
 		# Rangés par monde : chacun ne se voit que du sien.
 		var ou := NAN
 		var calque := 0

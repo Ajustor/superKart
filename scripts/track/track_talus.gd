@@ -64,6 +64,7 @@ class Pente:
 ## que CHUTE_MAX. `ici(x)` : le point à x mètres du bord, vers l'extérieur, à
 ## la hauteur du bord ; `d` : où l'on est le long du tracé.
 static func profondeur(circuit: Track, d: float, haut: float, ici: Callable) -> float:
+	d = circuit.track_curve.wrap(d)
 	var sol := circuit.hauteur_du_sol_reel(ici.call(2.0), d)
 	if sol < haut - CHUTE_MAX:
 		return 0.0
@@ -246,178 +247,29 @@ static func en_travers(circuit: Track, c: TrackCurve, d: float, de_lateral: floa
 	return triangles
 
 
-## Les bords de la route, tels que sa collision les a (TrackBuilder.build) :
-## de chaque côté (-1 puis +1), et pour chaque tronçon entre deux trous
-## (`morceaux`), les sommets de son arête dans l'ordre du tracé, avec leur
-## distance.
+## Les bords de la route, tels que TrackBuilder.build les pose
+## (TrackBuilder.rives) : de chaque côté (-1 puis +1) et pour chaque portion
+## d'un seul tenant, ses sommets dans l'ordre de la marche, coupes des
+## sections recoupées comprises, avec leur distance — croissante : une
+## portion qui franchit la ligne de départ continue au-delà du tour.
 ##
-## Lus sur le maillage plutôt que recalculés : la route recoupe ses sections
-## là où elles se tordent, et le talus coupé sur les seules sections de base
-## passait jusqu'à 1,3 cm sous le bitume entre deux d'entre elles. Quoi que
-## fasse le découpage, l'arête du talus est celle de la route. Si le maillage
-## ne se laisse pas lire, les sections de base, comme avant.
-static func bords_de_la_route(maillage: Mesh, c: TrackCurve, morceaux: Array[Vector2],
-		segment_length: float) -> Array[Bord]:
-	var faces := maillage.get_faces()
-	# Les sommets, numérotés ; les arêtes, comptées : celles d'un seul
-	# triangle sont au bord du ruban.
-	var numeros := {}
-	var points := PackedVector3Array()
-	var aretes := {}
-	for t in range(0, faces.size(), 3):
-		var ids := PackedInt64Array([0, 0, 0])
-		for k in 3:
-			var v := faces[t + k]
-			var id: int = numeros.get(v, -1)
-			if id < 0:
-				id = points.size()
-				numeros[v] = id
-				points.append(v)
-			ids[k] = id
-		for k in 3:
-			var a := ids[k]
-			var b := ids[(k + 1) % 3]
-			var cle := (mini(a, b) << 32) | maxi(a, b)
-			aretes[cle] = int(aretes.get(cle, 0)) + 1
-	var voisins := {}
-	for cle: int in aretes:
-		if aretes[cle] != 1:
-			continue
-		for paire: Array in [[cle >> 32, cle & 0xFFFFFFFF], [cle & 0xFFFFFFFF, cle >> 32]]:
-			var a: int = paire[0]
-			if not voisins.has(a):
-				voisins[a] = PackedInt64Array()
-			var liste: PackedInt64Array = voisins[a]
-			liste.append(paire[1])
-			voisins[a] = liste
-	# Les sections de base de la route, aux mêmes distances qu'elle
-	# (TrackBuilder.build) : des repères le long de l'arête.
-	var sections_totales := maxi(int(c.length / segment_length), 8)
+## Le talus en part, sommet pour sommet. Coupé sur les seules sections de
+## base, il passait jusqu'à 4,7 cm au-dessus ou au-dessous du bitume entre
+## deux d'entre elles ; lu en marchant d'arête en arête sur la collision, il
+## se perdait là où le bord recule un peu sur lui-même (l'intérieur d'un
+## virage serré recoupé) et retombait sur ces sections : 53 mm sur le
+## Circuit, 30 mm sur la Route des étoiles.
+static func bords_de_rives(rives: Array[Dictionary]) -> Array[Bord]:
 	var bords: Array[Bord] = []
 	for cote: float in [-1.0, 1.0]:
-		for morceau in morceaux:
-			var etendue := morceau.y - morceau.x
-			var n := maxi(int(round(sections_totales * etendue / c.length)), 1)
-			var pas := etendue / float(n)
-			# En double précision : arrondies, elles ne tombaient plus sur les
-			# sommets de la route.
-			var stations := PackedFloat64Array()
-			for i in n + 1:
-				stations.append(morceau.x + pas * float(i))
-			var bord := _suivre(c, numeros, points, voisins, stations, cote)
-			if bord.sommets.size() < 2:
-				bord = _bord_des_sections(c, stations, cote)
+		for rive in rives:
+			var bord := Bord.new()
 			bord.cote = cote
+			bord.sommets = rive.gauche if cote < 0.0 else rive.droite
+			for d in (rive.distances as PackedFloat64Array):
+				bord.distances.append(d)
 			bords.append(bord)
 	return bords
-
-
-## Le bord d'un côté de la route, sur ses seules sections de base.
-static func _bord_des_sections(c: TrackCurve, stations: PackedFloat64Array, cote: float) -> Bord:
-	var bord := Bord.new()
-	for d in stations:
-		bord.sommets.append(TrackFeature.point(c, d, c.half_width * cote, 0.0))
-		bord.distances.append(d)
-	return bord
-
-
-## L'arête d'un côté d'un tronçon de route : du sommet de sa première
-## section à celui de sa dernière, d'arête de bord en arête de bord, tout
-## droit. Chaque sommet d'une section de base prend sa distance ; ceux d'entre
-## deux (la route recoupée), la leur au prorata de la corde. Vide si le
-## chemin se perd.
-static func _suivre(c: TrackCurve, numeros: Dictionary, points: PackedVector3Array, voisins: Dictionary,
-		stations: PackedFloat64Array, cote: float) -> Bord:
-	var demi := c.half_width * cote
-	var premier := stations[0]
-	var dernier := stations[stations.size() - 1]
-	var depart := _sommet_proche(numeros, points, voisins, c.position_at(premier) + c.right_at(premier) * demi)
-	var arrivee := _sommet_proche(numeros, points, voisins, c.position_at(dernier) + c.right_at(dernier) * demi)
-	if depart < 0 or arrivee < 0:
-		return Bord.new()
-	var chemin := PackedInt64Array([depart])
-	var precedent := -1
-	var ici := depart
-	var direction := c.forward_at(premier)
-	while chemin.size() <= points.size():
-		var suivant := -1
-		var meilleur := 0.0
-		for v: int in (voisins.get(ici, PackedInt64Array()) as PackedInt64Array):
-			if v == precedent:
-				continue
-			var cosinus := (points[v] - points[ici]).normalized().dot(direction)
-			if cosinus > meilleur:
-				meilleur = cosinus
-				suivant = v
-		if suivant < 0:
-			return Bord.new()
-		direction = (points[suivant] - points[ici]).normalized()
-		precedent = ici
-		ici = suivant
-		chemin.append(ici)
-		if ici == arrivee:
-			break
-	if ici != arrivee:
-		return Bord.new()
-	# Les distances : aux sommets des sections de base la leur — reconnus à un
-	# millimètre près, dans l'ordre du chemin : get_faces arrondit les sommets
-	# au dixième de millimètre —, aux deux bouts celles du tronçon, entre deux
-	# au prorata de la corde.
-	var distances := PackedFloat64Array()
-	distances.resize(chemin.size())
-	distances.fill(NAN)
-	var j := 1
-	for k in range(1, chemin.size() - 1):
-		var v := points[chemin[k]]
-		for essai in 2:
-			if j + essai >= stations.size() - 1:
-				break
-			var d := stations[j + essai]
-			if v.distance_squared_to(c.position_at(d) + c.right_at(d) * demi) < 0.000001:
-				distances[k] = d
-				j += essai + 1
-				break
-	distances[0] = premier
-	distances[chemin.size() - 1] = dernier
-	var a := 0
-	while a < chemin.size() - 1:
-		var b := a + 1
-		var longueur := points[chemin[a]].distance_to(points[chemin[b]])
-		while is_nan(distances[b]):
-			longueur += points[chemin[b]].distance_to(points[chemin[b + 1]])
-			b += 1
-		var parcouru := 0.0
-		for k in range(a + 1, b):
-			parcouru += points[chemin[k - 1]].distance_to(points[chemin[k]])
-			# Puis là où la coupe de la route passe par le sommet : sa
-			# droite est perpendiculaire à l'axe.
-			var d := lerpf(distances[a], distances[b], parcouru / longueur)
-			for essai in 3:
-				d += (points[chemin[k]] - c.position_at(d)).dot(c.forward_at(d))
-			distances[k] = clampf(d, distances[a], distances[b])
-		a = b
-	var bord := Bord.new()
-	for k in chemin.size():
-		bord.sommets.append(points[chemin[k]])
-		bord.distances.append(distances[k])
-	return bord
-
-
-## Le sommet du bord du maillage (`voisins` : ceux d'une arête de bord) en
-## ce point, à un millimètre près : get_faces arrondit les sommets au dixième
-## de millimètre. -1 s'il n'y en a pas.
-static func _sommet_proche(numeros: Dictionary, points: PackedVector3Array, voisins: Dictionary,
-		ici: Vector3) -> int:
-	var id: int = numeros.get(ici, -1)
-	if id >= 0:
-		return id
-	var meilleur := 0.000001
-	for k: int in voisins:
-		var e := points[k].distance_squared_to(ici)
-		if e < meilleur:
-			meilleur = e
-			id = k
-	return id
 
 
 ## Le talus posé : visible avec `materiau`, et solide (les deux faces), sur la
