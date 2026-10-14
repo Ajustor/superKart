@@ -59,24 +59,44 @@ et dans les pentes qui s'arrondissent. Une section plate garde ses deux
 triangles. Avant ce recoupage, le bitume passait jusqu'à 20 cm sous la
 courbe, sous un marquage qui flottait.
 
-Mesuré sur les 29 circuits (2026-10-09), triangles de la route, affichage et
-collision :
+Mesuré sur les 29 circuits (2026-10-09, et 2026-10-14 pour la dernière
+colonne), triangles de la route, affichage et collision :
 
-| Circuit | Avant | Après |
-|---|---|---|
-| circuit_01 | 762 | 3 076 |
-| coeur_terre | 1 220 | 4 522 |
-| echelle_celeste | 1 682 | 4 900 |
-| pic_lacets | 1 454 | 4 060 |
-| lune_carnaval (le plus gros) | 4 488 | 6 302 |
-| arene_ovale (plate) | 246 | 246 |
-| **Total des 29** | **41 314** | **80 388** (+95 %) |
+| Circuit | Avant | Après | Sans fente |
+|---|---|---|---|
+| circuit_01 | 762 | 3 076 | 3 940 |
+| coeur_terre | 1 220 | 4 522 | 5 539 |
+| echelle_celeste | 1 682 | 4 900 | 5 677 |
+| pic_lacets | 1 454 | 4 060 | 4 878 |
+| lune_carnaval (le plus gros) | 4 488 | 6 302 | 6 565 |
+| arene_ovale (plate) | 246 | 246 | 246 |
+| **Total des 29** | **41 314** | **80 388** (+95 %) | **88 875** (+11 %) |
 
-Le plus gros circuit reste à 6 300 triangles de route, l'équivalent de deux
+Le plus gros circuit reste à 6 600 triangles de route, l'équivalent de deux
 modèles de décor Kenney. Points de la chaussée à plus de 2 cm de la courbe,
 avant → après : circuit_01 35 % → 0 %, coeur_terre 43 % → 0 %,
 echelle_celeste 32 % → 0,2 %, pic_lacets 19 % → 0,1 %
 (`tests/test_track_builder.gd` vérifie un changement de dévers).
+
+Deux sections voisines n'ont pas toujours autant de bandes. Les sommets des
+bandes de l'une tombaient au milieu de la grande arête de l'autre (des
+jonctions en T) : 14 339 arêtes ouvertes dans la collision des 29 circuits,
+par où un rayon tiré pile sur la couture passait à travers la route (21 des
+22 rayons perdus du banc des bords). Chaque coupe porte maintenant les
+sommets des deux sections, et le triangle qui les enjambe devient un
+éventail dans son propre plan : la chaussée ne bouge pas, elle se referme
+(« Sans fente » : plus aucune arête ouverte, affichage compris). Le repère de
+chaque coupe n'est plus calculé qu'une fois : la route se construit deux fois
+plus vite qu'avant (3,1 s → 1,5 s pour les 29). Une caisse de kart contre la
+route (`move_and_slide`) coûte 3 à 5 % de plus sur circuit_01, coeur_terre,
+pic_lacets et echelle_celeste ; une course de huit IA sur circuit_01 ne
+montre pas d'écart qui dépasse le bruit (autour de 4 ms par image, essais
+alternés).
+
+Reste qu'un rayon tiré exactement sur une arête partagée par deux triangles
+(à 0,1 mm près) peut passer entre les deux : le test rayon-triangle de Jolt
+n'est pas étanche en flottants. C'est vrai de toute arête, déjà sur l'arène
+plate (24 rayons sur 137 000), et un décalage de 0,1 mm touche.
 
 ## Ce qui a été fait contre les gels et les commandes perdues
 

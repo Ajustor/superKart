@@ -5,7 +5,8 @@ class_name TrackBuilder
 
 
 ## Découpe la courbe en segments d'environ `segment_length` mètres et relie
-## chaque section à la suivante par deux triangles.
+## chaque section à la suivante par deux triangles (plus, là où le dévers
+## change, voir _recouper).
 ##
 ## `trous` liste les portions sans route, en couples (début, fin) de distances
 ## le long du tracé, déjà ramenées dans [0, longueur]. La route s'y arrête net
@@ -18,20 +19,41 @@ static func build(track: TrackCurve, segment_length: float = 2.0,
 		trous: Array[Vector2] = [], couleurs: PackedColorArray = PackedColorArray()) -> ArrayMesh:
 	var outil := SurfaceTool.new()
 	outil.begin(Mesh.PRIMITIVE_TRIANGLES)
-
-	var morceaux := troncons(track.length, trous)
-	# Sans trou, le découpage reste exactement celui d'avant : même nombre de
-	# sections, au même endroit.
-	var sections_totales := maxi(int(track.length / segment_length), 8)
-	for morceau in morceaux:
-		var etendue := morceau.y - morceau.x
-		var sections := maxi(int(round(sections_totales * etendue / track.length)), 1)
-		var pas := etendue / float(sections)
-		for i in sections:
-			_section(outil, track, morceau.x + pas * float(i), morceau.x + pas * float(i + 1), couleurs)
-
+	for ruban in _rubans(track, segment_length, trous, maxi(couleurs.size(), 1)):
+		_poser_le_ruban(outil, track, ruban, couleurs)
 	outil.generate_normals()
 	return outil.commit()
+
+
+## Les deux rives de la chaussée, exactement : les sommets du bord gauche et
+## du bord droit que build() pose, dans l'ordre de la marche, coupes des
+## sections recoupées comprises. Ce qui veut border le bitume au millimètre
+## (un talus) les suit, plutôt que de recalculer ses propres points : entre
+## deux coupes, le bord du bitume est une corde, pas la courbe.
+##
+## Un dictionnaire par portion de route d'un seul tenant : `distances`
+## (PackedFloat64Array, croissantes : une portion qui franchit la ligne de
+## départ continue au-delà de la longueur du tour, que TrackCurve ramène dans
+## le tour), `gauche` et `droite` (PackedVector3Array, un point par
+## distance). Sans trou, le dernier point est le premier : le tour se referme.
+static func rives(track: TrackCurve, segment_length: float = 2.0,
+		trous: Array[Vector2] = []) -> Array[Dictionary]:
+	var resultat: Array[Dictionary] = []
+	for ruban in _rubans(track, segment_length, trous, 1):
+		var gauche := PackedVector3Array()
+		var droite := PackedVector3Array()
+		var distances := PackedFloat64Array()
+		var tours := 0.0
+		for i in ruban.coupes.size():
+			if i > 0 and ruban.coupes[i] + tours < distances[i - 1]:
+				tours += track.length
+			distances.append(ruban.coupes[i] + tours)
+			# La dernière coupe d'un tour fermé est la première, au bit près.
+			var j := 0 if ruban.ferme and i == ruban.coupes.size() - 1 else i
+			gauche.append(_point_de_coupe(ruban.centres[j], ruban.droites[j], track.half_width, 0, 1))
+			droite.append(_point_de_coupe(ruban.centres[j], ruban.droites[j], track.half_width, 1, 1))
+		resultat.append({distances = distances, gauche = gauche, droite = droite})
+	return resultat
 
 
 ## Des bordures rouges et blanches sur chaque rive, comme sur un vrai circuit
@@ -212,7 +234,78 @@ const ECART_MAX := 0.015
 const MESURES := [-0.98, -0.5, 0.0, 0.5, 0.98]
 
 
-## Une section de route, de d0 à d1.
+## Une portion de chaussée d'un seul tenant, découpée : ses coupes en
+## travers, et entre deux coupes consécutives une section, en autant de bandes
+## dans le sens de la longueur que `bandes` en dit.
+class Ruban:
+	## Les distances des coupes, le long du tracé.
+	var coupes := PackedFloat64Array()
+	## Le milieu de la chaussée et son côté droit à chaque coupe, calculés une
+	## fois : la section d'avant et celle d'après y posent les mêmes sommets.
+	var centres := PackedVector3Array()
+	var droites := PackedVector3Array()
+	## Les bandes de chaque section : celle de la coupe i à la coupe i + 1.
+	var bandes := PackedInt32Array()
+	## Le ruban fait le tour sans trou : sa dernière coupe est la première.
+	var ferme := false
+
+	func ajouter_coupe(d: float, centre: Vector3, droite: Vector3) -> void:
+		coupes.append(d)
+		centres.append(centre)
+		droites.append(droite)
+
+	## Ajoute à la suite les coupes et les sections de `suite`, dont la
+	## première coupe remplace la dernière de celui-ci.
+	func prolonger(suite: Ruban) -> void:
+		coupes.remove_at(coupes.size() - 1)
+		centres.remove_at(centres.size() - 1)
+		droites.remove_at(droites.size() - 1)
+		coupes.append_array(suite.coupes)
+		centres.append_array(suite.centres)
+		droites.append_array(suite.droites)
+		bandes.append_array(suite.bandes)
+
+
+## Les rubans de la route, hors des trous, chacun découpé en sections
+## (voir _recouper). `n_couleurs` bandes au moins par section.
+static func _rubans(track: TrackCurve, segment_length: float, trous: Array[Vector2],
+		n_couleurs: int) -> Array[Ruban]:
+	var rubans: Array[Ruban] = []
+	# Sans trou, le découpage reste exactement celui d'avant : même nombre de
+	# sections, au même endroit.
+	var sections_totales := maxi(int(track.length / segment_length), 8)
+	for morceau in troncons(track.length, trous):
+		var etendue := morceau.y - morceau.x
+		var sections := maxi(int(round(sections_totales * etendue / track.length)), 1)
+		var pas := etendue / float(sections)
+		var ruban := Ruban.new()
+		ruban.ajouter_coupe(morceau.x, track.position_at(morceau.x), track.right_at(morceau.x))
+		for i in sections:
+			_recouper(ruban, track, morceau.x + pas * float(i + 1), n_couleurs)
+		rubans.append(ruban)
+	# La ligne de départ n'est pas un bout de route quand aucun trou ne la
+	# coupe : le dernier ruban y rejoint le premier, et leur coupe commune
+	# doit porter les mêmes sommets des deux côtés, sans quoi la couture
+	# s'ouvre là aussi.
+	if rubans.is_empty():
+		return rubans
+	var premier := rubans[0]
+	var dernier: Ruban = rubans.back()
+	if premier.coupes[0] > 0.0 or dernier.coupes[dernier.coupes.size() - 1] < track.length - 0.01:
+		return rubans
+	if rubans.size() == 1:
+		premier.ferme = true
+		return rubans
+	# Le dernier ruban se poursuit dans le premier : leur coupe commune est
+	# celle du départ, à zéro.
+	dernier.prolonger(premier)
+	rubans.pop_back()
+	rubans[0] = dernier
+	return rubans
+
+
+## Une section de route, de la dernière coupe du ruban à d1, ajoutée au
+## ruban.
 ##
 ## Une section dont le dévers change d'un bout à l'autre est un
 ## quadrilatère tordu : coupé selon une seule diagonale, son milieu passait
@@ -221,48 +314,148 @@ const MESURES := [-0.98, -0.5, 0.0, 0.5, 0.98]
 ## si le milieu reste à plus de ECART_MAX de la courbe (le dévers ne change
 ## pas d'un pas régulier, la pente s'arrondit), coupée en deux dans le sens
 ## de la marche. Une section plate garde ses deux triangles.
-static func _section(outil: SurfaceTool, track: TrackCurve, d0: float, d1: float,
-		couleurs: PackedColorArray = PackedColorArray()) -> void:
+static func _recouper(ruban: Ruban, track: TrackCurve, d1: float, n_couleurs: int) -> void:
 	var largeur := track.half_width * 2.0
-	var p0 := track.position_at(d0)
+	var d0 := ruban.coupes[ruban.coupes.size() - 1]
+	var p0 := ruban.centres[ruban.centres.size() - 1]
+	var r0 := ruban.droites[ruban.droites.size() - 1]
 	var p1 := track.position_at(d1)
-	var r0 := track.right_at(d0)
 	var r1 := track.right_at(d1)
 	var torsion := absf(Plane(p0 - r0 * track.half_width, p1 - r1 * track.half_width,
 		p0 + r0 * track.half_width).distance_to(p1 + r1 * track.half_width))
 	var bandes := maxi(ceili(torsion * 0.25 / ECART_MAX), 1)
 	# Les couleurs de l'arc-en-ciel découpent déjà la chaussée : chacune
 	# est recoupée de même.
-	var n := maxi(couleurs.size(), 1)
-	var par_couleur := ceili(float(bandes) / n) if bandes > 1 else 1
+	var par_couleur := ceili(float(bandes) / n_couleurs) if bandes > 1 else 1
 	var bords := PackedFloat32Array()
-	for k in n * par_couleur + 1:
-		bords.append(-track.half_width + largeur * float(k) / float(n * par_couleur))
-	if d1 - d0 > 0.25 and _ecart(track, d0, d1, bords) > ECART_MAX:
-		var m := (d0 + d1) * 0.5
-		_section(outil, track, d0, m, couleurs)
-		_section(outil, track, m, d1, couleurs)
+	for k in n_couleurs * par_couleur + 1:
+		bords.append(-track.half_width + largeur * float(k) / float(n_couleurs * par_couleur))
+	if d1 - d0 > 0.25 and _ecart(track, d0, d1, p0, p1, r0, r1, bords) > ECART_MAX:
+		_recouper(ruban, track, (d0 + d1) * 0.5, n_couleurs)
+		_recouper(ruban, track, d1, n_couleurs)
 		return
-	for j in n:
-		if not couleurs.is_empty():
-			outil.set_color(couleurs[j])
-		for k in par_couleur:
-			var g := bords[j * par_couleur + k]
-			var d := bords[j * par_couleur + k + 1]
-			_quad(outil, p0 + r0 * g, p1 + r1 * g, p0 + r0 * d, p1 + r1 * d)
+	ruban.ajouter_coupe(d1, p1, r1)
+	ruban.bandes.append(n_couleurs * par_couleur)
+
+
+## Les triangles d'un ruban.
+##
+## Deux sections voisines n'ont pas forcément autant de bandes : une section
+## tordue, recoupée, en touche une plate. Chacune posant ses propres sommets,
+## ceux des bandes tombaient au milieu de la grande arête d'en face : une
+## jonction en T. Les flottants y laissent une fente, que la collision élargit
+## en arrondissant ses sommets (au dixième de millimètre pour Godot, à sa
+## grille pour Jolt) : un rayon de roue tiré pile sur la couture passait à
+## travers la route (22 rayons sur 29 circuits).
+## Chaque coupe porte donc les sommets des bandes de ses deux sections, et
+## chaque section les reprend tous : le côté d'un triangle qui en enjambe
+## plusieurs devient un éventail. Ces sommets sont sur la droite de la
+## coupe, l'éventail est dans le plan du triangle : la chaussée ne bouge
+## pas d'un cheveu, elle se referme.
+static func _poser_le_ruban(outil: SurfaceTool, track: TrackCurve, ruban: Ruban,
+		couleurs: PackedColorArray) -> void:
+	var n := ruban.bandes.size()
+	var points: Array[PackedInt32Array] = []
+	var sommets: Array[PackedVector3Array] = []
+	for i in n + 1:
+		if ruban.ferme and i == n:
+			# Les sommets de la ligne de départ, partagés avec la première section.
+			points.append(points[0])
+			sommets.append(sommets[0])
+			continue
+		var avant := ruban.bandes[i - 1] if i > 0 else (ruban.bandes[n - 1] if ruban.ferme else 0)
+		var apres := ruban.bandes[i] if i < n else 0
+		var fractions := _points_de_coupe(avant, apres)
+		var coupe := PackedVector3Array()
+		for k in range(0, fractions.size(), 2):
+			coupe.append(_point_de_coupe(ruban.centres[i], ruban.droites[i], track.half_width,
+				fractions[k], fractions[k + 1]))
+		points.append(fractions)
+		sommets.append(coupe)
+	var n_couleurs := maxi(couleurs.size(), 1)
+	for i in n:
+		var bandes := ruban.bandes[i]
+		var depart := sommets[i]
+		var arrivee := sommets[i + 1]
+		var a := _rangs(points[i], bandes)
+		var b := _rangs(points[i + 1], bandes)
+		# Dans chaque bande, les deux triangles de _quad : (g0, g1, d0) en
+		# éventail depuis g1 sur la coupe de départ, (d0, g1, d1) en
+		# éventail depuis d0 sur celle d'arrivée.
+		for k in bandes:
+			if not couleurs.is_empty():
+				outil.set_color(couleurs[k * n_couleurs / bandes])
+			var g1 := arrivee[b[k]]
+			for j in range(a[k], a[k + 1]):
+				_triangle(outil, depart[j], g1, depart[j + 1])
+			var d0 := depart[a[k + 1]]
+			for j in range(b[k], b[k + 1]):
+				_triangle(outil, d0, arrivee[j], arrivee[j + 1])
+
+
+## Les points d'une coupe entre une section de `avant` bandes et une de
+## `apres` (0 : pas de section de ce côté), de gauche à droite, en fractions
+## exactes de la largeur : (numérateur, dénominateur) à la suite. Les deux
+## découpages fusionnés, chaque point une seule fois.
+static func _points_de_coupe(avant: int, apres: int) -> PackedInt32Array:
+	var points := PackedInt32Array()
+	if avant == 0 or apres == 0:
+		var seul := maxi(avant, apres)
+		for k in seul + 1:
+			points.append_array([k, seul])
+		return points
+	var i := 0
+	var j := 0
+	while i <= avant or j <= apres:
+		# i / avant comparé à j / apres, en entiers : pas d'arrondi.
+		var ecart := i * apres - j * avant if i <= avant and j <= apres else (1 if i > avant else -1)
+		if ecart <= 0:
+			points.append_array([i, avant])
+			i += 1
+			if ecart == 0:
+				j += 1
+		else:
+			points.append_array([j, apres])
+			j += 1
+	return points
+
+
+## Pour chaque bord de bande d'une section de `bandes` bandes (k / bandes,
+## de 0 à bandes), son rang parmi les points de la coupe.
+static func _rangs(points: PackedInt32Array, bandes: int) -> PackedInt32Array:
+	var rangs := PackedInt32Array()
+	var j := 0
+	for k in bandes + 1:
+		while points[j * 2] * bandes != k * points[j * 2 + 1]:
+			j += 1
+		rangs.append(j)
+	return rangs
+
+
+## Le point de la coupe (p, r) à la fraction `numerateur / denominateur` de
+## la largeur, depuis le bord gauche. La fraction d'abord : 0 et 1 tombent
+## pile sur les rives, et deux écritures d'une même fraction sur le même point.
+static func _point_de_coupe(p: Vector3, r: Vector3, demi: float, numerateur: int, denominateur: int) -> Vector3:
+	return p + r * (-demi + demi * 2.0 * (float(numerateur) / float(denominateur)))
+
+
+static func _triangle(outil: SurfaceTool, a: Vector3, b: Vector3, c: Vector3) -> void:
+	outil.add_vertex(a)
+	outil.add_vertex(b)
+	outil.add_vertex(c)
 
 
 ## Le plus grand écart vertical, au milieu de la section, entre la courbe et
-## ses bandes coupées en triangles (voir _quad).
-static func _ecart(track: TrackCurve, d0: float, d1: float, bords: PackedFloat32Array) -> float:
-	var p0 := track.position_at(d0)
-	var p1 := track.position_at(d1)
-	var r0 := track.right_at(d0)
-	var r1 := track.right_at(d1)
+## ses bandes coupées en triangles (voir _quad). (p0, r0) et (p1, r1) : le
+## milieu et le côté droit de la chaussée à d0 et à d1.
+static func _ecart(track: TrackCurve, d0: float, d1: float, p0: Vector3, p1: Vector3,
+		r0: Vector3, r1: Vector3, bords: PackedFloat32Array) -> float:
 	var m := (d0 + d1) * 0.5
+	var pm := track.position_at(m)
+	var rm := track.right_at(m)
 	var pire := 0.0
 	for f: float in MESURES:
-		var vrai := track.position_at(m) + track.right_at(m) * track.half_width * f
+		var vrai := pm + rm * track.half_width * f
 		var depuis := vrai + Vector3.UP * 5.0
 		var trouve := false
 		for k in bords.size() - 1:
