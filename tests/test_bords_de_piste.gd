@@ -45,7 +45,7 @@ class Temoin:
 			sous_la_route = maxf(sous_la_route, route.y - p.y)
 
 
-func _anneau(rayon: float = 50.0, points: int = 16) -> Curve3D:
+func _anneau(rayon: float = 50.0, points: int = 16, devers: float = 0.0) -> Curve3D:
 	var c := Curve3D.new()
 	var pas := TAU / float(points)
 	var poignee := rayon * (4.0 / 3.0) * tan(pas / 4.0)
@@ -54,15 +54,18 @@ func _anneau(rayon: float = 50.0, points: int = 16) -> Curve3D:
 		var p := Vector3(sin(a) * rayon, 0.0, -cos(a) * rayon)
 		var t := Vector3(cos(a), 0.0, sin(a)) * poignee
 		c.add_point(p, -t, t)
+		c.set_point_tilt(i, deg_to_rad(devers))
 	c.add_point(c.get_point_position(0), -c.get_point_out(0), c.get_point_out(0))
+	c.set_point_tilt(points, deg_to_rad(devers))
 	return c
 
 
-## Le circuit et ses éléments, montés dans l'arbre.
-func _circuit(elements: Array) -> void:
+## Le circuit et ses éléments, montés dans l'arbre ; la route relevée de
+## `devers` degrés.
+func _circuit(elements: Array, devers: float = 0.0) -> void:
 	track = Track.new()
 	track.half_width = DEMI
-	track.curve = _anneau()
+	track.curve = _anneau(50.0, 16, devers)
 	for e in elements:
 		track.add_child(e)
 	add_child_autofree(track)
@@ -96,7 +99,10 @@ func _sol_sous(ici: Vector3) -> Variant:
 func _lancer(distance: float, lateral: float, angle: float, vitesse: float) -> void:
 	kart = (load("res://scenes/kart/kart.tscn") as PackedScene).instantiate() as Kart
 	add_child_autofree(kart)
-	kart.changer_pilote(PleinGaz.new())
+	var pilote := PleinGaz.new()
+	# Enfant du kart : libéré avec lui, sans quoi chaque essai laisse un orphelin.
+	kart.add_child(pilote)
+	kart.changer_pilote(pilote)
 	var c := track.track_curve
 	await wait_physics_frames(2)
 	var ici := TrackFeature.point(c, distance, lateral, 0.0)
@@ -183,3 +189,22 @@ func test_entrer_dans_une_bande_par_son_bout() -> void:
 	assert_gt(c.distance_of(kart.global_position), 104.0, "le kart est entré dans la bande")
 	_assert_dessus()
 	assert_eq(temoin.contacts, 0, "aucun mur au bout de la bande")
+
+
+## Un virage relevé de 15° au-dessus d'une prairie : le bord haut passe 2,7 m
+## au-dessus d'elle. Le talus de 1,2 m n'y descendait pas, il n'y en avait
+## pas : le kart de la prairie roulait sous le bord, le toit dans la dalle.
+func test_sous_le_bord_haut_d_un_virage_releve_on_remonte_sans_passer_dessous() -> void:
+	_circuit([_sol()], 15.0)
+	var c := track.track_curve
+	var haut := 1.0 if c.right_at(100.0).y > 0.0 else -1.0
+	await _lancer(100.0, haut * (DEMI + 13.0), -haut * 35.0, 12.0)
+	# Sans volant, le kart file tout droit : il remonte sur la route, puis
+	# en ressort par l'extérieur de l'anneau. On retient son plus près.
+	var au_plus_pres := INF
+	for i in 10:
+		await _rouler(0.25)
+		au_plus_pres = minf(au_plus_pres, absf(_lateral()))
+	assert_lt(temoin.sous_la_route, 0.05, "enfoncé de %.2f m sous la route" % temoin.sous_la_route)
+	assert_eq(temoin.contacts, 0, "aucun mur entre la prairie et la route")
+	assert_lt(au_plus_pres, DEMI - 0.5, "le kart est remonté sur la route (au plus près %.2f)" % au_plus_pres)

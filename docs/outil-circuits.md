@@ -213,7 +213,9 @@ Le puits d'un portail à plat prend ses couleurs dans `fond_du_puits`,
 Un circuit peut avoir un relief par portion (un par saison) : chaque décor se
 pose sur celui de sa portion. Un sol plat (`TrackSol`) s'abaisse sous une
 route au ras de lui (`hauteur_en`) : le bord bas d'un virage relevé ne passe
-plus dessous. Aux portails, deux sols se chevauchent : chacun ne porte que du
+plus dessous. Pas sous une route loin dessous (`PROFONDEUR_PERCEE`) : il est
+le plafond de sa salle, et ses mailles plongeaient sinon de 20 à 48 m vers
+elle, en murs à côté de la route d'en haut. Aux portails, deux sols se chevauchent : chacun ne porte que du
 côté de son monde. Nouveaux décors : `ARBRE_AUTOMNE`, `BONHOMME_DE_NEIGE`,
 `PARASOL`, `FLEUR`, `PANNEAU_LABO` (qui longe la route), `TOURELLE`,
 `CUBE_LESTE`, `ESCALIER_FLOTTANT` (il flotte), `FUSEE`, `PARABOLE`,
@@ -347,16 +349,40 @@ des **talus** (`TrackTalus`, nœud `Talus`) :
 - **le long des deux bords de la route**, partout où un sol réel la borde
   (`Track.hauteur_du_sol_reel`, sondé 2 m au-delà du bord), hors des trous et
   de la portion qu'on ne court pas. Jamais au-dessus du vide : ce serait un
-  sol invisible. Ni là où le sol est plus bas que la pente ne descend ;
+  sol invisible. Ni là où le sol est plus bas qu'on n'y roule encore
+  (`TrackTalus.CHUTE_MAX`, la `HAUTEUR_DE_CHUTE` de la course : 3,5 m) ;
 - **le long des bords d'une `TrackOffroad` qui ne touchent pas la route**
   (le bord extérieur, et l'intérieur d'une bande détachée), et **en travers
   de ses deux bouts**, partout où un sol réel est dessous.
 
-Une pente de 15° : du bord, à la hauteur du bitume, elle descend de 1,2 m sur
-4,5 m (`TrackTalus.CHUTE`, `LARGEUR`), et plonge sous le sol à quelques
-dizaines de centimètres du bord. Elle est visible, de la couleur du dessous de
-la route, pour que le kart qui la remonte ne flotte pas au-dessus de rien.
-Solide des deux côtés : on ne passe plus dessous.
+Une pente de 15° : du bord, à la hauteur du bitume, elle descend d'au moins
+1,2 m sur 4,5 m (`TrackTalus.CHUTE`, `LARGEUR`), et plus s'il le faut pour
+passer 30 cm (`ENFOUI`) sous le sol qu'elle rejoint — sondé à 2 m du bord et
+là où tomberait son pied. Sous le bord haut d'un virage relevé, deux mètres
+au-dessus de la prairie, elle descend jusqu'à elle : le kart remonte au lieu
+de rouler sous la route, le toit dans sa dalle. Elle est visible, de la
+couleur du dessous de la route, pour que le kart qui la remonte ne flotte pas
+au-dessus de rien. Solide des deux côtés : on ne passe plus dessous.
+
+Le haut du talus est **le bord, sommet pour sommet** : celui de la route est
+lu sur sa collision (`TrackTalus.bords_de_la_route`, la route est recoupée là
+où ses sections se tordent), celui d'une bande a ses sections d'un mètre.
+Coupés autrement, sa corde passait jusqu'à 1,3 cm au-dessus ou au-dessous du
+bord, une lèvre qui arrête un kart. Ses pieds, enfouis, suivent la droite du
+tracé lissée sur trois mètres (`TrackFeature.plat_lisse`) : la courbe, cuite
+au mètre, tourne par à-coups, et des pieds pris sommet par sommet allaient et
+venaient. À l'intérieur d'un virage serré, ils ne vont pas au-delà de là où
+ils se croiseraient (`TrackFeature.portee_sans_repli`), la pente raidie
+d'autant jusqu'à 45° ; aucun morceau de talus n'est un mur (normale à moins de
+0,64 vers le haut) : là, pas de talus. Au bout d'un tronçon, la pente se
+referme le long du tracé, sans face où buter.
+
+Pour la même raison, une `TrackOffroad` qui déborde vers l'intérieur d'un
+virage serré s'arrête avant de se replier : ses points au-delà du bord
+avancent d'une section à la suivante d'au moins un quart de l'axe, et plus
+qu'ils ne montent (au plus 45° le long du tracé). Dans l'épingle du Jardin des
+champignons, la bande de droite s'y repliait en feuillets et en faces raides.
+`tests/test_talus.gd`.
 
 Une `TrackOffroad` est dessinée 2 cm au-dessus du bitume, pour qu'on la voie
 là où elle le recouvre, mais sa collision est **au ras** : ces deux

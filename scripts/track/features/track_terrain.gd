@@ -100,16 +100,24 @@ func _init() -> void:
 ## Ce relief porte-t-il un kart en ce point, à cette distance le long du
 ## tracé ? Près de la route de son monde, et le kart au-dessus, pas dessous.
 func porte(point: Vector3, distance: float) -> bool:
+	return hauteur_portee(point, distance) > -INF
+
+
+## La hauteur du relief sous ce point s'il le porte (porte), -INF sinon. D'un
+## seul calcul : porte() puis hauteur_en() projetaient deux fois le point sur
+## la courbe, la moitié du temps de construction des talus.
+func hauteur_portee(point: Vector3, distance: float) -> float:
 	var c := courbe()
 	if c == null:
-		return false
+		return -INF
 	_preparer(c)
 	if _echantillons.is_empty() or not _de_ce_cote(distance):
-		return false
+		return -INF
 	var trouve := _plus_proche(point.x, point.z)
 	if trouve.y > _portee(c) or not _du_monde[int(trouve.x)]:
-		return false
-	return point.y > _hauteur(c, point.x, point.z) - 2.0
+		return -INF
+	var h := _hauteur(c, point.x, point.z)
+	return h if point.y > h - 2.0 else -INF
 
 
 ## Le tracé à cette distance est-il celui que ce relief borde : dans sa

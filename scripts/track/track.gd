@@ -194,7 +194,8 @@ func _reconstruire() -> void:
 	# La collision n'a que faire des couleurs : les sept bandes de
 	# l'arc-en-ciel y feraient sept fois plus de triangles à tester, à chaque
 	# roue et chaque image. Elle est d'un seul tenant, tous mondes confondus.
-	forme.shape = TrackBuilder.build(track_curve, segment_length, trous()).create_trimesh_shape()
+	var route := TrackBuilder.build(track_curve, segment_length, trous())
+	forme.shape = route.create_trimesh_shape()
 	corps.add_child(forme)
 	add_child(corps)
 
@@ -208,7 +209,7 @@ func _reconstruire() -> void:
 	for element in elements():
 		element.reconstruire()
 	# Après les éléments : les sols doivent exister pour dire où ils bordent.
-	_poser_les_talus(arc_en_ciel)
+	_poser_les_talus(arc_en_ciel, route)
 
 	if Engine.is_editor_hint():
 		update_configuration_warnings()
@@ -217,31 +218,26 @@ func _reconstruire() -> void:
 ## Les talus le long des deux bords de la route, partout où un sol réel la
 ## borde (TrackTalus) : sans eux, le bord était une marche qu'on ne
 ## remontait pas, ou sous laquelle on passait. Jamais au-dessus du vide :
-## ce serait un sol invisible. Coupés comme la collision de la route, pour
-## que leur arête suive exactement celle du bitume.
-func _poser_les_talus(arc_en_ciel: bool) -> void:
+## ce serait un sol invisible. Leur arête est celle du bitume, lue sur
+## `route`, sa collision (TrackTalus.bords_de_la_route).
+func _poser_les_talus(arc_en_ciel: bool, route: Mesh) -> void:
 	var c := track_curve
-	var demi := c.half_width
 	var par_calque := {}
-	var sections_totales := maxi(int(c.length / segment_length), 8)
-	for morceau in TrackBuilder.troncons(c.length, trous()):
-		var etendue := morceau.y - morceau.x
-		var n := maxi(int(round(sections_totales * etendue / c.length)), 1)
-		var sections := PackedFloat32Array()
-		for i in n + 1:
-			sections.append(morceau.x + etendue * float(i) / float(n))
-		for cote: float in [-1.0, 1.0]:
-			var triangles := TrackTalus.le_long(c, sections, demi * cote, cote,
-				_borde_par_un_sol.bind(cote))
-			# Rangés par monde : chacun ne se voit que du sien.
-			for t in range(0, triangles.size(), 6):
-				var milieu := c.distance_of((triangles[t] + triangles[t + 1]) * 0.5)
-				var calque := calque_a(milieu)
+	for bord in TrackTalus.bords_de_la_route(route, c, TrackBuilder.troncons(c.length, trous()), segment_length):
+		var pente := TrackTalus.le_long(self, c, bord, c.half_width * bord.cote, bord.cote,
+			func(d: float) -> bool: return not hors_course(d) and trou_en(d) == null)
+		# Rangés par monde : chacun ne se voit que du sien.
+		var ou := NAN
+		var calque := 0
+		for t in pente.distances.size():
+			if pente.distances[t] != ou:
+				ou = pente.distances[t]
+				calque = calque_a(ou)
 				if calque == 0:
 					calque = CALQUE_COMMUN
 				if not par_calque.has(calque):
 					par_calque[calque] = PackedVector3Array()
-				par_calque[calque].append_array(triangles.slice(t, t + 6))
+			par_calque[calque].append_array(pente.triangles.slice(t * 3, t * 3 + 3))
 	if par_calque.is_empty():
 		return
 	var racine := Node3D.new()
@@ -255,15 +251,75 @@ func _poser_les_talus(arc_en_ciel: bool) -> void:
 		TrackTalus.poser(racine, par_calque[calque], beton, calque)
 
 
-## Un sol réel borde-t-il la route à cette distance, de ce côté, et assez
-## haut pour que le talus plonge dessous ? Ni dans un trou, ni hors course.
-func _borde_par_un_sol(distance: float, cote: float) -> bool:
-	if hors_course(distance) or trou_en(distance) != null:
-		return false
+## Un talus peut-il passer en `point`, à la hauteur `hauteur`, sans toucher
+## la route : ni au-dessus d'elle à moins de RaceSession.HAUTEUR_DE_CHUTE, ni
+## à son ras ? Sous un pont, deux portions du tracé se frôlent ; au creux
+## d'une épingle serrée, le talus d'un bord passe le centre du virage et
+## retombe sur la chaussée six mètres plus loin : il pendait au-dessus, une
+## face à hauteur de kart. Le point est à plus d'un mètre du bord qu'il
+## prolonge : la route d'ici ne le gêne pas.
+func talus_libre(point: Vector3, hauteur: float, distance: float) -> bool:
 	var c := track_curve
-	var bord := TrackFeature.point(c, distance, cote * c.half_width, 0.0)
-	var sol := hauteur_du_sol_reel(TrackFeature.point(c, distance, cote * (c.half_width + 2.0), 0.0), distance)
-	return sol >= bord.y - TrackTalus.CHUTE
+	var demi := c.half_width
+	for e: Array in _autres_routes(point, demi + 2.0, distance, 0.0):
+		var p: Vector3 = e[1]
+		var droite: Vector3 = e[2]
+		var plat := Vector3(droite.x, 0.0, droite.z).normalized()
+		var ecart := Vector3(point.x - p.x, 0.0, point.z - p.z)
+		if absf(ecart.dot(Vector3(plat.z, 0.0, -plat.x))) > PAS_VOISINAGE * 0.55:
+			continue
+		var lateral := ecart.dot(plat)
+		if absf(lateral) > demi + 0.5:
+			continue
+		var route := p.y + droite.y * clampf(lateral, -demi, demi)
+		if hauteur > route - 0.2 and hauteur < route + RaceSession.HAUTEUR_DE_CHUTE:
+			return false
+	return true
+
+
+## Y a-t-il, à moins de `rayon` de `point` dans le plan, une autre partie de
+## la route que celle d'ici (à plus de PROCHE le long du tracé de `distance`) ?
+func autre_route_pres(point: Vector3, rayon: float, distance: float) -> bool:
+	return not _autres_routes(point, rayon, distance, PROCHE).is_empty()
+
+
+## La route tous les PAS_VOISINAGE mètres, rangée par cases de
+## CASE_VOISINAGE : [distance, position, droite]. Refaite avec la courbe.
+const PAS_VOISINAGE := 2.0
+const CASE_VOISINAGE := 20.0
+## Plus près que ça le long du tracé, c'est la route que le talus borde.
+const PROCHE := 15.0
+var _voisinage := {}
+var _voisinage_pour: TrackCurve
+
+
+func _autres_routes(point: Vector3, rayon: float, distance: float, proche: float) -> Array:
+	var c := track_curve
+	if _voisinage_pour != c:
+		_voisinage_pour = c
+		_voisinage.clear()
+		var n := maxi(int(c.length / PAS_VOISINAGE), 8)
+		for i in n:
+			var d := c.length * float(i) / float(n)
+			if trou_en(d) != null:
+				continue
+			var p := c.position_at(d)
+			var cle := Vector2i(floori(p.x / CASE_VOISINAGE), floori(p.z / CASE_VOISINAGE))
+			if not _voisinage.has(cle):
+				_voisinage[cle] = []
+			_voisinage[cle].append([d, p, c.right_at(d)])
+	var trouves := []
+	var portee := ceili(rayon / CASE_VOISINAGE)
+	var ici := Vector2i(floori(point.x / CASE_VOISINAGE), floori(point.z / CASE_VOISINAGE))
+	for dx in range(-portee, portee + 1):
+		for dz in range(-portee, portee + 1):
+			for e: Array in _voisinage.get(ici + Vector2i(dx, dz), []):
+				if absf(wrapf(float(e[0]) - distance, -c.length * 0.5, c.length * 0.5)) < proche:
+					continue
+				var p: Vector3 = e[1]
+				if Vector2(p.x - point.x, p.z - point.z).length() < rayon:
+					trouves.append(e)
+	return trouves
 
 
 ## La route visible d'une portion : la chaussée, son dessous, le marquage,
@@ -794,8 +850,8 @@ func hauteur_du_sol_reel(point: Vector3, distance: float) -> float:
 	for element in elements():
 		if element is TrackSol and (element as TrackSol).porte(point, distance):
 			h = maxf(h, (element as TrackSol).hauteur_en(point.x, point.z))
-		elif element is TrackTerrain and (element as TrackTerrain).porte(point, distance):
-			h = maxf(h, (element as TrackTerrain).hauteur_en(point.x, point.z))
+		elif element is TrackTerrain:
+			h = maxf(h, (element as TrackTerrain).hauteur_portee(point, distance))
 	return h
 
 
