@@ -15,9 +15,10 @@ extends Node3D
 
 @export var kart_path: NodePath
 
-## La caisse, que la suspension fait plonger et tanguer. KartVisuals lui donne
-## déjà son roulis de dérapage sur un autre axe : les deux se composent sans se
-## marcher dessus, l'un écrivant rotation.x et position.y, l'autre rotation.z.
+## La caisse, que la suspension fait plonger et tanguer. Elle n'y touche pas
+## elle-même : elle dit de combien (`enfoncement`, `tangage`), et KartVisuals
+## compose le tout avec le roulis de la glisse et le tonneau des figures, puis
+## relève la caisse si elle passait sous sa hauteur de repos.
 @export var body_path: NodePath
 
 ## Les quatre roues, dans l'ordre : avant gauche, avant droite, arrière gauche,
@@ -69,9 +70,12 @@ var _springs: Array[KartSpring] = []
 ## rayon partait de plus bas, donc la roue redescendait encore. Les quatre
 ## ressorts ne prenaient plus que leurs deux butées, jamais rien entre.
 var _ancres: Array[Vector3] = []
+## Ce que la caisse descend sous sa hauteur de repos, et son tangage (positif :
+## le nez se lève), lus par KartVisuals.
+var enfoncement: float = 0.0
+var tangage: float = 0.0
 var _spin: float = 0.0
 var _steer: float = 0.0
-var _body_repos := Vector3.ZERO
 var _vitesse_precedente: float = 0.0
 var _cap_precedent: float = 0.0
 
@@ -84,7 +88,6 @@ func _ready() -> void:
 	# Le kart la rappelle aux remises en piste. Il vit très bien sans elle :
 	# le terrain d'essai n'a pas de suspension.
 	_kart.suspension = self
-	_body_repos = _body.position
 
 	for chemin in wheel_paths:
 		var roue := get_node_or_null(chemin) as Node3D
@@ -114,31 +117,69 @@ func _physics_process(delta: float) -> void:
 		# La charge se retranche de la distance au sol : une roue plus chargée
 		# se comporte comme si le sol était remonté vers elle. Le ressort, lui,
 		# reste ignorant de tout ça — c'est ce qui le garde testable.
-		var distance := _sonder(espace, ancrage, bas)
+		var touche := _sonder(espace, ancrage, bas)
+		var contact := INF
+		var posee := INF
+		if not touche.is_empty():
+			contact = (touche["position"] as Vector3).distance_to(ancrage) - wheel_radius
+			posee = contact - _rehausse(i, base, touche["normal"])
+		var distance := contact
 		if distance < INF:
 			distance -= charges[i]
 		_springs[i].step(distance, delta)
-		# La roue pend sous son ancrage, de la longueur du ressort.
+		# La roue pend sous son ancrage, de la longueur du ressort, mais n'est
+		# jamais dessinée sous le sol qu'elle touche : une roue délestée
+		# (charge négative) visait plus bas que le contact, et passait sous la
+		# route de 9 cm. Le ressort garde sa physique ; une roue en l'air pend.
 		_wheels[i].position = Vector3(
-			_ancres[i].x, _ancres[i].y - _springs[i].length, _ancres[i].z)
+			_ancres[i].x, _ancres[i].y - minf(_springs[i].length, posee), _ancres[i].z)
 
 	_tourner_les_roues(delta)
 	_asseoir_la_caisse()
 
 
-## Distance au sol depuis l'ancrage, le long du fourreau. INF quand la roue ne
-## touche rien. Le rayon descend un peu plus bas que la butée de détente, sinon
-## la roue ne verrait jamais le sol qu'elle est sur le point d'atteindre.
-func _sonder(espace: PhysicsDirectSpaceState3D, depuis: Vector3, bas: Vector3) -> float:
+## Le sol sous l'ancrage, le long du fourreau : le résultat du rayon, vide
+## quand la roue ne touche rien. Le rayon descend un peu plus bas que la butée
+## de détente, sinon la roue ne verrait jamais le sol qu'elle est sur le point
+## d'atteindre.
+func _sonder(espace: PhysicsDirectSpaceState3D, depuis: Vector3, bas: Vector3) -> Dictionary:
 	var requete := PhysicsRayQueryParameters3D.create(
 		depuis, depuis + bas * (rest_length + wheel_radius))
 	# Le kart lui-même n'est pas un sol : sans ça chaque roue verrait la boîte
 	# de collision de son propre châssis.
 	requete.exclude = [_kart.get_rid()]
-	var touche := espace.intersect_ray(requete)
-	if touche.is_empty():
-		return INF
-	return (touche["position"] as Vector3).distance_to(depuis) - wheel_radius
+	return espace.intersect_ray(requete)
+
+
+## De combien remonter la roue `i` le long du fourreau, au-dessus de son
+## contact, pour que sa jante ne coupe pas le sol de normale `normale`.
+##
+## Le rayon touche le sol sous le centre de la roue. Quand le kart penche
+## autrement que la route (l'entrée d'un virage relevé, un vibreur), le flanc
+## de la jante, une vingtaine de centimètres à côté, passait sous la route :
+## sur circuit_01, 2 % du temps de plus d'un centimètre, jusqu'à 10 cm. Le
+## sol est pris plan autour du contact ; la jante, cylindre de sa boîte.
+func _rehausse(i: int, base: Basis, normale: Vector3) -> float:
+	var jante := _wheels[i].get_node_or_null("Jante") as MeshInstance3D
+	if jante == null or jante.mesh == null or not jante.is_visible_in_tree():
+		return 0.0
+	var haut := base.y.normalized()
+	var appui := haut.dot(normale)
+	# Un mur sous la roue : rien à poser dessus.
+	if appui < 0.5:
+		return 0.0
+	# La jante dans le repère de la roue : sa largeur le long de l'essieu, son
+	# rayon autour. Le roulement tourne autour de l'essieu et n'y change rien.
+	var boite := jante.transform * jante.mesh.get_aabb()
+	var rayon := maxf(boite.size.y, boite.size.z) * 0.5
+	var essieu := (base * _wheels[i].basis.x).normalized()
+	var k := essieu.dot(normale)
+	# Posée au contact, la roue a son centre à wheel_radius du sol le long du
+	# fourreau. Le plus bas de la jante, au-dessus du plan du sol : le centre,
+	# moins le flanc qui descend le long de l'essieu, moins le rayon.
+	var dessous := wheel_radius * appui + minf(boite.position.x * k, boite.end.x * k) \
+		- rayon * sqrt(maxf(1.0 - k * k, 0.0))
+	return maxf(-dessous, 0.0) / appui
 
 
 ## Tassement supplémentaire de chaque roue, en mètres, dû au report de charge.
@@ -198,10 +239,10 @@ func _asseoir_la_caisse() -> void:
 	var arriere := (_springs[2].compression() + _springs[3].compression()) * 0.5
 	var moyenne := (avant + arriere) * 0.5
 
-	_body.position = _body_repos + Vector3.DOWN * (moyenne * max_squat)
+	enfoncement = moyenne * max_squat
 	# Avant tassé = nez qui plonge. Un tangage positif autour de +X lève le nez
 	# dans Godot, d'où le signe.
-	_body.rotation.x = deg_to_rad(max_pitch_deg) * (arriere - avant)
+	tangage = deg_to_rad(max_pitch_deg) * (arriere - avant)
 
 
 ## Détend les quatre ressorts. Appelé à la remise en piste : une roue qui garde
@@ -218,6 +259,5 @@ func reset() -> void:
 		_wheels[i].position = Vector3(
 			_ancres[i].x, _ancres[i].y - _springs[i].length, _ancres[i].z)
 		_wheels[i].rotation = Vector3.ZERO
-	if _body != null:
-		_body.position = _body_repos
-		_body.rotation.x = 0.0
+	enfoncement = 0.0
+	tangage = 0.0

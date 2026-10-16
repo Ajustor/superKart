@@ -233,6 +233,99 @@ static func point(c: TrackCurve, distance: float, lateral: float, hauteur: float
 	return bord + plat * (absf(lateral) - demi) * cote + Vector3.UP * hauteur
 
 
+## Le même point, mais au-delà du bord, la direction du plat est lissée sur
+## LISSAGE mètres de part et d'autre (plat_lisse). Pour ce qui s'étend loin
+## du bord : les bandes hors-piste, les talus.
+static func point_lisse(c: TrackCurve, distance: float, lateral: float, hauteur: float) -> Vector3:
+	var demi := c.half_width
+	if absf(lateral) <= demi:
+		return point(c, distance, lateral, hauteur)
+	var cote := signf(lateral)
+	var bord := c.position_at(distance) + c.right_at(distance) * demi * cote
+	return bord + plat_lisse(c, distance) * (absf(lateral) - demi) * cote + Vector3.UP * hauteur
+
+
+## La droite du tracé à plat, d'une corde de deux fois LISSAGE mètres plutôt
+## que de right_at. La courbe est cuite au mètre et sa tangente tourne par
+## à-coups, autour de chaque point cuit : à l'intérieur d'un virage serré, un
+## point à quinze mètres de l'axe reculait de 30 cm d'une coupe à la suivante.
+## La bande et son talus s'y repliaient en feuillets et en faces raides — dans
+## l'épingle du Jardin des champignons, en bas des talus de la route recoupée.
+const LISSAGE := 1.5
+
+static func plat_lisse(c: TrackCurve, distance: float) -> Vector3:
+	var t := c.position_at(distance + LISSAGE) - c.position_at(distance - LISSAGE)
+	t.y = 0.0
+	if t.length_squared() < 0.000001:
+		var droite := c.right_at(distance)
+		return Vector3(droite.x, 0.0, droite.z).normalized()
+	t = t.normalized()
+	return Vector3(-t.z, 0.0, t.x)
+
+
+## Ce qu'une surface posée à plat au-delà du bord (point_lisse) peut couvrir
+## vers `cote` (+1 à droite, -1 à gauche) sans se replier, section par
+## section (`sections`) : à chacune, l'écart à l'axe le plus grand, au plus
+## `jusqu_a`, où ses points avancent encore jusqu'à la section voisine d'au
+## moins AVANCE_MIN de ce qu'avance l'axe — et, si `montee`, d'au moins ce
+## qu'ils montent : 45° au plus le long du tracé.
+##
+## À l'intérieur d'un virage serré, les coupes convergent vers le centre et
+## s'y croisent : la bande se repliait en dessous et en faces raides où le
+## kart butait, son talus pendait au-dessus du relief (l'épingle du Circuit).
+const AVANCE_MIN := 0.25
+
+static func portee_sans_repli(c: TrackCurve, sections: PackedFloat32Array, cote: float,
+		jusqu_a: float, montee := true) -> PackedFloat32Array:
+	var n := sections.size()
+	var bornes := PackedFloat32Array()
+	bornes.resize(n)
+	bornes.fill(jusqu_a)
+	var demi := c.half_width
+	if jusqu_a <= demi:
+		return bornes
+	# Les points au-delà du bord sont le bord, plus le plat fois l'écart
+	# (point_lisse) : calculés une fois par section.
+	var axes := PackedVector3Array()
+	var bords := PackedVector3Array()
+	var plats := PackedVector3Array()
+	for d in sections:
+		var p := c.position_at(d)
+		axes.append(p)
+		bords.append(p + c.right_at(d) * demi * cote)
+		plats.append(plat_lisse(c, d) * cote)
+	var ecart := jusqu_a - demi
+	for i in n - 1:
+		var limite := _limite_sans_repli(axes[i], axes[i + 1], bords[i], bords[i + 1], plats[i], plats[i + 1],
+			ecart, montee)
+		if limite < ecart:
+			bornes[i] = minf(bornes[i], demi + limite)
+			bornes[i + 1] = minf(bornes[i + 1], demi + limite)
+	return bornes
+
+
+## Jusqu'où, au-delà de `bord0` et `bord1` selon `plat0` et `plat1`, deux
+## coupes voisines avancent encore assez (portee_sans_repli) ; `ecart` si
+## jusque-là. L'avance décroît linéairement avec l'écart au bord.
+static func _limite_sans_repli(axe0: Vector3, axe1: Vector3, bord0: Vector3, bord1: Vector3,
+		plat0: Vector3, plat1: Vector3, ecart: float, montee: bool, avance_min := AVANCE_MIN) -> float:
+	var axe := axe1 - axe0
+	axe.y = 0.0
+	if axe.length_squared() < 0.000001:
+		return ecart
+	var t := axe.normalized()
+	var avance_bord := (bord1 - bord0).dot(t)
+	var avance_loin := avance_bord + (plat1 - plat0).dot(t) * ecart
+	var besoin := avance_min * axe.length()
+	if montee:
+		besoin = maxf(besoin, absf(bord1.y - bord0.y))
+	if avance_loin >= besoin:
+		return ecart
+	if avance_bord <= besoin:
+		return 0.0
+	return ecart * (avance_bord - besoin) / (avance_bord - avance_loin)
+
+
 ## Une surface posée sur le sol, de `gauche` à `droite` en travers. Coupée
 ## aux bords du bitume quand elle les chevauche, là où le sol passe de la
 ## chaussée inclinée au plat. Les UV comptent en mètres : u le long du tracé,
@@ -249,31 +342,44 @@ func _nappe(c: TrackCurve, gauche: float, droite: float, hauteur: float,
 ## de facettes, chacune éclairée sous son angle, et le sol paraissait strié.
 static func nappe(c: TrackCurve, de: float, sur: float, gauche: float, droite: float,
 		hauteur: float, eclairee_d_en_haut := false) -> ArrayMesh:
-	var colonnes := PackedFloat32Array([gauche])
-	for bord in [-c.half_width, c.half_width]:
-		if gauche < bord and bord < droite:
-			colonnes.append(bord)
-	colonnes.append(droite)
+	var sections := sections_entre(de, sur)
+	var gauches := PackedFloat32Array()
+	gauches.resize(sections.size())
+	gauches.fill(gauche)
+	var droites := PackedFloat32Array()
+	droites.resize(sections.size())
+	droites.fill(droite)
+	return nappe_bornee(c, sections, gauches, droites, de, hauteur, eclairee_d_en_haut)
 
+
+## La même, section par section (`sections`), de `gauches[i]` à `droites[i]`.
+## `lisse` : au-delà du bord, les points de point_lisse — une bande
+## hors-piste, qui s'étend loin du bord et s'arrête avant de se replier
+## (portee_sans_repli). Les UV partent de `de` le long du tracé, du bord
+## gauche en travers.
+static func nappe_bornee(c: TrackCurve, sections: PackedFloat32Array, gauches: PackedFloat32Array,
+		droites: PackedFloat32Array, de: float, hauteur: float, eclairee_d_en_haut := false,
+		lisse := false) -> ArrayMesh:
 	var outil := SurfaceTool.new()
 	outil.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var sections := sections_entre(de, sur)
 	for i in sections.size() - 1:
 		var d0 := sections[i]
 		var d1 := sections[i + 1]
 		var u0 := d0 - de
 		var u1 := d1 - de
-		for j in colonnes.size() - 1:
-			var a := colonnes[j]
-			var b := colonnes[j + 1]
-			var va := a - gauche
-			var vb := b - gauche
-			var a0 := point(c, d0, a, hauteur)
-			var b0 := point(c, d0, b, hauteur)
-			var a1 := point(c, d1, a, hauteur)
-			var b1 := point(c, d1, b, hauteur)
-			_triangle(outil, a0, a1, b0, Vector2(u0, va), Vector2(u1, va), Vector2(u0, vb))
-			_triangle(outil, b0, a1, b1, Vector2(u0, vb), Vector2(u1, va), Vector2(u1, vb))
+		var colonnes0 := _colonnes(c, gauches[i], droites[i])
+		var colonnes1 := _colonnes(c, gauches[i + 1], droites[i + 1])
+		for j in mini(colonnes0.size(), colonnes1.size()) - 1:
+			var va0 := colonnes0[j] - gauches[i]
+			var vb0 := colonnes0[j + 1] - gauches[i]
+			var va1 := colonnes1[j] - gauches[i + 1]
+			var vb1 := colonnes1[j + 1] - gauches[i + 1]
+			var a0 := point_lisse(c, d0, colonnes0[j], hauteur) if lisse else point(c, d0, colonnes0[j], hauteur)
+			var b0 := point_lisse(c, d0, colonnes0[j + 1], hauteur) if lisse else point(c, d0, colonnes0[j + 1], hauteur)
+			var a1 := point_lisse(c, d1, colonnes1[j], hauteur) if lisse else point(c, d1, colonnes1[j], hauteur)
+			var b1 := point_lisse(c, d1, colonnes1[j + 1], hauteur) if lisse else point(c, d1, colonnes1[j + 1], hauteur)
+			_triangle(outil, a0, a1, b0, Vector2(u0, va0), Vector2(u1, va1), Vector2(u0, vb0))
+			_triangle(outil, b0, a1, b1, Vector2(u0, vb0), Vector2(u1, va1), Vector2(u1, vb1))
 	if eclairee_d_en_haut:
 		var arrays := outil.commit_to_arrays()
 		var normales := PackedVector3Array()
@@ -285,6 +391,18 @@ static func nappe(c: TrackCurve, de: float, sur: float, gauche: float, droite: f
 		return m
 	outil.generate_normals()
 	return outil.commit()
+
+
+## Les écarts où couper une surface de `gauche` à `droite` : ses bords, et
+## ceux du bitume qu'elle chevauche, là où le sol passe de la chaussée
+## inclinée au plat.
+static func _colonnes(c: TrackCurve, gauche: float, droite: float) -> PackedFloat32Array:
+	var colonnes := PackedFloat32Array([gauche])
+	for bord in [-c.half_width, c.half_width]:
+		if gauche < bord and bord < droite:
+			colonnes.append(bord)
+	colonnes.append(droite)
+	return colonnes
 
 
 static func _triangle(outil: SurfaceTool, a: Vector3, b: Vector3, c: Vector3,

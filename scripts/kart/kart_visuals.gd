@@ -27,6 +27,10 @@ var _spark_material: StandardMaterial3D
 var _inclinaison: float = 0.0
 ## Le tonneau d'une figure, de 0 à 1 ; négatif hors figure.
 var _figure: float = -1.0
+## L'angle du tonneau à cette image.
+var _tonneau: float = 0.0
+## Touché le sol en plein tonneau, ce qui en reste se finit d'autant plus vite.
+const FIGURE_AU_SOL := 5.0
 ## Le train de roues : il fait le tonneau avec la caisse. La suspension place
 ## chaque roue dans ce repère, le tonneau tourne le repère entier.
 var _roues: Node3D
@@ -47,7 +51,8 @@ var _position_caisse := Vector3.ZERO
 ## L'allure du modèle (ModeleKart), que le rétrécissement respecte.
 var _echelle_caisse := Vector3.ONE
 ## Le pilote (Personnage) : son animation suit ce qui arrive au kart.
-## Un geste bref (objet lancé, choc) passe avant la conduite ; une figure et
+## Un geste bref (objet lancé, choc) passe avant la conduite (ou le repos,
+## debout sur le nuage magique) ; une figure et
 ## un tête-à-queue passent avant tout ; l'arrivée dure jusqu'au bout.
 const ANIM_FIGURE := "jump"
 const ANIM_TETE_A_QUEUE := "fall"
@@ -109,15 +114,18 @@ func _process(delta: float) -> void:
 	var motor := _kart.motor
 	_update_lean(motor, delta)
 	_update_sparks(motor)
-	# De la poussière sous les roues hors piste : on sent qu'on y perd.
-	_poussiere.emitting = motor.on_offroad and _kart.au_sol and absf(motor.speed) > 5.0
-	_fumee_de_glisse.emitting = motor.state == KartMotor.State.DRIFT and _kart.au_sol and absf(motor.speed) > 6.0
+	# De la poussière sous les roues hors piste : on sent qu'on y perd. Le
+	# nuage magique ne touche pas le sol : ni poussière, ni fumée de pneus.
+	var touche_le_sol := _kart.au_sol and not ModeleKart.sur_un_nuage(_kart)
+	_poussiere.emitting = motor.on_offroad and touche_le_sol and absf(motor.speed) > 5.0
+	_fumee_de_glisse.emitting = motor.state == KartMotor.State.DRIFT and touche_le_sol and absf(motor.speed) > 6.0
 	_ombre.visible = _kart.au_sol and not QualiteGraphique.ombres_portees(GameSettings.qualite)
 	_update_flammes(motor)
 	_update_sillage()
 	_update_pilote(motor, delta)
 	_update_taille(motor, delta)
 	_update_aura(motor)
+	_composer_la_caisse()
 
 
 ## Pour le tour de chauffe : l'aura d'étoile et des copies qui émettent des
@@ -147,8 +155,6 @@ func _update_taille(motor: KartMotor, delta: float) -> void:
 	if _echelle == cible:
 		return
 	_echelle = move_toward(_echelle, cible, 2.5 * delta)
-	_body.scale = _echelle_caisse * _echelle
-	_body.position = _position_caisse * _echelle
 
 
 func _update_aura(motor: KartMotor) -> void:
@@ -182,33 +188,118 @@ func _update_lean(motor: KartMotor, delta: float) -> void:
 	if motor.state == KartMotor.State.DRIFT:
 		lean = -deg_to_rad(max_lean_deg) * float(motor.drift_dir)
 	_inclinaison = lerpf(_inclinaison, lean, 1.0 - exp(-lean_stiffness * delta))
-	# Un tonneau complet, vif au début et qui ralentit en fin de tour.
-	var tonneau := 0.0
+	# Un tonneau complet, vif au début et qui ralentit en fin de tour. Au
+	# sol, ce qui en reste se termine en accéléré : continué au ras de la
+	# route, il y plongeait la caisse.
+	_tonneau = 0.0
 	if _figure >= 0.0:
-		_figure += delta / DUREE_FIGURE
+		_figure += delta / DUREE_FIGURE * (FIGURE_AU_SOL if _kart.au_sol else 1.0)
 		if _figure >= 1.0:
 			_figure = -1.0
 		else:
-			tonneau = TAU * (1.0 - pow(1.0 - _figure, 2.0))
-	_body.rotation.z = _inclinaison + tonneau
-	_tourner_les_roues(tonneau)
+			_tonneau = TAU * (1.0 - pow(1.0 - _figure, 2.0))
 
 
-## Les roues suivent le tonneau, autour du même pivot que la caisse : sans
-## ça, la caisse faisait sa vrille au-dessus de quatre roues restées à plat.
-## L'inclinaison du dérapage, elle, ne touche que la caisse.
-func _tourner_les_roues(tonneau: float) -> void:
+## La caisse dessinée, dans le repère de Body (Kenney ou nuage, et le
+## pilote), refaite à chaque habillage : les sommets de son enveloppe, son
+## centre et son point le plus bas.
+##
+## Pas les coins de sa boîte : inclinée, une boîte descend bien plus bas que
+## ce qu'elle contient, puisque son coin du dessous et du côté n'est sur aucun
+## modèle. Mesuré, la caisse se relevait ainsi de 16 cm de trop en glisse.
+var _enveloppe := PackedVector3Array()
+var _centre_caisse := Vector3.ZERO
+var _bas_caisse := 0.0
+var _enveloppe_pour: Array = []
+
+
+func _relever_l_enveloppe() -> void:
+	var pilote := _body.get_node_or_null("Pilote")
+	var cle := [_kart.get_meta("carrosserie", 0), _kart.get_meta("train", 0), _body.get_child_count(),
+		pilote.get_instance_id() if pilote != null else 0]
+	if cle == _enveloppe_pour:
+		return
+	_enveloppe_pour = cle
+	_enveloppe = PackedVector3Array()
+	var boite := AABB()
+	var premiere := true
+	var vers_la_caisse := _body.global_transform.affine_inverse()
+	for m in _body.find_children("*", "MeshInstance3D", true, false):
+		var piece := m as MeshInstance3D
+		if piece.mesh == null or not piece.is_visible_in_tree():
+			continue
+		var vers := vers_la_caisse * piece.global_transform
+		var forme := piece.mesh.create_convex_shape(true, false) as ConvexPolygonShape3D
+		for sommet in forme.points:
+			_enveloppe.append(vers * sommet)
+		var sienne := vers * piece.get_aabb()
+		boite = sienne if premiere else boite.merge(sienne)
+		premiere = false
+	_centre_caisse = boite.get_center()
+	_bas_caisse = boite.position.y
+
+
+## Le point le plus bas de l'enveloppe posée par `t`.
+func _le_plus_bas(t: Transform3D) -> float:
+	var y := INF
+	for sommet in _enveloppe:
+		y = minf(y, (t * sommet).y)
+	return y
+
+
+## Pose la caisse, en dernier : l'assiette de la suspension (enfoncement,
+## tangage), le roulis de la glisse, le tonneau autour du centre de la caisse,
+## le rétrécissement. Puis, si son point le plus bas passe sous sa hauteur de
+## repos, la relève de l'écart : le tangage de 7° et le roulis de 14°
+## pivotaient au ras du sol, le pare-chocs avant passait sous la route.
+##
+## Les roues suivent le tonneau, autour du même pivot, et la même relève :
+## sans ça, la caisse faisait sa vrille au-dessus de quatre roues restées à
+## plat. L'inclinaison du dérapage et le tangage, eux, ne touchent que la
+## caisse : les roues restent où la suspension les pose, sur la route. Leur
+## appliquer la relève à chaque image les soulevait de 21 cm en glisse.
+func _composer_la_caisse() -> void:
+	var enfoncement := 0.0
+	var tangage := 0.0
+	if _kart.suspension != null:
+		enfoncement = _kart.suspension.enfoncement
+		tangage = _kart.suspension.tangage
+	var echelle := Basis.from_scale(_echelle_caisse * _echelle)
+	var repos := Transform3D(echelle, _position_caisse * _echelle + Vector3.DOWN * enfoncement)
+	var pose := Transform3D(Basis.from_euler(Vector3(tangage, 0.0, _inclinaison)) * echelle, repos.origin)
+	_relever_l_enveloppe()
+	var tour := Transform3D.IDENTITY
+	if _tonneau != 0.0:
+		var pivot := repos * _centre_caisse
+		var rotation_ := Basis(Vector3.BACK, _tonneau)
+		tour = Transform3D(rotation_, pivot - rotation_ * pivot)
+		pose = tour * pose
+	var releve := 0.0
+	# À plat, rien ne descend : on s'épargne de parcourir l'enveloppe.
+	if pose.basis != repos.basis:
+		# Au repos, la caisse n'est que mise à l'échelle et décalée : son point
+		# le plus bas est celui de sa boîte.
+		var bas_au_repos := repos.origin.y + repos.basis.y.y * _bas_caisse
+		releve = maxf(bas_au_repos - _le_plus_bas(pose), 0.0)
+	var roues := Transform3D(tour.basis * Basis.from_scale(Vector3.ONE * _echelle), tour.origin)
+	if _roues != null and _tonneau != 0.0 and _kart.suspension != null:
+		# Les roues aussi restent au-dessus de leur hauteur de repos.
+		var rayon := _kart.suspension.wheel_radius * _echelle
+		var avant := INF
+		var apres := INF
+		for roue in _roues.get_children():
+			var centre := (roue as Node3D).position
+			avant = minf(avant, centre.y * _echelle - rayon)
+			apres = minf(apres, (roues * centre).y - rayon)
+		releve = maxf(releve, avant - apres)
+	pose.origin.y += releve
+	_body.transform = pose
 	if _roues == null:
 		return
-	if tonneau == 0.0 and _echelle == 1.0:
-		if _roues.transform != Transform3D.IDENTITY:
-			_roues.transform = Transform3D.IDENTITY
-		return
-	var pivot := _body.position
-	var rotation_ := Basis(Vector3.BACK, tonneau)
-	# Rétrécies avec la caisse, autour du pied du kart.
-	_roues.transform = Transform3D(Basis.from_scale(Vector3.ONE * _echelle)) \
-		* Transform3D(rotation_, pivot - rotation_ * pivot)
+	if _tonneau != 0.0:
+		roues.origin.y += releve
+	if _roues.transform != roues:
+		_roues.transform = roues
 
 
 ## La recoloration est globale et instantanée : toutes les particules vivantes
@@ -427,7 +518,7 @@ func _update_pilote(motor: KartMotor, delta: float) -> void:
 	if _anim_pilote == null:
 		return
 	_geste_reste = maxf(_geste_reste - delta, 0.0)
-	var voulue: String = Personnage.ANIMATION
+	var voulue := Personnage.animation_de(_kart)
 	if motor.state == KartMotor.State.STUNNED:
 		voulue = ANIM_TETE_A_QUEUE
 	elif _figure >= 0.0:

@@ -140,7 +140,7 @@ func _calculer(c: TrackCurve) -> void:
 			_ranger(dessous, ici)
 		elif circuit != null and circuit.trou_en(d) != null and p.y - altitude < PROFONDEUR_PERCEE:
 			_ranger(dessous, ici)
-		elif p.y < altitude + PROFONDEUR_ENFONCEE:
+		elif p.y < altitude + PROFONDEUR_ENFONCEE and p.y > altitude - PROFONDEUR_PERCEE:
 			_routes.append(p)
 			_droites.append(c.right_at(d))
 			_ranger_route(_routes.size() - 1)
@@ -174,7 +174,11 @@ func _calculer(c: TrackCurve) -> void:
 
 
 ## Une route qui passe moins haut que ça au-dessus du sol l'abaisse sous
-## elle. Au-delà, c'est un pont : le sol reste à plat dessous.
+## elle. Au-delà, c'est un pont : le sol reste à plat dessous. Loin dessous
+## (PROFONDEUR_PERCEE), c'est une salle dont il est le plafond : il ne
+## s'abaisse pas non plus. Il le faisait : à la Grotte glacée, sur la Lune du
+## carnaval, ses mailles plongeaient de 20 à 48 m vers la route d'en bas, en
+## murs de 75° qui sortaient sous les bandes et le talus de celle d'en haut.
 const PROFONDEUR_ENFONCEE := 3.0
 ## Sous le bitume et ses bas-côtés, comme le relief (TrackTerrain).
 const SOUS_LE_BORD := 0.14

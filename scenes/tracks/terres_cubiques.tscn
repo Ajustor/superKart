@@ -384,7 +384,7 @@ script = ExtResource("s_decor")
 objet = 35
 debut = 1410
 longueur = 620
-decalage = 12.5
+decalage = 13.0
 espacement = 9
 graine = 8
 

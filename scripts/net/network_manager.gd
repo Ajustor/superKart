@@ -27,7 +27,7 @@ signal depart
 const PORT := 8910
 ## Monté à chaque changement du protocole : un client d'une autre version est
 ## refusé poliment plutôt que de désynchroniser la course en silence.
-const VERSION := 8
+const VERSION := 9
 
 ## Pas de coupe : une course seule.
 const SANS_COUPE := -1

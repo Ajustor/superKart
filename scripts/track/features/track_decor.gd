@@ -209,15 +209,18 @@ func _construire(c: TrackCurve, racine: Node3D) -> void:
 	affichage.multimesh = multi
 	racine.add_child(affichage)
 	if solide:
-		var corps := corps_de_collision(poses)
+		var corps := corps_de_collision(poses, c)
 		if corps != null:
 			racine.add_child(corps)
 
 
-## Un seul corps pour toute la rangée, une forme par objet. Des formes
-## simples plutôt que le maillage : un cylindre ou une boîte se testent en
-## un rien de temps, et n'accrochent pas le kart sur chaque facette.
-func corps_de_collision(poses: Array[Transform3D]) -> StaticBody3D:
+## Un seul corps pour toute la rangée, quelques formes par objet. Des
+## prismes convexes plutôt que le maillage : ils se testent en un rien de
+## temps, et n'accrochent pas le kart sur chaque facette.
+##
+## Avec le tracé `c`, un objet hors d'atteinte (hors_d_atteinte) n'a qu'un
+## prisme, l'enveloppe de ce qu'il montre à hauteur de kart.
+func corps_de_collision(poses: Array[Transform3D], c: TrackCurve = null) -> StaticBody3D:
 	var gabarit := forme_de(objet)
 	if gabarit.is_empty() or poses.is_empty():
 		return null
@@ -225,9 +228,32 @@ func corps_de_collision(poses: Array[Transform3D]) -> StaticBody3D:
 	corps.name = "Collisions"
 	corps.collision_layer = Kart.COUCHE_DECOR
 	corps.collision_mask = 0
+	var demi_gabarit: float = gabarit.hauteur * 0.5 if gabarit.type == "cylindre" else gabarit.taille.y * 0.5
 	for pose in poses:
 		var taille := pose.basis.get_scale().x
 		var sens := pose.basis.orthonormalized()
+		var prismes := prismes_de(objet, taille, hauteur, c != null and hors_d_atteinte(c, pose))
+		if not prismes.is_empty():
+			for prisme: Dictionary in prismes:
+				var points := PackedVector3Array()
+				for p: Vector2 in prisme.contour:
+					points.append(Vector3(p.x, prisme.bas, p.y) * taille)
+					points.append(Vector3(p.x, prisme.haut, p.y) * taille)
+				var convexe := ConvexPolygonShape3D.new()
+				convexe.points = points
+				var piece := CollisionShape3D.new()
+				piece.shape = convexe
+				piece.transform = Transform3D(sens, pose.origin)
+				corps.add_child(piece)
+			continue
+		# Rien du modèle à hauteur de kart. Le gabarit sert s'il est tout
+		# entier hors de la tranche (le pylône, qui pend sous la route) ; s'il
+		# y entrait, ce serait un mur qu'on ne voit pas (un rocher enterré
+		# dont il ne dépasse rien).
+		var dessous: bool = (gabarit.centre.y + demi_gabarit) * taille + hauteur < KART_BAS
+		var dessus: bool = (gabarit.centre.y - demi_gabarit) * taille + hauteur > KART_HAUT
+		if not dessous and not dessus:
+			continue
 		var forme := CollisionShape3D.new()
 		if gabarit.type == "cylindre":
 			var cylindre := CylinderShape3D.new()
@@ -243,12 +269,597 @@ func corps_de_collision(poses: Array[Transform3D]) -> StaticBody3D:
 	return corps
 
 
-## La forme de collision d'un objet à l'échelle 1, dans son propre repère :
-## un cylindre (rayon, hauteur) ou une boîte (taille), et son centre. Vide
-## pour ce qui ne se touche pas.
+## Un kart sorti de plus de Track.PORTEE_HORS_PISTE du bord est remis en
+## piste : un objet tout entier au-delà (et de cette marge) n'est jamais
+## heurté. Inutile de le découper finement.
+const MARGE_D_ATTEINTE := 2.0
+
+
+## Cet objet est-il tout entier hors de portée d'un kart, loin de toute la
+## route ? Son emprise : le modèle entier, à sa taille.
+func hors_d_atteinte(c: TrackCurve, pose: Transform3D) -> bool:
+	var boite := maillage_de(objet).get_aabb()
+	var rayon := Vector2(maxf(absf(boite.position.x), absf(boite.end.x)),
+		maxf(absf(boite.position.z), absf(boite.end.z))).length() * pose.basis.get_scale().x
+	var d := c.distance_of(pose.origin)
+	var ecart := absf(c.lateral_offset_at(pose.origin, d)) - c.half_width - rayon
+	return ecart > Track.PORTEE_HORS_PISTE + MARGE_D_ATTEINTE
+
+
+## La hauteur de kart : la caisse va de 3 à 73 cm au-dessus du sol. Elle
+## heurte un objet là où il est le plus large entre les deux. En mètres
+## au-dessus du sol : un objet agrandi, réduit ou enterré se coupe ailleurs
+## dans son modèle.
+const KART_BAS := 0.05
+const KART_HAUT := 0.73
+## Ce qui ne monte pas plus haut que ça au-dessus du sol n'est qu'un rebord
+## (une jupe, une dalle, le pied d'un panneau) : sa collision reste à sa
+## hauteur, elle ne monte pas en mur jusqu'au sommet de l'objet.
+const LEVRE := 0.3
+## Un rebord ne compte que s'il déborde de plus que ça de ce qui est plus haut.
+const DEBORD := 0.15
+## Les tailles se regroupent par crans de 10 % : une rangée de 0,85 à 1,15
+## en fait quatre, chacun coupé une fois. La tranche n'en bouge que de 4 cm
+## en haut.
+const CRAN_D_ECHELLE := 1.1
+## Deux morceaux du modèle plus proches que ça font un seul obstacle (en
+## mètres, comme les longueurs qui suivent).
+const MAILLE_DE_FORME := 0.2
+## Le pas des points qui suivent le bord du modèle.
+const PAS_DE_BORD := 0.05
+## Deux morceaux d'un même obstacle séparés de plus que ça (une boule à côté
+## d'un bloc) ont chacun leur prisme, quand une seule enveloppe enjamberait
+## le vide entre eux.
+const PAS_DE_SEPARATION := 0.1
+## Les sommets d'un prisme, au plus.
+const SOMMETS_MAX := 16
+## Une enveloppe qui passe plus loin que ça du modèle enjambe un creux (une
+## porte, l'ouverture d'un garage) ; en deçà, ce n'est qu'une bosse, et
+## l'enveloppe suffit. 9 cm : la coupe, en cases de 5 cm, en laisse un peu
+## plus, et l'enveloppe reste à moins de 15 cm de ce qu'on voit.
+const CREUX := 0.09
+const COUPES_MAX := 4
+
+static var _prismes: Dictionary = {}
+static var _triangles_de: Dictionary = {}
+
+
+## Les formes de collision d'un objet, tirées de son modèle à hauteur de kart :
+## des prismes convexes, {contour (x, z), bas, haut}, dans le repère du modèle
+## (à multiplier par la taille de l'instance). Vide si le modèle n'a rien à
+## cette hauteur (le pylône, qui pend sous la route ; un rocher tout enterré).
 ##
-## Elle suit ce qu'un kart heurte, à hauteur de caisse : le tronc d'un arbre,
-## pas son houppier.
+## La tranche est celle de la caisse, en mètres au-dessus du sol : pour une
+## instance de taille `taille` posée `hauteur` mètres au-dessus du sol (une
+## rangée enterrée : hauteur < 0), [KART_BAS - hauteur, KART_HAUT - hauteur]
+## / taille dans le modèle. Un arbre six fois plus grand ne se coupe que dans
+## son pied ; un palmier enterré de deux mètres, à mi-tronc. Les tailles se
+## regroupent par crans de 10 % (CRAN_D_ECHELLE) : une rangée en coupe
+## quatre, pas une par objet.
+##
+## Les gabarits faits main ne suivaient pas les modèles Kenney rééchelonnés :
+## une tente faisait un bloc de 6 × 4 × 6 m où l'on ne voit que quatre
+## montants, un panneau une dalle de 8 m sous un panneau perché, un sapin un
+## mètre de trop. Ici, le modèle à hauteur de kart est coupé en morceaux d'un
+## seul tenant, et chacun devient l'enveloppe convexe de ce qu'on y voit. Le
+## gabarit ne donne plus que la hauteur : ce qui touche le haut de la tranche
+## monte jusqu'à son sommet, ce qui touche le bas descend jusqu'à son pied.
+##
+## `loin` : pour un objet hors d'atteinte, un seul prisme, l'enveloppe de la
+## tranche entière, sans creux ni étages.
+static func prismes_de(quoi: Objet, taille: float = 1.0, hauteur: float = 0.0, loin: bool = false) -> Array:
+	var cran := roundi(log(maxf(taille, 0.01)) / log(CRAN_D_ECHELLE))
+	var cle := "%d|%d|%d|%d" % [quoi, cran, roundi(hauteur * 100.0), int(loin)]
+	if _prismes.has(cle):
+		return _prismes[cle]
+	var gabarit := forme_de(quoi)
+	var prismes := []
+	if not gabarit.is_empty():
+		var s := pow(CRAN_D_ECHELLE, cran)
+		var demi: float = gabarit.hauteur * 0.5 if gabarit.type == "cylindre" else gabarit.taille.y * 0.5
+		var pied: float = gabarit.centre.y - demi
+		var sommet: float = gabarit.centre.y + demi
+		if not _triangles_de.has(quoi):
+			_triangles_de[quoi] = _triangles(maillage_de(quoi))
+		var y0 := (KART_BAS - hauteur) / s
+		var y1 := (KART_HAUT - hauteur) / s
+		if loin:
+			prismes = _enveloppe(_triangles_de[quoi], y0, y1, 1.0 / s, pied, sommet)
+		else:
+			prismes = _etages(_triangles_de[quoi], y0, (LEVRE - hauteur) / s, y1, 1.0 / s, pied, sommet)
+	_prismes[cle] = prismes
+	return prismes
+
+
+## Les prismes de la tranche [y0, y1] du modèle (`u` : un mètre dans le
+## modèle). Ce qui touche le haut de la tranche monte jusqu'au sommet du
+## gabarit, ce qui touche le bas descend jusqu'à son pied.
+##
+## Un rebord bas (sous y_levre) qui déborde de plus de DEBORD de ce qui est
+## plus haut fait un étage à part : toute l'emprise jusqu'au haut du rebord,
+## puis ce qui le dépasse par-dessus. Sans ça, la dalle de vingt centimètres
+## d'un bloc de sculk devenait un mur de 1,2 m, et le pied d'un panneau un
+## bloc de 8 m.
+static func _etages(triangles: PackedVector3Array, y0: float, y_levre: float, y1: float, u: float,
+		pied: float, sommet: float) -> Array:
+	var tout := _Tranche.new(triangles, y0, y1, u)
+	if tout.vide():
+		return []
+	var levre := -INF
+	if y_levre > y0 and y_levre < y1 and tout.deborde(y_levre, DEBORD * u):
+		var haute := _Tranche.new(triangles, y_levre, y1, u)
+		if not haute.vide():
+			levre = tout.haut_du_rebord(haute, y_levre, DEBORD * u)
+	var prismes := []
+	for m: Dictionary in tout.morceaux():
+		if m.bas <= y0 + 0.01 * u:
+			m.bas = minf(m.bas, pied)
+		if levre > -INF:
+			# L'étage du bas s'arrête au haut du rebord ; ce qui flotte
+			# au-dessus (une branche) n'est que dans l'étage du haut.
+			if m.bas >= levre:
+				continue
+			m.haut = minf(m.haut, levre)
+		elif m.haut >= y1 - 0.01 * u:
+			m.haut = maxf(m.haut, sommet)
+		prismes.append(m)
+	if levre > -INF:
+		# Au-dessus du rebord (un centimètre plus haut : sa face du dessus
+		# resterait dans la tranche), et posé dessus.
+		for m: Dictionary in _Tranche.new(triangles, levre + 0.01 * u, y1, u).morceaux():
+			m.bas = minf(m.bas, levre)
+			if m.haut >= y1 - 0.01 * u:
+				m.haut = maxf(m.haut, sommet)
+			prismes.append(m)
+	return prismes
+
+
+## Un seul prisme : l'enveloppe de toute la tranche [y0, y1] du modèle.
+static func _enveloppe(triangles: PackedVector3Array, y0: float, y1: float, u: float,
+		pied: float, sommet: float) -> Array:
+	var tout := _Tranche.new(triangles, y0, y1, u)
+	if tout.vide():
+		return []
+	var plan := PackedVector2Array()
+	var bas := INF
+	var haut := -INF
+	for c in tout.cases:
+		for p: Vector3 in tout.cases[c]:
+			plan.append(Vector2(p.x, p.z))
+			bas = minf(bas, p.y)
+			haut = maxf(haut, p.y)
+	if bas <= y0 + 0.01 * u:
+		bas = minf(bas, pied)
+	if haut >= y1 - 0.01 * u:
+		haut = maxf(haut, sommet)
+	return [{contour = _simplifier(Geometry2D.convex_hull(plan)), bas = bas, haut = haut}]
+
+
+## Les triangles d'un maillage, toutes surfaces.
+static func _triangles(maillage: ArrayMesh) -> PackedVector3Array:
+	var triangles := PackedVector3Array()
+	for s in maillage.get_surface_count():
+		var tableaux := maillage.surface_get_arrays(s)
+		var sommets: PackedVector3Array = tableaux[Mesh.ARRAY_VERTEX]
+		var indices = tableaux[Mesh.ARRAY_INDEX]
+		if indices is PackedInt32Array and (indices as PackedInt32Array).size() > 0:
+			for i in indices:
+				triangles.append(sommets[i])
+		else:
+			triangles.append_array(sommets)
+	return triangles
+
+
+## La tranche du modèle entre y0 et y1 (`u` : un mètre dans le modèle) :
+## chaque triangle coupé à la tranche, le bord de ce qui reste en points tous
+## les PAS_DE_BORD, rangés par cases de MAILLE_DE_FORME ; et sa coupe pleine.
+class _Tranche:
+	var cases := {}
+	## Sa coupe (_Coupe), si elle n'est pas vide.
+	var plein
+	var u := 1.0
+
+	func _init(triangles: PackedVector3Array, y0: float, y1: float, metre: float) -> void:
+		u = metre
+		var pas := TrackDecor.PAS_DE_BORD * u
+		var maille := TrackDecor.MAILLE_DE_FORME * u
+		for t in range(0, triangles.size(), 3):
+			var poly := TrackDecor._couper([triangles[t], triangles[t + 1], triangles[t + 2]], y0, y1)
+			for i in poly.size():
+				var a: Vector3 = poly[i]
+				var b: Vector3 = poly[(i + 1) % poly.size()]
+				var n := maxi(ceili(Vector2(a.x - b.x, a.z - b.z).length() / pas), 1)
+				for k in n:
+					var p := a.lerp(b, float(k) / n)
+					var cle := Vector2i(floori(p.x / maille), floori(p.z / maille))
+					if not cases.has(cle):
+						cases[cle] = PackedVector3Array()
+					cases[cle].append(p)
+		if not cases.is_empty():
+			plein = TrackDecor._Coupe.new(cases, pas)
+
+	func vide() -> bool:
+		return cases.is_empty()
+
+	## Un point plus bas que `levre` est-il à plus de `portee` de tout point
+	## plus haut ? Faux : pas de rebord, sans avoir à couper la tranche du
+	## haut (ses points y sont, et sa coupe pleine les contient).
+	func deborde(levre: float, portee: float) -> bool:
+		var hauts := {}
+		for c in cases:
+			for p: Vector3 in cases[c]:
+				if p.y >= levre:
+					var k := Vector2i(floori(p.x / portee), floori(p.z / portee))
+					if not hauts.has(k):
+						hauts[k] = PackedVector2Array()
+					var liste: PackedVector2Array = hauts[k]
+					liste.append(Vector2(p.x, p.z))
+					hauts[k] = liste
+		if hauts.is_empty():
+			return false
+		var portee2 := portee * portee
+		for c in cases:
+			for p: Vector3 in cases[c]:
+				if p.y >= levre:
+					continue
+				var q := Vector2(p.x, p.z)
+				var k := Vector2i(floori(q.x / portee), floori(q.y / portee))
+				var couvert := false
+				for dx in range(-1, 2):
+					for dz in range(-1, 2):
+						for h: Vector2 in hauts.get(k + Vector2i(dx, dz), PackedVector2Array()):
+							if h.distance_squared_to(q) <= portee2:
+								couvert = true
+								break
+						if couvert:
+							break
+					if couvert:
+						break
+				if not couvert:
+					return true
+		return false
+
+	## Le haut du rebord : de ce que montre cette tranche, ce qui est à plus
+	## de `portee` de `haute` (la même, plus haut), le point le plus haut.
+	## -INF : pas de rebord, `haute` couvre tout.
+	func haut_du_rebord(haute: _Tranche, depuis: float, portee: float) -> float:
+		var haut := -INF
+		for c in cases:
+			for p: Vector3 in cases[c]:
+				# Plus haut que `depuis`, le point est dans `haute`.
+				if p.y > haut and p.y < depuis and not haute.plein.pres(Vector2(p.x, p.z), portee):
+					haut = p.y
+		return haut
+
+	## Les morceaux : les cases voisines font un morceau, et chacun ses prismes
+	## convexes, {contour (x, z), bas, haut}.
+	func morceaux() -> Array:
+		var contours := []
+		var vues := {}
+		for depart: Vector2i in cases:
+			if vues.has(depart):
+				continue
+			vues[depart] = true
+			var pile: Array[Vector2i] = [depart]
+			var points := PackedVector3Array()
+			while not pile.is_empty():
+				var c: Vector2i = pile.pop_back()
+				points.append_array(cases[c])
+				for dx in range(-1, 2):
+					for dz in range(-1, 2):
+						var voisine := c + Vector2i(dx, dz)
+						if cases.has(voisine) and not vues.has(voisine):
+							vues[voisine] = true
+							pile.append(voisine)
+			contours.append_array(TrackDecor._convexes(points, plein, u))
+		return contours
+
+
+## La coupe du modèle à une tranche, sur une grille de `cote` (5 cm dans le
+## monde) : pleine là où est le modèle, son bord comme son dedans. Le dehors
+## se trouve en remplissant depuis les bords de la grille ; ce qu'il
+## n'atteint pas est dedans.
+class _Coupe:
+	var cote := 0.05
+	var origine: Vector2
+	var largeur: int
+	var hauteur: int
+	## 0 : dehors ; 1 : bord ; 2 : dedans.
+	var cases := PackedByteArray()
+	## Le plus bas et le plus haut du modèle dans chaque case de bord.
+	var bas_case := PackedFloat32Array()
+	var haut_case := PackedFloat32Array()
+
+	func _init(points_par_case: Dictionary, taille_de_case: float) -> void:
+		cote = taille_de_case
+		var mini := Vector2(INF, INF)
+		var maxi := Vector2(-INF, -INF)
+		for c in points_par_case:
+			for p: Vector3 in points_par_case[c]:
+				mini = mini.min(Vector2(p.x, p.z))
+				maxi = maxi.max(Vector2(p.x, p.z))
+		origine = mini - Vector2.ONE * 2.0 * cote
+		largeur = ceili((maxi.x - origine.x) / cote) + 3
+		hauteur = ceili((maxi.y - origine.y) / cote) + 3
+		cases.resize(largeur * hauteur)
+		cases.fill(2)
+		bas_case.resize(largeur * hauteur)
+		bas_case.fill(INF)
+		haut_case.resize(largeur * hauteur)
+		haut_case.fill(-INF)
+		for c in points_par_case:
+			for p: Vector3 in points_par_case[c]:
+				var i := _indice(Vector2(p.x, p.z))
+				cases[i] = 1
+				if not is_nan(p.y):
+					bas_case[i] = minf(bas_case[i], p.y)
+					haut_case[i] = maxf(haut_case[i], p.y)
+		# Le dehors, de proche en proche (sans les diagonales : un mur en
+		# biais ne laisse pas passer).
+		var pile := PackedInt32Array([0])
+		cases[0] = 0
+		while not pile.is_empty():
+			var i := pile[pile.size() - 1]
+			pile.remove_at(pile.size() - 1)
+			var x := i % largeur
+			var z := i / largeur
+			for v: Vector2i in [Vector2i(x - 1, z), Vector2i(x + 1, z), Vector2i(x, z - 1), Vector2i(x, z + 1)]:
+				if v.x < 0 or v.y < 0 or v.x >= largeur or v.y >= hauteur:
+					continue
+				var j := v.y * largeur + v.x
+				if cases[j] == 2:
+					cases[j] = 0
+					pile.append(j)
+
+	func _indice(p: Vector2) -> int:
+		var x := clampi(floori((p.x - origine.x) / cote), 0, largeur - 1)
+		var z := clampi(floori((p.y - origine.y) / cote), 0, hauteur - 1)
+		return z * largeur + x
+
+	## La coupe dans `zone`, pavée de rectangles : chacun s'étend d'abord en
+	## largeur, puis en profondeur tant que la rangée reste pleine.
+	func rectangles(zone: Rect2) -> Array[Rect2]:
+		var x0 := clampi(floori((zone.position.x - origine.x) / cote), 0, largeur - 1)
+		var z0 := clampi(floori((zone.position.y - origine.y) / cote), 0, hauteur - 1)
+		var x1 := clampi(floori((zone.end.x - origine.x) / cote), 0, largeur - 1)
+		var z1 := clampi(floori((zone.end.y - origine.y) / cote), 0, hauteur - 1)
+		var pris := {}
+		var liste: Array[Rect2] = []
+		for z in range(z0, z1 + 1):
+			for x in range(x0, x1 + 1):
+				if cases[z * largeur + x] == 0 or pris.has(z * largeur + x):
+					continue
+				var fin_x := x
+				while fin_x + 1 <= x1 and cases[z * largeur + fin_x + 1] != 0 and not pris.has(z * largeur + fin_x + 1):
+					fin_x += 1
+				var fin_z := z
+				while fin_z + 1 <= z1:
+					var pleine := true
+					for xx in range(x, fin_x + 1):
+						var k := (fin_z + 1) * largeur + xx
+						if cases[k] == 0 or pris.has(k):
+							pleine = false
+							break
+					if not pleine:
+						break
+					fin_z += 1
+				for zz in range(z, fin_z + 1):
+					for xx in range(x, fin_x + 1):
+						pris[zz * largeur + xx] = true
+				liste.append(Rect2(origine + Vector2(x, z) * cote, Vector2(fin_x - x + 1, fin_z - z + 1) * cote))
+		return liste
+
+	## Le plus bas et le plus haut du modèle dans `zone` ; (INF, -INF) s'il n'y
+	## a là que du dedans.
+	func hauteurs(zone: Rect2) -> Vector2:
+		var x0 := clampi(floori((zone.position.x - origine.x) / cote), 0, largeur - 1)
+		var z0 := clampi(floori((zone.position.y - origine.y) / cote), 0, hauteur - 1)
+		var x1 := clampi(floori((zone.end.x - origine.x) / cote), 0, largeur - 1)
+		var z1 := clampi(floori((zone.end.y - origine.y) / cote), 0, hauteur - 1)
+		var h := Vector2(INF, -INF)
+		for z in range(z0, z1 + 1):
+			for x in range(x0, x1 + 1):
+				var i := z * largeur + x
+				h = Vector2(minf(h.x, bas_case[i]), maxf(h.y, haut_case[i]))
+		return h
+
+	## Ce point est-il dans le modèle, ou à moins de `portee` ?
+	func pres(p: Vector2, portee: float) -> bool:
+		var x := floori((p.x - origine.x) / cote)
+		var z := floori((p.y - origine.y) / cote)
+		var n := ceili(portee / cote)
+		for dx in range(-n, n + 1):
+			for dz in range(-n, n + 1):
+				var v := Vector2i(x + dx, z + dz)
+				if v.x < 0 or v.y < 0 or v.x >= largeur or v.y >= hauteur or cases[v.y * largeur + v.x] == 0:
+					continue
+				# Le point de la case le plus proche.
+				var coin := origine + Vector2(v) * cote
+				var proche := p.clamp(coin, coin + Vector2.ONE * cote)
+				if proche.distance_to(p) <= portee:
+					return true
+		return false
+
+
+## Les prismes d'un morceau : son enveloppe convexe, s'il n'a pas de creux.
+## Sinon, coupé en deux le long de sa plus grande dimension, et ainsi de
+## suite ; au-delà de COUPES_MAX coupes (un bâtiment, sa porte, ses
+## fenêtres), la coupe pavée de rectangles, au plus 5 cm au-delà du modèle.
+##
+## Chaque prisme va du plus bas au plus haut de ce qu'il couvre du modèle,
+## pas de tout le morceau : une boule posée au bord d'une dalle, coupée du
+## bloc qui la domine, reste à sa hauteur. (Les points ajoutés le long d'une
+## coupe, sans hauteur à eux, ont y = NAN.)
+static func _convexes(points: PackedVector3Array, plein: _Coupe, u: float = 1.0, coupes: int = 0,
+		bas_parent: float = INF, haut_parent: float = -INF) -> Array:
+	var plan := PackedVector2Array()
+	var bas := INF
+	var haut := -INF
+	for p in points:
+		plan.append(Vector2(p.x, p.z))
+		if not is_nan(p.y):
+			bas = minf(bas, p.y)
+			haut = maxf(haut, p.y)
+	if bas == INF:
+		bas = bas_parent
+		haut = haut_parent
+	var enveloppe := _simplifier(Geometry2D.convex_hull(plan))
+	if not _enjambe_un_creux(enveloppe, plein, u):
+		return [{contour = enveloppe, bas = bas, haut = haut}]
+	# Plusieurs pièces séparées de plus de PAS_DE_SEPARATION (une boule à côté
+	# d'un bloc) : chacune la sienne, avant de couper quoi que ce soit.
+	var groupes := _groupes(points, PAS_DE_SEPARATION * u)
+	if groupes.size() > 1:
+		var pieces_separees := []
+		for groupe: PackedVector3Array in groupes:
+			if groupe.size() >= 3:
+				pieces_separees.append_array(_convexes(groupe, plein, u, coupes, bas, haut))
+		return pieces_separees
+	var boite := _emprise(plan)
+	if coupes >= COUPES_MAX:
+		var pieces := []
+		for r: Rect2 in plein.rectangles(boite):
+			# Sa hauteur : celle des points du modèle qu'il couvre ; le dedans
+			# d'un bâtiment, qui n'en a pas, garde celle du morceau.
+			var h := plein.hauteurs(r.grow(0.01 * u))
+			var r_bas := h.x
+			var r_haut := h.y
+			if r_bas == INF:
+				r_bas = bas
+				r_haut = haut
+			pieces.append({contour = PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end,
+				Vector2(r.position.x, r.end.y)]), bas = r_bas, haut = r_haut})
+		return pieces
+	var en_x := boite.size.x >= boite.size.y
+	var milieu: float = boite.get_center().x if en_x else boite.get_center().y
+	var avant := PackedVector3Array()
+	var apres := PackedVector3Array()
+	for p in points:
+		if (p.x if en_x else p.z) < milieu:
+			avant.append(p)
+		else:
+			apres.append(p)
+	# La coupe, là où elle traverse le plein, aux deux moitiés : leurs
+	# enveloppes s'y rejoignent, sans déborder dans le vide. Chacune la
+	# dépasse d'un centimètre : bord à bord, un rayon passait entre les deux.
+	var debut: float = boite.position.y if en_x else boite.position.x
+	var fin: float = boite.end.y if en_x else boite.end.x
+	var t := debut
+	while t <= fin:
+		var ici := Vector2(milieu, t) if en_x else Vector2(t, milieu)
+		if plein.pres(ici, 0.0):
+			var pas := Vector2(0.01 * u, 0.0) if en_x else Vector2(0.0, 0.01 * u)
+			avant.append(Vector3(ici.x + pas.x, NAN, ici.y + pas.y))
+			apres.append(Vector3(ici.x - pas.x, NAN, ici.y - pas.y))
+		t += PAS_DE_BORD * u
+	if avant.size() < 3 or apres.size() < 3:
+		return [{contour = enveloppe, bas = bas, haut = haut}]
+	return _convexes(avant, plein, u, coupes + 1, bas, haut) + _convexes(apres, plein, u, coupes + 1, bas, haut)
+
+
+## Les points rangés par cases de `maille`, les cases voisines ensemble :
+## les groupes d'un seul tenant.
+static func _groupes(points: PackedVector3Array, maille: float) -> Array:
+	var cases := {}
+	for p in points:
+		var k := Vector2i(floori(p.x / maille), floori(p.z / maille))
+		if not cases.has(k):
+			cases[k] = PackedVector3Array()
+		var liste: PackedVector3Array = cases[k]
+		liste.append(p)
+		cases[k] = liste
+	var groupes := []
+	var vues := {}
+	for depart: Vector2i in cases:
+		if vues.has(depart):
+			continue
+		vues[depart] = true
+		var pile: Array[Vector2i] = [depart]
+		var groupe := PackedVector3Array()
+		while not pile.is_empty():
+			var c: Vector2i = pile.pop_back()
+			groupe.append_array(cases[c])
+			for dx in range(-1, 2):
+				for dz in range(-1, 2):
+					var voisine := c + Vector2i(dx, dz)
+					if cases.has(voisine) and not vues.has(voisine):
+						vues[voisine] = true
+						pile.append(voisine)
+		groupes.append(groupe)
+	return groupes
+
+
+## L'enveloppe passe-t-elle quelque part à plus de CREUX du modèle, dehors ?
+## Le long d'une coupe, elle traverse le dedans : ce n'est pas un creux.
+static func _enjambe_un_creux(enveloppe: PackedVector2Array, plein: _Coupe, u: float = 1.0) -> bool:
+	for i in enveloppe.size():
+		var a := enveloppe[i]
+		var b := enveloppe[(i + 1) % enveloppe.size()]
+		var n := maxi(ceili(a.distance_to(b) / (PAS_DE_BORD * u)), 1)
+		for k in n:
+			if not plein.pres(a.lerp(b, float(k) / n), CREUX * u):
+				return true
+	return false
+
+
+## Le triangle coupé entre les plans y = y0 et y = y1 : un polygone, vide
+## s'il est tout entier dehors.
+static func _couper(poly: Array, y0: float, y1: float) -> Array:
+	for plan: Array in [[y0, 1.0], [y1, -1.0]]:
+		var h: float = plan[0]
+		var sens: float = plan[1]
+		var garde := []
+		for i in poly.size():
+			var a: Vector3 = poly[i]
+			var b: Vector3 = poly[(i + 1) % poly.size()]
+			var da := (a.y - h) * sens
+			var db := (b.y - h) * sens
+			if da >= 0.0:
+				garde.append(a)
+			if (da >= 0.0) != (db >= 0.0):
+				garde.append(a.lerp(b, da / (da - db)))
+		poly = garde
+		if poly.is_empty():
+			return poly
+	return poly
+
+
+## Au plus SOMMETS_MAX sommets : on retire, un à un, celui qui couvre le moins.
+## Le contour ne fait que rentrer, de quelques millimètres.
+static func _simplifier(contour: PackedVector2Array) -> PackedVector2Array:
+	var points := contour
+	# convex_hull referme le contour en répétant son premier point.
+	if points.size() > 1 and points[0] == points[points.size() - 1]:
+		points.remove_at(points.size() - 1)
+	while points.size() > SOMMETS_MAX:
+		var moindre := 0
+		var aire_min := INF
+		for i in points.size():
+			var a := points[(i - 1 + points.size()) % points.size()]
+			var b := points[i]
+			var c := points[(i + 1) % points.size()]
+			var aire := absf((b - a).cross(c - a))
+			if aire < aire_min:
+				aire_min = aire
+				moindre = i
+		points.remove_at(moindre)
+	return points
+
+
+## Le rectangle qui contient ces points.
+static func _emprise(contour: PackedVector2Array) -> Rect2:
+	var r := Rect2(contour[0], Vector2.ZERO)
+	for p in contour:
+		r = r.expand(p)
+	return r
+
+
+## Le gabarit d'un objet à l'échelle 1, dans son propre repère : un cylindre
+## (rayon, hauteur) ou une boîte (taille), et son centre. Vide pour ce qui
+## ne se touche pas.
+##
+## Il ne donne plus que la hauteur des prismes (prismes_de), sauf pour ce qui
+## n'a rien à hauteur de kart.
 static func forme_de(quoi: Objet) -> Dictionary:
 	match quoi:
 		Objet.PALMIER:

@@ -157,6 +157,21 @@ func test_le_sol_s_abaisse_sous_le_bord_bas_d_un_virage_releve() -> void:
 		assert_lt(sol.hauteur_en(ici.x, ici.z), route, "à %.0f m de l'axe, le sol reste sous la route" % lateral)
 
 
+
+## Un sol trente mètres au-dessus de la route est le plafond d'une salle, loin
+## au-dessus des karts (PROFONDEUR_PERCEE) : il ne s'abaisse pas sous elle
+## comme sous une route à son ras. Il le faisait : à la Grotte glacée et sur
+## la Lune du carnaval, ses mailles plongeaient de 20 à 48 m jusqu'à la route
+## d'en bas, en murs de 75° qui sortaient sous les bandes et le talus.
+func test_un_sol_loin_au_dessus_de_la_route_ne_s_abaisse_pas_sous_elle() -> void:
+	var sol := TrackSol.new()
+	sol.marge = 60.0
+	sol.altitude = 30.0
+	_poser(sol, "Plafond")
+	for lateral: float in [-14.0, -4.0, 0.0, 9.0, 16.0]:
+		var ici := _point(100.0, lateral)
+		assert_eq(sol.hauteur_en(ici.x, ici.z), 30.0, "à %.0f m de l'axe, le plafond reste à sa hauteur" % lateral)
+
 func test_le_relief_porte_sur_les_bas_cotes() -> void:
 	var relief := TrackTerrain.new()
 	relief.marge = 80.0
